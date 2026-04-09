@@ -1,0 +1,1429 @@
+/**
+ * MAYA - Kundli Chart Generator
+ * North Indian and South Indian Chart Styles
+ * Enhanced with detailed planetary information
+ */
+
+const MayaKundli = {
+    localizeHindiAstroText(text) {
+        const astroRules = MAYA_CONFIG?.LANGUAGE?.HINDI_ASTRO_TERM_RULES || [];
+
+        return astroRules.reduce((localized, rule) => {
+            try {
+                return localized.replace(new RegExp(rule.pattern, 'gi'), rule.replacement);
+            } catch (_error) {
+                return localized;
+            }
+        }, String(text || '')).trim();
+    },
+
+    /**
+     * Zodiac sign short names
+     */
+    signShortNames: {
+        'Aries': 'Ari', 'Taurus': 'Tau', 'Gemini': 'Gem', 'Cancer': 'Can',
+        'Leo': 'Leo', 'Virgo': 'Vir', 'Libra': 'Lib', 'Scorpio': 'Sco',
+        'Sagittarius': 'Sag', 'Capricorn': 'Cap', 'Aquarius': 'Aqu', 'Pisces': 'Pis'
+    },
+
+    /**
+     * Zodiac sign icons (using abbreviations with colors)
+     */
+    signIcons: {
+        'Aries': { abbr: 'AR', color: '#FF5733' },
+        'Taurus': { abbr: 'TA', color: '#2ECC71' },
+        'Gemini': { abbr: 'GE', color: '#F1C40F' },
+        'Cancer': { abbr: 'CA', color: '#BDC3C7' },
+        'Leo': { abbr: 'LE', color: '#E74C3C' },
+        'Virgo': { abbr: 'VI', color: '#3498DB' },
+        'Libra': { abbr: 'LI', color: '#9B59B6' },
+        'Scorpio': { abbr: 'SC', color: '#8E44AD' },
+        'Sagittarius': { abbr: 'SA', color: '#1ABC9C' },
+        'Capricorn': { abbr: 'CP', color: '#34495E' },
+        'Aquarius': { abbr: 'AQ', color: '#9B59B6' },
+        'Pisces': { abbr: 'PI', color: '#3498DB' }
+    },
+
+    /**
+     * Planet details with symbols and image rendering configs
+     */
+    planetInfo: {
+        'Sun': { symbol: '☉', vedic: 'Surya', color: '#FFD700', nature: 'Benefic', imgColors: ['#FFF8DC','#FFD700','#FF8C00','#CC6600'], glow: 'rgba(255,215,0,0.5)', corona: true },
+        'Moon': { symbol: '☽', vedic: 'Chandra', color: '#C0C0C0', nature: 'Benefic', imgColors: ['#FFFFFF','#E8E8E8','#C0C0C0','#808080'], glow: 'rgba(200,200,220,0.4)', craters: true },
+        'Mars': { symbol: '♂', vedic: 'Mangal', color: '#FF4444', nature: 'Malefic', imgColors: ['#FF8C69','#CD5C5C','#B22222','#8B0000'], glow: 'rgba(255,68,68,0.35)' },
+        'Mercury': { symbol: '☿', vedic: 'Budha', color: '#00CC66', nature: 'Neutral', imgColors: ['#D4D4D4','#A8A8A8','#808080','#505050'], glow: 'rgba(160,160,160,0.3)' },
+        'Jupiter': { symbol: '♃', vedic: 'Guru', color: '#FFAA00', nature: 'Benefic', imgColors: ['#FFD700','#DAA520','#B8860B','#8B6914'], glow: 'rgba(218,165,32,0.35)', bands: true },
+        'Venus': { symbol: '♀', vedic: 'Shukra', color: '#FF69B4', nature: 'Benefic', imgColors: ['#FFFAF0','#FAEBD7','#DEB887','#C8A882'], glow: 'rgba(250,235,215,0.4)' },
+        'Saturn': { symbol: '♄', vedic: 'Shani', color: '#4169E1', nature: 'Malefic', imgColors: ['#F0E68C','#DAA520','#B8860B','#8B7D3C'], glow: 'rgba(218,165,32,0.35)', ring: true },
+        'Rahu': { symbol: '☊', vedic: 'Rahu', color: '#8B008B', nature: 'Malefic', imgColors: ['#DA70D6','#8B008B','#4B0082','#2E0051'], glow: 'rgba(139,0,139,0.4)' },
+        'Ketu': { symbol: '☋', vedic: 'Ketu', color: '#8B4513', nature: 'Malefic', imgColors: ['#DEB887','#8B4513','#654321','#3E2723'], glow: 'rgba(139,69,19,0.35)' }
+    },
+
+    _planetImageCache: {},
+
+    /**
+     * Create a realistic photographic-style planet image on an offscreen canvas.
+     */
+    createPlanetImage(planetName, size) {
+        size = size || 22;
+        const key = `${planetName}_${size}`;
+        if (this._planetImageCache[key]) return this._planetImageCache[key];
+
+        const info = this.planetInfo[planetName];
+        if (!info || !info.imgColors) return null;
+
+        const c = document.createElement('canvas');
+        c.width = size;
+        c.height = size;
+        const ctx = c.getContext('2d');
+        const r = size / 2 - 2;
+        const cx = size / 2;
+        const cy = size / 2;
+
+        // Outer glow
+        const glowGrad = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r + 3);
+        glowGrad.addColorStop(0, 'transparent');
+        glowGrad.addColorStop(0.7, info.glow);
+        glowGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = glowGrad;
+        ctx.fillRect(0, 0, size, size);
+
+        // Planet sphere with 3D gradient
+        const sphereGrad = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.35, r * 0.05, cx + r * 0.1, cy + r * 0.1, r);
+        sphereGrad.addColorStop(0, info.imgColors[0]);
+        sphereGrad.addColorStop(0.35, info.imgColors[1]);
+        sphereGrad.addColorStop(0.7, info.imgColors[2]);
+        sphereGrad.addColorStop(1, info.imgColors[3]);
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = sphereGrad;
+        ctx.fill();
+
+        // Corona (Sun)
+        if (info.corona) {
+            ctx.save();
+            ctx.globalAlpha = 0.45;
+            for (let a = 0; a < 12; a++) {
+                const angle = (a / 12) * Math.PI * 2;
+                ctx.beginPath();
+                ctx.moveTo(cx + Math.cos(angle) * r * 0.85, cy + Math.sin(angle) * r * 0.85);
+                ctx.lineTo(cx + Math.cos(angle) * (r + 2.5), cy + Math.sin(angle) * (r + 2.5));
+                ctx.strokeStyle = '#FFD700';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        // Jupiter bands
+        if (info.bands) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.clip();
+            ctx.globalAlpha = 0.22;
+            [-3, -1, 2, 4].forEach(offset => {
+                ctx.beginPath();
+                ctx.moveTo(cx - r, cy + offset);
+                ctx.lineTo(cx + r, cy + offset);
+                ctx.strokeStyle = offset % 2 ? '#8B6914' : '#654321';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            });
+            ctx.restore();
+        }
+
+        // Saturn ring
+        if (info.ring) {
+            ctx.save();
+            ctx.globalAlpha = 0.6;
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, r + 4, r * 0.25, -0.3, 0, Math.PI * 2);
+            ctx.strokeStyle = '#F0E68C';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // Moon craters
+        if (info.craters) {
+            ctx.save();
+            ctx.globalAlpha = 0.14;
+            [[cx - 2, cy - 2, 1.5], [cx + 3, cy + 1, 1], [cx - 1, cy + 3, 0.8]].forEach(([x, y, rr]) => {
+                ctx.beginPath();
+                ctx.arc(x, y, rr, 0, Math.PI * 2);
+                ctx.fillStyle = '#555';
+                ctx.fill();
+            });
+            ctx.restore();
+        }
+
+        // Specular highlight
+        ctx.save();
+        const specGrad = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, 0, cx - r * 0.3, cy - r * 0.3, r * 0.45);
+        specGrad.addColorStop(0, 'rgba(255,255,255,0.55)');
+        specGrad.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = specGrad;
+        ctx.beginPath();
+        ctx.arc(cx - r * 0.3, cy - r * 0.3, r * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        this._planetImageCache[key] = c;
+        return c;
+    },
+
+    planetShortCodes: {
+        'Sun': 'Su',
+        'Moon': 'Mo',
+        'Mars': 'Ma',
+        'Mercury': 'Me',
+        'Jupiter': 'Ju',
+        'Venus': 'Ve',
+        'Saturn': 'Sa',
+        'Rahu': 'Ra',
+        'Ketu': 'Ke'
+    },
+
+    /**
+     * House meanings
+     */
+    houseMeanings: {
+        1: { name: 'Lagna', meaning: 'Self, Personality, Health', hindi: 'तनु भाव' },
+        2: { name: 'Dhana', meaning: 'Wealth, Family, Speech', hindi: 'धन भाव' },
+        3: { name: 'Sahaja', meaning: 'Siblings, Courage, Skills', hindi: 'सहज भाव' },
+        4: { name: 'Sukha', meaning: 'Home, Mother, Happiness', hindi: 'सुख भाव' },
+        5: { name: 'Putra', meaning: 'Children, Intelligence, Romance', hindi: 'पुत्र भाव' },
+        6: { name: 'Ripu', meaning: 'Enemies, Health Issues, Service', hindi: 'रिपु भाव' },
+        7: { name: 'Kalatra', meaning: 'Marriage, Partnership, Business', hindi: 'कलत्र भाव' },
+        8: { name: 'Randhra', meaning: 'Longevity, Transformation, Occult', hindi: 'रन्ध्र भाव' },
+        9: { name: 'Dharma', meaning: 'Fortune, Father, Spirituality', hindi: 'धर्म भाव' },
+        10: { name: 'Karma', meaning: 'Career, Status, Authority', hindi: 'कर्म भाव' },
+        11: { name: 'Labha', meaning: 'Gains, Income, Aspirations', hindi: 'लाभ भाव' },
+        12: { name: 'Vyaya', meaning: 'Losses, Moksha, Foreign Lands', hindi: 'व्यय भाव' }
+    },
+
+    /**
+     * South Indian layout positions (fixed signs)
+     */
+    southIndianLayout: [
+        { sign: 11, row: 0, col: 0 }, // Pisces
+        { sign: 0, row: 0, col: 1 },  // Aries
+        { sign: 1, row: 0, col: 2 },  // Taurus
+        { sign: 2, row: 0, col: 3 },  // Gemini
+        { sign: 10, row: 1, col: 0 }, // Aquarius
+        { sign: 3, row: 1, col: 3 },  // Cancer
+        { sign: 9, row: 2, col: 0 },  // Capricorn
+        { sign: 4, row: 2, col: 3 },  // Leo
+        { sign: 8, row: 3, col: 0 },  // Sagittarius
+        { sign: 7, row: 3, col: 1 },  // Scorpio
+        { sign: 6, row: 3, col: 2 },  // Libra
+        { sign: 5, row: 3, col: 3 }   // Virgo
+    ],
+
+    clamp01(value) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return 0;
+        return Math.max(0, Math.min(1, number));
+    },
+
+    easeOutCubic(value) {
+        const amount = this.clamp01(value);
+        return 1 - Math.pow(1 - amount, 3);
+    },
+
+    easeOutBack(value) {
+        const amount = this.clamp01(value);
+        const c1 = 1.70158;
+        const c3 = c1 + 1;
+        return 1 + c3 * Math.pow(amount - 1, 3) + c1 * Math.pow(amount - 1, 2);
+    },
+
+    lerp(start, end, amount) {
+        return start + (end - start) * amount;
+    },
+
+    getSouthIndianLineSegments(width, height) {
+        const inset = 10;
+        const cellW = (width - inset * 2) / 4;
+        const cellH = (height - inset * 2) / 4;
+
+        return [
+            { x1: inset, y1: inset, x2: width - inset, y2: inset, width: 2.2 },
+            { x1: width - inset, y1: inset, x2: width - inset, y2: height - inset, width: 2.2 },
+            { x1: width - inset, y1: height - inset, x2: inset, y2: height - inset, width: 2.2 },
+            { x1: inset, y1: height - inset, x2: inset, y2: inset, width: 2.2 },
+            { x1: inset + cellW, y1: inset, x2: inset + cellW, y2: height - inset, width: 1.55 },
+            { x1: inset + cellW * 2, y1: inset, x2: inset + cellW * 2, y2: height - inset, width: 1.55 },
+            { x1: inset + cellW * 3, y1: inset, x2: inset + cellW * 3, y2: height - inset, width: 1.55 },
+            { x1: inset, y1: inset + cellH, x2: width - inset, y2: inset + cellH, width: 1.55 },
+            { x1: inset, y1: inset + cellH * 2, x2: width - inset, y2: inset + cellH * 2, width: 1.55 },
+            { x1: inset, y1: inset + cellH * 3, x2: width - inset, y2: inset + cellH * 3, width: 1.55 },
+            { x1: inset + cellW, y1: inset + cellH, x2: inset + cellW * 3, y2: inset + cellH * 3, width: 1.5 },
+            { x1: inset + cellW * 3, y1: inset + cellH, x2: inset + cellW, y2: inset + cellH * 3, width: 1.5 }
+        ];
+    },
+
+    drawAnimatedLineSegment(ctx, segment, progress, color) {
+        const amount = this.clamp01(progress);
+        if (amount <= 0) return;
+
+        const endX = this.lerp(segment.x1, segment.x2, amount);
+        const endY = this.lerp(segment.y1, segment.y2, amount);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(segment.x1, segment.y1);
+        ctx.lineTo(endX, endY);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = segment.width || 1.5;
+        ctx.lineCap = 'round';
+        ctx.shadowColor = 'rgba(226, 196, 106, 0.7)';
+        ctx.shadowBlur = amount < 1 ? 18 : 9;
+        ctx.stroke();
+        ctx.restore();
+    },
+
+    drawPlanetGlyphBadge(ctx, planet, centerX, centerY, reveal = 1, pulse = 0) {
+        const amount = this.easeOutBack(reveal);
+        if (amount <= 0) return;
+
+        const info = this.planetInfo[planet.name] || {};
+        const label = this.planetShortCodes[planet.name] || planet.name.substring(0, 2);
+        const pulseScale = 1 + Math.sin(pulse + centerX * 0.01 + centerY * 0.01) * 0.04;
+        const scale = (0.3 + amount * 0.7) * pulseScale;
+        const imgSize = 20;
+        const planetImg = this.createPlanetImage(planet.name, imgSize);
+
+        ctx.save();
+        ctx.globalAlpha = this.clamp01(reveal);
+        ctx.translate(centerX, centerY);
+        ctx.scale(scale, scale);
+
+        if (planetImg) {
+            // Draw realistic planet image
+            ctx.drawImage(planetImg, -imgSize / 2, -imgSize / 2 - 1, imgSize, imgSize);
+        } else {
+            // Fallback: colored circle
+            const color = info.color || '#d4a732';
+            ctx.beginPath();
+            ctx.arc(0, -1, 8, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 10;
+            ctx.fill();
+        }
+
+        // Planet short label below the image
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#fffaf0';
+        ctx.font = 'bold 7px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(label, 0, imgSize / 2 + 1);
+
+        ctx.restore();
+    },
+
+    renderSouthIndianCanvasFrame(ctx, data, frameState = {}) {
+        const dpr = window.devicePixelRatio || 1;
+        const w = ctx.canvas.width / dpr;
+        const h = ctx.canvas.height / dpr;
+        const lineColor = '#d4a732';
+        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--maya-text-primary').trim() || '#ffffff';
+        const mutedColor = getComputedStyle(document.documentElement).getPropertyValue('--maya-text-muted').trim() || '#888888';
+        const ascColor = '#fbbf24';
+        const inset = 10;
+        const cellW = (w - inset * 2) / 4;
+        const cellH = (h - inset * 2) / 4;
+        const lineProgress = this.clamp01(frameState.lineProgress ?? 1);
+        const labelOpacity = this.clamp01(frameState.labelOpacity ?? 1);
+        const planetProgress = this.clamp01(frameState.planetProgress ?? 1);
+        const pulse = Number(frameState.pulse || 0);
+
+        ctx.clearRect(0, 0, w, h);
+
+        const segments = this.getSouthIndianLineSegments(w, h);
+        const segmentCursor = lineProgress * segments.length;
+        segments.forEach((segment, index) => {
+            this.drawAnimatedLineSegment(ctx, segment, segmentCursor - index, lineColor);
+        });
+
+        ctx.save();
+        ctx.globalAlpha = 0.28 + labelOpacity * 0.72;
+        ctx.fillStyle = textColor;
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('MAYA', w / 2, h / 2 + 5);
+        ctx.restore();
+
+        const signPositions = data.southIndianLayout || this.southIndianLayout;
+        const visiblePlanetCount = signPositions.reduce((count, pos) => {
+            return count + Math.min((data.planetsBySign[pos.sign] || []).length, 3);
+        }, 0);
+        let badgeCursor = 0;
+
+        signPositions.forEach((pos) => {
+            const x = inset + pos.col * cellW;
+            const y = inset + pos.row * cellH;
+            const sign = data.signs[pos.sign];
+            const isAsc = pos.sign === data.ascIndex;
+            const signPlanets = data.planetsBySign[pos.sign] || [];
+            const shortName = data.signShortNames[sign.name] || sign.name.substring(0, 3);
+
+            if (isAsc && labelOpacity > 0) {
+                ctx.save();
+                ctx.fillStyle = `rgba(251, 191, 36, ${0.08 + labelOpacity * 0.14})`;
+                ctx.fillRect(x, y, cellW, cellH);
+                ctx.restore();
+            }
+
+            ctx.save();
+            ctx.globalAlpha = labelOpacity;
+            ctx.fillStyle = isAsc ? ascColor : mutedColor;
+            ctx.font = '600 11px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`${sign.symbol} ${shortName}`, x + 6, y + 15);
+            if (isAsc) {
+                ctx.font = 'bold 9px Arial';
+                ctx.fillText('Asc', x + cellW - 26, y + 15);
+            }
+            ctx.restore();
+
+            signPlanets.slice(0, 3).forEach((planet, localIndex) => {
+                badgeCursor += 1;
+                const reveal = this.clamp01(planetProgress * Math.max(visiblePlanetCount, 1) - (badgeCursor - 1));
+                if (reveal <= 0) return;
+
+                const col = localIndex % 2;
+                const row = Math.floor(localIndex / 2);
+                const badgeX = x + 20 + col * 26;
+                const badgeY = y + 36 + row * 22;
+                this.drawPlanetGlyphBadge(ctx, planet, badgeX, badgeY, reveal, pulse);
+            });
+
+            if (signPlanets.length > 3) {
+                const reveal = this.clamp01(planetProgress * Math.max(visiblePlanetCount, 1) - badgeCursor);
+                if (reveal > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = reveal;
+                    ctx.fillStyle = mutedColor;
+                    ctx.font = 'bold 9px Arial';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(`+${signPlanets.length - 3}`, x + cellW - 20, y + cellH - 10);
+                    ctx.restore();
+                }
+            }
+        });
+    },
+
+    animateSouthIndianCanvas(canvas, data, options = {}) {
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        this._chartAnimationFrames = this._chartAnimationFrames || {};
+        if (this._chartAnimationFrames[canvas.id]) {
+            cancelAnimationFrame(this._chartAnimationFrames[canvas.id]);
+            delete this._chartAnimationFrames[canvas.id];
+        }
+
+        const duration = options.durationMs || 5500;
+        const start = performance.now();
+
+        const renderFrame = (now) => {
+            const progress = this.clamp01((now - start) / duration);
+            // Lines grow progressively: 0-40% of animation
+            const lineProgress = this.easeOutCubic(this.clamp01(progress / 0.40));
+            // Labels fade in: 25-48%
+            const labelOpacity = this.easeOutCubic(this.clamp01((progress - 0.25) / 0.23));
+            // Planets placed one by one: 42-100% (long window for dramatic reveal)
+            const planetProgress = this.easeOutCubic(this.clamp01((progress - 0.42) / 0.58));
+
+            this.renderSouthIndianCanvasFrame(ctx, data, {
+                lineProgress,
+                labelOpacity,
+                planetProgress,
+                pulse: now * 0.006
+            });
+
+            if (progress < 1) {
+                this._chartAnimationFrames[canvas.id] = requestAnimationFrame(renderFrame);
+            } else {
+                delete this._chartAnimationFrames[canvas.id];
+            }
+        };
+
+        this._chartAnimationFrames[canvas.id] = requestAnimationFrame(renderFrame);
+    },
+
+    /**
+     * Generate South Indian style chart HTML (canvas-based)
+     */
+    generateSouthIndianChart(planets, ascendantSign, options = {}) {
+        const signs = MAYA_CONFIG.ZODIAC.SIGNS;
+        const ascIndex = signs.findIndex(s => s.name === ascendantSign);
+
+        // Group planets by sign
+        const planetsBySign = {};
+        signs.forEach((sign, i) => {
+            planetsBySign[i] = [];
+        });
+        
+        planets.forEach(planet => {
+            const signIndex = signs.findIndex(s => s.name === planet.sign.name);
+            if (signIndex >= 0) {
+                planetsBySign[signIndex].push(planet);
+            }
+        });
+
+        // Prepare data for canvas
+        const chartData = {
+            type: 'south',
+            ascIndex,
+            planetsBySign,
+            signs,
+            signShortNames: this.signShortNames,
+            planetInfo: this.planetInfo,
+            southIndianLayout: this.southIndianLayout
+        };
+
+        const chartId = 'kundli-canvas-south-' + Date.now();
+        
+        // Store chart data for later rendering
+        this._pendingCharts = this._pendingCharts || {};
+        this._pendingCharts[chartId] = { type: 'south', data: chartData, options };
+        
+        // Schedule draw after DOM update
+        setTimeout(() => this.renderPendingChart(chartId), 50);
+        
+        return `
+            <div class="kundli-canvas-container">
+                <canvas id="${chartId}" class="kundli-canvas"></canvas>
+            </div>
+        `;
+    },
+    
+    /**
+     * Render pending chart after DOM is ready
+     */
+    renderPendingChart(chartId) {
+        if (!this._pendingCharts || !this._pendingCharts[chartId]) return;
+        
+        const { type, data, options } = this._pendingCharts[chartId];
+        let rendered = false;
+        
+        if (type === 'south') {
+            rendered = this.drawSouthIndianCanvas(chartId, data, options);
+        } else if (type === 'north') {
+            rendered = this.drawNorthIndianCanvas(chartId, data, options);
+        }
+        
+        if (rendered) {
+            delete this._pendingCharts[chartId];
+        }
+    },
+
+    /**
+     * Draw South Indian chart on canvas
+     */
+    drawSouthIndianCanvas(canvasId, data, options = {}) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            console.log('Canvas not found:', canvasId);
+            return false;
+        }
+        
+        console.log('Drawing South Indian chart on:', canvasId);
+        
+        // Set canvas to full width of container (HiDPI-aware)
+        const container = canvas.parentElement;
+        const size = container.offsetWidth || 400;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = size * dpr;
+        canvas.height = size * dpr;
+        canvas.style.width = size + 'px';
+        canvas.style.height = size + 'px';
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            return false;
+        }
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+        if (options.animateFormation && !prefersReducedMotion) {
+            this.animateSouthIndianCanvas(canvas, data, options);
+        } else {
+            this.renderSouthIndianCanvasFrame(ctx, data, {
+                lineProgress: 1,
+                labelOpacity: 1,
+                planetProgress: 1,
+                pulse: performance.now() * 0.006
+            });
+        }
+
+        return true;
+    },
+
+    /**
+     * Generate North Indian style chart HTML (canvas-based)
+     */
+    generateNorthIndianChart(planets, ascendantSign, options = {}) {
+        const signs = MAYA_CONFIG.ZODIAC.SIGNS;
+        const ascIndex = signs.findIndex(s => s.name === ascendantSign);
+        
+        // Calculate house-sign mapping (ascendant = house 1)
+        const houseToSign = {};
+        for (let i = 0; i < 12; i++) {
+            houseToSign[i + 1] = signs[(ascIndex + i) % 12];
+        }
+
+        // Group planets by house
+        const planetsByHouse = {};
+        for (let i = 1; i <= 12; i++) {
+            planetsByHouse[i] = [];
+        }
+        
+        planets.forEach(planet => {
+            const signIndex = signs.findIndex(s => s.name === planet.sign.name);
+            const house = ((signIndex - ascIndex + 12) % 12) + 1;
+            planetsByHouse[house].push(planet);
+        });
+
+        // Prepare data for canvas
+        const chartData = {
+            type: 'north',
+            houseToSign,
+            planetsByHouse,
+            signShortNames: this.signShortNames,
+            planetInfo: this.planetInfo
+        };
+
+        const chartId = 'kundli-canvas-north-' + Date.now();
+        
+        // Store chart data for later rendering
+        this._pendingCharts = this._pendingCharts || {};
+        this._pendingCharts[chartId] = { type: 'north', data: chartData, options };
+        
+        // Schedule draw after DOM update
+        setTimeout(() => this.renderPendingChart(chartId), 50);
+
+        return `
+            <div class="kundli-canvas-container">
+                <canvas id="${chartId}" class="kundli-canvas"></canvas>
+            </div>
+        `;
+    },
+
+    /**
+     * Draw North Indian chart on canvas (diamond style from template)
+     */
+    drawNorthIndianCanvas(canvasId, data, options = {}) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            console.log('Canvas not found:', canvasId);
+            return false;
+        }
+        
+        console.log('Drawing North Indian chart on:', canvasId);
+        
+        // Set canvas to full width of container (HiDPI-aware)
+        const container = canvas.parentElement;
+        const size = container.offsetWidth || 400;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = size * dpr;
+        canvas.height = size * dpr;
+        canvas.style.width = size + 'px';
+        canvas.style.height = size + 'px';
+        
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const w = size;
+        const h = size;
+        
+        // Use golden/amber color scheme for authentic look
+        const lineColor = '#d4a732'; // Golden amber
+        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--maya-text-primary').trim() || '#ffffff';
+        const mutedColor = getComputedStyle(document.documentElement).getPropertyValue('--maya-text-muted').trim() || '#888888';
+        const ascColor = '#fbbf24';
+        
+        ctx.clearRect(0, 0, w, h);
+        
+        // Helper function to draw triangle house
+        const drawTriangleHouse = (x1, y1, x2, y2, x3, y3) => {
+            ctx.beginPath();
+            ctx.moveTo(x1 * w / 100, y1 * h / 100);
+            ctx.lineTo(x2 * w / 100, y2 * h / 100);
+            ctx.lineTo(x3 * w / 100, y3 * h / 100);
+            ctx.closePath();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = lineColor;
+            ctx.stroke();
+        };
+        
+        // Helper function to draw square house (diamond)
+        const drawSquareHouse = (x1, y1, x2, y2, x3, y3, x4, y4) => {
+            ctx.beginPath();
+            ctx.moveTo(x1 * w / 100, y1 * h / 100);
+            ctx.lineTo(x2 * w / 100, y2 * h / 100);
+            ctx.lineTo(x3 * w / 100, y3 * h / 100);
+            ctx.lineTo(x4 * w / 100, y4 * h / 100);
+            ctx.closePath();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = lineColor;
+            ctx.stroke();
+        };
+        
+        // Draw outer border
+        ctx.strokeStyle = lineColor;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(2, 2, w - 4, h - 4);
+        
+        // Draw all 12 houses (North Indian diamond layout)
+        // House 1 - Top center diamond
+        drawSquareHouse(50, 0, 75, 25, 50, 50, 25, 25);
+        // House 2 - Top right triangle
+        drawTriangleHouse(50, 0, 100, 0, 75, 25);
+        // House 3 - Right top triangle
+        drawTriangleHouse(100, 0, 100, 50, 75, 25);
+        // House 4 - Right center diamond
+        drawSquareHouse(75, 25, 100, 50, 75, 75, 50, 50);
+        // House 5 - Right bottom triangle
+        drawTriangleHouse(75, 75, 100, 50, 100, 100);
+        // House 6 - Bottom right triangle
+        drawTriangleHouse(75, 75, 100, 100, 50, 100);
+        // House 7 - Bottom center diamond
+        drawSquareHouse(50, 50, 75, 75, 50, 100, 25, 75);
+        // House 8 - Bottom left triangle
+        drawTriangleHouse(25, 75, 50, 100, 0, 100);
+        // House 9 - Left bottom triangle
+        drawTriangleHouse(0, 50, 25, 75, 0, 100);
+        // House 10 - Left center diamond
+        drawSquareHouse(25, 25, 50, 50, 25, 75, 0, 50);
+        // House 11 - Left top triangle
+        drawTriangleHouse(0, 0, 25, 25, 0, 50);
+        // House 12 - Top left triangle
+        drawTriangleHouse(0, 0, 50, 0, 25, 25);
+        
+        // House text positions (center of each house)
+        const housePositions = {
+            1: { x: 50, y: 28, align: 'center' },
+            2: { x: 78, y: 12, align: 'center' },
+            3: { x: 90, y: 28, align: 'center' },
+            4: { x: 78, y: 50, align: 'center' },
+            5: { x: 90, y: 72, align: 'center' },
+            6: { x: 78, y: 88, align: 'center' },
+            7: { x: 50, y: 72, align: 'center' },
+            8: { x: 22, y: 88, align: 'center' },
+            9: { x: 10, y: 72, align: 'center' },
+            10: { x: 22, y: 50, align: 'center' },
+            11: { x: 10, y: 28, align: 'center' },
+            12: { x: 22, y: 12, align: 'center' }
+        };
+        
+        // Draw house contents
+        for (let house = 1; house <= 12; house++) {
+            const pos = housePositions[house];
+            const sign = data.houseToSign[house];
+            const housePlanets = data.planetsByHouse[house] || [];
+            const shortName = data.signShortNames[sign.name] || sign.name.substring(0, 3);
+            const isAsc = house === 1;
+            
+            const x = pos.x * w / 100;
+            const y = pos.y * h / 100;
+            
+            // Sign symbol
+            ctx.fillStyle = isAsc ? ascColor : mutedColor;
+            ctx.font = isAsc ? 'bold 11px Arial' : '10px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${sign.symbol} ${shortName}`, x, y - 8);
+            
+            if (isAsc) {
+                ctx.fillStyle = ascColor;
+                ctx.font = 'bold 8px Arial';
+                ctx.fillText('Asc', x, y + 2);
+            }
+            
+            // Planets
+            let planetY = y + (isAsc ? 12 : 4);
+            housePlanets.slice(0, 2).forEach(p => {
+                const info = data.planetInfo[p.name] || {};
+                ctx.fillStyle = info.color || '#6366f1';
+                ctx.font = '9px Arial';
+                ctx.fillText(`${info.symbol || '•'} ${info.vedic || p.name}`, x, planetY);
+                planetY += 11;
+            });
+            if (housePlanets.length > 2) {
+                ctx.fillStyle = mutedColor;
+                ctx.font = '8px Arial';
+                ctx.fillText(`+${housePlanets.length - 2}`, x, planetY);
+            }
+        }
+        
+        // Draw center MAYA text
+        ctx.fillStyle = textColor;
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('MAYA', w / 2, h / 2 + 5);
+
+        return true;
+    },
+
+    /**
+     * Generate chart based on style preference
+     */
+    generateChart(planets, ascendantSign, style = 'south', options = {}) {
+        if (style === 'north') {
+            return this.generateNorthIndianChart(planets, ascendantSign, options);
+        }
+        return this.generateSouthIndianChart(planets, ascendantSign, options);
+    },
+
+    /**
+     * Group planets by zodiac sign for chart summaries and animated reveals.
+     */
+    groupPlanetsBySign(planets) {
+        return MAYA_CONFIG.ZODIAC.SIGNS.map((sign) => {
+            const signPlanets = planets
+                .filter((planet) => planet.sign.name === sign.name)
+                .map((planet) => ({
+                    ...planet,
+                    info: this.planetInfo[planet.name] || {}
+                }));
+
+            return {
+                signName: sign.name,
+                signSymbol: sign.symbol,
+                shortName: this.signShortNames[sign.name] || sign.name.slice(0, 3),
+                element: sign.element,
+                planets: signPlanets
+            };
+        });
+    },
+
+    /**
+     * Generate basic birth chart data
+     */
+    generateBirthChart(birthDate, birthTime, birthPlace, birthLat = null, birthLon = null) {
+        const resolvedContext = MayaAstrology.resolveBirthContext(birthDate, {
+            birthTime,
+            birthPlace,
+            birthLat,
+            birthLon
+        });
+        const resolvedTime = resolvedContext.birthTime && resolvedContext.birthTime !== 'unknown' ? resolvedContext.birthTime : '12:00';
+        const latitude = Number.isFinite(Number(resolvedContext.birthLat)) ? Number(resolvedContext.birthLat) : 0;
+        const longitude = Number.isFinite(Number(resolvedContext.birthLon)) ? Number(resolvedContext.birthLon) : 0;
+        const ascendant = MayaAstrology.calculateAscendant(birthDate, resolvedTime, latitude, longitude);
+        const planets = MayaAstrology.calculateBirthPlanets
+            ? MayaAstrology.calculateBirthPlanets(birthDate, resolvedTime, latitude, longitude)
+            : MayaAstrology.getCurrentPlanets();
+        
+        return {
+            ascendant,
+            planets,
+            birthDate,
+            birthTime: resolvedTime,
+            birthPlace: birthPlace || resolvedContext.birthPlace || '',
+            birthLat: latitude,
+            birthLon: longitude
+        };
+    },
+
+    /**
+     * Build a compact chart summary for the funnel and AI prompts.
+     */
+    summarizeBirthChart(birthChart) {
+        if (!birthChart?.planets?.length) {
+            return {
+                planetGroups: [],
+                yogaNames: [],
+                highlights: []
+            };
+        }
+
+        const planetGroups = this.groupPlanetsBySign(birthChart.planets);
+        const elementCounts = {};
+        birthChart.planets.forEach((planet) => {
+            const element = planet.sign.element || 'Unknown';
+            elementCounts[element] = (elementCounts[element] || 0) + 1;
+        });
+
+        const dominantElement = Object.entries(elementCounts)
+            .sort(([, left], [, right]) => right - left)[0]?.[0] || birthChart.ascendant.element || 'Fire';
+
+        const sun = birthChart.planets.find((planet) => planet.name === 'Sun');
+        const moon = birthChart.planets.find((planet) => planet.name === 'Moon');
+        const yogas = this.calculateYogas(birthChart.planets, birthChart.ascendant.name)
+            .filter((yoga) => yoga.name !== 'Analyzing...');
+        const currentDasha = this.getCurrentDasha(birthChart.birthDate);
+        const groupedSigns = planetGroups
+            .filter((group) => group.planets.length >= 2)
+            .map((group) => `${group.signName} (${group.planets.map((planet) => planet.info.vedic || planet.name).join(', ')})`);
+
+        return {
+            ascendant: birthChart.ascendant,
+            sunSign: sun?.sign?.name || '',
+            moonSign: moon?.sign?.name || '',
+            dominantElement,
+            currentDasha,
+            yogas,
+            yogaNames: yogas.map((yoga) => yoga.name),
+            planetGroups,
+            highlights: [
+                birthChart.ascendant?.name ? `${birthChart.ascendant.name} ascendant` : '',
+                moon?.sign?.name ? `Moon in ${moon.sign.name}` : '',
+                currentDasha?.vedic ? `${currentDasha.vedic} dasha active` : '',
+                groupedSigns[0] ? `Planet cluster in ${groupedSigns[0]}` : '',
+                yogas[0]?.name ? `${yogas[0].name} present in the chart` : ''
+            ].filter(Boolean)
+        };
+    },
+
+    /**
+     * Get Dasha periods (simplified Vimshottari)
+     */
+    getDashaPeriods(birthDate) {
+        const date = window.MayaAstrology ? MayaAstrology.parseDate(birthDate) : new Date(birthDate);
+        if (!date) return [];
+        const year = date.getFullYear();
+        
+        const dashaOrder = ['Ketu', 'Venus', 'Sun', 'Moon', 'Mars', 'Rahu', 'Jupiter', 'Saturn', 'Mercury'];
+        const dashaDurations = [7, 20, 6, 10, 7, 18, 16, 19, 17];
+        
+        const periods = [];
+        let currentYear = year;
+        let startIndex = (year % 9);
+        
+        for (let i = 0; i < 9; i++) {
+            const index = (startIndex + i) % 9;
+            const planetInfo = this.planetInfo[dashaOrder[index]] || {};
+            periods.push({
+                planet: dashaOrder[index],
+                vedic: planetInfo.vedic || dashaOrder[index],
+                symbol: planetInfo.symbol || '•',
+                startYear: currentYear,
+                endYear: currentYear + dashaDurations[index],
+                duration: dashaDurations[index],
+                nature: planetInfo.nature || 'Neutral'
+            });
+            currentYear += dashaDurations[index];
+        }
+        
+        return periods;
+    },
+
+    /**
+     * Get current running Dasha
+     */
+    getCurrentDasha(birthDate) {
+        const periods = this.getDashaPeriods(birthDate);
+        const currentYear = new Date().getFullYear();
+        return periods.find(p => currentYear >= p.startYear && currentYear < p.endYear);
+    },
+
+    /**
+     * Infer likely marriage status from kundli data + age.
+     * Uses 7th house lord, Venus position, dasha periods, and age heuristics.
+     * Returns { likelyMarried: bool, confidence: 'high'|'medium'|'low', reasoning: string, marriageWindow: string }
+     */
+    inferMarriageStatus(birthChart, birthDate) {
+        if (!birthChart?.planets?.length || !birthDate) {
+            return { likelyMarried: false, confidence: 'low', reasoning: 'Insufficient data', marriageWindow: '' };
+        }
+
+        const parsedDate = window.MayaAstrology ? MayaAstrology.parseDate(birthDate) : new Date(birthDate);
+        if (!parsedDate) return { likelyMarried: false, confidence: 'low', reasoning: 'Invalid birth date', marriageWindow: '' };
+
+        const age = Math.floor((Date.now() - parsedDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+        const signs = MAYA_CONFIG?.ZODIAC?.SIGNS || [];
+        const ascendant = birthChart.ascendant;
+        const ascIndex = ascendant ? signs.findIndex(s => s.name === ascendant.name) : -1;
+
+        // Find 7th house sign (opposite to ascendant)
+        const seventhHouseSignIndex = ascIndex >= 0 ? (ascIndex + 6) % 12 : -1;
+        const seventhHouseSign = seventhHouseSignIndex >= 0 ? signs[seventhHouseSignIndex] : null;
+
+        // Find planets
+        const venus = birthChart.planets.find(p => p.name === 'Venus');
+        const jupiter = birthChart.planets.find(p => p.name === 'Jupiter');
+        const saturn = birthChart.planets.find(p => p.name === 'Saturn');
+        const rahu = birthChart.planets.find(p => p.name === 'Rahu');
+        const mars = birthChart.planets.find(p => p.name === 'Mars');
+
+        // Check planets in 7th house
+        const planetsIn7th = seventhHouseSign
+            ? birthChart.planets.filter(p => p.sign.name === seventhHouseSign.name)
+            : [];
+
+        // Dasha analysis
+        const dashas = this.getDashaPeriods(birthDate);
+        const currentYear = new Date().getFullYear();
+        const currentDasha = dashas.find(p => currentYear >= p.startYear && currentYear < p.endYear);
+
+        // Venus dasha period (typical marriage trigger)
+        const venusDasha = dashas.find(p => p.planet === 'Venus');
+        const jupiterDasha = dashas.find(p => p.planet === 'Jupiter');
+
+        let score = 0; // positive = likely married, negative = likely unmarried
+        const reasons = [];
+
+        // Age-based heuristic (Indian context)
+        if (age >= 30) { score += 3; reasons.push(`age ${age} - statistically likely married`); }
+        else if (age >= 26) { score += 1; reasons.push(`age ${age} - marriage-probable age`); }
+        else if (age >= 22) { score -= 1; reasons.push(`age ${age} - could be either`); }
+        else { score -= 3; reasons.push(`age ${age} - likely unmarried`); }
+
+        // Venus dasha is a strong marriage indicator
+        if (venusDasha) {
+            if (age >= 18 && currentYear > venusDasha.startYear && currentYear >= venusDasha.startYear + 2) {
+                score += 2;
+                reasons.push(`Venus दशा (${venusDasha.startYear}-${venusDasha.endYear}) already running or passed - marriage trigger likely activated`);
+            } else if (currentYear < venusDasha.startYear) {
+                score -= 1;
+                reasons.push(`Venus दशा hasn't started yet (starts ${venusDasha.startYear})`);
+            }
+        }
+
+        // Jupiter dasha can also bring marriage
+        if (jupiterDasha && currentYear > jupiterDasha.startYear + 2 && age >= 22) {
+            score += 1;
+            reasons.push(`Jupiter दशा (${jupiterDasha.startYear}-${jupiterDasha.endYear}) - auspicious for marriage`);
+        }
+
+        // Saturn in 7th = delayed marriage
+        if (planetsIn7th.some(p => p.name === 'Saturn')) {
+            score -= 2;
+            reasons.push('शनि in 7th house - delays marriage');
+        }
+
+        // Rahu in 7th = unconventional or delayed
+        if (planetsIn7th.some(p => p.name === 'Rahu')) {
+            score -= 1;
+            reasons.push('राहु in 7th house - unconventional relationship pattern');
+        }
+
+        // Mars in 7th (Manglik) = potential delay
+        if (planetsIn7th.some(p => p.name === 'Mars')) {
+            score -= 1;
+            reasons.push('मंगल in 7th house (Manglik) - can delay marriage');
+        }
+
+        // Jupiter or Venus in 7th = early/happy marriage
+        if (planetsIn7th.some(p => p.name === 'Jupiter' || p.name === 'Venus')) {
+            score += 2;
+            reasons.push(`${planetsIn7th.filter(p => p.name === 'Jupiter' || p.name === 'Venus').map(p => p.name).join('/')} in 7th house - strong marriage indicator`);
+        }
+
+        // Determine marriage window
+        let marriageWindow = '';
+        if (venusDasha) {
+            marriageWindow = `${venusDasha.startYear}-${Math.min(venusDasha.startYear + 7, venusDasha.endYear)}`;
+        }
+
+        const likelyMarried = score >= 2;
+        const confidence = Math.abs(score) >= 4 ? 'high' : Math.abs(score) >= 2 ? 'medium' : 'low';
+
+        return {
+            likelyMarried,
+            confidence,
+            reasoning: reasons.join('; '),
+            marriageWindow,
+            age,
+            seventhHouseSign: seventhHouseSign?.name || '',
+            planetsIn7th: planetsIn7th.map(p => p.name),
+            venusSign: venus?.sign?.name || '',
+            jupiterSign: jupiter?.sign?.name || ''
+        };
+    },
+
+    /**
+     * Build detailed kundli fact sheet for AI - includes exact planetary positions,
+     * dasha timeline, 7th house analysis, and marriage inference.
+     */
+    buildDetailedChartFacts(birthChart, birthDate) {
+        if (!birthChart?.planets?.length) return '';
+
+        const lines = [];
+
+        // Planetary positions with degrees
+        lines.push('=== PLANETARY POSITIONS (Sidereal/Vedic) ===');
+        birthChart.planets.forEach(p => {
+            lines.push(`${p.name}: ${p.sign.name} ${p.degree.toFixed(1)}°`);
+        });
+        if (birthChart.ascendant?.name) {
+            lines.push(`Ascendant (Lagna): ${birthChart.ascendant.name}`);
+        }
+
+        // Dasha timeline
+        const dashas = this.getDashaPeriods(birthDate);
+        const currentYear = new Date().getFullYear();
+        const currentDasha = dashas.find(d => currentYear >= d.startYear && currentYear < d.endYear);
+        const pastDashas = dashas.filter(d => d.endYear <= currentYear);
+        const futureDashas = dashas.filter(d => d.startYear > currentYear);
+
+        lines.push('\n=== DASHA TIMELINE (Vimshottari) ===');
+        dashas.forEach(d => {
+            const marker = (currentYear >= d.startYear && currentYear < d.endYear) ? ' ← CURRENT' : '';
+            lines.push(`${d.vedic || d.planet} दशा: ${d.startYear}-${d.endYear} (${d.duration} years, ${d.nature})${marker}`);
+        });
+
+        // Past dasha transitions (key life event markers)
+        if (pastDashas.length > 0) {
+            lines.push('\n=== KEY PAST DASHA TRANSITIONS (life-changing periods) ===');
+            pastDashas.forEach(d => {
+                lines.push(`${d.vedic || d.planet} दशा ended ${d.endYear} - this marked a major life shift`);
+            });
+        }
+
+        // 7th house analysis
+        const marriage = this.inferMarriageStatus(birthChart, birthDate);
+        lines.push('\n=== 7TH HOUSE & MARRIAGE ANALYSIS ===');
+        lines.push(`7th house sign: ${marriage.seventhHouseSign || 'unknown'}`);
+        lines.push(`Planets in 7th house: ${marriage.planetsIn7th.length ? marriage.planetsIn7th.join(', ') : 'none'}`);
+        lines.push(`Venus in: ${marriage.venusSign}`);
+        lines.push(`Jupiter in: ${marriage.jupiterSign}`);
+        lines.push(`Marriage window (from दशा): ${marriage.marriageWindow || 'not determined'}`);
+        lines.push(`Likely married: ${marriage.likelyMarried ? 'YES' : 'NO'} (confidence: ${marriage.confidence})`);
+        lines.push(`Age: ${marriage.age}`);
+        lines.push(`Marriage reasoning: ${marriage.reasoning}`);
+
+        // Yogas
+        const yogas = this.calculateYogas(birthChart.planets, birthChart.ascendant?.name);
+        const realYogas = yogas.filter(y => y.name !== 'Analyzing...');
+        if (realYogas.length) {
+            lines.push('\n=== YOGAS (planetary combinations) ===');
+            realYogas.forEach(y => {
+                lines.push(`${y.name} (${y.hindi}): ${y.description} [${y.strength}]`);
+            });
+        }
+
+        return lines.join('\n');
+    },
+
+    /**
+     * Calculate Yogas (planetary combinations)
+     */
+    calculateYogas(planets, ascendantSign) {
+        const yogas = [];
+        const signs = MAYA_CONFIG.ZODIAC.SIGNS;
+        
+        // Check for common yogas
+        const planetPositions = {};
+        planets.forEach(p => {
+            planetPositions[p.name] = p.sign.name;
+        });
+
+        // Gaja Kesari Yoga (Jupiter in kendra from Moon)
+        if (planetPositions['Jupiter'] && planetPositions['Moon']) {
+            yogas.push({
+                name: 'Gaja Kesari Yoga',
+                hindi: 'गज केसरी योग',
+                description: 'Jupiter and Moon in favorable positions - brings wisdom, wealth and fame',
+                strength: 'Strong'
+            });
+        }
+
+        // Budha Aditya Yoga (Sun-Mercury conjunction)
+        if (planetPositions['Sun'] === planetPositions['Mercury']) {
+            yogas.push({
+                name: 'Budha Aditya Yoga',
+                hindi: 'बुध आदित्य योग',
+                description: 'Sun-Mercury conjunction - intelligence, communication skills, success in education',
+                strength: 'Medium'
+            });
+        }
+
+        // Chandra Mangal Yoga
+        if (planetPositions['Moon'] === planetPositions['Mars']) {
+            yogas.push({
+                name: 'Chandra Mangal Yoga',
+                hindi: 'चंद्र मंगल योग',
+                description: 'Moon-Mars conjunction - wealth through business, strong willpower',
+                strength: 'Medium'
+            });
+        }
+
+        // Add default if no yogas found
+        if (yogas.length === 0) {
+            yogas.push({
+                name: 'Analyzing...',
+                hindi: 'विश्लेषण...',
+                description: 'Detailed yoga analysis requires precise birth time',
+                strength: 'Pending'
+            });
+        }
+
+        return yogas;
+    },
+
+    /**
+     * Render Kundli page - returns HTML string
+     */
+    async renderKundliPage(profile, isHindi = false) {
+        if (!profile || !profile.birthDate) {
+            return `
+                <div class="maya-page maya-kundli-page">
+                    <div class="maya-info-card maya-info-card--warning">
+                        <div class="maya-info-card__icon"><i class="bi bi-exclamation-triangle"></i></div>
+                        <div class="maya-info-card__content">
+                            <h5>${isHindi ? 'जन्म विवरण आवश्यक' : 'Birth Details Required'}</h5>
+                            <p>${isHindi ? 'कृपया अपनी कुंडली देखने के लिए प्रोफाइल में जन्म तिथि जोड़ें।' : 'Please add your birth date in profile to view your Kundli.'}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        const hasExactBirthTime = !!(profile.birthTime && profile.birthTime !== 'unknown');
+        const hasBirthCoordinates = Number.isFinite(Number(profile.birthLat)) && Number.isFinite(Number(profile.birthLon));
+        const hasReliableAscendant = hasExactBirthTime && hasBirthCoordinates;
+        const birthTimeInput = hasExactBirthTime ? profile.birthTime : 'unknown';
+
+        const birthChart = this.generateBirthChart(
+            profile.birthDate,
+            birthTimeInput,
+            profile.birthPlace || 'Unknown',
+            profile.birthLat,
+            profile.birthLon
+        );
+
+        const westernSign = MayaAstrology.getWesternZodiac(profile.birthDate)?.name || '';
+        const moonSign = MayaAstrology.getVedicZodiac(profile.birthDate, {
+            birthTime: birthTimeInput,
+            birthPlace: profile.birthPlace || '',
+            birthLat: profile.birthLat,
+            birthLon: profile.birthLon
+        })?.name || birthChart.planets.find((planet) => planet.name === 'Moon')?.sign?.name || '';
+        
+        const currentDasha = this.getCurrentDasha(profile.birthDate);
+        const dashaPeriods = this.getDashaPeriods(profile.birthDate);
+        const yogas = this.calculateYogas(birthChart.planets, birthChart.ascendant.name);
+        const southChart = this.generateChart(birthChart.planets, birthChart.ascendant.name, 'south');
+        const northChart = this.generateChart(birthChart.planets, birthChart.ascendant.name, 'north');
+
+        // Format birth date
+        const birthDateObj = MayaAstrology.parseDate(profile.birthDate);
+        const formattedDate = birthDateObj ? birthDateObj.toLocaleDateString('en-IN', {
+            day: 'numeric', month: 'long', year: 'numeric'
+        }) : profile.birthDate;
+        const localize = (value) => isHindi ? this.localizeHindiAstroText(value) : value;
+
+        return `
+            <div class="maya-page maya-kundli-page">
+                <!-- Chart Style Toggle -->
+                <div class="maya-kundli-toggle">
+                    <button class="maya-kundli-toggle__btn maya-kundli-toggle__btn--active" data-style="north" onclick="MayaKundli.switchChart('north')">
+                        ${isHindi ? 'उत्तर भारतीय' : 'North Indian'}
+                    </button>
+                    <button class="maya-kundli-toggle__btn" data-style="south" onclick="MayaKundli.switchChart('south')">
+                        ${isHindi ? 'दक्षिण भारतीय' : 'South Indian'}
+                    </button>
+                </div>
+                
+                <!-- Chart Display -->
+                <div class="maya-card maya-kundli-chart-card">
+                    <div id="kundli-north-chart" class="maya-kundli-chart">
+                        ${northChart}
+                    </div>
+                    <div id="kundli-south-chart" class="maya-kundli-chart" style="display: none;">
+                        ${southChart}
+                    </div>
+                </div>
+                
+                <!-- Birth Details -->
+                <div class="maya-card">
+                    <h4 class="maya-card__title">${isHindi ? 'जन्म विवरण' : 'Birth Details'}</h4>
+                    <div class="maya-kundli-details">
+                        <div class="maya-kundli-detail">
+                            <span class="maya-kundli-detail__label">${isHindi ? 'तिथि' : 'Date'}</span>
+                            <span class="maya-kundli-detail__value">${formattedDate}</span>
+                        </div>
+                        <div class="maya-kundli-detail">
+                            <span class="maya-kundli-detail__label">${isHindi ? 'समय' : 'Time'}</span>
+                            <span class="maya-kundli-detail__value">${profile.birthTime || (isHindi ? 'अज्ञात' : 'Unknown')}</span>
+                        </div>
+                        <div class="maya-kundli-detail maya-kundli-detail--full">
+                            <span class="maya-kundli-detail__label">${isHindi ? 'स्थान' : 'Place'}</span>
+                            <span class="maya-kundli-detail__value">${profile.birthPlace || (isHindi ? 'अज्ञात' : 'Unknown')}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                ${hasReliableAscendant ? `
+                <div class="maya-card">
+                    <h4 class="maya-card__title">${isHindi ? 'लग्न (Ascendant)' : 'Ascendant (Lagna)'}</h4>
+                    <div class="maya-kundli-ascendant">
+                        <div class="maya-kundli-ascendant__symbol">
+                            <img src="${birthChart.ascendant.image}" alt="${birthChart.ascendant.name}" class="maya-kundli-ascendant__img" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+                            <span style="display:none;">${birthChart.ascendant.symbol}</span>
+                        </div>
+                        <div class="maya-kundli-ascendant__info">
+                            <h5>${birthChart.ascendant.name} <span class="maya-text-muted">(${birthChart.ascendant.hindi || ''})</span></h5>
+                            <p>${birthChart.ascendant.element} Sign • Ruled by ${birthChart.ascendant.ruling || 'Mars'}</p>
+                        </div>
+                    </div>
+                </div>
+                ` : `
+                <div class="maya-card">
+                    <h4 class="maya-card__title">${isHindi ? 'विश्वसनीय राशियाँ' : 'Reliable Sign Markers'}</h4>
+                    <div class="maya-kundli-details">
+                        <div class="maya-kundli-detail">
+                            <span class="maya-kundli-detail__label">${isHindi ? 'सूर्य राशि' : 'Sun Sign'}</span>
+                            <span class="maya-kundli-detail__value">${westernSign || '--'}</span>
+                        </div>
+                        <div class="maya-kundli-detail">
+                            <span class="maya-kundli-detail__label">${isHindi ? 'चंद्र राशि' : 'Moon Sign'}</span>
+                            <span class="maya-kundli-detail__value">${moonSign || '--'}</span>
+                        </div>
+                        <div class="maya-kundli-detail maya-kundli-detail--full">
+                            <span class="maya-kundli-detail__label">${isHindi ? 'लग्न' : 'Ascendant'}</span>
+                            <span class="maya-kundli-detail__value">${isHindi ? 'Exact birth time के बिना lagna reliable नहीं है।' : 'Ascendant is not reliable without an exact birth time.'}</span>
+                        </div>
+                    </div>
+                </div>
+                `}
+                
+                <!-- Current Dasha -->
+                ${currentDasha ? `
+                <div class="maya-card">
+                    <h4 class="maya-card__title">${isHindi ? 'वर्तमान महादशा' : 'Current Mahadasha'}</h4>
+                    <div class="maya-kundli-dasha-current">
+                        <div class="maya-kundli-dasha-current__planet">
+                            <span class="maya-kundli-dasha-current__symbol">${currentDasha.symbol}</span>
+                            <span class="maya-kundli-dasha-current__name">${localize(currentDasha.vedic)} ${isHindi ? 'दशा' : 'Dasha'}</span>
+                        </div>
+                        <div class="maya-kundli-dasha-current__period">
+                            <span>${currentDasha.startYear} - ${currentDasha.endYear}</span>
+                            <span class="maya-badge maya-badge--${currentDasha.nature === 'Benefic' ? 'success' : currentDasha.nature === 'Malefic' ? 'warning' : 'info'}">${currentDasha.duration} ${isHindi ? 'वर्ष' : 'years'}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- All Dasha Periods -->
+                    <div class="maya-kundli-dasha-list">
+                        <h5>${isHindi ? 'सभी दशाएं' : 'All Dasha Periods'}</h5>
+                        ${dashaPeriods.map(d => `
+                            <div class="maya-kundli-dasha-item ${d.planet === currentDasha.planet ? 'maya-kundli-dasha-item--active' : ''}">
+                                <span class="maya-kundli-dasha-item__planet">${d.symbol} ${localize(d.vedic)}</span>
+                                <span class="maya-kundli-dasha-item__years">${d.startYear}-${d.endYear}</span>
+                                <span class="maya-kundli-dasha-item__duration">${d.duration}y</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+                
+                <!-- Planetary Positions -->
+                <div class="maya-card">
+                    <h4 class="maya-card__title">${isHindi ? 'ग्रह स्थिति' : 'Planetary Positions'}</h4>
+                    <div class="maya-kundli-planets">
+                        ${birthChart.planets.map(p => {
+                            const info = this.planetInfo[p.name] || {};
+                            const signIcon = this.signIcons[p.sign.name] || { abbr: '??', color: '#666' };
+                            return `
+                                <div class="maya-kundli-planet-row">
+                                    <div class="maya-kundli-planet-row__planet">
+                                        <span class="maya-kundli-planet-row__symbol" style="color: ${info.color || 'var(--maya-accent)'}">${info.symbol || p.symbol}</span>
+                                        <span class="maya-kundli-planet-row__name">${localize(info.vedic || p.name)}</span>
+                                    </div>
+                                    <div class="maya-kundli-planet-row__sign">
+                                        <span class="maya-kundli-planet-row__sign-icon" style="background: ${signIcon.color}">${signIcon.abbr}</span>
+                                        <span>${localize(p.sign.name)}</span>
+                                    </div>
+                                    <div class="maya-kundli-planet-row__degree">
+                                        ${p.degree}°
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+                
+                <!-- Yogas -->
+                <div class="maya-card">
+                    <h4 class="maya-card__title">${isHindi ? 'योग' : 'Yogas (Planetary Combinations)'}</h4>
+                    <div class="maya-kundli-yogas">
+                        ${yogas.map(yoga => `
+                            <div class="maya-kundli-yoga">
+                                <div class="maya-kundli-yoga__header">
+                                    <h5>${isHindi ? localize(yoga.name) : yoga.name}</h5>
+                                    <span class="maya-badge maya-badge--${yoga.strength === 'Strong' ? 'success' : yoga.strength === 'Medium' ? 'warning' : 'info'}">${yoga.strength}</span>
+                                </div>
+                                <p class="maya-kundli-yoga__hindi">${yoga.hindi}</p>
+                                <p class="maya-kundli-yoga__desc">${yoga.description}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <!-- House Meanings -->
+                <div class="maya-card">
+                    <h4 class="maya-card__title">${isHindi ? 'भाव (Houses)' : 'House Meanings'}</h4>
+                    <div class="maya-kundli-houses">
+                        ${Object.entries(this.houseMeanings).map(([num, house]) => `
+                            <div class="maya-kundli-house-meaning">
+                                <div class="maya-kundli-house-meaning__num">${num}</div>
+                                <div class="maya-kundli-house-meaning__info">
+                                    <span class="maya-kundli-house-meaning__name">${house.name} ${isHindi ? `(${house.hindi})` : ''}</span>
+                                    <span class="maya-kundli-house-meaning__desc">${house.meaning}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    /**
+     * Switch between chart styles
+     */
+    switchChart(style) {
+        const northChart = document.getElementById('kundli-north-chart');
+        const southChart = document.getElementById('kundli-south-chart');
+        const buttons = document.querySelectorAll('.maya-kundli-toggle__btn');
+        
+        buttons.forEach(btn => {
+            btn.classList.remove('maya-kundli-toggle__btn--active');
+        });
+        
+        const activeBtn = document.querySelector(`.maya-kundli-toggle__btn[data-style="${style}"]`);
+        if (activeBtn) {
+            activeBtn.classList.add('maya-kundli-toggle__btn--active');
+        }
+        
+        if (style === 'north') {
+            if (northChart) northChart.style.display = 'block';
+            if (southChart) southChart.style.display = 'none';
+        } else {
+            if (northChart) northChart.style.display = 'none';
+            if (southChart) southChart.style.display = 'block';
+        }
+        
+        // Re-render any pending charts
+        this.renderAllPendingCharts();
+    },
+    
+    /**
+     * Render all pending charts
+     */
+    renderAllPendingCharts() {
+        if (!this._pendingCharts) return;
+        
+        Object.keys(this._pendingCharts).forEach(chartId => {
+            this.renderPendingChart(chartId);
+        });
+    },
+    
+    /**
+     * Initialize charts after page load
+     */
+    initCharts() {
+        setTimeout(() => {
+            this.renderAllPendingCharts();
+        }, 100);
+    }
+};
+
+// Make globally available
+window.MayaKundli = MayaKundli;

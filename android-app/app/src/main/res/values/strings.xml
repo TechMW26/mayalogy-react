@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Mayalogy</string>
+    <string name="offline_title">You\'re Offline</string>
+    <string name="offline_message">It seems you\'re not connected to the internet.\nPlease check your connection and try again.</string>
+    <string name="retry">Try Again</string>
+    <string name="loading">Loading Mayalogy...</string>
+    <string name="exit_title">Exit Mayalogy</string>
+    <string name="exit_message">Are you sure you want to exit?</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="location_permission_title">Location Permission</string>
+    <string name="location_permission_message">MAYA needs location access for accurate Vastu analysis based on your geographical position.</string>
+    <string name="camera_permission_title">Camera Permission</string>
+    <string name="camera_permission_message">MAYA needs camera access for Vastu room scanning and analysis.</string>
+    <string name="grant">Grant</string>
+    <string name="cancel">Cancel</string>
+</resources>

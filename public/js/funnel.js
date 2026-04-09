@@ -1,0 +1,3470 @@
+/**
+ * MAYA - Storytelling Funnel Module
+ * Voice-First Experience with Animated Calculations & Flowing Narrative
+ */
+
+console.log('🔧 funnel.js loading...');
+
+const MayaFunnel = {
+    isActive: false,
+    isPaused: false,
+    pausePromiseResolve: null,
+    currentPhase: 0,
+    userData: null,
+    calculations: null,
+    firstName: '',
+    hasRevealedTeaser: false,
+    isUserLoggedIn: false,
+    emailGateShown: false,
+    emailSubmissionInProgress: false,
+    teaserGateNarrated: false,
+    spokenNarrations: [],
+    authRequestId: 0,
+    authPromptedFields: new Set(),
+    backgroundMusic: null,
+    calculationOverlay: null,
+    kundliChart: null,
+    personalization: null,
+    stageTiming: {
+        introSettle: 1200,
+        calculationLeadIn: 220,
+        calcStepDelay: 850,
+        letterDelay: 140,
+        vowelDelay: 180,
+        kundliSignalDelay: 320,
+        kundliInsightDelay: 260,
+        stageSettle: 1200
+    },
+    
+    // Funnel phases
+    PHASES: {
+        CALCULATING: 'calculating',
+        TEASER_REVEAL: 'teaser_reveal',
+        EMAIL_GATE: 'email_gate',
+        LOGIN_OR_REGISTER: 'login_or_register',
+        DEEP_REVEAL: 'deep_reveal',
+        COMPLETE: 'complete'
+    },
+
+    /**
+     * Toggle pause state for funnel
+     */
+    togglePause() {
+        this.isPaused = !this.isPaused;
+        const pauseBtn = document.getElementById('maya-pause-btn');
+        
+        if (this.isPaused) {
+            // Pause
+            console.log('⏸️ Funnel paused');
+            if (pauseBtn) {
+                pauseBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
+                pauseBtn.classList.add('paused');
+                pauseBtn.dataset.i18nTitle = 'Resume';
+                pauseBtn.dataset.i18nTitleOriginal = 'Resume';
+                pauseBtn.title = window.MayaI18n?.t('Resume') || 'Resume';
+            }
+            // Stop current voice
+            if (window.MayaVoice) {
+                MayaVoice.stop();
+            }
+            // Pause background music
+            if (this.backgroundMusic) {
+                this.backgroundMusic.pause();
+            }
+        } else {
+            // Resume
+            console.log('▶️ Funnel resumed');
+            if (pauseBtn) {
+                pauseBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
+                pauseBtn.classList.remove('paused');
+                pauseBtn.dataset.i18nTitle = 'Pause';
+                pauseBtn.dataset.i18nTitleOriginal = 'Pause';
+                pauseBtn.title = window.MayaI18n?.t('Pause') || 'Pause';
+            }
+            // Resume background music
+            if (this.backgroundMusic) {
+                this.backgroundMusic.play().catch(() => {});
+            }
+            // Resolve the pause promise to continue execution
+            if (this.pausePromiseResolve) {
+                this.pausePromiseResolve();
+                this.pausePromiseResolve = null;
+            }
+        }
+    },
+
+    /**
+     * Wait if paused - call this in the funnel flow to respect pause state
+     */
+    async waitIfPaused() {
+        if (this.isPaused) {
+            await new Promise(resolve => {
+                this.pausePromiseResolve = resolve;
+            });
+        }
+    },
+
+    async waitForNarrationToFinish(bufferMs = 140) {
+        if (window.MayaVoice?.waitForSpeechComplete) {
+            await MayaVoice.waitForSpeechComplete();
+        }
+
+        let guard = 0;
+        while ((window.MayaVoice?.isPlaying || window.MayaVoice?.speakingLock) && guard < 80) {
+            await MayaUtils.sleep(60);
+            guard++;
+        }
+
+        if (bufferMs > 0) {
+            await MayaUtils.sleep(bufferMs);
+        }
+    },
+
+    /**
+     * Show/hide funnel controls
+     */
+    showFunnelControls(show = true) {
+        const controls = document.getElementById('maya-funnel-controls');
+        if (controls) {
+            controls.style.display = show ? 'flex' : 'none';
+        }
+    },
+
+    /**
+     * Initialize pause button event listener
+     */
+    initPauseButton() {
+        const pauseBtn = document.getElementById('maya-pause-btn');
+        if (pauseBtn && !pauseBtn._bound) {
+            pauseBtn._bound = true;
+            pauseBtn.addEventListener('click', () => this.togglePause());
+        }
+    },
+
+    /**
+     * Extract first name from full name
+     */
+    getFirstName(fullName) {
+        if (!fullName) return 'friend';
+        const parts = fullName.trim().split(/\s+/);
+        return parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase();
+    },
+
+
+    /**
+     * Build short prediction hooks from the 12-month personal month chart.
+     * These items are fed into AI prompts to create a more “specific” and hooking narrative.
+     */
+    buildPredictionItems() {
+        const lang = MayaUtils?.storage?.get('maya_language') || this.userData?.language || 'en';
+        const isHindi = lang === 'hi';
+
+        const reduce = (n) => {
+            // Use MayaNumerology reducer if available for consistency
+            if (window.MayaNumerology?.reduceNumber) return MayaNumerology.reduceNumber(n);
+            // Basic reducer fallback (keeps master numbers)
+            const keepMaster = (x) => [11, 22, 33].includes(x);
+            let x = Math.abs(parseInt(n, 10) || 0);
+            while (x > 9 && !keepMaster(x)) {
+                x = String(x).split('').reduce((a, b) => a + (parseInt(b, 10) || 0), 0);
+            }
+            return x || 1;
+        };
+
+        const personalYear = this.calculations?.personalYear || 1;
+        const months = Array.from({ length: 12 }, (_, i) => {
+            const month = i + 1;
+            return { month, pm: reduce(personalYear + month) };
+        });
+
+        // Prefer “strong” and “caution” months based on common numerology timing logic
+        const strongOrder = [8, 1, 6, 3];
+        const cautionOrder = [4, 7, 9, 5];
+
+        const strong = strongOrder
+            .map((n) => months.find((m) => m.pm === n))
+            .find(Boolean);
+
+        const caution = cautionOrder
+            .map((n) => months.find((m) => m.pm === n))
+            .find(Boolean);
+
+        const monthName = (m) => {
+            const d = new Date();
+            d.setMonth(m - 1);
+            return d.toLocaleString(isHindi ? 'hi-IN' : 'en-US', { month: 'long' });
+        };
+
+        const theme = (pm) => {
+            const mapEn = {
+                1: 'fresh start / new move',
+                2: 'relationships / partnerships',
+                3: 'visibility / communication',
+                4: 'pressure + foundations',
+                5: 'change / surprise turn',
+                6: 'home / responsibility',
+                7: 'inner work / clarity',
+                8: 'money + power window',
+                9: 'closure / release',
+                11: 'intuition spike',
+                22: 'build something big',
+                33: 'service / leadership'
+            };
+            const mapHi = {
+                1: 'नई शुरुआत या नया कदम',
+                2: 'रिश्ते और साझेदारी',
+                3: 'दिखाई देना और संवाद',
+                4: 'दबाव और नींव मजबूत करना',
+                5: 'बदलाव और अप्रत्याशित मोड़',
+                6: 'घर और जिम्मेदारी',
+                7: 'भीतरी स्पष्टता',
+                8: 'धन और प्रभाव का मजबूत समय',
+                9: 'समापन और मुक्त होना',
+                11: 'अंतर्ज्ञान का उभार',
+                22: 'बड़ा निर्माण',
+                33: 'सेवा और नेतृत्व'
+            };
+            return (isHindi ? mapHi : mapEn)[pm] || (isHindi ? 'एक बड़ा संकेत' : 'a major signal');
+        };
+
+        const items = [];
+        if (strong) {
+            items.push({
+                kind: 'strong',
+                month: strong.month,
+                monthName: monthName(strong.month),
+                pm: strong.pm,
+                theme: theme(strong.pm),
+                summary: isHindi
+                    ? `${monthName(strong.month)} के आस-पास आपकी ऊर्जा ${strong.pm} जैसी होगी - ${theme(strong.pm)}.`
+                    : `Around ${monthName(strong.month)} your chart hits a ${strong.pm} phase - ${theme(strong.pm)}.`
+            });
+        }
+        if (caution) {
+            items.push({
+                kind: 'caution',
+                month: caution.month,
+                monthName: monthName(caution.month),
+                pm: caution.pm,
+                theme: theme(caution.pm),
+                summary: isHindi
+                    ? `${monthName(caution.month)} के आस-पास सावधानी रखिए - ${caution.pm} चरण में ${theme(caution.pm)} उभर सकता है।`
+                    : `Watch ${monthName(caution.month)} - a ${caution.pm} phase (${theme(caution.pm)}).`
+            });
+        }
+
+        return items.slice(0, 3);
+    },
+
+    /**
+     * Resolve the best usable birth time for chart calculations.
+     */
+    getResolvedBirthTime() {
+        return this.userData?.birthTime && this.userData.birthTime !== 'unknown'
+            ? this.userData.birthTime
+            : '12:00';
+    },
+
+    /**
+     * Whether the user supplied an exact birth time.
+     */
+    hasExactBirthTime() {
+        return !!(this.userData?.birthTime && this.userData.birthTime !== 'unknown');
+    },
+
+    hasBirthCoordinates() {
+        return Number.isFinite(Number(this.userData?.birthLat))
+            && Number.isFinite(Number(this.userData?.birthLon));
+    },
+
+    hasReliableAscendant() {
+        return this.hasExactBirthTime() && this.hasBirthCoordinates();
+    },
+
+    /**
+     * Short label for the birth place.
+     */
+    getBirthPlaceShort() {
+        return (this.userData?.birthPlace || '')
+            .split(',')[0]
+            .trim();
+    },
+
+    /**
+     * Pick the narrative lens that should dominate the funnel for this user.
+     */
+    selectNarrativeLens(chartSummary = {}) {
+        if (chartSummary?.currentDasha?.planet === 'Saturn') return 'discipline, overdue foundations, and karmic cleanup';
+        if (chartSummary?.currentDasha?.planet === 'Jupiter') return 'expansion, wise opportunities, and a bigger life chapter';
+        if ([2, 6, 9].includes(this.calculations?.soulUrge)) return 'relationships, vulnerability, and emotional honesty';
+        if ([7, 11, 33].includes(this.calculations?.lifePath) || chartSummary?.dominantElement === 'Water') return 'inner clarity, intuition, and the private self';
+        if ([1, 5, 8].includes(this.calculations?.personalYear)) return 'change, decisive action, and momentum';
+        return 'identity, direction, and the next chapter';
+    },
+
+    /**
+     * Build a chart-aware personalization profile from collected funnel data.
+     */
+    buildPersonalizationProfile() {
+        const canUseAscendant = this.hasReliableAscendant();
+        const birthContext = {
+            birthTime: this.hasExactBirthTime() ? this.userData.birthTime : 'unknown',
+            birthPlace: this.userData.birthPlace || '',
+            birthLat: this.userData.birthLat,
+            birthLon: this.userData.birthLon
+        };
+        const western = window.MayaAstrology?.getWesternZodiac?.(this.userData.birthDate) || {};
+        const vedic = window.MayaAstrology?.getVedicZodiac?.(this.userData.birthDate, birthContext) || {};
+        const kundliChart = window.MayaKundli?.generateBirthChart
+            ? MayaKundli.generateBirthChart(
+                this.userData.birthDate,
+                birthContext.birthTime,
+                birthContext.birthPlace || 'Unknown',
+                birthContext.birthLat,
+                birthContext.birthLon
+            )
+            : null;
+        const chartSummary = kundliChart && window.MayaKundli?.summarizeBirthChart
+            ? MayaKundli.summarizeBirthChart(kundliChart)
+            : { planetGroups: [], yogaNames: [], highlights: [] };
+        const highlights = Array.isArray(chartSummary.highlights)
+            ? chartSummary.highlights.filter((item) => canUseAscendant || !/ascendant/i.test(String(item || '')))
+            : [];
+
+        this.kundliChart = kundliChart;
+
+        return {
+            ...chartSummary,
+            ascendant: canUseAscendant ? chartSummary.ascendant : null,
+            western,
+            vedic,
+            highlights,
+            birthPlaceShort: this.getBirthPlaceShort(),
+            hasExactBirthTime: this.hasExactBirthTime(),
+            hasBirthCoordinates: this.hasBirthCoordinates(),
+            hasReliableAscendant: canUseAscendant,
+            narrativeLens: this.selectNarrativeLens(chartSummary)
+        };
+    },
+
+    /**
+     * Build the user object passed into AI story generation.
+     */
+    buildScriptUserData(predictionItems = null) {
+        const profile = this.personalization || {};
+        const items = Array.isArray(predictionItems) ? predictionItems : this.buildPredictionItems();
+        return {
+            name: this.firstName,
+            fullName: this.userData?.name || this.firstName,
+            gender: this.userData?.gender || '',
+            dob: this.formatDateSpoken(this.userData.birthDate),
+            rawBirthDate: this.userData.birthDate,
+            birthTime: this.hasExactBirthTime() ? this.userData.birthTime : 'unknown',
+            birthPlace: this.userData.birthPlace || '',
+            birthPlaceShort: profile.birthPlaceShort || '',
+            zodiac: profile.western?.name || MayaAstrology.getZodiac(this.userData.birthDate, {
+                birthTime: this.getResolvedBirthTime(),
+                birthPlace: this.userData.birthPlace || '',
+                birthLat: this.userData.birthLat,
+                birthLon: this.userData.birthLon
+            })?.name || '',
+            westernZodiac: profile.western?.name || '',
+            vedicZodiac: profile.vedic?.name || '',
+            ascendant: profile.hasReliableAscendant ? (profile.ascendant?.name || '') : '',
+            moonSign: profile.moonSign || '',
+            dominantElement: profile.dominantElement || '',
+            currentDasha: profile.currentDasha?.vedic || profile.currentDasha?.planet || '',
+            narrativeLens: profile.narrativeLens || '',
+            chartHighlights: profile.highlights || [],
+            predictionItems: items
+        };
+    },
+
+    /**
+     * Shared context block for AI and prompt helpers.
+     */
+    buildBaseAIContext(predictionItems = null) {
+        const profile = this.personalization || {};
+        const items = Array.isArray(predictionItems) ? predictionItems : this.buildPredictionItems();
+        return {
+            ...this.calculations,
+            gender: this.userData?.gender || '',
+            westernZodiac: profile.western?.name,
+            vedicZodiac: profile.vedic?.name,
+            ascendant: profile.hasReliableAscendant ? profile.ascendant?.name : '',
+            moonSign: profile.moonSign,
+            sunSign: profile.western?.name || '',
+            dominantElement: profile.dominantElement,
+            currentDasha: profile.currentDasha?.vedic || profile.currentDasha?.planet,
+            yogaNames: profile.yogaNames || [],
+            birthPlace: this.userData?.birthPlace || '',
+            birthPlaceShort: profile.birthPlaceShort || '',
+            hasExactBirthTime: profile.hasExactBirthTime,
+            hasReliableAscendant: profile.hasReliableAscendant,
+            narrativeLens: profile.narrativeLens || '',
+            chartHighlights: profile.highlights || [],
+            predictionItems: items,
+            userData: {
+                gender: this.userData?.gender || '',
+                westernZodiac: profile.western?.name || '',
+                vedicZodiac: profile.vedic?.name || '',
+                ascendant: profile.hasReliableAscendant ? profile.ascendant?.name : '',
+                moonSign: profile.moonSign,
+                currentDasha: profile.currentDasha?.vedic || profile.currentDasha?.planet,
+                birthPlaceShort: profile.birthPlaceShort || '',
+                narrativeLens: profile.narrativeLens || ''
+            }
+        };
+    },
+
+    escapeRegExp(value) {
+        return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    },
+
+    localizeHindiText(text) {
+        const astroRules = MAYA_CONFIG?.LANGUAGE?.HINDI_ASTRO_TERM_RULES || [];
+
+        return astroRules.reduce((localized, rule) => {
+            try {
+                return localized.replace(new RegExp(rule.pattern, 'gi'), rule.replacement);
+            } catch (_error) {
+                return localized;
+            }
+        }, String(text || ''))
+            .replace(/\bjson\b/gi, '')
+            .replace(/लाइफ\s*पाथ/gi, 'Life Path')
+            .replace(/डेस्टिनी/gi, 'Destiny')
+            .replace(/सोल\s*अर्ज/gi, 'Soul Urge')
+            .replace(/पर्सनल\s*ईयर/gi, 'Personal Year')
+            .replace(/ईमेल/gi, 'email')
+            .replace(/पासवर्ड/gi, 'password')
+            .replace(/लॉगिन/gi, 'login')
+            .replace(/चार्ट/gi, 'chart')
+            .replace(/टाइमिंग/gi, 'timing')
+            .replace(/पैटर्न/gi, 'pattern')
+            .replace(/प्रेशर/gi, 'pressure')
+            .replace(/करियर|कैरियर/gi, 'career')
+            .replace(/रिलेशनशिप्स/gi, 'relationships')
+            .replace(/रिलेशनशिप/gi, 'relationship')
+            .replace(/मनी/gi, 'money')
+            .replace(/एनर्जी/gi, 'energy')
+            .replace(/\s+/g, ' ')
+            .trim();
+    },
+
+    sanitizeNarrationText(text) {
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const rawName = this.firstName || (isHindi ? 'आप' : 'you');
+        const name = rawName || (isHindi ? 'आप' : 'you');
+        let cleaned = String(text || '').trim();
+
+        if (!cleaned) return cleaned;
+
+        cleaned = cleaned
+            .replace(/\bfriend\s*ji\b/gi, name)
+            .replace(/\bfrend\s*ji\b/gi, name)
+            .replace(/फ्रेंड\s*जी/gi, name)
+            .replace(/दोस्त\s*जी/gi, name)
+            .replace(/your celestial guide sees that\s*/gi, '')
+            .replace(/आपका celestial guide देखता है कि\s*/gi, '')
+            .replace(/today'?s cosmic alignment shows that\s*/gi, '')
+            .replace(/आज का cosmic alignment दिखाता है कि\s*/gi, '')
+            .replace(/the universe whispers that\s*/gi, '')
+            .replace(/ब्रह्मांड कहता है कि\s*/gi, '')
+            .replace(/तारे बताते हैं कि\s*/gi, '')
+            .replace(/आज\s+\d{1,2}\s+[^\s,.!?।]+\s+\d{4}\s+का\s+दिन/gi, isHindi ? 'यह चरण' : 'this phase')
+            .replace(/today'?s verdict/gi, isHindi ? 'यह पैटर्न' : 'this pattern')
+            .replace(/आज का verdict/gi, 'यह पैटर्न')
+            .replace(/([A-Za-z\u0900-\u097F]+)\s*जी(?=[\s,.!?।]|$)/g, '$1')
+            .replace(/\s+/g, ' ')
+            .replace(/\s+([,.!?।])/g, '$1')
+            .trim();
+
+        if (isHindi) {
+            cleaned = this.localizeHindiText(cleaned)
+                .replace(/मैं([^.!?\n]{0,80}?)रहा हूँ/g, 'मैं$1रही हूँ')
+                .replace(/मैं([^.!?\n]{0,80}?)सकता हूँ/g, 'मैं$1सकती हूँ')
+                .replace(/मैं([^.!?\n]{0,80}?)बताता हूँ/g, 'मैं$1बताती हूँ')
+                .replace(/मैं([^.!?\n]{0,80}?)कहता हूँ/g, 'मैं$1कहती हूँ')
+                .replace(/\bबताऊँगा\b/g, 'बताऊँगी')
+                .replace(/\bकहूँगा\b/g, 'कहूँगी')
+                .replace(/\bकरूँगा\b/g, 'करूँगी')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        return cleaned;
+    },
+
+    async getOpeningNarration() {
+        try {
+            const freshOpening = await this.generateWarmWelcome();
+            if (freshOpening && freshOpening.length > 40) {
+                return freshOpening;
+            }
+        } catch (error) {
+            console.warn('Fresh opening generation failed:', error.message);
+        }
+
+        console.log('✨ Falling back to direct AI opening generation');
+        return await this.generateDirectReadingSection('opening', this.buildBaseAIContext());
+    },
+
+    getKundliInsightItems(isHindi = false) {
+        const profile = this.personalization || {};
+        const items = [];
+        const ascendant = profile.ascendant || {};
+        const dasha = profile.currentDasha || {};
+        const yoga = profile.yogaNames?.[0];
+        const dominantElement = profile.dominantElement;
+        const localize = (value) => isHindi ? this.localizeHindiText(value) : value;
+
+        if (ascendant.name) {
+            items.push({
+                key: 'ascendant',
+                title: isHindi ? 'लग्न' : 'Ascendant',
+                value: localize(ascendant.name),
+                detail: ''
+            });
+        }
+
+        if (profile.moonSign) {
+            items.push({
+                key: 'moon',
+                title: isHindi ? 'चंद्र राशि' : 'Moon Sign',
+                value: localize(profile.moonSign),
+                detail: ''
+            });
+        }
+
+        if (profile.western?.name) {
+            items.push({
+                key: 'sun',
+                title: isHindi ? 'सूर्य राशि' : 'Sun Sign',
+                value: localize(profile.western.name),
+                detail: ''
+            });
+        }
+
+        if (dasha.vedic || dasha.planet) {
+            const dashaName = dasha.vedic || dasha.planet;
+            items.push({
+                key: 'dasha',
+                title: isHindi ? 'वर्तमान दशा' : 'Current Dasha',
+                value: localize(dashaName),
+                detail: ''
+            });
+        }
+
+        if (dominantElement) {
+            items.push({
+                key: 'element',
+                title: isHindi ? 'Dominant Element' : 'Dominant Element',
+                value: localize(dominantElement),
+                detail: ''
+            });
+        }
+
+        if (yoga) {
+            items.push({
+                key: 'yoga',
+                title: isHindi ? 'योग' : 'Yoga',
+                value: localize(yoga),
+                detail: ''
+            });
+        }
+
+        return items.slice(0, 4);
+    },
+
+    getNearFutureNarrationHint(isHindi = false) {
+        const nextSignal = this.buildPredictionItems()[0];
+        if (!nextSignal) return '';
+
+        if (isHindi) {
+            return nextSignal.kind === 'strong'
+                ? `${nextSignal.monthName} के आस-पास एक सहायक मोड़ खुल रहा है, जहाँ ${nextSignal.theme} की दिशा और साफ़ दिखेगी।`
+                : `${nextSignal.monthName} के आस-पास थोड़ा संभलकर चलना होगा, क्योंकि वहीं ${nextSignal.theme} का दबाव उभर सकता है।`;
+        }
+
+        return nextSignal.kind === 'strong'
+            ? `Around ${nextSignal.monthName}, a supportive opening becomes clearer, especially around ${nextSignal.theme}.`
+            : `Around ${nextSignal.monthName}, move more carefully because the pressure around ${nextSignal.theme} is likely to rise.`;
+    },
+
+    appendResultCard(resultKey, label, value, extraClass = '') {
+        const resultArea = document.getElementById('calc-result');
+        if (!resultArea || value == null || value === '') return;
+
+        resultArea.style.display = 'flex';
+        const classList = String(extraClass || '').split(/\s+/).filter(Boolean);
+        const resultGroupKey = classList.includes('kundli') || String(resultKey || '').startsWith('kundli-')
+            ? 'kundli'
+            : 'numbers';
+        const resultGroup = resultArea.querySelector(`[data-result-group="${resultGroupKey}"]`) || resultArea;
+        let card = resultGroup.querySelector(`[data-result-key="${resultKey}"]`);
+
+        if (!card) {
+            card = document.createElement('div');
+            card.className = `number-reveal ${extraClass}`.trim();
+            card.dataset.resultKey = resultKey;
+            resultGroup.appendChild(card);
+        }
+
+        card.innerHTML = `
+            <span class="number-label">${label}</span>
+            <span class="number-value glow-pulse">${value}</span>
+        `;
+    },
+
+    /**
+     * Initialize the funnel with user data
+     */
+    init(userData) {
+        console.log('🎭 Funnel init() called with:', userData);
+        
+        // Validate required data
+        if (!userData || !userData.name || !userData.birthDate) {
+            console.error('❌ Invalid userData for funnel:', userData);
+            throw new Error('Missing required user data (name and birthDate)');
+        }
+        
+        this.userData = userData;
+        this.firstName = this.getFirstName(userData.name);
+        this.isActive = true;
+        this.currentPhase = 0;
+        this.hasRevealedTeaser = false;
+        this.emailGateShown = false;
+        this.emailSubmissionInProgress = false;
+        this.teaserGateNarrated = false;
+        this.spokenNarrations = [];
+        this.authRequestId = 0;
+        this.authPromptedFields = new Set();
+        
+        // Save language preference to storage immediately
+        const language = userData.language || MayaUtils.storage.get('maya_language') || 'en';
+        this.userData.language = language;
+        MayaUtils.storage.set('maya_language', language);
+        
+        // IMPORTANT: Save ALL user data to localStorage immediately
+        // This ensures data persists even before email gate
+        const profileData = {
+            name: userData.name,
+            gender: userData.gender || null,
+            birthDate: userData.birthDate,
+            birthTime: userData.birthTime || null,
+            birthPlace: userData.birthPlace || null,
+            birthLat: userData.birthLat || null,
+            birthLon: userData.birthLon || null,
+            language: language
+        };
+        
+        // Merge with existing profile (don't overwrite email if already set)
+        const existingProfile = MayaUtils.storage.get('maya_profile') || {};
+        MayaUtils.storage.set('maya_profile', { ...existingProfile, ...profileData });
+        
+        // Also save to funnel_data for backup/recovery
+        MayaUtils.storage.set('funnel_data', userData);
+        
+        console.log('🎭 Storytelling Funnel initialized with:', userData);
+        console.log('💾 Profile saved to localStorage:', profileData);
+        
+        // Set language for all modules
+        if (window.MayaStatements) {
+            MayaStatements.setLanguage(language);
+        }
+        if (window.MayaDynamicContent) {
+            MayaDynamicContent.setLanguage(language);
+        }
+
+        void window.MayaApp?.applyLanguagePreference?.(language, { force: true });
+        
+        console.log('👤 First name:', this.firstName);
+        console.log('🌐 Language:', language);
+        
+        // Calculate all numerology numbers with error handling
+        try {
+            if (!window.MayaNumerology || !window.MayaNumerology.calculateAll) {
+                throw new Error('MayaNumerology module not loaded');
+            }
+            
+            this.calculations = MayaNumerology.calculateAll(
+                userData.name,
+                userData.birthDate
+            );
+            
+            if (!this.calculations) {
+                throw new Error('calculateAll returned null/undefined');
+            }
+        } catch (error) {
+            console.error('❌ Numerology calculation failed:', error);
+            // Provide fallback calculations to prevent funnel crash
+            this.calculations = {
+                lifePath: 7,
+                destiny: 5,
+                soulUrge: 3,
+                personality: 4,
+                personalYear: 1,
+                currentMonthNumber: 5,
+                currentDayNumber: 3
+            };
+            console.warn('⚠️ Using fallback calculations');
+        }
+        
+        // Save calculations to localStorage as well
+        MayaUtils.storage.set('maya_calculations', this.calculations);
+        
+        console.log('🔢 Calculations:', this.calculations);
+
+        try {
+            this.personalization = this.buildPersonalizationProfile();
+            console.log('🪐 Personalization profile:', this.personalization);
+        } catch (error) {
+            console.error('❌ Personalization profile failed:', error);
+            this.personalization = {
+                western: MayaAstrology.getWesternZodiac?.(this.userData.birthDate) || {},
+                vedic: MayaAstrology.getVedicZodiac?.(this.userData.birthDate, {
+                    birthTime: this.getResolvedBirthTime(),
+                    birthPlace: this.userData.birthPlace || '',
+                    birthLat: this.userData.birthLat,
+                    birthLon: this.userData.birthLon
+                }) || {},
+                birthPlaceShort: this.getBirthPlaceShort(),
+                hasExactBirthTime: this.hasExactBirthTime(),
+                narrativeLens: 'identity, direction, and the next chapter',
+                planetGroups: [],
+                yogaNames: [],
+                highlights: []
+            };
+        }
+        
+        // Initialize content cache for pre-generated content
+        this.contentCache = {};
+        this.contentGenerating = {};
+        
+        // Pre-generate ALL AI content in background for smooth delivery
+        this.pregenerateAllContent();
+        
+        return this;
+    },
+
+    /**
+     * Pre-generate ALL funnel content in background for seamless playback
+     */
+    async pregenerateAllContent() {
+        this.contentGenerating = {};
+        console.log('🎭 Live generation mode active; skipping narration pre-cache.');
+        return [];
+    },
+
+    /**
+     * Pre-generate a single piece of content with caching
+     */
+    async pregenerateContent(key, generator) {
+        if (this.contentGenerating[key]) return this.contentGenerating[key];
+        
+        this.contentGenerating[key] = (async () => {
+            try {
+                const content = await Promise.race([
+                    generator(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+                ]);
+                return content;
+            } catch (e) {
+                console.warn(`⚠️ Pre-generation failed for ${key}:`, e.message);
+                return null;
+            } finally {
+                delete this.contentGenerating[key];
+            }
+        })();
+        
+        return this.contentGenerating[key];
+    },
+
+    /**
+     * Get content from cache or generate on-demand (fast path)
+     */
+    async getContent(key, fallbackGenerator) {
+        if (this.contentGenerating[key]) {
+            console.log(`⏳ Waiting for: ${key}`);
+            return await this.contentGenerating[key];
+        }
+
+        console.log(`🔄 Generating fresh narration: ${key}`);
+        this.contentGenerating[key] = (async () => {
+            try {
+                return await MayaUtils.retry(
+                    async (attempt) => {
+                        console.log(`🔁 Narration attempt ${attempt} for ${key}`);
+                        const content = await MayaUtils.withTimeout(
+                            Promise.resolve().then(() => fallbackGenerator()),
+                            28000,
+                            `${key} generation`
+                        );
+
+                        if (!content || String(content).trim().length < 20) {
+                            throw new Error(`Empty narration for ${key}`);
+                        }
+
+                        return content;
+                    },
+                    {
+                        maxRetries: 3,
+                        baseDelay: 200,
+                        maxDelay: 1200,
+                        backoffMultiplier: 1.5,
+                        label: `${key} narration`,
+                        retryCondition: (error, attempt) => {
+                            const message = error?.message || '';
+                            return attempt < 3
+                                && (MayaUtils.isRetryableError(error) || /timeout|timed out|empty|rate limit|all content sources failed/i.test(message));
+                        },
+                        onRetry: (_attempt, _max, error) => {
+                            console.warn(`⚠️ Fresh generation retry for ${key}:`, error.message);
+                        }
+                    }
+                );
+            } catch (e) {
+                console.warn(`⚠️ Fresh generation exhausted for ${key}:`, e.message);
+                return null;
+            } finally {
+                delete this.contentGenerating[key];
+            }
+        })();
+
+        return await this.contentGenerating[key];
+    },
+
+    /**
+     * Build AI Summary prompt
+     */
+    buildAISummaryPrompt(isHindi) {
+        const chartSummary = this.personalization || {};
+        const localize = (value) => isHindi ? this.localizeHindiText(value) : value;
+        // Use detailed chart facts if available, fall back to simple summary
+        const detailedFacts = (this.kundliChart && window.MayaKundli?.buildDetailedChartFacts)
+            ? MayaKundli.buildDetailedChartFacts(this.kundliChart, this.userData?.birthDate)
+            : '';
+        const chartLines = detailedFacts || [
+            chartSummary?.ascendant?.name ? `${isHindi ? 'लग्न' : 'Ascendant'}: ${localize(chartSummary.ascendant.name)}` : '',
+            chartSummary?.moonSign ? `${isHindi ? 'चंद्र राशि' : 'Moon sign'}: ${localize(chartSummary.moonSign)}` : '',
+            chartSummary?.currentDasha?.vedic || chartSummary?.currentDasha?.planet
+                ? `${isHindi ? 'वर्तमान दशा' : 'Current dasha'}: ${localize(chartSummary.currentDasha?.vedic || chartSummary.currentDasha?.planet)}`
+                : '',
+            chartSummary?.birthPlaceShort ? `${isHindi ? 'जन्म स्थान' : 'Birth place'}: ${localize(chartSummary.birthPlaceShort)}` : '',
+            chartSummary?.highlights?.length ? `${isHindi ? 'कुंडली संकेत' : 'Chart highlights'}: ${chartSummary.highlights.map((item) => localize(item)).join('; ')}` : ''
+        ].filter(Boolean).join('\n');
+
+        const now = new Date();
+        const todayStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const currentYear = now.getFullYear();
+        const currentMonthStr = now.toLocaleDateString('en-US', { month: 'long' });
+
+        // Include already spoken context so the summary doesn't repeat opening/kundli narration
+        const alreadySpoken = this.spokenNarrations?.length
+            ? this.spokenNarrations.map(n => {
+                const cleaned = (n.text || '').replace(/\[\[pause-\d+\]\]/g, '').trim();
+                return `[${n.stage}]: ${cleaned}`;
+            }).join('\n')
+            : '';
+        const alreadySpokenBlock = alreadySpoken
+            ? (isHindi
+                ? `\n\n## पहले बताया जा चुका है (REPEAT मत करें):\n${alreadySpoken}`
+                : `\n\n## ALREADY TOLD (DO NOT REPEAT):\n${alreadySpoken}`)
+            : '';
+
+        return isHindi 
+            ? `आप MAYA हैं - एक wise female Vedic numerology expert। आप ${this.firstName} से बात कर रहे हैं जिन्होंने अभी अपने numbers देखे।
+User gender: ${this.userData?.gender === 'male' ? 'Male (पुरुष)' : this.userData?.gender === 'female' ? 'Female (महिला)' : 'Not specified'}
+
+आज: ${todayStr}
+⚠️ जो months बीत चुके हैं (January-${currentMonthStr} ${currentYear}) उन्हें PAST tense में refer करें। Future predictions में specific month + year बोलें।
+${alreadySpokenBlock}
+
+अब numbers repeat मत कीजिए। इसके बजाय, नीचे दिए गए EXACT planetary positions और dasha timeline को use करके एक SPECIFIC past event predict कीजिए जो सिर्फ इस user पर fit हो।
+
+Numbers (reference): LP ${this.calculations.lifePath}, Destiny ${this.calculations.destiny}, Soul Urge ${this.calculations.soulUrge}, Year ${this.calculations.personalYear}
+${chartLines ? `\n${chartLines}` : ''}
+
+RULES:
+- सिर्फ 2-3 वाक्य लिखिए। छोटा और sharp रखिए।
+- Numbers repeat मत कीजिए - वो देख चुके हैं।
+- ऊपर "ALREADY TOLD" section में जो कुछ कहा गया वो repeat/rephrase मत कीजिए। बिल्कुल नई बात कहिए।
+- ऊपर दिए गए planetary positions और dasha transition years को EXACTLY reference करके predict कीजिए। जैसे: "आपकी कुंडली में शनि मकर राशि में 28.5° पर है और राहु दशा ${currentYear - 3} में शुरू हुई - मुझे दिख रहा है कि उस साल..."
+- ऐसा कुछ बताइए जो सुनकर user को लगे "ये तो सच में मेरे बारे में जानती है!"
+- Vague generic बातें मत कहिए जो किसी पर भी fit हो। SPECIFIC रहिए - actual planet names, signs, dasha years बोलिए।
+- energy feel या mind reading claim मत कीजिए। Chart और numbers पर based rakhein।
+- MAYA feminine forms: हूँ, रही, सकती, देख रही (ये MAYA के लिए हैं)।
+- ⚠️ USER GENDER: User को address करते वक्त उनका ACTUAL gender use करें। अगर user MALE है तो: "आप जानते हैं", "आप समझते हैं", "आपको मिलेगा"। अगर user FEMALE है तो: "आप जानती हैं", "आप समझती हैं", "आपको मिलेगा"। Male user को feminine forms में address करना FORBIDDEN है।
+- "आप" use करें। नाम MAX 1 बार use करें। TTS-safe रखिए।
+- भाषा simple light Hinglish - सिर्फ भारी/शुद्ध/किताबी Sanskrit-laden Hindi बदलिए (जैसे "सम्भावना" → "मौक़ा", "परिस्थिति" → "हालात")। आम बोलचाल के Hindi words (ज़िन्दगी, दिल, वक़्त, तकलीफ़, हिम्मत, फ़ैसला, रिश्ता) Devanagari में ही रखिए - ये Hindi-origin हैं।
+- एक ही शब्द लगातार 2 sentences में repeat मत करें - synonyms use करें।`
+            : `You are MAYA - a wise female Vedic numerology expert. You're speaking to ${this.firstName} who just saw their numbers.
+User gender: ${this.userData?.gender === 'male' ? 'Male' : this.userData?.gender === 'female' ? 'Female' : 'Not specified'}
+
+Today: ${todayStr}
+⚠️ Months already passed (January-${currentMonthStr} ${currentYear}) must be referenced in past tense. Future predictions must include specific month + year.
+${alreadySpokenBlock}
+
+DO NOT repeat the numbers or anything from the ALREADY TOLD section above. Instead, use the EXACT planetary positions and dasha timeline below to predict ONE SPECIFIC past event that feels deeply personal.
+
+Numbers (reference): LP ${this.calculations.lifePath}, Destiny ${this.calculations.destiny}, Soul Urge ${this.calculations.soulUrge}, Year ${this.calculations.personalYear}
+${chartLines ? `\n${chartLines}` : ''}
+
+RULES:
+- Write ONLY 2-3 sentences. Keep it short and striking.
+- DO NOT repeat numbers - they just saw them.
+- DO NOT repeat or rephrase anything from the ALREADY TOLD section. Say something completely new.
+- Use the EXACT planetary positions and dasha transition years from above to predict a SPECIFIC past event. Example: "Saturn in Capricorn at 28.5° combined with your Rahu dasha starting ${currentYear - 3} tells me that year..."
+- The user should think "how does she know this about me?!" - that is the goal.
+- Do NOT say vague things that could apply to anyone. Be SPECIFIC - name actual planets, signs, degrees, dasha years.
+- Do not claim psychic access or energy reading. Base it on chart + numbers.
+- You (MAYA) are FEMALE - warm but confident. Use feminine forms for yourself (मैं देख रही हूँ, मुझे दिखा).
+- ⚠️ USER GENDER: Address the user with THEIR correct gender. If user is MALE, use masculine forms in Hindi ("आप जानते हैं", "आप समझते हैं"). If user is FEMALE, use feminine forms ("आप जानती हैं", "आप समझती हैं"). Addressing a male user with feminine forms is FORBIDDEN.
+- Continue naturally from previous narration, no new greeting. TTS-safe.
+- Use the user's name MAX 1 time. Use "you/your" everywhere else.
+- Do NOT repeat the same word in back-to-back sentences - use synonyms.
+- Speak naturally, complete your thoughts.`;
+    },
+
+    /**
+     * Pre-generate AI scripts + audio in background for smooth voice delivery
+     */
+    pregenerateScripts() {
+        // Stage-script pre-generation is disabled so all live narration stays AI-prompted.
+    },
+
+    /**
+     * Get AI-generated script for a stage (uses pre-cached if available)
+     */
+    async getAIScript(stage, extraContext = null) {
+        const predictionItems = this.buildPredictionItems();
+        const baseContext = this.buildBaseAIContext(predictionItems);
+        const context = extraContext ? { ...baseContext, ...extraContext } : baseContext;
+
+        if (stage === 'kundliFormation') {
+            return await this.generateDirectReadingSection('kundli', context);
+        }
+
+        return '';
+    },
+
+    /**
+     * Start background music
+     */
+    startBackgroundMusic() {
+        if (this.backgroundMusic) return;
+        
+        this.backgroundMusic = new Audio();
+        this.backgroundMusic.loop = true;
+        // iOS treats all audio at similar perceptual loudness. Use very low
+        // volume so background music never competes with TTS narration.
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        this.backgroundMusic.volume = isIOS ? 0.02 : 0.18;
+        
+        // Try multiple audio formats for better compatibility
+        const audioFormats = [
+            { src: 'funnel.mp3', type: 'audio/mpeg' },
+            { src: 'funnel.ogg', type: 'audio/ogg' },
+            { src: 'funnel.wav', type: 'audio/wav' }
+        ];
+        
+        // Find first supported format
+        for (const format of audioFormats) {
+            if (this.backgroundMusic.canPlayType(format.type)) {
+                this.backgroundMusic.src = format.src;
+                break;
+            }
+        }
+        
+        // If no supported format found, default to mp3
+        if (!this.backgroundMusic.src) {
+            this.backgroundMusic.src = 'funnel.mp3';
+        }
+        
+        // Attempt to play - handle autoplay restrictions
+        const playPromise = this.backgroundMusic.play();
+        
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                console.log('🎵 Background music playing');
+            }).catch(e => {
+                console.log('🎵 Background music autoplay blocked, will retry on user interaction:', e.name);
+                // Store reference for retry on user interaction
+                this.musicPendingPlay = true;
+                
+                // Add one-time event listeners to start music on user interaction
+                const startMusicOnInteraction = () => {
+                    if (this.musicPendingPlay && this.backgroundMusic) {
+                        this.backgroundMusic.play().then(() => {
+                            console.log('🎵 Background music started after user interaction');
+                            this.musicPendingPlay = false;
+                        }).catch(() => {
+                            console.log('🎵 Background music still blocked');
+                        });
+                    }
+                    // Remove listeners after first interaction
+                    document.removeEventListener('click', startMusicOnInteraction);
+                    document.removeEventListener('touchstart', startMusicOnInteraction);
+                    document.removeEventListener('keydown', startMusicOnInteraction);
+                };
+                
+                document.addEventListener('click', startMusicOnInteraction, { once: true });
+                document.addEventListener('touchstart', startMusicOnInteraction, { once: true });
+                document.addEventListener('keydown', startMusicOnInteraction, { once: true });
+            });
+        }
+    },
+
+    /**
+     * Fade out background music
+     */
+    fadeOutMusic(duration = 2000) {
+        if (!this.backgroundMusic) return;
+        
+        const startVolume = this.backgroundMusic.volume;
+        const steps = 20;
+        const stepTime = duration / steps;
+        const volumeStep = startVolume / steps;
+        
+        const fadeInterval = setInterval(() => {
+            if (this.backgroundMusic && this.backgroundMusic.volume > volumeStep) {
+                this.backgroundMusic.volume -= volumeStep;
+            } else {
+                if (this.backgroundMusic) {
+                    this.backgroundMusic.pause();
+                    this.backgroundMusic = null;
+                }
+                clearInterval(fadeInterval);
+            }
+        }, stepTime);
+    },
+
+    /**
+     * Generate a warm, personalized welcome that creates goosebumps
+     * Uses AI to create deeply personal content based on Life Path
+     */
+    
+    async generateWarmWelcome() {
+        const lang = MayaUtils?.storage?.get('maya_language') || this.userData?.language || 'en';
+        const name = this.firstName;
+
+        // Ensure MayaStatements uses correct language
+        if (window.MayaStatements) {
+            MayaStatements.setLanguage(lang);
+        }
+
+        const predictionItems = this.buildPredictionItems();
+        const aiContext = this.buildBaseAIContext(predictionItems);
+        const birthDate = window.MayaAstrology ? MayaAstrology.parseDate(this.userData.birthDate) : new Date(this.userData.birthDate);
+        const birthDay = birthDate?.getDate?.();
+        const birthMonth = birthDate ? birthDate.getMonth() + 1 : null;
+
+        try {
+            const directOpening = await this.generateDirectReadingSection('opening', {
+                ...aiContext,
+                birthDay,
+                birthMonth
+            });
+            if (directOpening && directOpening.length > 40) return directOpening;
+        } catch (e) {
+            console.warn('AI warm welcome failed:', e.message);
+        }
+
+        return '';
+    },
+
+    getNarrativeStageGuide(sectionKey, isHindi = false) {
+        const guides = isHindi
+            ? {
+                opening: 'Act 1. Invitation phase. ऐसा लगे जैसे एक sealed personal file खुल रही है. सिर्फ पहला hard clue दीजिए, पूरा verdict नहीं। आख़िर में ऐसा thread छोड़िए जो kundli layer की तरफ खींचे।',
+                kundli: 'Act 2. Chart structure phase. ऐसे बोलिए जैसे chart live trace हो रहा है. Ascendant, चंद्र राशि, दशा, या planetary clustering से life structure दिखाइए, और numbers की तरफ unresolved handoff दीजिए।',
+                loveIntro: 'Act 3 transition. Emotional layer अब खुल रही है. Tone intimate हो, लेकिन reset नहीं।',
+                love: 'Act 3. Relationship layer. User के emotional pattern का एक private but believable contradiction खोलिए. Curiosity बनी रहे।',
+                careerIntro: 'Act 4 transition. अब outer world, work, aur money pattern की तरफ lens shift हो रही है. Momentum same रहना चाहिए।',
+                career: 'Act 4. Outer path layer. Talent, friction, aur practical direction को एक ही narrative thread में जोड़िए।',
+                yearIntro: 'Act 5 transition. अब timing windows करीब आ रही हैं. Voice में measured anticipation रहे।',
+                year: 'Act 5. Timing layer. आने वाले महीनों को living timeline की तरह बोलिए, और एक window को बाकी से ज़्यादा charged feel कराइए।',
+                warningIntro: 'Act 6 transition. पहले trust hold कीजिए, फिर caution खोलिए. Tone protective हो, dramatic नहीं।',
+                warning: 'Act 6. Shadow layer. एक specific trigger, उसका pattern, और protective boundary बताइए. यह same story का honest underside लगे।',
+                emailGate: 'Act 7. Locked chamber. ऐसा feel कराइए कि next layer ज्यादा private, chart-specific, और saved रखने लायक है।',
+                deepRevealPrep: 'Act 7 threshold. User को feel होना चाहिए कि अब reading deeper और more personal होने वाली है, without sounding salesy.',
+                completion: 'Closing beat. Reading को softly settle कराइए, लेकिन curiosity और conversation का दरवाज़ा खुला रखिए।',
+                authCheck: 'Operational interlude. Mystery टूटे नहीं; बस short, calm continuity रखिए।',
+                welcomeBack: 'Re-entry beat. ऐसा लगे जैसे वही file फिर से खोली जा रही है, शुरुआत से नहीं।',
+                newUser: 'Protection beat. Reading को valuable personal file की तरह frame कीजिए जिसे सुरक्षित रखना ज़रूरी है।',
+                calculationRecovery: 'Recovery beat. Momentum पूरी तरह मत तोड़िए; बस बताइए कि alignment दोबारा हो रहा है।'
+            }
+            : {
+                opening: 'Act 1. Invitation phase. Sound like a sealed personal file is being opened. Give only the first hard clue, not the whole verdict, and leave a thread that pulls naturally into the kundli layer.',
+                kundli: 'Act 2. Chart-structure phase. Speak as if the chart is being traced live. Use ascendant, moon sign, dasha, or planetary clustering to show the structure of the life, then leave an unresolved handoff toward the numbers.',
+                loveIntro: 'Act 3 transition. The emotional layer is opening now. Keep it intimate without resetting the scene.',
+                love: 'Act 3. Relationship layer. Reveal one private but believable contradiction in the user\'s emotional pattern and keep curiosity alive.',
+                careerIntro: 'Act 4 transition. Shift the lens toward work, money, and outer direction while keeping the same momentum.',
+                career: 'Act 4. Outer-path layer. Tie talent, friction, and practical direction into one narrative thread.',
+                yearIntro: 'Act 5 transition. The timing windows are getting closer. Let the voice carry measured anticipation.',
+                year: 'Act 5. Timing layer. Speak about the coming months like a living timeline, and make one window feel more charged than the rest.',
+                warningIntro: 'Act 6 transition. Hold trust first, then open the caution. Sound protective, not dramatic.',
+                warning: 'Act 6. Shadow layer. Name one specific trigger, its repeating pattern, and a protective boundary. It must feel like the honest underside of the same story.',
+                emailGate: 'Act 7. Locked chamber. Make the next layer feel more private, chart-specific, and worth saving.',
+                deepRevealPrep: 'Act 7 threshold. The user should feel that the reading is about to become deeper and more personal without sounding salesy.',
+                completion: 'Closing beat. Let the reading settle softly while leaving the door open for further conversation.',
+                authCheck: 'Operational interlude. Do not break the atmosphere; keep continuity calm and brief.',
+                welcomeBack: 'Re-entry beat. It should feel like reopening the same file, not starting from scratch.',
+                newUser: 'Protection beat. Frame the reading like a valuable personal file that deserves to be secured.',
+                calculationRecovery: 'Recovery beat. Do not break momentum completely; simply explain that the alignment is being restored.'
+            };
+
+        return guides[sectionKey] || guides.completion;
+    },
+
+    buildDirectSectionPrompt(sectionKey, context = {}) {
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const profile = this.personalization || {};
+        const numbers = this.calculations || {};
+        const predictionItems = Array.isArray(context.predictionItems) ? context.predictionItems : this.buildPredictionItems();
+        const visibleKundliFacts = Array.isArray(context.kundliDisplayFacts)
+            ? context.kundliDisplayFacts.filter(Boolean).join('\n')
+            : String(context.kundliDisplayFacts || '').trim();
+        // Build detailed chart facts from actual kundli calculations if available
+        const detailedChartFacts = (this.kundliChart && window.MayaKundli?.buildDetailedChartFacts)
+            ? MayaKundli.buildDetailedChartFacts(this.kundliChart, this.userData?.birthDate)
+            : '';
+        const fallbackChartFacts = [
+            profile.western?.name ? `Western zodiac: ${profile.western.name}` : '',
+            profile.vedic?.name ? `Vedic moon sign: ${profile.vedic.name}` : '',
+            profile.hasReliableAscendant && profile.ascendant?.name ? `Ascendant: ${profile.ascendant.name}` : '',
+            profile.moonSign ? `Moon sign: ${profile.moonSign}` : '',
+            profile.currentDasha?.vedic || profile.currentDasha?.planet
+                ? `Current dasha: ${profile.currentDasha?.vedic || profile.currentDasha?.planet}`
+                : '',
+            profile.dominantElement ? `Dominant element: ${profile.dominantElement}` : '',
+            profile.birthPlaceShort ? `Birth place: ${profile.birthPlaceShort}` : '',
+            profile.narrativeLens ? `Narrative lens: ${profile.narrativeLens}` : '',
+            Array.isArray(profile.highlights) && profile.highlights.length
+                ? `Chart highlights: ${profile.highlights.slice(0, 3).join('; ')}`
+                : ''
+        ].filter(Boolean).join('\n');
+        const chartFacts = [visibleKundliFacts, detailedChartFacts || fallbackChartFacts]
+            .filter(Boolean)
+            .join('\n');
+
+        const timingHints = predictionItems
+            .slice(0, 4)
+            .map((item) => {
+                const label = item.monthName || item.month || '';
+                const theme = item.summary || item.theme || item.pm || '';
+                return [label, theme].filter(Boolean).join(': ');
+            })
+            .filter(Boolean)
+            .join(isHindi ? ' | ' : ' | ');
+        const narrativeStageGuide = this.getNarrativeStageGuide(sectionKey, isHindi);
+
+        const now = new Date();
+        const todayStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const currentMonth = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        const currentTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const currentYear = now.getFullYear();
+        const currentMonthNum = now.getMonth(); // 0-indexed
+
+        const temporalRules = isHindi
+            ? `## TEMPORAL AWARENESS (CRITICAL)\nआज की तारीख़: ${todayStr}, समय: ${currentTime}\nCurrent month: ${currentMonth}\n\n⚠️ STRICT DATE RULES:\n- आज ${todayStr} है। जो महीने बीत चुके हैं (January-${now.toLocaleDateString('en-US', { month: 'long' })} ${currentYear} तक) उनके बारे में PAST tense में बोलिए - "वो time गुज़र चुका", "उस दौर में", "पीछे मुड़कर देखें तो"।\n- जो महीने आने वाले हैं, उन्हें FUTURE tense में - "आने वाले", "अगले", "${currentYear} के बाकी महीनों में"।\n- अगर next year (${currentYear + 1}) के किसी month का ज़िक्र करें, तो ALWAYS "${currentYear + 1} का January/February/March" बोलिए - साल skip मत कीजिए।\n- बीते हुए events के लिए remedies/solutions मत दीजिए - वो time जा चुका है। Past events सिर्फ pattern recognition के लिए reference कीजिए।\n- Future predictions में specific month + year हमेशा बोलिए।`
+            : `## TEMPORAL AWARENESS (CRITICAL)\nToday's date: ${todayStr}, Time: ${currentTime}\nCurrent month: ${currentMonth}\n\n⚠️ STRICT DATE RULES:\n- Today is ${todayStr}. Months that have already passed (January-${now.toLocaleDateString('en-US', { month: 'long' })} ${currentYear}) MUST be referred to in PAST tense - "that period has passed", "looking back", "during that time".\n- Upcoming months MUST use FUTURE tense - "in the coming", "ahead in", "the remaining months of ${currentYear}".\n- If referencing a month in next year (${currentYear + 1}), ALWAYS say "${currentYear + 1} January/February/March" - never skip the year.\n- Do NOT give remedies or solutions for past events - that time has passed. Reference past events ONLY for pattern recognition.\n- Always include specific month + year in future predictions.`;
+
+        const userGender = this.userData?.gender || '';
+        const genderLabel = userGender === 'male' ? 'Male (पुरुष)' : userGender === 'female' ? 'Female (महिला)' : 'Not specified';
+
+        const commonFacts = isHindi
+            ? `${temporalRules}\n\nUser gender: ${genderLabel}\n\nNumerology:\n- Life Path: ${numbers.lifePath || 'unknown'}\n- Destiny: ${numbers.destiny || 'unknown'}\n- Soul Urge: ${numbers.soulUrge || 'unknown'}\n- Personal Year: ${numbers.personalYear || 'unknown'}\n\n${chartFacts}${timingHints ? `\nTiming hints: ${timingHints}` : ''}\n\nIMPORTANT: Use the EXACT planetary positions, dasha periods, and house analysis given above to make SPECIFIC predictions. Reference the actual planet names, signs, degrees, and dasha years. For example: "शनि मीन राशि में 14.2° पर है और आपकी राहु दशा 2019 में शुरू हुई - इसका मतलब है कि 2020-2021 में..." This makes predictions feel personally calculated. Do NOT give vague generic predictions. Every claim must trace back to a specific chart fact above.`
+            : `${temporalRules}\n\nUser gender: ${genderLabel}\n\nNumerology:\n- Life Path: ${numbers.lifePath || 'unknown'}\n- Destiny: ${numbers.destiny || 'unknown'}\n- Soul Urge: ${numbers.soulUrge || 'unknown'}\n- Personal Year: ${numbers.personalYear || 'unknown'}\n\n${chartFacts}${timingHints ? `\nTiming hints: ${timingHints}` : ''}\n\nIMPORTANT: Use the EXACT planetary positions, dasha periods, and house analysis given above to make SPECIFIC predictions. Reference the actual planet names, signs, degrees, and dasha transition years. For example: "Saturn in Pisces at 14.2° combined with your Rahu dasha starting 2019 means that in 2020-2021..." This makes predictions feel personally calculated. Do NOT give vague generic predictions. Every claim must trace back to a specific chart fact above.`;
+
+        const sharedRules = isHindi
+            ? `Rules:\n- सिर्फ उन्हीं patterns पर बात करें जो ऊपर दिए facts से support होते हैं।\n- एक strength और एक friction point दोनों बताइए।\n- अगर संकेत mixed हैं, तो mixed ही कहिए।\n- western zodiac, vedic moon sign, और ascendant को कभी mix मत कीजिए। अगर इनमें से कुछ mention करें, तो label साफ़ रखें।\n- "आप powerful हैं", "success आ रहा है", "greatness तय है" जैसी default praise मत दीजिए।\n- love, money, marriage, fame, victory, या breakthroughs के guarantees मत दीजिए।\n- psychic, energy reading, mind reading, या vague spirituality का दावा मत कीजिए।\n- वही न कहिए जो बहुत users पर equally fit ho सकता है।\n- user का नाम हमेशा Devanagari (हिंदी लिपि) में लिखिए, Roman script में नहीं। उदाहरण: Rahul → राहुल, Priya → प्रिया, Aviraj → अविराज। यह TTS pronunciation के लिए ज़रूरी है।\n- 🚫 नाम ZYADA बार मत दोहराइए। पूरे response में user का नाम MAX 1-2 बार ही use कीजिए। बाकी जगह "आप", "आपके", "आपकी" use कीजिए। हर sentence में नाम repeat करना FORBIDDEN है।\n- 🚫 WORD REPETITION BAN: एक ही शब्द या phrase लगातार 2 sentences में repeat मत कीजिए। Synonyms use कीजिए। जैसे: "energy" → "ऊर्जा/ताकत/vibe", "pattern" → "ढंग/तरीका/cycle", "strong" → "मज़बूत/powerful/deep"। Back-to-back same word = BAD.\n- 🚫 YOGA/DOSHA/DASHA REPETITION BAN: एक ही yoga, dosha, या dasha का नाम बार-बार अलग-अलग sections में मत दोहराइए। अगर पहले किसी section में mention हो चुका है तो दोबारा नाम मत लीजिए — कोई दूसरा angle, दूसरी planetary combination use कीजिए, या indirect reference दीजिए ("वही दशा", "वही pattern")। एक ही technical term बार-बार repeat करना robotic लगता है।\n- 🚫 ROMANIZED HINDI BAN: Hindi/Sanskrit words कभी भी Roman/Latin script में मत लिखिए (जैसे "aapka", "kundli", "rashi", "graha", "dasha", "mahadasha", "shani", "mangal")। Hindi word है तो Devanagari में लिखिए (आपका, कुंडली, राशि, ग्रह, दशा, महादशा, शनि, मंगल)। English word है तो English में। Romanized Hindi = FORBIDDEN।\n- भाषा SIMPLE, LIGHT spoken Hinglish रखिए - जैसे दोस्तों से बात करते हैं वैसे। जो Hindi words आम बोलचाल में बोले जाते हैं (जैसे: ज़िन्दगी, दिल, रास्ता, पैसा, काम, वक़्त, ख़ुशी, तकलीफ़, दर्द, सोच, हिम्मत, ताक़त, फ़ैसला, रिश्ता, ख़्वाब, ज़रूरत, etc.) वो Devanagari में ही लिखिए - ये Hindi-origin words हैं और इन्हें English में बदलने की ज़रूरत नहीं। सिर्फ HEAVY/LITERARY/BOOKISH Sanskrit-laden Hindi बदलिए: "सम्भावना" → "chance/मौक़ा", "परिस्थिति" → "situation/हालात", "विशेष" → "ख़ास", "प्रभाव" → "असर", "अनुभव" → "महसूस", "व्यक्तित्व" → "शख़्सियत", "सम्पूर्ण" → "पूरा", "आवश्यक" → "ज़रूरी", "उपस्थित" → "मौजूद"। राहु, केतु, शनि, गुरु, लग्न, दशा, नक्षत्र, कुंडली, राशि, ग्रह जैसे Vedic terms और common Hindi words हमेशा Devanagari में ही रखिए।\n- ⚠️ GENDER-AWARE LANGUAGE (CRITICAL): User का gender ऊपर दिया है। Hindi में user के बारे में बात करते वक्त CORRECT gendered verb forms use कीजिए। अगर user MALE है तो: "आप जानते हैं", "आपके अंदर है", "आप समझते हैं", "आपको मिलेगा", "आप कर सकते हैं", "आपकी ज़िन्दगी में"। अगर user FEMALE है तो: "आप जानती हैं", "आपके अंदर है", "आप समझती हैं", "आपको मिलेगा", "आप कर सकती हैं", "आपकी ज़िन्दगी में"। MAYA खुद female है (मैं देख रही हूँ, मुझे दिख रहा है) - लेकिन USER को address करते वक्त उनका ACTUAL gender use करें। Male user को "आप जानती हैं" कहना FORBIDDEN है।\n- सीधे "आप" से बात कीजिए। TTS-safe रखिए।\n- पूरे response को एक बहती हुई कहानी की तरह लिखिए - हर sentence पिछले sentence से जुड़ा हो और अगले sentence की ज़मीन तैयार करे। अलग-अलग टुकड़े मत फेंकिए जो बोलने पर disconnected लगें। सोचिए कि आप एक continuous paragraph बोल रहे हैं, bullet points नहीं पढ़ रहे।`
+            : `Rules:\n- Only describe patterns supported by the facts above.\n- Include one strength and one friction point.\n- If the evidence is mixed, say it is mixed.\n- Never conflate western zodiac, vedic moon sign, and ascendant. If you mention one, label it clearly.\n- Do not default to praise like "you are powerful", "success is coming", or "you are destined for greatness".\n- Do not promise love, marriage, money, fame, victory, or breakthroughs.\n- Do not claim psychic access, energy reading, or mind reading.\n- Do not write anything that could fit most users equally well.\n- If you are writing in Hindi, keep Hindi words in Devanagari and keep natural English terms like chart, timing, pattern, pressure, career, relationship, money, and energy in English script rather than transliterating them. Always write the user's name in Devanagari script for proper pronunciation.\n- 🚫 NAME REPETITION BAN: Use the user's name MAX 1-2 times in the entire response. Use "you", "your" everywhere else. Repeating the name in every sentence is FORBIDDEN.\n- 🚫 WORD REPETITION BAN: Do NOT repeat the same word or phrase in back-to-back sentences. Use synonyms. e.g. "energy" → "force/drive/vibe", "pattern" → "cycle/tendency/thread". Same word in consecutive sentences = BAD.\n- 🚫 YOGA/DOSHA/DASHA REPETITION BAN: Do NOT repeatedly name the same yoga, dosha, or dasha across sections. If already mentioned in a previous section, do NOT name it again — use a different angle, a different planetary combination, or reference it indirectly (e.g. "that same cycle", "the pattern I mentioned"). Repeating the same technical term across multiple sections sounds robotic.\n- 🚫 ROMANIZED HINDI BAN: NEVER write Hindi/Sanskrit words in Roman/Latin script (e.g. "aapka", "kundli", "rashi", "graha", "dasha", "mahadasha", "shani", "mangal"). If a word is Hindi/Sanskrit, write it in Devanagari (आपका, कुंडली, राशि, ग्रह, दशा, महादशा, शनि, मंगल). If English, write in English. No romanized Hindi ever.\n- ⚠️ GENDER-AWARE LANGUAGE (CRITICAL): The user's gender is specified above. When addressing the user, use gender-appropriate language. For Hindi text: if user is MALE, use masculine verb forms ("आप जानते हैं", "आप समझते हैं", "आप कर सकते हैं"). If user is FEMALE, use feminine verb forms ("आप जानती हैं", "आप समझती हैं", "आप कर सकती हैं"). MAYA herself is always female ("मैं देख रही हूँ") but the USER must be addressed with THEIR correct gender. Calling a male user "आप जानती हैं" is FORBIDDEN. For English: use correct pronouns (he/him/his for male, she/her/hers for female) in any third-person references.\n- Speak directly to the user. Keep it TTS-safe.\n- Write the entire response as one flowing narrative - each sentence must connect to the previous one and set up the next. Do not drop isolated observations that sound disconnected when spoken aloud. Think of each response as one continuous spoken paragraph, not a list of separate points.`;
+
+        const sectionPrompts = isHindi
+            ? {
+                opening: `आप current user के लिए ONE opening narration लिख रही हैं। 5-6 वाक्य। पहली line में नाम लेकर warm greeting दीजिए और साफ़ कहिए कि आप MAYA हैं। इस introduction line के ठीक बाद एक [[pause-500]] token लगाइए ताकि user को introduce सुनने का समय मिले। दूसरी line में grounded-mystic buildup बनाइए और कहिए कि उनकी kundli, timing, या जन्म pattern में एक hidden layer अभी खुलने वाला है। तीसरी line में वही पहला factual clue दीजिए जो उनकी birth pattern, western sign, moon sign, numbers, या current timing में सबसे ज़्यादा standout करता है, लेकिन literal जन्मतिथि को पढ़कर मत सुनाइए। चौथी line में एक real strength और एक quiet tension को lightly hold कीजिए। आखिरी line में strong curiosity पैदा करें ताकि user naturally अगला layer सुनना चाहे, और साफ़ कहें कि शुरुआत kundli और timing से होगी। यह intimate, fresh, और unscripted लगे। generic cosmic filler मत लिखिए।`,
+                kundli: `आप current user के लिए ONE kundli formation narration लिख रही हैं। सबसे पहले एक warm, inviting line से शुरू कीजिए जैसे "चलिए, अब हम साथ मिलकर आपकी कुंडली की गहराइयों में उतरते हैं" या "आइए, अब हम साथ में देखते हैं कि आपके ग्रह क्या कह रहे हैं" - यह line natural और exploratory feel होनी चाहिए, पहले से reveal नहीं करनी चाहिए। फिर visible chart markers जैसे ascendant, moon sign, current dasha, dominant element, या chart highlight में से 2-3 facts use कीजिए। Reading को grounded रखिए और end में numbers की तरफ natural transition दीजिए। 5-7 वाक्य। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
+                loveIntro: `आप current user के लिए love section का ONE short transition लिख रही हैं। 1-2 वाक्य। Direct, warm, और section-specific। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
+                love: `आप current user के लिए ONE unique DEEP love reading लिख रही हैं। यह FILTERLESS reading है - कोई sugar-coating नहीं, सीधी बात। ऊपर दिए गए "7TH HOUSE & MARRIAGE ANALYSIS" section को ध्यान से पढ़िए - अगर user likely married है तो marriage dynamics, partner से real friction points, और relationship का actual texture बताइए। अगर likely unmarried है तो attachment pattern, dating behaviour, और partnership timing specific months/years के साथ बताइए। Venus की exact राशि, 7th house lord, और relevant दशा periods को NAME करके reference कीजिए। बताइए कि इन planetary positions की वजह से EXACTLY क्या relationship dynamic बनती है - vague "love life अच्छी होगी" BILKUL मत कहिए। 5-7 वाक्य - raw, real, और eerily specific। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
+                careerIntro: `आप current user के लिए career section का ONE short transition लिख रही हैं। 1-2 वाक्य। Work style, money flow, या practical direction की तरफ clean shift दीजिए। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
+                career: `आप current user के लिए ONE unique DEEP career and money reading लिख रही हैं। यह FILTERLESS reading है - नकली positivity नहीं चाहिए। पहले बताई बातें repeat मत कीजिए। ऊपर दिए chart data से 10th house, दशा period, और planetary positions use करके बताइए कि user का career EXACTLY किस direction में naturally pull हो रहा है और कहाँ वो गलत तरफ energy waste कर रहे हैं। एक very specific underused strength और एक concrete next move बताइए with timeline (specific month/year)। 5-7 वाक्य - practical और actionable, generic advice नहीं। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
+                yearIntro: `आप current user के लिए timing section का ONE short transition लिख रही हैं। 1-2 वाक्य। आने वाले महीनों की timing windows की तरफ clean shift दीजिए। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
+                year: `आप current user के लिए ONE unique DEEP timing reading लिख रही हैं। TEMPORAL AWARENESS section ध्यान से पढ़ें - जो months बीत चुके हैं उन्हें past tense में reference करें, और ONLY आने वाले months की predictions दें। पहले दिए timing hints repeat मत कीजिए। दशा transitions, planetary transits, और personal year number को combine करके अगले 3-6 महीनों की 2-3 NEW specific windows बताइए - हर window में exact month + year + क्या करना है/क्या बचना है। एक hidden trap भी बताइए with timing। 5-7 वाक्य - sharp और specific। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
+                warningIntro: `आप current user के लिए caution section का ONE short transition लिख रही हैं। 1-2 वाक्य। पहले कही गई strengths को acknowledge करें, फिर एक honest pressure point की तरफ move करें। डराइए नहीं। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
+                warning: `आप current user के लिए ONE honest DEEP warning section लिख रही हैं। यह FILTERLESS reading है - sach बोलिए, package मत कीजिए। पहले दिए caution hints repeat मत कीजिए। Chart data से एक NEW specific self-sabotage pattern identify कीजिए - planetary position से exact reason बताइए कि ये pattern क्यों बनता है, कब trigger होता है (specific months/situations), और practically कैसे बचना है। Generic "careful रहिए" मत कहिए - actual planetary evidence दीजिए। 5-7 वाक्य। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
+                calculationRecovery: `आप current user के लिए ONE short recovery line लिख रही हैं। 1-2 वाक्य। बताइए कि reading data पूरी तरह sync नहीं हुआ है और तुरंत फिर से align करना होगा। इसे operational रखें, mystical sales copy मत बनाइए। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
+                emailGate: `आप current user के लिए ONE email gate transition लिख रही हैं। 2-3 वाक्य। पहले FOMO create कीजिए — बताइए कि उनकी कुंडली में कुछ ऐसा दिखा है जो अभी बताना ज़रूरी है, लेकिन वो deeper layer private saved file में है जिसमें chart-specific timing windows, do/avoid steps, और warnings हैं। फिर CLEARLY कहिए कि screen पर एक email field दिखेगा और उन्हें अपना email address वहाँ type करना है — जैसे "अभी screen पर email field आ रहा है, बस अपना email वहाँ type कर दीजिए ताकि ये reading safe रहे और मैं आगे की deeper layer खोल सकूँ।" सिर्फ एक बार माँगें, ज़्यादा insist मत करें। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
+                fomoHook: `आप current user के लिए ONE fear/FOMO hook लिख रही हैं। 2-3 वाक्य। कुंडली और numbers के आधार पर एक concerning या serious pattern बताइए - जैसे आने वाले महीनों में कोई challenge, relationship में hidden tension, career में कोई trap, या कोई repeating self-sabotage pattern। इसे ऐसे बोलिए कि user को लगे "मुझे इसके बारे में और जानना होगा।" यह prediction confident और specific होनी चाहिए, vague नहीं। डराइए नहीं, लेकिन urgency ज़रूर बनाइए। End में hint दीजिए कि full details private reading में हैं। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
+                authCheck: `आप current user के लिए ONE short record-check line लिख रही हैं। 1 sentence। बताइए कि आप उनकी saved reading check कर रही हैं। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
+                welcomeBack: `आप current user के लिए returning-user prompt लिख रही हैं। 2-3 वाक्य। Warm recognition, saved reading, और password ask। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
+                newUser: `आप current user के लिए new-user prompt लिख रही हैं। 2-3 वाक्य। Password create करके reading save और protect करने की बात करें। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
+                deepRevealPrep: `आप current user के लिए deep reveal prep लिख रही हैं। 2-3 वाक्य। बताइए कि अब तक जो बताया वो surface layer थी, अब deeper patterns खुलेंगे जो ज़्यादा personal और private हैं। End में consent-style question दीजिए। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
+                completion: `आप current user के लिए ONE short completion message लिख रही हैं। जो reading दी गई है उसे grounded way में close कीजिए और questions invite कीजिए। 2-3 वाक्य। ज़्यादा से ज़्यादा एक [[pause-250]] token।`
+            }
+            : {
+                opening: `Write ONE opening narration for the current user. 5-6 sentences. In the first sentence, greet them by name warmly and briefly introduce yourself as MAYA. Place a [[pause-500]] token IMMEDIATELY after this introduction sentence so the user has a moment to absorb who is speaking. In the second sentence, create grounded mystic buildup and say that a hidden layer in their kundli, timing, or birth pattern is about to open. Only in the third sentence should you name the first detail that stands out from their birth pattern, western sign, moon sign, numbers, or current timing, and do not recite the literal birth date unless it is truly necessary. In the fourth sentence, hold one real strength and one quiet tension lightly. The final sentence must create curiosity so they naturally want the next layer, while clearly saying the reading will begin through kundli and timing. It must sound fresh, intimate, and unscripted. Do not use generic cosmic filler.`,
+                kundli: `Write ONE kundli formation narration for the current user. Start with a warm, inviting line like "Let's explore your kundli together" or "Come, let me walk you through what your planets are saying" - make it feel like a shared journey, not a lecture. Then use 2-3 visible chart markers such as ascendant, moon sign, current dasha, dominant element, or chart highlights. Keep it grounded and end with a natural transition toward the numbers. 5-7 sentences. Use at most one [[pause-250]] token.`,
+                loveIntro: `Write ONE short transition into the love section for the current user. 1-2 sentences. Make it warm, direct, and section-specific. Use at most one [[pause-250]] token.`,
+                love: `Write ONE unique FILTERLESS love reading for the current user. No sugar-coating - be direct and real. Read the "7TH HOUSE & MARRIAGE ANALYSIS" section carefully - if the user is likely married, discuss actual marriage dynamics, real friction points with the partner, and the relationship's true texture. If likely unmarried, discuss attachment behaviour, dating patterns, and partnership timing with specific months/years. NAME the exact Venus sign, 7th house lord, and relevant dasha periods. Explain EXACTLY what relationship dynamic these planetary positions create - do NOT say vague things like "love life will improve". 5-7 sentences - raw, real, and eerily specific. Use at most one [[pause-250]] token.`,
+                careerIntro: `Write ONE short transition into the career section for the current user. 1-2 sentences. Shift naturally toward work style, money flow, or practical direction. Use at most one [[pause-250]] token.`,
+                career: `Write ONE unique FILTERLESS career and money reading for the current user. No fake positivity. Do NOT repeat anything already told. Use the chart data - 10th house, dasha period, and planetary positions - to explain EXACTLY which career direction the user is naturally pulled toward and where they are wasting energy on the wrong path. Name one very specific underused strength and one concrete next move with a timeline (specific month/year). 5-7 sentences - practical and actionable, not generic advice. Use at most one [[pause-250]] token.`,
+                yearIntro: `Write ONE short transition into the timing section for the current user. 1-2 sentences. Shift naturally toward the coming months and timing windows. Use at most one [[pause-250]] token.`,
+                year: `Write ONE unique FILTERLESS timing reading for the current user. READ the TEMPORAL AWARENESS section carefully - months that have passed must be referenced in past tense, and predictions must ONLY target upcoming months. Do NOT repeat any timing hints already mentioned. Combine dasha transitions, planetary transits, and personal year number to map 2-3 NEW specific windows in the next 3-6 months - each window must include exact month + year + what to do or avoid. Include one hidden trap with timing. 5-7 sentences - sharp and specific. Use at most one [[pause-250]] token.`,
+                warningIntro: `Write ONE short transition into the caution section for the current user. 1-2 sentences. Acknowledge the strengths already covered, then move honestly toward one pressure point without fear-mongering. Use at most one [[pause-250]] token.`,
+                warning: `Write ONE honest FILTERLESS warning section for the current user. Tell the truth plainly - do not package it. Do NOT repeat any caution hints already given. Use chart data to identify one NEW specific self-sabotage pattern - explain from the planetary position EXACTLY why this pattern forms, when it triggers (specific months/situations), and how to practically avoid it. Do NOT say generic "be careful" - provide actual planetary evidence. 5-7 sentences. Use at most one [[pause-250]] token.`,
+                calculationRecovery: `Write ONE short recovery line for the current user. 1-2 sentences. Explain that the reading data did not fully sync and needs to be aligned again right away. Keep it operational rather than mystical or salesy. Use at most one [[pause-250]] token.`,
+                emailGate: `Write ONE email-gate transition for the current user. 2-3 sentences. First create FOMO — say you found something in their chart that needs to be shared now, but the deeper layer is in a private saved file with chart-specific timing windows, do/avoid steps, and warnings. Then CLEARLY instruct the user to type their email in the field that is about to appear on screen — something like "You'll see an email field on screen now — just type your email there so this reading stays saved and I can unlock the deeper layer for you." Ask only once, do not push or repeat the ask. Use at most one [[pause-250]] token.`,
+                fomoHook: `Write ONE fear/FOMO hook for the current user. 2-3 sentences. Based on their kundli and numbers, reveal one concerning or serious pattern - such as an upcoming challenge in the next few months, a hidden relationship tension, a career trap, or a repeating self-sabotage cycle. Say it in a way that makes the user think "I need to know more about this." The prediction must be confident and specific, not vague. Do not fear-monger, but create genuine urgency. End with a hint that full details are in the private reading. Use at most one [[pause-250]] token.`,
+                authCheck: `Write ONE short record-check line for the current user. 1 sentence. Say that you are checking their saved reading. Use at most one [[pause-250]] token.`,
+                welcomeBack: `Write ONE returning-user prompt for the current user. 2-3 sentences. Include warm recognition, mention the saved reading, and ask for the password. Use at most one [[pause-250]] token.`,
+                newUser: `Write ONE new-user prompt for the current user. 2-3 sentences. Explain that creating a password will save and protect the reading. Use at most one [[pause-250]] token.`,
+                deepRevealPrep: `Write ONE deep-reveal prep for the current user. 2-3 sentences. Acknowledge that what was shared so far was the surface layer, and now the deeper, more personal patterns are about to be revealed. End with a consent-style question. Use at most one [[pause-250]] token.`,
+                completion: `Write ONE short completion message for the current user. Close the reading in a grounded way and invite questions. 2-3 sentences. Use at most one [[pause-250]] token.`
+            };
+
+        return `${sectionPrompts[sectionKey] || sectionPrompts.completion}\n\nNarrative arc for this section:\n${narrativeStageGuide}\n\n${commonFacts}\n\n${this._buildAlreadySpokenContext(sectionKey, isHindi)}\n\n${sharedRules}\n\nReturn only the spoken text.`;
+    },
+
+    /**
+     * Build a summary of what was already spoken so AI avoids repetition.
+     */
+    _buildAlreadySpokenContext(sectionKey, isHindi) {
+        // ALL sections get context from previous narrations (not just deep sections)
+        if (!this.spokenNarrations?.length) return '';
+        // Skip only for the very first section (opening)
+        if (sectionKey === 'opening' && this.spokenNarrations.length === 0) return '';
+
+        // Build a FULL digest of what was already told - no truncation so AI has complete context
+        const digest = this.spokenNarrations
+            .map(n => {
+                const cleaned = (n.text || '').replace(/\[\[pause-\d+\]\]/g, '').trim();
+                return `[${n.stage}]: ${cleaned}`;
+            })
+            .join('\n');
+
+        return isHindi
+            ? `## पहले बताई गई बातें - FULL SESSION CONTEXT (CRITICAL)\nUser को इस session में अब तक ये सब बताया जा चुका है। यह COMPLETE transcript है - इसे ध्यान से पढ़िए:\n${digest}\n\n⚠️ STRICT RULES:\n- ऊपर बताई गई कोई भी बात repeat, rephrase, या summarize मत कीजिए।\n- हर नया section MUST contain completely NEW insights जो ऊपर कहीं नहीं हैं।\n- अगर कोई planet, event, pattern, या time period ऊपर mention हो चुका है, तो उसे दोबारा मत बोलिए - नया angle या नई बात लाइए।\n- इस context को अपनी reading का FOUNDATION बनाइए - पिछली बातों से BUILD करिए, repeat मत करिए।`
+            : `## FULL SESSION CONTEXT (CRITICAL)\nThe user has heard ALL of the following in this session. Read this complete transcript carefully:\n${digest}\n\n⚠️ STRICT RULES:\n- Do NOT repeat, rephrase, or summarize ANY point from above.\n- Every new section MUST contain completely NEW insights not found anywhere above.\n- If a planet, event, pattern, or time period was already mentioned above, do NOT bring it up again - find a new angle or new fact.\n- Use this context as your FOUNDATION - BUILD on previous insights, never repeat them.`;
+    },
+
+    /**
+     * Build a plain-text digest of already-spoken narrations for passing to external AI calls.
+     */
+    _getAlreadyToldDigest() {
+        if (!this.spokenNarrations?.length) return '';
+        return this.spokenNarrations
+            .map(n => {
+                const cleaned = (n.text || '').replace(/\[\[pause-\d+\]\]/g, '').trim();
+                return `[${n.stage}]: ${cleaned}`;
+            })
+            .join('\n');
+    },
+
+    /**
+     * Speak filler phrases + show blob thinking + loading indicator while async AI runs.
+     * @param {Function} asyncFn - async function to run
+        * @param {string} fillerType - 'thinking' | 'calculating' | 'revealing' | 'love' | 'career' | 'year' | 'kundli'
+     * @returns {*} the result of asyncFn
+     */
+    async withFiller(asyncFn, fillerType = 'thinking') {
+        // Start blob thinking animation
+        if (window.MayaBlob?.startThinking) MayaBlob.startThinking();
+
+        // Show thinking indicator
+        this._showThinkingIndicator(fillerType);
+
+        try {
+            if (window.MayaVoice?.withFillers) {
+                return await MayaVoice.withFillers(asyncFn, { type: fillerType });
+            }
+            return await asyncFn();
+        } finally {
+            // Stop blob thinking, restore idle
+            if (window.MayaBlob?.stopThinking) MayaBlob.stopThinking();
+
+            // Hide thinking indicator
+            this._hideThinkingIndicator();
+        }
+    },
+
+    /**
+     * Show a high-visibility animated thinking panel during AI generation.
+     */
+    _showThinkingIndicator(type = 'thinking') {
+        this._hideThinkingIndicator();
+
+        const lang = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const copy = {
+            thinking: {
+                badge: lang ? 'AI विश्लेषण' : 'AI ANALYSIS',
+                title: lang ? 'आपकी chart layers पढ़ रही हूँ' : 'Reading the deeper layers of your chart',
+                subtitle: lang ? 'ग्रह, houses और current timing को cross-check कर रही हूँ।' : 'Cross-checking planets, houses, and current timing.'
+            },
+            calculating: {
+                badge: lang ? 'सटीक गणना' : 'PRECISION CALCULATION',
+                title: lang ? 'आपकी exact chart math run हो रही है' : 'Running your exact chart calculations',
+                subtitle: lang ? 'birth time, degrees और numerology reductions verify हो रहे हैं।' : 'Verifying birth time, degrees, and numerology reductions.'
+            },
+            revealing: {
+                badge: lang ? 'डीप रीडिंग' : 'DEEP READING',
+                title: lang ? 'छिपा हुआ pattern निकाल रही हूँ' : 'Pulling out the hidden pattern',
+                subtitle: lang ? 'आपके सवाल से जुड़ी सबसे गहरी line पकड़ रही हूँ।' : 'Finding the thread most relevant to your question.'
+            },
+            love: {
+                badge: lang ? 'लव रीडिंग' : 'LOVE READING',
+                title: lang ? 'आपका relationship pattern पढ़ रही हूँ' : 'Reading your relationship pattern',
+                subtitle: lang ? 'Venus, सातवां भाव और emotional timing को देख रही हूँ।' : 'Checking Venus, the seventh house, and emotional timing.'
+            },
+            career: {
+                badge: lang ? 'करियर रीडिंग' : 'CAREER READING',
+                title: lang ? 'आपकी professional line decode कर रही हूँ' : 'Decoding your professional line',
+                subtitle: lang ? 'tenth house, Saturn और money indicators align कर रही हूँ।' : 'Aligning the tenth house, Saturn, and money indicators.'
+            },
+            year: {
+                badge: lang ? 'आने वाला समय' : 'YEAR AHEAD',
+                title: lang ? 'आने वाले महीनों की theme पढ़ रही हूँ' : 'Reading the theme of the coming months',
+                subtitle: lang ? 'transits, windows और timing shifts को map कर रही हूँ।' : 'Mapping transits, timing windows, and major shifts.'
+            },
+            kundli: {
+                badge: lang ? 'कुंडली ALIGNMENT' : 'KUNDLI ALIGNMENT',
+                title: lang ? 'पूरी birth chart align कर रही हूँ' : 'Aligning your full birth chart',
+                subtitle: lang ? 'लग्न, houses और graha placements को lock कर रही हूँ।' : 'Locking your lagna, houses, and graha placements.'
+            }
+        };
+        const content = copy[type] || copy.thinking;
+
+        const indicator = document.createElement('div');
+        indicator.id = 'maya-thinking-indicator';
+        indicator.className = `maya-thinking-indicator maya-thinking-indicator--${type}`;
+        indicator.setAttribute('role', 'status');
+        indicator.setAttribute('aria-live', 'polite');
+        indicator.innerHTML = `
+            <div class="maya-thinking-indicator__accent-line"></div>
+            <span class="maya-thinking-indicator__badge">
+                <span class="maya-thinking-indicator__badge-dot"></span>
+                ${content.badge}
+            </span>
+            <div class="maya-thinking-indicator__content">
+                <strong class="maya-thinking-indicator__title">${content.title}</strong>
+                <span class="maya-thinking-indicator__subtitle">${content.subtitle}</span>
+                <div class="maya-thinking-indicator__progress" aria-hidden="true">
+                    <div class="maya-thinking-indicator__progress-bar"></div>
+                </div>
+            </div>
+        `;
+
+        const blobContainer = document.getElementById('maya-blob-container');
+        const overlay = document.getElementById('maya-overlay');
+        if (blobContainer) {
+            blobContainer.classList.add('maya-blob-container--thinking');
+            blobContainer.parentElement.insertBefore(indicator, blobContainer.nextSibling);
+        } else if (overlay) {
+            overlay.appendChild(indicator);
+        }
+        overlay?.classList.add('maya-overlay--thinking');
+    },
+
+    _hideThinkingIndicator() {
+        const el = document.getElementById('maya-thinking-indicator');
+        if (el) el.remove();
+        document.getElementById('maya-overlay')?.classList.remove('maya-overlay--thinking');
+        document.getElementById('maya-blob-container')?.classList.remove('maya-blob-container--thinking');
+    },
+
+    async generateDirectReadingSection(sectionKey, context = {}) {
+        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        if (!window.MayaAI) {
+            return '';
+        }
+
+        try {
+            MayaAI.init({
+                fullName: this.userData?.name || this.firstName,
+                name: this.userData?.name || this.firstName,
+                birthDate: this.userData?.birthDate,
+                birthTime: this.userData?.birthTime || '12:00',
+                birthPlace: this.userData?.birthPlace || '',
+                gender: this.userData?.gender || '',
+                language: lang
+            });
+
+            const prompt = this.buildDirectSectionPrompt(sectionKey, context);
+            const sources = [];
+
+            if (window.MayaAI?.callGemini) {
+                sources.push(async () => MayaAI.callGemini(prompt));
+            }
+
+            if (!sources.length && window.MayaAI?.sendMessage) {
+                sources.push(async () => MayaAI.sendMessage(prompt));
+            }
+
+            if (!sources.length) {
+                return '';
+            }
+
+            const generated = await MayaUtils.retryWithFallbacks(sources, {
+                retriesPerFunction: 2,
+                baseDelay: 800,
+                label: `${sectionKey} direct reading`
+            });
+
+            return this.sanitizeNarrationText(generated);
+        } catch (error) {
+            console.warn(`Direct ${sectionKey} reading failed:`, error.message);
+            return '';
+        }
+    },
+
+
+    /**
+     * Start the funnel experience
+     */
+    async start() {
+        console.log('🎭 MayaFunnel.start() called');
+        
+        if (!this.userData || !this.calculations) {
+            console.error('❌ Funnel not initialized properly - userData:', !!this.userData, 'calculations:', !!this.calculations);
+            // Try to recover by initializing with saved data
+            const savedProfile = MayaUtils.storage.get('maya_profile');
+            const savedFunnelData = MayaUtils.storage.get('funnel_data');
+            const userData = savedFunnelData || savedProfile;
+            
+            if (userData && userData.name && userData.birthDate) {
+                console.log('🔄 Recovering funnel with saved data...');
+                this.init(userData);
+            } else {
+                console.error('❌ Cannot recover funnel - no saved data');
+                return;
+            }
+        }
+
+        try {
+            // Show the MAYA overlay IMMEDIATELY for fast perceived loading
+            const overlay = document.getElementById('maya-overlay');
+            if (overlay) {
+                overlay.classList.add('show');
+                // Hide back and close buttons during funnel to ensure completion
+                overlay.classList.add('funnel-mode');
+            }
+
+            // Hide text display - we use calculation overlay instead
+            const textDisplay = document.getElementById('maya-text-display');
+            if (textDisplay) textDisplay.style.display = 'none';
+
+            // Hide input area
+            const inputArea = document.getElementById('maya-input-area');
+            if (inputArea) inputArea.style.display = 'none';
+
+            // Initialize blob animation
+            if (window.MayaBlob && !MayaBlob.isAnimating) {
+                MayaBlob.init('maya-blob-container');
+            }
+
+            // Initialize and show pause button
+            this.initPauseButton();
+            this.showFunnelControls(true);
+            this.isPaused = false;
+
+            // PRE-WARM TTS in the background, but do not block the first spoken line on it.
+            window.MayaVoice?.preWarmTTS?.();
+
+            // Unmute voice
+            if (window.MayaVoice) {
+                MayaVoice.setMute(false);
+                await MayaVoice.resumeContext();
+            }
+
+            // Start background music
+            this.startBackgroundMusic();
+
+            console.log('🎭 Funnel UI ready, beginning journey...');
+            
+            // Begin the journey with flowing narrative
+            await this.beginJourney();
+            
+        } catch (error) {
+            console.error('❌ Funnel start error:', error);
+            // Try to continue with basic flow even if something fails
+            this.handleFunnelError(error);
+        }
+    },
+
+    /**
+     * Handle funnel errors gracefully
+     */
+    handleFunnelError(error) {
+        console.error('🚨 Funnel error handler:', error);
+        
+        // Show a basic message to the user
+        const overlay = document.getElementById('maya-overlay');
+        if (overlay) {
+            overlay.classList.add('show');
+            
+            const textDisplay = document.getElementById('maya-text-display');
+            if (textDisplay) {
+                textDisplay.style.display = 'block';
+                textDisplay.innerHTML = `
+                    <div class="maya-error-recovery">
+                        <p>Something went wrong. Let me try again...</p>
+                        <button class="btn btn-primary" onclick="MayaFunnel.retryStart()">
+                            Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
+    },
+
+    /**
+     * Retry funnel start
+     */
+    async retryStart() {
+        console.log('🔄 Retrying funnel...');
+        const savedData = MayaUtils.storage.get('funnel_data') || MayaUtils.storage.get('maya_profile');
+        if (savedData) {
+            this.init(savedData);
+            await this.start();
+        }
+    },
+
+    /**
+     * Create and show the calculation overlay
+     */
+    showCalculationOverlay() {
+        // Make blob small during calculations
+        const blobContainer = document.getElementById('maya-blob-container');
+        if (blobContainer) {
+            blobContainer.classList.remove('blob-centered', 'blob-top');
+            blobContainer.classList.add('blob-small');
+        }
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        
+        this.calculationOverlay = document.createElement('div');
+        this.calculationOverlay.id = 'calculation-overlay';
+        this.calculationOverlay.className = 'calculation-overlay';
+        this.calculationOverlay.innerHTML = `
+            <div class="calculation-container">
+                <div class="calculation-title">
+                    <h2>${isHindi ? 'आपकी कुंडली और अंक तैयार हो रहे हैं' : 'Forming Your Kundli and Numbers'}</h2>
+                    <p class="calc-note">${isHindi ? 'जन्म स्थान, जन्म समय और अंक-पैटर्न एक ही रीडिंग में जुड़ रहे हैं।' : 'Birth place, birth time, and number patterns are aligning into one reading.'}</p>
+                </div>
+                <div class="calculation-display" id="calc-display">
+                    <div class="calc-waiting">
+                        <div class="cosmic-dots">
+                            <span></span><span></span><span></span>
+                        </div>
+                        <p>${isHindi ? 'आपकी जन्म कुंडली तैयार हो रही है...' : 'Forming your birth chart...'}</p>
+                    </div>
+                </div>
+                <div class="calculation-result" id="calc-result">
+                    <div class="calculation-result__group calculation-result__group--kundli" data-result-group="kundli"></div>
+                    <div class="calculation-result__group calculation-result__group--numbers" data-result-group="numbers"></div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(this.calculationOverlay);
+    },
+
+    /**
+     * Hide calculation overlay
+     */
+    async hideCalculationOverlay() {
+        if (this.calculationOverlay) {
+            this.calculationOverlay.classList.add('fade-out');
+            await MayaUtils.sleep(500);
+            this.calculationOverlay.remove();
+            this.calculationOverlay = null;
+        }
+        
+        // Restore blob to centered position
+        const blobContainer = document.getElementById('maya-blob-container');
+        if (blobContainer) {
+            blobContainer.classList.remove('blob-small');
+            blobContainer.classList.add('blob-centered');
+        }
+    },
+
+    /**
+     * Begin the cosmic journey - FLOWING narrative with pre-cached content
+     */
+    async beginJourney() {
+        console.log('🌟 Beginning cosmic journey...');
+        
+        try {
+            // STEP 1: Start with the best available personal opening without stalling the funnel.
+            console.log('🗣️ Speaking personalized opening...');
+            const openingNarration = await this.getOpeningNarration();
+            await this.speak(openingNarration);
+            if (openingNarration) this.spokenNarrations.push({ stage: 'opening', text: openingNarration });
+            await MayaUtils.sleep(this.stageTiming.introSettle);
+
+            // Show calculation overlay
+            console.log('📊 Showing calculation overlay...');
+            this.showCalculationOverlay();
+            await MayaUtils.sleep(this.stageTiming.calculationLeadIn);
+
+            // Kundli formation with visual animation
+            console.log('🪐 Animating Kundli...');
+            await this.animateKundliFormation();
+
+            // Life Path with visual animation
+            console.log('📊 Animating Life Path...');
+            await this.animateLifePathCalculation();
+            
+            // Destiny Number with visual animation
+            console.log('📊 Animating Destiny...');
+            await this.animateDestinyCalculation();
+            
+            // Soul Urge with visual animation
+            console.log('📊 Animating Soul Urge...');
+            await this.animateSoulUrgeCalculation();
+
+            // Hide overlay and transition
+            console.log('📊 Hiding overlay...');
+            await this.hideCalculationOverlay();
+            
+            // Teaser reveal
+            console.log('🎁 Showing teaser reveal...');
+            await this.showTeaserReveal();
+            
+            console.log('✅ Cosmic journey complete!');
+            
+        } catch (error) {
+            console.error('❌ Error in beginJourney:', error);
+            // Try to continue even if something fails
+            await this.hideCalculationOverlay();
+            await this.showTeaserReveal();
+        }
+    },
+
+    /**
+     * Show a loading spinner in the calc-display while preparing the next stage.
+     */
+    showCalcLoading(message) {
+        const display = document.getElementById('calc-display');
+        if (!display) return;
+        display.innerHTML = `
+            <div class="calc-loading-indicator">
+                <div class="calc-spinner"></div>
+                <p class="calc-loading-text">${message || 'Preparing...'}</p>
+            </div>
+        `;
+    },
+
+    /**
+     * Animate Life Path calculation with visuals
+     */
+    async animateLifePathCalculation() {
+        const display = document.getElementById('calc-display');
+        const resultArea = document.getElementById('calc-result');
+
+        const isHindiLoading = MayaUtils?.storage?.get('maya_language') === 'hi';
+        this.showCalcLoading(isHindiLoading ? 'Life Path की गणना हो रही है...' : 'Calculating Life Path...');
+        
+        // Use consistent date parsing across the app
+        const date = window.MayaAstrology ? MayaAstrology.parseDate(this.userData.birthDate) : new Date(this.userData.birthDate);
+        if (!date) {
+            console.error('Invalid birth date');
+            return;
+        }
+        const day = date.getDate();
+        const month = date.getMonth() + 1;
+        const year = date.getFullYear();
+        const lifePath = this.calculations.lifePath;
+
+        // Calculate reductions
+        const dayReduced = MayaNumerology.reduceNumber(day, false);
+        const monthReduced = MayaNumerology.reduceNumber(month, false);
+        const yearSum = String(year).split('').reduce((s, d) => s + parseInt(d), 0);
+        const yearReduced = MayaNumerology.reduceNumber(year, false);
+        const total = dayReduced + monthReduced + yearReduced;
+
+        // Show visual breakdown with explanation
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const explanationText = isHindi 
+            ? 'हर birth date में एक cosmic code छिपा होता है। हम Day, Month, और Year को single digits में reduce करके आपका Life Path निकालते हैं।'
+            : 'Every birth date contains a cosmic code. We reduce the Day, Month, and Year to single digits using Pythagorean numerology to reveal your Life Path.';
+        
+        display.innerHTML = `
+            <div class="calc-section life-path-calc">
+                <h3><i class="bi bi-star-fill"></i> Life Path Number</h3>
+                <p class="calc-explanation">${explanationText}</p>
+                <div class="date-breakdown">
+                    <div class="date-part day">
+                        <span class="label">Day</span>
+                        <span class="value animate-in">${day}</span>
+                    </div>
+                    <div class="date-part month">
+                        <span class="label">Month</span>
+                        <span class="value animate-in">${month}</span>
+                    </div>
+                    <div class="date-part year">
+                        <span class="label">Year</span>
+                        <span class="value animate-in">${year}</span>
+                    </div>
+                </div>
+                <div class="calculation-steps" id="life-path-steps"></div>
+            </div>
+        `;
+
+        const aiContext = this.buildBaseAIContext();
+        const spokenDate = this.formatDateSpoken(this.userData.birthDate);
+
+        // Keep the narration strictly on the Life Path math and meaning while this stage is on screen.
+        const isHindiLP = MayaUtils?.storage?.get('maya_language') === 'hi';
+        let narrative = await this.withFiller(() => this.getContent('lifePathCalculationNarrative', async () => {
+            if (window.MayaStatements?.getLifePathMeaningAI) {
+                const explanation = await MayaStatements.getLifePathExplanation(
+                    day,
+                    month,
+                    year,
+                    dayReduced,
+                    monthReduced,
+                    yearSum,
+                    yearReduced,
+                    total,
+                    lifePath,
+                    this.firstName,
+                    spokenDate,
+                    aiContext
+                );
+                if (explanation && explanation.length > 20) return explanation;
+            }
+            
+            return null;
+        }), 'calculating');
+        
+        const speakPromise = narrative && narrative.length > 20
+            ? (console.log('📢 Life Path narrative:', narrative.substring(0, 60) + '...'), this.speak(narrative))
+            : Promise.resolve();
+        
+        // Animate steps while speaking (faster pace)
+        const stepsContainer = document.getElementById('life-path-steps');
+        
+        await MayaUtils.sleep(this.stageTiming.calcStepDelay + 120);
+        this.addCalculationStep(stepsContainer, `${day} → ${dayReduced}`, 'Day');
+        
+        await MayaUtils.sleep(this.stageTiming.calcStepDelay);
+        this.addCalculationStep(stepsContainer, `${month} → ${monthReduced}`, 'Month');
+        
+        await MayaUtils.sleep(this.stageTiming.calcStepDelay);
+        this.addCalculationStep(stepsContainer, `${year} → ${yearSum} → ${yearReduced}`, 'Year');
+        
+        await MayaUtils.sleep(this.stageTiming.calcStepDelay);
+        this.addCalculationStep(stepsContainer, `${dayReduced} + ${monthReduced} + ${yearReduced} = ${total} → ${lifePath}`, 'Life Path', true);
+
+        // Keep prior visual reveals visible and append the Life Path card instead of replacing them.
+        this.appendResultCard('life-path', 'Your Life Path', lifePath, 'life-path');
+
+        // Wait for speech to complete
+        await speakPromise;
+        await MayaUtils.sleep(this.stageTiming.stageSettle);
+    },
+
+    /**
+     * Animate Destiny Number calculation with visuals
+     */
+    async animateDestinyCalculation() {
+        const display = document.getElementById('calc-display');
+        const resultArea = document.getElementById('calc-result');
+
+        const isHindiLoadDest = MayaUtils?.storage?.get('maya_language') === 'hi';
+        this.showCalcLoading(isHindiLoadDest ? 'Destiny Number निकाल रहे हैं...' : 'Calculating Destiny Number...');
+        
+        const destiny = this.calculations.destiny;
+        const name = this.userData.name.toUpperCase();
+        const letters = name.replace(/[^A-Z]/g, '');
+        const breakdown = MayaNumerology.getNameBreakdown(this.userData.name);
+        const sum = breakdown.reduce((s, item) => s + item.value, 0);
+
+        const aiContext = this.buildBaseAIContext();
+
+        // Show name breakdown with explanation
+        const isHindiDest = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const destinyExplanation = isHindiDest
+            ? 'आपके नाम का हर letter एक vibration carry करता है। Pythagorean system में values जोड़कर जो total बनता है, वही आपकी long-term direction और public role को reveal करता है।'
+            : 'Each letter in your name carries a vibration. When we add those values through the Pythagorean system, the total reveals the direction your life keeps growing toward.';
+        
+        display.innerHTML = `
+            <div class="calc-section destiny-calc">
+                <h3><i class="bi bi-bullseye"></i> Destiny Number</h3>
+                <p class="calc-explanation">${destinyExplanation}</p>
+                <div class="name-display">
+                    <span class="name-text">${this.userData.name}</span>
+                </div>
+                <div class="letter-breakdown" id="letter-grid"></div>
+                <div class="calculation-steps" id="destiny-steps"></div>
+            </div>
+        `;
+
+        // Keep this stage focused only on the Destiny calculation and its meaning.
+        const isHindiDN = MayaUtils?.storage?.get('maya_language') === 'hi';
+        let narrative = await this.withFiller(() => this.getContent('destinyCalculationNarrative', async () => {
+            if (window.MayaStatements?.getDestinyMeaningAI) {
+                const explanation = await MayaStatements.getDestinyExplanation(sum, destiny, this.firstName, aiContext);
+                if (explanation && explanation.length > 20) return explanation;
+            }
+            
+            return null;
+        }), 'calculating');
+        
+        const speakPromise = narrative && narrative.length > 20
+            ? (console.log('📢 Destiny narrative:', narrative.substring(0, 60) + '...'), this.speak(narrative))
+            : Promise.resolve();
+        
+        // Animate letters
+        const letterGrid = document.getElementById('letter-grid');
+        for (let i = 0; i < letters.length; i++) {
+            const letter = letters[i];
+            const value = MayaNumerology.getLetterValue(letter);
+            
+            const letterEl = document.createElement('div');
+            letterEl.className = 'letter-value-pair animate-in';
+            letterEl.innerHTML = `
+                <span class="letter">${letter}</span>
+                <span class="value">${value}</span>
+            `;
+            letterGrid.appendChild(letterEl);
+            
+            await MayaUtils.sleep(this.stageTiming.letterDelay);
+        }
+
+        await MayaUtils.sleep(this.stageTiming.calcStepDelay - 200);
+        
+        // Show sum
+        const stepsContainer = document.getElementById('destiny-steps');
+        this.addCalculationStep(stepsContainer, `Sum = ${sum} → ${destiny}`, 'Destiny', true);
+
+        this.appendResultCard('destiny', 'Your Destiny', destiny, 'destiny');
+
+        await speakPromise;
+        await MayaUtils.sleep(this.stageTiming.stageSettle);
+    },
+
+    /**
+     * Animate Soul Urge calculation with visuals
+     */
+    async animateSoulUrgeCalculation() {
+        const display = document.getElementById('calc-display');
+        const resultArea = document.getElementById('calc-result');
+
+        const isHindiLoadSU = MayaUtils?.storage?.get('maya_language') === 'hi';
+        this.showCalcLoading(isHindiLoadSU ? 'Soul Urge Number निकाल रहे हैं...' : 'Calculating Soul Urge...');
+        
+        const soulUrge = this.calculations.soulUrge;
+        const name = this.userData.name.toUpperCase();
+        const letters = name.replace(/[^A-Z]/g, '');
+        const vowels = ['A', 'E', 'I', 'O', 'U'];
+        
+        let vowelSum = 0;
+        for (const letter of letters) {
+            if (vowels.includes(letter)) {
+                vowelSum += MayaNumerology.getLetterValue(letter);
+            }
+        }
+
+        const aiContext = this.buildBaseAIContext();
+
+        // Show vowels breakdown with detailed explanation
+        const isHindiSoul = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const soulExplanation = isHindiSoul
+            ? 'Vowels (A, E, I, O, U) आपके नाम की "साँस" हैं - ये inner voice carry करते हैं। Consonants outer role दिखाते हैं, पर vowels inner desire और emotional pull reveal करते हैं।'
+            : 'Vowels (A, E, I, O, U) are the breath of the name. Consonants show the outer role, but vowels reveal the inner desire and emotional pull beneath it.';
+        
+        display.innerHTML = `
+            <div class="calc-section soul-urge-calc">
+                <h3><i class="bi bi-heart-pulse-fill"></i> Soul Urge Number</h3>
+                <p class="calc-explanation">${soulExplanation}</p>
+                <div class="letter-breakdown vowel-display" id="vowel-grid"></div>
+                <div class="calculation-steps" id="soul-steps"></div>
+            </div>
+        `;
+
+        // Keep this stage focused only on the Soul Urge calculation and hidden motivation.
+        const isHindiSU = MayaUtils?.storage?.get('maya_language') === 'hi';
+        let narrative = await this.withFiller(() => this.getContent('soulUrgeCalculationNarrative', async () => {
+            if (window.MayaStatements?.getSoulUrgeMeaningAI) {
+                const explanation = await MayaStatements.getSoulUrgeExplanation(vowelSum, soulUrge, this.firstName, aiContext);
+                if (explanation && explanation.length > 20) return explanation;
+            }
+            
+            return null;
+        }), 'calculating');
+        
+        const speakPromise = narrative && narrative.length > 20
+            ? (console.log('📢 Soul Urge narrative:', narrative.substring(0, 60) + '...'), this.speak(narrative))
+            : Promise.resolve();
+        
+        // Animate vowels
+        const vowelGrid = document.getElementById('vowel-grid');
+        for (let i = 0; i < letters.length; i++) {
+            const letter = letters[i];
+            const isVowel = vowels.includes(letter);
+            const value = MayaNumerology.getLetterValue(letter);
+            
+            const letterEl = document.createElement('div');
+            letterEl.className = `letter-value-pair ${isVowel ? 'is-vowel animate-in' : 'is-consonant'}`;
+            letterEl.innerHTML = `
+                <span class="letter">${letter}</span>
+                <span class="value">${isVowel ? value : '-'}</span>
+            `;
+            vowelGrid.appendChild(letterEl);
+            
+            await MayaUtils.sleep(isVowel ? this.stageTiming.vowelDelay : Math.max(70, this.stageTiming.letterDelay - 40));
+        }
+
+        await MayaUtils.sleep(this.stageTiming.calcStepDelay - 200);
+        
+        // Show sum
+        const stepsContainer = document.getElementById('soul-steps');
+        this.addCalculationStep(stepsContainer, `Vowels = ${vowelSum} → ${soulUrge}`, 'Soul Urge', true);
+
+        this.appendResultCard('soul-urge', 'Your Soul Urge', soulUrge, 'soul-urge');
+
+        await speakPromise;
+        await MayaUtils.sleep(this.stageTiming.stageSettle);
+    },
+
+    /**
+     * Render the kundli cells used in the animated funnel reveal.
+     */
+    renderKundliFormationCells(planetGroups = [], ascendantName = '') {
+        const groups = new Map((planetGroups || []).map((group) => [group.signName, group]));
+        return MAYA_CONFIG.ZODIAC.SIGNS.map((sign) => {
+            const group = groups.get(sign.name) || { planets: [] };
+            const shortName = window.MayaKundli?.signShortNames?.[sign.name] || sign.name.slice(0, 3);
+            const isAscendant = sign.name === ascendantName;
+
+            return `
+                <div class="kundli-formation-cell ${isAscendant ? 'kundli-formation-cell--asc' : ''}" data-kundli-sign="${sign.name}">
+                    <div class="kundli-formation-cell__header">
+                        <span class="kundli-formation-cell__sign">${sign.symbol} ${shortName}</span>
+                        ${isAscendant ? '<span class="kundli-formation-cell__badge">Asc</span>' : ''}
+                    </div>
+                    <div class="kundli-formation-cell__planets"></div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    /**
+     * Add a small live signal chip during kundli formation.
+     */
+    pushKundliSignal(container, text) {
+        if (!container || !text) return;
+        const chip = document.createElement('div');
+        chip.className = 'kundli-formation-signal animate-in';
+        chip.textContent = text;
+        container.appendChild(chip);
+    },
+
+    /**
+     * Animate the user's kundli taking shape from their birth data.
+     */
+    async animateKundliFormation() {
+        const display = document.getElementById('calc-display');
+        const resultArea = document.getElementById('calc-result');
+        const profile = this.personalization || {};
+        const birthChart = this.kundliChart;
+
+        if (!display || !resultArea || !birthChart?.planets?.length) {
+            return;
+        }
+
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const ascendant = profile.hasReliableAscendant ? (profile.ascendant || birthChart.ascendant || {}) : {};
+        const westernSign = profile.western?.name || '';
+        const moonSign = profile.moonSign || '';
+        const placeLabel = profile.birthPlaceShort || this.userData.birthPlace || (isHindi ? 'जन्म स्थान' : 'birth place');
+        const timeLabel = this.hasExactBirthTime()
+            ? this.userData.birthTime
+            : (isHindi ? 'अनुमानित समय' : 'approximate time');
+        const dashaLabel = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
+        const insightItems = this.getKundliInsightItems(isHindi);
+        const planetGroups = Array.isArray(profile.planetGroups) && profile.planetGroups.length
+            ? profile.planetGroups
+            : (window.MayaKundli?.groupPlanetsBySign?.(birthChart.planets) || []);
+        const squareChartMarkup = window.MayaKundli?.generateChart
+            && ascendant.name
+            ? MayaKundli.generateChart(birthChart.planets, ascendant.name, 'south', {
+                animateFormation: true,
+                durationMs: 5500
+            })
+            : '';
+        const ascendantLabel = isHindi ? this.localizeHindiText(ascendant.name || '--') : (ascendant.name || '--');
+        const westernLabel = isHindi ? this.localizeHindiText(westernSign || '--') : (westernSign || '--');
+        const moonSignLabel = isHindi ? this.localizeHindiText(moonSign || '--') : (moonSign || '--');
+        const dashaText = isHindi ? this.localizeHindiText(dashaLabel || '--') : (dashaLabel || '--');
+        const visibleKundliFacts = [
+            westernSign ? `Sun sign: ${westernSign}` : '',
+            ascendant.name ? `Ascendant: ${ascendant.name}` : '',
+            moonSign ? `Moon sign: ${moonSign}` : '',
+            dashaLabel ? `Current dasha: ${dashaLabel}` : ''
+        ].filter(Boolean);
+        const metaItems = [
+            westernSign
+                ? `<span class="kundli-formation-meta__item"><span class="kundli-formation-meta__label">${isHindi ? 'सूर्य राशि' : 'Sun Sign'}</span><strong class="kundli-formation-meta__value">${westernLabel}</strong></span>`
+                : '',
+            ascendant.name
+                ? `<span class="kundli-formation-meta__item"><span class="kundli-formation-meta__label">${isHindi ? 'लग्न' : 'Ascendant'}</span><strong class="kundli-formation-meta__value">${ascendantLabel}</strong></span>`
+                : '',
+            moonSign
+                ? `<span class="kundli-formation-meta__item"><span class="kundli-formation-meta__label">${isHindi ? 'चंद्र राशि' : 'Moon Sign'}</span><strong class="kundli-formation-meta__value">${moonSignLabel}</strong></span>`
+                : '',
+            dashaLabel
+                ? `<span class="kundli-formation-meta__item"><span class="kundli-formation-meta__label">${isHindi ? 'दशा' : 'Dasha'}</span><strong class="kundli-formation-meta__value">${dashaText}</strong></span>`
+                : ''
+        ].filter(Boolean).join('');
+        const explanationText = isHindi
+            ? ascendant.name
+                ? `सबसे पहले मैं ${this.localizeHindiText(placeLabel)} और ${timeLabel} के आधार पर आपकी कुंडली का विन्यास देख रही हूँ। लग्न, चंद्र राशि, दशा और ग्रहों की सघनता मिलकर यह दिखा रही हैं कि आपके जीवन का ढाँचा कैसे बनता है और आने वाले महीनों में कौन-सा मोड़ उभर सकता है।`
+                : `सबसे पहले मैं ${this.localizeHindiText(placeLabel)} और ${timeLabel} के आधार पर आपकी कुंडली के visible संकेत देख रही हूँ। अभी मैं चंद्र राशि, दशा और ग्रहों की सघनता पर grounded reading रखूँगी।`
+            : ascendant.name
+                ? `First I’m forming your square kundli from ${placeLabel} and ${timeLabel}. Your ascendant, moon sign, dasha, and planetary clustering show the structure of your life patterns and the chapters ahead.`
+                : `First I’m looking at the visible kundli markers from ${placeLabel} and ${timeLabel}. For now I’m keeping the reading grounded in your moon sign, dasha, and planetary clustering.`;
+
+        display.innerHTML = `
+            <div class="calc-section kundli-formation-calc">
+                <h3><i class="bi bi-grid-3x3-gap-fill"></i> ${isHindi ? 'कुंडली विन्यास बन रहा है' : 'Forming Your Square Kundli'}</h3>
+                <p class="calc-explanation">${explanationText}</p>
+                ${metaItems ? `<div class="kundli-formation-meta">${metaItems}</div>` : ''}
+                <div class="kundli-formation-chart-card">
+                    <div class="kundli-formation-chart-shell" id="kundliFormationChartShell">
+                        <div class="maya-kundli-chart kundli-formation-chart">
+                            ${squareChartMarkup || `<div class="kundli-formation-chart-fallback">${isHindi ? 'कुंडली का चित्र तैयार हो रहा है...' : 'Kundli chart is forming...'}</div>`}
+                        </div>
+                    </div>
+                </div>
+                <div class="kundli-formation-signals" id="kundliFormationSignals"></div>
+            </div>
+        `;
+
+        await MayaUtils.sleep(180);
+        window.MayaKundli?.renderAllPendingCharts?.();
+        document.getElementById('kundliFormationChartShell')?.classList.add('is-visible');
+
+        let narrative = await this.withFiller(() => this.getContent('kundliStageNarrative', () => this.getAIScript('kundliFormation', {
+            ascendant: ascendant.name,
+            moonSign,
+            currentDasha: dashaLabel,
+            kundliDisplayFacts: visibleKundliFacts,
+            yogaNames: profile.yogaNames,
+            dominantElement: profile.dominantElement,
+            chartHighlights: profile.highlights,
+            predictionItems: this.buildPredictionItems()
+        })), 'kundli');
+
+        if (!narrative) {
+            narrative = await this.withFiller(() => this.generateDirectReadingSection('kundli', {
+                ...this.buildBaseAIContext(),
+                kundliDisplayFacts: visibleKundliFacts,
+                predictionItems: this.buildPredictionItems()
+            }), 'kundli');
+        }
+
+        if (narrative) this.spokenNarrations.push({ stage: 'kundli', text: narrative });
+        const speakPromise = this.speak(narrative);
+        const signals = document.getElementById('kundliFormationSignals');
+        const insights = document.getElementById('kundliFormationInsights');
+        const headlineSignals = [
+            ascendant.name ? (isHindi ? `${ascendantLabel} लग्न सक्रिय` : `${ascendant.name} ascendant rising`) : '',
+            moonSign ? (isHindi ? `${moonSignLabel} चंद्र राशि सक्रिय` : `${moonSign} moon sign active`) : '',
+            dashaLabel ? (isHindi ? `${dashaText} दशा सक्रिय` : `${dashaLabel} dasha active`) : ''
+        ].filter(Boolean);
+
+        for (const signal of headlineSignals) {
+            this.pushKundliSignal(signals, signal);
+            await MayaUtils.sleep(this.stageTiming.kundliSignalDelay);
+        }
+
+        const activeGroups = planetGroups.filter((group) => group.planets.length > 0).slice(0, 6);
+
+        for (const group of activeGroups) {
+            const groupSignLabel = isHindi ? this.localizeHindiText(group.signName) : group.signName;
+            const summary = group.planets
+                .slice(0, 3)
+                .map((planet) => {
+                    const planetLabel = planet.info?.vedic || planet.name;
+                    return isHindi ? this.localizeHindiText(planetLabel) : planetLabel;
+                })
+                .join(', ');
+            if (!summary) continue;
+
+            this.pushKundliSignal(
+                signals,
+                isHindi ? `${groupSignLabel} में ${summary}` : `${summary} in ${group.signName}`
+            );
+            await MayaUtils.sleep(this.stageTiming.kundliSignalDelay + 40);
+        }
+
+        for (const item of insightItems) {
+            if (!insights) break;
+            const card = document.createElement('div');
+            card.className = 'kundli-formation-insight animate-in';
+            card.innerHTML = `
+                <span class="kundli-formation-insight__title">${item.title}</span>
+                <strong class="kundli-formation-insight__value">${item.value}</strong>
+                ${item.detail ? `<span class="kundli-formation-insight__text">${item.detail}</span>` : ''}
+            `;
+            insights.appendChild(card);
+            await MayaUtils.sleep(this.stageTiming.kundliInsightDelay);
+        }
+
+        await speakPromise;
+        await MayaUtils.sleep(this.stageTiming.stageSettle);
+    },
+
+    /**
+     * Add a calculation step with animation
+     */
+    addCalculationStep(container, text, label, isFinal = false) {
+        const step = document.createElement('div');
+        step.className = `calc-step ${isFinal ? 'final' : ''} animate-in`;
+        step.innerHTML = `
+            <span class="step-text">${text}</span>
+            ${label ? `<span class="step-label">${label}</span>` : ''}
+        `;
+        container.appendChild(step);
+    },
+
+    /**
+     * Format date for spoken delivery
+     */
+    formatDateSpoken(dateStr) {
+        const date = new Date(dateStr);
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+        const day = date.getDate();
+        const month = months[date.getMonth()];
+        const year = date.getFullYear();
+        
+        const suffix = ['th', 'st', 'nd', 'rd'][(day % 100 > 10 && day % 100 < 14) ? 0 : (day % 10 < 4 ? day % 10 : 0)];
+        
+        return `${month} ${day}${suffix}, ${year}`;
+    },
+
+    // NOTE: Hardcoded quick meaning dictionaries removed.
+    // All meanings are now AI-generated via MayaStatements.getLifePathMeaningAI / getDestinyMeaningAI / getSoulUrgeMeaningAI
+    // with tiny inline fallbacks in the call sites above.
+
+    /**
+     * Show teaser reveal with AI Summary, FOMO, then Email Gate
+     */
+    async showTeaserReveal() {
+        if ([this.PHASES.EMAIL_GATE, this.PHASES.LOGIN_OR_REGISTER, this.PHASES.DEEP_REVEAL, this.PHASES.COMPLETE].includes(this.currentPhase)) {
+            return;
+        }
+
+        this.hasRevealedTeaser = true;
+        this.currentPhase = this.PHASES.TEASER_REVEAL;
+        
+        const blobContainer = document.getElementById('maya-blob-container');
+        if (blobContainer) {
+            blobContainer.classList.add('blob-centered');
+        }
+
+        // STEP 1: grounded integrated summary
+        const lang = MayaUtils.storage.get('maya_language') || this.userData.language || 'en';
+        if (window.MayaStatements) MayaStatements.setLanguage(lang);
+        const predictionItems = this.buildPredictionItems();
+        const aiContext = this.buildBaseAIContext(predictionItems);
+        const teaserNarration = await this.getContent('teaserRevealNarration', async () => {
+            const segments = [];
+
+            // SEGMENT 1: Short personal prediction (past event / current situation based on kundli)
+            const summary = await this.withFiller(() => this.generateAISummary(), 'thinking');
+            if (summary && summary.length > 20) {
+                segments.push(summary.trim());
+            }
+
+            // SEGMENT 2: FOMO/fear hook - predict something concerning to create urgency
+            const fomoHook = await this.withFiller(() => this.generateDirectReadingSection('fomoHook', aiContext), 'revealing');
+            if (fomoHook && fomoHook.length > 20) {
+                segments.push(fomoHook.trim());
+            }
+
+            return segments.join(' [[pause-250]] ');
+        });
+
+        try {
+            if (teaserNarration && teaserNarration.length > 20) {
+                await this.speak(teaserNarration);
+                this.spokenNarrations.push({ stage: 'teaser', text: teaserNarration });
+            }
+        } finally {
+            // STEP 2: Speak email gate ask BEFORE showing the form
+            const emailAsk = await this.withFiller(() => this.generateDirectReadingSection('emailGate', aiContext), 'thinking');
+            if (emailAsk && emailAsk.length > 20) {
+                await this.speak(emailAsk);
+            }
+
+            this.teaserGateNarrated = true;
+            await this.showEmailGate();
+            const emailInput = document.getElementById('gate-email');
+            if (emailInput && document.body.contains(emailInput)) {
+                this.focusAuthField(emailInput);
+            }
+        }
+    },
+
+    /**
+     * Generate AI Summary - Personal stunning insight AFTER numbers (narrative, not number-focused)
+     */
+    async generateAISummary() {
+        // Always get language from storage to ensure consistency
+        const lang = MayaUtils.storage.get('maya_language') || this.userData.language || 'en';
+        const isHindi = lang === 'hi';
+        
+        // Ensure MayaStatements has correct language set
+        if (window.MayaStatements) {
+            MayaStatements.setLanguage(lang);
+        }
+
+        if (!window.MayaAI) {
+            return '';
+        }
+
+        try {
+            const prompt = this.buildAISummaryPrompt(isHindi);
+            MayaAI.init({
+                fullName: this.userData.name,
+                birthDate: this.userData.birthDate,
+                birthTime: this.userData.birthTime || '12:00',
+                birthPlace: this.userData.birthPlace || 'Unknown',
+                gender: this.userData.gender || 'unknown',
+                language: lang
+            });
+
+            const summary = await MayaAI.sendMessage(prompt);
+            return summary && summary.length > 20 ? summary : '';
+        } catch (error) {
+            console.warn('AI summary generation failed:', error.message);
+            return '';
+        }
+    },
+
+    /**
+     * Fallback summary if AI fails - minimal, non-hardcoded
+     */
+    getFallbackAISummary() {
+        return '';
+    },
+
+    /**
+     * Get personalized curiosity hook (minimal fallback)
+     */
+    getPersonalizedHook() {
+        return '';
+    },
+
+    /**
+     * Show email gate with proper form
+     */
+    async showEmailGate({ deferFocus = false } = {}) {
+        if (this.isUserLoggedIn || window.MayaAuth?.isAuthenticated) {
+            return;
+        }
+
+        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const isHindi = lang === 'hi';
+        const textDisplay = document.getElementById('maya-text-display');
+        const blobContainer = document.getElementById('maya-blob-container');
+        const existingInput = document.getElementById('gate-email');
+
+        if (this.currentPhase === this.PHASES.EMAIL_GATE && existingInput) {
+            if (!deferFocus) {
+                this.focusAuthField(existingInput);
+            }
+            return;
+        }
+
+        this.currentPhase = this.PHASES.EMAIL_GATE;
+        this.emailGateShown = true;
+        this.emailSubmissionInProgress = false;
+        this.authPromptedFields = new Set();
+        
+        if (blobContainer) {
+            blobContainer.classList.remove('blob-centered');
+            blobContainer.classList.add('blob-top');
+        }
+        
+        if (textDisplay) {
+            textDisplay.style.display = 'flex';
+            textDisplay.classList.add('email-gate-active');
+        }
+        
+        textDisplay.innerHTML = `
+            <div class="email-gate-container">
+                <div class="gate-header">
+                    <h3>${isHindi ? 'अपनी निजी रीडिंग खोलिए' : 'Unlock Your Personalized Reading'}</h3>
+                    <p class="gate-subtitle">${isHindi ? 'आपकी निजी कुंडली फ़ाइल तैयार है' : `${this.firstName}, your private chart file is ready`}</p>
+                </div>
+                <div class="gate-benefits">
+                    <div class="benefit-item">
+                        <i class="bi bi-heart-fill"></i>
+                        <span>${isHindi ? 'प्रेम और रिश्तों का समय-संकेत' : 'Love and relationship timing'}</span>
+                    </div>
+                    <div class="benefit-item">
+                        <i class="bi bi-briefcase-fill"></i>
+                        <span>${isHindi ? 'करियर और धन का अनुमान' : 'Career and wealth forecast'}</span>
+                    </div>
+                    <div class="benefit-item">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <span>${isHindi ? 'सावधानी वाले बिंदु' : 'Pressure points and cautions'}</span>
+                    </div>
+                    <div class="benefit-item">
+                        <i class="bi bi-calendar-event-fill"></i>
+                        <span>${isHindi ? 'आने वाले चरणों की समय-रेखा' : 'Your next chapters timing map'}</span>
+                    </div>
+                </div>
+                <form id="email-gate-form" class="gate-form">
+                    <div class="form-group">
+                        <input type="email" id="gate-email" class="form-control form-control-lg" 
+                               placeholder="${isHindi ? 'अपनी ईमेल आईडी भरिए' : 'Enter your email address'}" required autocomplete="email">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg w-100 mt-3">
+                        <i class="bi bi-unlock-fill me-2"></i>${isHindi ? 'मेरी रीडिंग खोलिए' : 'Unlock My Reading'}
+                    </button>
+                    <p class="gate-note mt-3">
+                        <i class="bi bi-shield-check"></i> ${isHindi ? 'आपकी रीडिंग निजी और सुरक्षित रहेगी' : 'Your reading stays private and secure'}
+                    </p>
+                </form>
+            </div>
+        `;
+
+        document.getElementById('email-gate-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (this.emailSubmissionInProgress) return;
+
+            const email = document.getElementById('gate-email').value.trim();
+            
+            if (this.isValidEmail(email)) {
+                await this.handleEmailSubmission(email);
+            } else {
+                MayaUtils.toast.error(isHindi ? 'कृपया सही ईमेल पता भरिए' : 'Please enter a valid email address');
+            }
+        });
+
+        const emailInput = document.getElementById('gate-email');
+        // No voice prompt on email focus - the spoken teaser already conveyed value.
+        // The form + privacy note is enough. Avoid nagging for email.
+        if (!deferFocus) {
+            this.focusAuthField(emailInput);
+        }
+    },
+
+    /**
+     * Validate email
+     */
+    isValidEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    },
+
+    /**
+     * Get random cosmic search statement
+     */
+    async getCosmicSearchStatement() {
+        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const aiContext = this.buildAuthPromptContext();
+
+        if (window.MayaStatements) {
+            MayaStatements.setLanguage(lang);
+        }
+
+        return await this.generateDirectReadingSection('authCheck', aiContext);
+    },
+
+    /**
+     * Get random welcome back statement
+     */
+    async getWelcomeBackStatement() {
+        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const aiContext = this.buildAuthPromptContext();
+
+        if (window.MayaStatements) {
+            MayaStatements.setLanguage(lang);
+        }
+
+        return await this.generateDirectReadingSection('welcomeBack', aiContext);
+    },
+
+    /**
+     * Get random new user statement
+     */
+    async getNewUserStatement() {
+        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const aiContext = this.buildAuthPromptContext();
+
+        if (window.MayaStatements) {
+            MayaStatements.setLanguage(lang);
+        }
+
+        return await this.generateDirectReadingSection('newUser', aiContext);
+    },
+
+    /**
+     * Get random email gate transition statement
+     */
+    async getEmailGateTransition() {
+        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const predictionItems = this.buildPredictionItems();
+        const aiContext = this.buildBaseAIContext(predictionItems);
+        return await this.generateDirectReadingSection('emailGate', aiContext);
+    },
+
+    /**
+     * Shared AI context for auth and field prompts.
+     */
+    buildAuthPromptContext() {
+        const predictionItems = this.buildPredictionItems();
+        return this.buildBaseAIContext(predictionItems);
+    },
+
+    /**
+     * Get spoken guidance for a specific auth field.
+     */
+    async getAuthFieldPrompt(fieldType) {
+        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const aiContext = this.buildAuthPromptContext();
+
+        if (window.MayaStatements) {
+            MayaStatements.setLanguage(lang);
+        }
+
+        try {
+            if (fieldType === 'email' && window.MayaStatements?.getEmailFieldPrompt) {
+                const text = await MayaStatements.getEmailFieldPrompt(this.firstName, aiContext);
+                if (text && text.length > 20) return text;
+            }
+
+            if (fieldType === 'password' && window.MayaStatements?.getPasswordFieldPrompt) {
+                const text = await MayaStatements.getPasswordFieldPrompt(this.firstName, aiContext);
+                if (text && text.length > 20) return text;
+            }
+
+            if (fieldType === 'new-password' && window.MayaStatements?.getNewPasswordFieldPrompt) {
+                const text = await MayaStatements.getNewPasswordFieldPrompt(this.firstName, aiContext);
+                if (text && text.length > 20) return text;
+            }
+
+            if (fieldType === 'confirm-password' && window.MayaStatements?.getConfirmPasswordFieldPrompt) {
+                const text = await MayaStatements.getConfirmPasswordFieldPrompt(this.firstName, aiContext);
+                if (text && text.length > 20) return text;
+            }
+        } catch (error) {
+            console.warn(`AI auth field prompt failed for ${fieldType}:`, error.message);
+        }
+
+        return '';
+    },
+
+    /**
+     * Speak field guidance the first time an auth field receives focus.
+     */
+    bindVoicePromptOnFocus(input, fieldType) {
+        if (!input) return;
+
+        if (input.dataset.voicePromptBound === 'true') return;
+        input.dataset.voicePromptBound = 'true';
+
+        input.addEventListener('focus', () => {
+            void (async () => {
+                const promptKey = `${this.currentPhase || 'unknown'}:${fieldType}`;
+                if (this.emailSubmissionInProgress || this.authPromptedFields.has(promptKey)) {
+                    return;
+                }
+
+                this.authPromptedFields.add(promptKey);
+                const prompt = await this.getAuthFieldPrompt(fieldType);
+                if (prompt && document.body.contains(input)) {
+                    await this.speak(prompt);
+                }
+            })();
+        }, { once: true });
+    },
+
+    /**
+     * Move focus into an auth field once it is rendered.
+     */
+    focusAuthField(input) {
+        if (!input) return;
+        requestAnimationFrame(() => {
+            try {
+                input.focus({ preventScroll: true });
+            } catch {
+                input.focus();
+            }
+        });
+    },
+
+    /**
+     * Handle email submission
+     */
+    async handleEmailSubmission(email) {
+        if (this.emailSubmissionInProgress) {
+            console.warn('⚠️ Ignoring duplicate email submission');
+            return;
+        }
+
+        const form = document.getElementById('email-gate-form');
+        const emailInput = document.getElementById('gate-email');
+        const submitButton = form?.querySelector('button[type="submit"]');
+        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const checkingText = lang === 'hi' 
+            ? 'आपकी सुरक्षित रीडिंग जाँची जा रही है...'
+            : 'Checking your saved reading...';
+
+        this.emailSubmissionInProgress = true;
+        this.currentPhase = this.PHASES.LOGIN_OR_REGISTER;
+        const requestId = ++this.authRequestId;
+
+        if (emailInput) emailInput.disabled = true;
+        if (submitButton) submitButton.disabled = true;
+
+        if (form) {
+            form.innerHTML = `
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-3 text-muted">${checkingText}</p>
+                </div>
+            `;
+        }
+
+        try {
+            // Use Firebase through MayaAuth
+            const exists = await MayaAuth.checkEmail(email);
+            if (requestId !== this.authRequestId) return;
+            
+            if (exists) {
+                await this.showLoginFlow(email);
+            } else {
+                await this.showRegistrationFlow(email);
+            }
+        } catch (error) {
+            console.error('Email check failed:', error);
+            if (requestId !== this.authRequestId) return;
+            await this.showRegistrationFlow(email);
+        } finally {
+            if (!this.isUserLoggedIn) {
+                this.emailSubmissionInProgress = false;
+            }
+        }
+    },
+
+    /**
+     * Show login flow for existing users
+     */
+    async showLoginFlow(email) {
+        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const isHindi = lang === 'hi';
+        this.currentPhase = this.PHASES.LOGIN_OR_REGISTER;
+        this.emailSubmissionInProgress = false;
+        this.authPromptedFields = new Set();
+        
+        const textDisplay = document.getElementById('maya-text-display');
+        textDisplay.style.display = 'flex';
+        textDisplay.classList.add('email-gate-active');
+        textDisplay.innerHTML = `
+            <div class="auth-flow-container">
+                <div class="auth-header">
+                    <div class="auth-icon">👋</div>
+                    <h3>${isHindi ? `फिर से स्वागत है, ${this.firstName}` : `Welcome Back, ${this.firstName}!`}</h3>
+                    <p class="auth-email">${email}</p>
+                </div>
+                <form id="login-flow-form" class="auth-form">
+                    <div class="form-group">
+                        <input type="password" id="flow-password" class="form-control form-control-lg" 
+                               placeholder="${isHindi ? 'अपना पासवर्ड भरिए' : 'Enter your password'}" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg w-100 mt-3">
+                        ${isHindi ? 'आगे बढ़िए' : 'Continue My Journey'}
+                    </button>
+                    <p class="auth-link mt-3">
+                        <a href="#" id="forgot-password-link" class="text-muted">${isHindi ? 'पासवर्ड भूल गए?' : 'Forgot password?'}</a>
+                    </p>
+                </form>
+            </div>
+        `;
+
+        document.getElementById('login-flow-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const password = document.getElementById('flow-password').value;
+            await this.processLogin(email, password);
+        });
+
+        const passwordInput = document.getElementById('flow-password');
+        this.bindVoicePromptOnFocus(passwordInput, 'password');
+        this.focusAuthField(passwordInput);
+    },
+
+    /**
+     * Show registration flow for new users
+     */
+    async showRegistrationFlow(email) {
+        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const isHindi = lang === 'hi';
+        this.currentPhase = this.PHASES.LOGIN_OR_REGISTER;
+        this.emailSubmissionInProgress = false;
+        this.authPromptedFields = new Set();
+        
+        const textDisplay = document.getElementById('maya-text-display');
+        textDisplay.style.display = 'flex';
+        textDisplay.classList.add('email-gate-active');
+        textDisplay.innerHTML = `
+            <div class="auth-flow-container">
+                <div class="auth-header">
+                    <div class="auth-icon"><i class="bi bi-stars"></i></div>
+                    <h3>${isHindi ? 'अपनी रीडिंग सुरक्षित कीजिए' : 'Secure Your Reading'}</h3>
+                    <p class="auth-email">${email}</p>
+                </div>
+                <form id="register-flow-form" class="auth-form">
+                    <div class="form-group mb-3">
+                        <input type="password" id="flow-new-password" class="form-control form-control-lg" 
+                               placeholder="${isHindi ? 'नया पासवर्ड बनाइए' : 'Create a password'}" required minlength="6" autocomplete="new-password">
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="flow-confirm-password" class="form-control form-control-lg" 
+                               placeholder="${isHindi ? 'पासवर्ड की पुष्टि कीजिए' : 'Confirm password'}" required autocomplete="new-password">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg w-100 mt-3">
+                        ${isHindi ? 'खाता बनाइए और आगे बढ़िए' : 'Create Account and Continue'}
+                    </button>
+                    <p class="auth-terms mt-3 text-muted small">
+                        ${isHindi ? 'आगे बढ़कर आप सेवा की शर्तों से सहमत होते हैं' : 'By continuing, you agree to our Terms of Service'}
+                    </p>
+                </form>
+            </div>
+        `;
+
+        document.getElementById('register-flow-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const password = document.getElementById('flow-new-password').value;
+            const confirm = document.getElementById('flow-confirm-password').value;
+            
+            if (password !== confirm) {
+                MayaUtils.toast.error(isHindi ? 'दोनों पासवर्ड एक जैसे नहीं हैं' : 'Passwords do not match');
+                return;
+            }
+            
+            await this.processRegistration(email, password);
+        });
+
+        const newPasswordInput = document.getElementById('flow-new-password');
+        const confirmPasswordInput = document.getElementById('flow-confirm-password');
+        this.bindVoicePromptOnFocus(newPasswordInput, 'new-password');
+        this.bindVoicePromptOnFocus(confirmPasswordInput, 'confirm-password');
+        this.focusAuthField(newPasswordInput);
+    },
+
+    /**
+     * Process login
+     */
+    async processLogin(email, password) {
+        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const isHindi = lang === 'hi';
+        const btn = document.querySelector('#login-flow-form button[type="submit"]');
+        btn.disabled = true;
+        btn.innerHTML = isHindi
+            ? '<span class="spinner-border spinner-border-sm me-2"></span>जुड़ रहा है...'
+            : '<span class="spinner-border spinner-border-sm me-2"></span>Connecting...';
+
+        const result = await MayaAuth.login(email, password);
+        
+        if (result.success) {
+            this.isUserLoggedIn = true;
+            
+            // Show full app UI now that user is authenticated
+            if (window.MayaApp?.onUserAuthenticated) {
+                MayaApp.onUserAuthenticated();
+            }
+            
+            // Preserve language preference - CRITICAL: restore from storage
+            const language = MayaUtils.storage.get('maya_language') || this.userData.language || 'en';
+            
+            // IMPORTANT: Set language on MayaStatements after login
+            if (window.MayaStatements) {
+                MayaStatements.setLanguage(language);
+                console.log('🌐 Language restored after login:', language);
+            }
+            
+            // Get existing funnel data from localStorage to ensure nothing is lost
+            const funnelData = MayaUtils.storage.get('funnel_data') || {};
+            
+            // Merge ALL funnel data with any existing profile - prioritize server data for returning users
+            const existingProfile = MayaUtils.storage.get('maya_profile') || {};
+            const serverUserData = result.user || {};
+            
+            const updatedProfile = {
+                ...existingProfile,
+                name: serverUserData.name || this.userData.name || funnelData.name || existingProfile.name,
+                email: email,
+                birthDate: serverUserData.birthDate || this.userData.birthDate || funnelData.birthDate || existingProfile.birthDate,
+                birthTime: serverUserData.birthTime || this.userData.birthTime || funnelData.birthTime || existingProfile.birthTime,
+                birthPlace: serverUserData.birthPlace || this.userData.birthPlace || funnelData.birthPlace || existingProfile.birthPlace,
+                birthLat: serverUserData.birthLat || this.userData.birthLat || funnelData.birthLat || existingProfile.birthLat,
+                birthLon: serverUserData.birthLon || this.userData.birthLon || funnelData.birthLon || existingProfile.birthLon,
+                gender: serverUserData.gender || this.userData.gender || funnelData.gender || existingProfile.gender,
+                language: language
+            };
+            
+            MayaUtils.storage.set('maya_profile', updatedProfile);
+            MayaUtils.storage.set('maya_language', language);
+            MayaUtils.storage.set('funnel_complete', false);
+
+            await window.MayaApp?.applyLanguagePreference?.(language, { force: true });
+            
+            console.log('✅ Profile synced on login:', updatedProfile);
+            
+            // Check if this is a returning user with complete profile
+            // Returning users should go directly to homepage, not through funnel again
+            const hasCompleteBirthData = updatedProfile.birthDate && updatedProfile.name;
+            const isReturningUser = serverUserData.birthDate || serverUserData.name;
+            
+            console.log('🔍 Login check:', { hasCompleteBirthData, isReturningUser, serverUserData });
+            
+            // Save ALL birth details to API (only if we have birth data)
+            if (MayaAuth.isAuthenticated && updatedProfile.birthDate) {
+                try {
+                    await MayaAuth.saveBirthDetails({
+                        name: updatedProfile.name,
+                        birthDate: updatedProfile.birthDate,
+                        birthTime: updatedProfile.birthTime || null,
+                        birthPlace: updatedProfile.birthPlace || null,
+                        birthLat: updatedProfile.birthLat || null,
+                        birthLon: updatedProfile.birthLon || null,
+                        gender: updatedProfile.gender || null,
+                        language: language
+                    });
+                    console.log('✅ Birth details saved to cloud');
+                } catch (e) {
+                    console.error('Failed to save birth details to API:', e);
+                }
+            }
+            
+            MayaUtils.toast.success(isHindi ? 'फिर से स्वागत है!' : 'Welcome back!');
+
+            console.log('📊 Login complete - continuing funnel flow into deep reveal', { hasCompleteBirthData, isReturningUser });
+            await this.showDeepReveal();
+        } else {
+            btn.disabled = false;
+            btn.innerHTML = isHindi ? 'आगे बढ़िए' : 'Continue My Journey';
+            MayaUtils.toast.error(result.error || (isHindi ? 'गलत password' : 'Invalid password'));
+        }
+    },
+
+    /**
+     * Process registration
+     */
+    async processRegistration(email, password) {
+        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const isHindi = lang === 'hi';
+        const btn = document.querySelector('#register-flow-form button[type="submit"]');
+        btn.disabled = true;
+        btn.innerHTML = isHindi
+            ? '<span class="spinner-border spinner-border-sm me-2"></span>बनाया जा रहा है...'
+            : '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
+
+        // Get existing funnel data from localStorage to ensure nothing is lost
+        const funnelData = MayaUtils.storage.get('funnel_data') || {};
+        
+        // Merge all data sources for registration
+        const userData = {
+            name: this.userData.name || funnelData.name,
+            email: email,
+            password: password,
+            birthDate: this.userData.birthDate || funnelData.birthDate,
+            birthTime: this.userData.birthTime || funnelData.birthTime || null,
+            birthPlace: this.userData.birthPlace || funnelData.birthPlace || null,
+            birthLat: this.userData.birthLat || funnelData.birthLat || null,
+            birthLon: this.userData.birthLon || funnelData.birthLon || null,
+            gender: this.userData.gender || funnelData.gender || null
+        };
+
+        const result = await MayaAuth.register(userData);
+        
+        if (result.success) {
+            this.isUserLoggedIn = true;
+            
+            // Show full app UI now that user is authenticated
+            if (window.MayaApp?.onUserAuthenticated) {
+                MayaApp.onUserAuthenticated();
+            }
+            
+            // Preserve language preference - CRITICAL: restore from storage
+            const language = MayaUtils.storage.get('maya_language') || this.userData.language || 'en';
+            
+            // IMPORTANT: Set language on MayaStatements after registration
+            if (window.MayaStatements) {
+                MayaStatements.setLanguage(language);
+                console.log('🌐 Language restored after registration:', language);
+            }
+            
+            // Save COMPLETE profile including ALL birth details
+            const fullProfile = {
+                name: userData.name,
+                email: email,
+                birthDate: userData.birthDate,
+                birthTime: userData.birthTime,
+                birthPlace: userData.birthPlace,
+                birthLat: userData.birthLat,
+                birthLon: userData.birthLon,
+                gender: userData.gender,
+                language: language
+            };
+            
+            MayaUtils.storage.set('maya_profile', fullProfile);
+            MayaUtils.storage.set('maya_language', language);
+            MayaUtils.storage.set('funnel_complete', false);
+
+            await window.MayaApp?.applyLanguagePreference?.(language, { force: true });
+            
+            console.log('✅ Profile saved on registration:', fullProfile);
+            
+            // Save ALL birth details to API
+            if (MayaAuth.isAuthenticated) {
+                try {
+                    await MayaAuth.saveBirthDetails({
+                        name: userData.name,
+                        birthDate: userData.birthDate,
+                        birthTime: userData.birthTime,
+                        birthPlace: userData.birthPlace,
+                        birthLat: userData.birthLat,
+                        birthLon: userData.birthLon,
+                        gender: userData.gender,
+                        language: language
+                    });
+                    console.log('✅ Birth details saved to cloud');
+                } catch (e) {
+                    console.error('Failed to save birth details to API:', e);
+                }
+            }
+            
+            MayaUtils.toast.success(isHindi ? 'Account बन गया!' : 'Account created!');
+            await this.showDeepReveal();
+        } else {
+            btn.disabled = false;
+            btn.innerHTML = isHindi ? 'Account बनाइए और आगे बढ़िए' : 'Create Account and Continue';
+            MayaUtils.toast.error(result.error || (isHindi ? 'Registration पूरा नहीं हो सका' : 'Registration failed'));
+        }
+    },
+
+    /**
+     * Show deep reveal - prep message with "Are you ready" button
+     */
+    async showDeepReveal() {
+        if (!this.isUserLoggedIn && !window.MayaAuth?.isAuthenticated) {
+            console.warn('🔒 Deep reveal blocked until auth completes');
+            await this.showEmailGate();
+            return;
+        }
+
+        this.currentPhase = this.PHASES.DEEP_REVEAL;
+        const textDisplay = document.getElementById('maya-text-display');
+        const blobContainer = document.getElementById('maya-blob-container');
+        const lang = MayaUtils.storage.get('maya_language') || 'en';
+        const predictionItems = this.buildPredictionItems();
+        const aiContext = this.buildBaseAIContext(predictionItems);
+        
+        textDisplay.style.display = 'none';
+        textDisplay.classList.remove('email-gate-active');
+        
+        if (blobContainer) {
+            blobContainer.classList.remove('blob-top');
+            blobContainer.classList.add('blob-centered');
+        }
+        
+        let prepMsg = '';
+
+        try {
+            if (window.MayaStatements?.getDeepRevealPrep) {
+                const scriptedPrep = await MayaStatements.getDeepRevealPrep(this.firstName, aiContext);
+                if (scriptedPrep && scriptedPrep.length > 20) {
+                    prepMsg = scriptedPrep;
+                }
+            }
+        } catch (e) {
+            console.warn('AI deep reveal prep failed:', e.message);
+        }
+
+        if (!prepMsg) {
+            prepMsg = await this.generateDirectReadingSection('deepRevealPrep', aiContext);
+        }
+        
+        if (prepMsg) {
+            await this.speak(prepMsg);
+        }
+        
+        // Show continue button
+        if (blobContainer) {
+            blobContainer.classList.remove('blob-centered');
+            blobContainer.classList.add('blob-top');
+        }
+        
+        textDisplay.style.display = 'flex';
+        
+        const buttonText = lang === 'hi' 
+            ? '<i class="bi bi-play-fill me-2"></i>हाँ, शुरू करें'
+            : '<i class="bi bi-play-fill me-2"></i>Yes, I\'m Ready';
+        
+        textDisplay.innerHTML = `
+            <div class="deep-reveal-prompt text-center py-4">
+                <button id="continue-reveal-btn" class="btn btn-lg btn-primary pulse-animation">
+                    ${buttonText}
+                </button>
+            </div>
+        `;
+
+        document.getElementById('continue-reveal-btn').addEventListener('click', async () => {
+            textDisplay.style.display = 'none';
+            
+            if (blobContainer) {
+                blobContainer.classList.remove('blob-top');
+                blobContainer.classList.add('blob-centered');
+            }
+            
+            await this.deliverDeepReading();
+        });
+    },
+
+    /**
+     * Deliver the comprehensive deep reading - FLOWING BILINGUAL STORYTELLING
+     */
+    async deliverDeepReading() {
+        if (!this.isUserLoggedIn && !window.MayaAuth?.isAuthenticated) {
+            console.warn('🔒 Refusing to deliver deep reading before auth');
+            await this.showEmailGate();
+            return;
+        }
+
+        const numbers = this.calculations || MayaUtils.storage.get('maya_calculations') || {};
+        const lang = MayaUtils.storage.get('maya_language') || 'en';
+        const predictionItems = this.buildPredictionItems();
+        const aiContext = this.buildBaseAIContext(predictionItems);
+        // Pass what was already spoken so AI avoids repetition
+        aiContext.alreadyToldDigest = this._getAlreadyToldDigest();
+        
+        // Safety check - ensure we have valid numbers
+        if (!numbers.lifePath) {
+            console.warn('No calculations available for deep reading');
+            const recoveryNarration = await this.generateDirectReadingSection('calculationRecovery', aiContext);
+            if (recoveryNarration) {
+                await this.speak(recoveryNarration);
+            } else {
+                const speakingText = document.getElementById('maya-speaking-text');
+                if (speakingText) {
+                    speakingText.textContent = lang === 'hi'
+                        ? 'रीडिंग डेटा उपलब्ध नहीं है। कृपया फिर से प्रयास करें।'
+                        : 'Reading data is unavailable. Please try again.';
+                }
+            }
+            return;
+        }
+        
+        // LOVE READING - flowing narrative WITHOUT repeating numbers
+        const loveIntro = await this.withFiller(() => this.generateDirectReadingSection('loveIntro', aiContext), 'love');
+        if (loveIntro) {
+            await this.speak(loveIntro);
+            await MayaUtils.sleep(300);
+        }
+        
+        let loveReading = null;
+        try {
+            if (window.MayaStatements?.getLoveReadingAI) {
+                loveReading = await this.withFiller(() => MayaStatements.getLoveReadingAI(numbers.lifePath, numbers.soulUrge, this.firstName, aiContext), 'love');
+            }
+        } catch (e) {
+            console.warn('AI love reading failed:', e.message);
+        }
+        if (!loveReading) {
+            loveReading = await this.withFiller(() => this.generateDirectReadingSection('love', aiContext), 'love');
+        }
+        if (loveReading) {
+            await this.speak(loveReading);
+            this.spokenNarrations.push({ stage: 'love', text: loveReading });
+            await MayaUtils.sleep(800);
+        }
+        const careerIntro = await this.withFiller(() => this.generateDirectReadingSection('careerIntro', aiContext), 'career');
+        if (careerIntro) {
+            await this.speak(careerIntro);
+            await MayaUtils.sleep(300);
+        }
+        
+        let careerReading = null;
+        try {
+            if (window.MayaStatements?.getCareerReadingAI) {
+                careerReading = await this.withFiller(() => MayaStatements.getCareerReadingAI(numbers.destiny, numbers.lifePath, this.firstName, aiContext), 'career');
+            }
+        } catch (e) {
+            console.warn('AI career reading failed:', e.message);
+        }
+        if (!careerReading) {
+            careerReading = await this.withFiller(() => this.generateDirectReadingSection('career', aiContext), 'career');
+        }
+        if (careerReading) {
+            await this.speak(careerReading);
+            this.spokenNarrations.push({ stage: 'career', text: careerReading });
+            await MayaUtils.sleep(800);
+        }
+        const yearIntro = await this.withFiller(() => this.generateDirectReadingSection('yearIntro', aiContext), 'year');
+        if (yearIntro) {
+            await this.speak(yearIntro);
+            await MayaUtils.sleep(300);
+        }
+        
+        let yearReading = null;
+        try {
+            if (window.MayaStatements?.getYearReadingAI) {
+                yearReading = await this.withFiller(() => MayaStatements.getYearReadingAI(numbers.personalYear, predictionItems, this.firstName, aiContext), 'year');
+            }
+        } catch (e) {
+            console.warn('AI year reading failed:', e.message);
+        }
+        if (!yearReading) {
+            yearReading = await this.withFiller(() => this.generateDirectReadingSection('year', aiContext), 'year');
+        }
+        if (yearReading) {
+            await this.speak(yearReading);
+            this.spokenNarrations.push({ stage: 'year', text: yearReading });
+            await MayaUtils.sleep(800);
+        }
+        const warningIntro = await this.withFiller(() => this.generateDirectReadingSection('warningIntro', aiContext), 'thinking');
+        if (warningIntro) {
+            await this.speak(warningIntro);
+            await MayaUtils.sleep(300);
+        }
+        
+        let warning = null;
+        try {
+            if (window.MayaStatements?.getWarningReadingAI) {
+                warning = await this.withFiller(() => MayaStatements.getWarningReadingAI(numbers.lifePath, numbers.personalYear, this.firstName, aiContext), 'revealing');
+            }
+        } catch (e) {
+            console.warn('AI warning reading failed:', e.message);
+        }
+        if (!warning) {
+            warning = await this.withFiller(() => this.generateDirectReadingSection('warning', aiContext), 'revealing');
+        }
+        if (warning) {
+            await this.speak(warning);
+            await MayaUtils.sleep(1000);
+        }
+        
+        // COMPLETION - AI outro
+        let completionText = null;
+        try {
+            if (window.MayaStatements?.getCompletionOutro) {
+                completionText = await this.withFiller(() => MayaStatements.getCompletionOutro(this.firstName, aiContext), 'thinking');
+            }
+        } catch (e) {
+            console.warn('AI completion outro failed:', e.message);
+        }
+
+        if (!completionText) {
+            completionText = await this.withFiller(() => this.generateDirectReadingSection('completion', aiContext), 'thinking');
+        }
+
+        if (completionText) {
+            await this.speak(completionText);
+        }
+        
+        // Mark complete
+        MayaUtils.storage.set('funnel_complete', true);
+        
+        // Fade out music
+        this.fadeOutMusic();
+        
+        // Show chat interface
+        this.showChatInterface();
+    },
+
+    /**
+     * Show chat interface
+     */
+    showChatInterface() {
+        const inputArea = document.getElementById('maya-input-area');
+        const textDisplay = document.getElementById('maya-text-display');
+        const blobContainer = document.getElementById('maya-blob-container');
+        const overlay = document.getElementById('maya-overlay');
+        
+        // Hide funnel controls (pause button)
+        this.showFunnelControls(false);
+        
+        // Remove funnel mode - show back/close buttons for chat
+        if (overlay) {
+            overlay.classList.remove('funnel-mode');
+        }
+        
+        if (blobContainer) {
+            blobContainer.classList.remove('blob-centered');
+            blobContainer.classList.add('blob-top');
+        }
+        
+        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const isHindi = lang === 'hi';
+
+        if (textDisplay) {
+            textDisplay.style.display = 'flex';
+            textDisplay.classList.add('maya-chat-mode');
+            textDisplay.innerHTML = `<div class="maya-chat-messages" id="maya-chat-messages"></div>`;
+        }
+        
+        if (inputArea) {
+            inputArea.style.display = 'flex';
+        }
+
+        const sendBtn = document.getElementById('maya-send');
+        const input = document.getElementById('maya-input');
+        const micBtn = document.getElementById('maya-mic');
+        if (input) input.placeholder = isHindi ? 'MAYA से कुछ भी पूछें...' : 'Ask MAYA anything...';
+
+        const handleSend = async () => {
+            const message = input.value.trim();
+            if (!message) return;
+            input.value = '';
+            
+            this._addChatBubble('user', message);
+            await this.handleUserQuestion(message);
+        };
+
+        sendBtn?.addEventListener('click', handleSend);
+        input?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSend();
+        });
+
+        // Set up voice recognition
+        this.setupVoiceInput(micBtn, input, handleSend);
+    },
+
+    /**
+     * Set up voice input with mic button (with retry mechanism)
+     */
+    setupVoiceInput(micBtn, input, onSend) {
+        if (!micBtn || !window.MayaListener) {
+            console.warn('🎤 MayaListener not available, will retry...');
+            // Retry after a short delay
+            setTimeout(() => this.setupVoiceInput(micBtn, input, onSend), 1000);
+            return;
+        }
+
+        // Initialize listener with retry mechanism
+        const initSuccess = MayaListener.init();
+        if (!initSuccess) {
+            console.warn('🎤 MayaListener init failed, will retry...');
+            setTimeout(() => this.setupVoiceInput(micBtn, input, onSend), 1500);
+            return;
+        }
+        
+        MayaListener.setLanguage(this.language);
+        
+        // Store auto-listen preference
+        this.autoListenEnabled = true;
+
+        // Handle recognition errors with retry
+        MayaListener.onError = (errorType) => {
+            if (errorType === 'permission_denied') {
+                console.warn('🎤 Microphone permission denied - voice input unavailable');
+                if (input) input.placeholder = this.language === 'hi' ? 'माइक्रोफोन अनुमति नहीं दी गई' : 'Microphone permission denied';
+                micBtn.style.opacity = '0.5';
+                micBtn.title = 'Microphone permission denied';
+            } else if (errorType === 'max_retries') {
+                console.warn('🎤 Max retries reached - voice input may be unstable');
+            }
+        };
+
+        // Handle recognition results
+        MayaListener.onResult = (transcript) => {
+            if (input) {
+                input.value = transcript;
+                // Auto-send voice input immediately
+                onSend();
+            }
+        };
+
+        MayaListener.onStart = () => {
+            micBtn.classList.add('listening');
+            micBtn.querySelector('i').className = 'bi bi-mic-fill';
+            if (input) input.placeholder = this.language === 'hi' ? 'सुन रहा हूं...' : 'Listening...';
+        };
+
+        MayaListener.onEnd = () => {
+            micBtn.classList.remove('listening');
+            micBtn.querySelector('i').className = 'bi bi-mic';
+            if (input) input.placeholder = this.language === 'hi' ? 'MAYA से कुछ भी पूछें...' : 'Ask MAYA anything...';
+            // No auto-restart - user clicks mic to start listening again
+        };
+
+        // Click to toggle listening with retry on failure
+        micBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            
+            if (MayaVoice.isPlaying) return;
+            
+            if (MayaListener.isListening) {
+                MayaListener.stop();
+            } else {
+                const started = await MayaListener.start();
+                if (!started) {
+                    // Show feedback that mic couldn't start
+                    micBtn.classList.add('error');
+                    setTimeout(() => micBtn.classList.remove('error'), 1000);
+                    console.warn('🎤 Could not start listening - tap again to retry');
+                }
+            }
+        });
+        
+        console.log('🎤 Voice input setup complete with retry mechanism');
+    },
+
+    /**
+     * Handle user questions
+     */
+    /**
+     * Add a chat bubble to the conversation.
+     */
+    _addChatBubble(role, text) {
+        const container = document.getElementById('maya-chat-messages');
+        if (!container) return;
+        const bubble = document.createElement('div');
+        bubble.className = `maya-chat-bubble maya-chat-bubble--${role}`;
+        const content = document.createElement('div');
+        content.className = 'maya-chat-bubble__content';
+        content.textContent = text;
+        bubble.appendChild(content);
+        container.appendChild(bubble);
+        container.scrollTop = container.scrollHeight;
+    },
+
+    /**
+     * Show a typing indicator in the chat.
+     */
+    _showTypingIndicator() {
+        const container = document.getElementById('maya-chat-messages');
+        if (!container) return null;
+        const bubble = document.createElement('div');
+        bubble.className = 'maya-chat-bubble maya-chat-bubble--maya maya-chat-bubble--typing';
+        bubble.id = 'maya-typing-indicator';
+        bubble.innerHTML = '<div class="maya-chat-bubble__content"><span class="maya-typing-dots"><span></span><span></span><span></span></span></div>';
+        container.appendChild(bubble);
+        container.scrollTop = container.scrollHeight;
+        return bubble;
+    },
+
+    async handleUserQuestion(question) {
+        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+
+        // Initialize AI if not already done
+        if (window.MayaAI && !MayaAI.userContext) {
+            MayaAI.init({
+                fullName: this.userData.name,
+                birthDate: this.userData.birthDate,
+                birthTime: this.userData.birthTime,
+                birthPlace: this.userData.birthPlace,
+                gender: this.userData.gender,
+                language: lang
+            });
+        }
+
+        // Show typing indicator
+        const typing = this._showTypingIndicator();
+
+        try {
+            const response = await MayaAI.askMaya(question, {
+                fullName: this.userData.name,
+                birthDate: this.userData.birthDate,
+                birthTime: this.userData.birthTime,
+                birthPlace: this.userData.birthPlace,
+                language: lang
+            });
+
+            // Remove typing indicator and add response bubble
+            typing?.remove();
+            this._addChatBubble('maya', response);
+            await this.speak(response);
+        } catch (error) {
+            console.error('AI response error:', error);
+            typing?.remove();
+            const errorMsg = lang === 'hi'
+                ? 'उत्तर अभी उपलब्ध नहीं है। कृपया फिर से पूछें।'
+                : 'The response is unavailable right now. Please ask again.';
+            this._addChatBubble('maya', errorMsg);
+        }
+    },
+
+    /**
+     * Speak text using ElevenLabs
+     * Disables mic listening while speaking
+     * Has timeout protection to prevent infinite hangs
+     * Properly handles pause/resume during speech
+     */
+    async speak(text) {
+        if (!text) {
+            console.warn('⚠️ speak() called with empty text');
+            return;
+        }
+
+        const normalizedText = this.sanitizeNarrationText(text);
+        if (!normalizedText) return;
+
+        // Wait if funnel is paused before starting
+        await this.waitIfPaused();
+        
+        console.log('🗣️ Speaking:', normalizedText.substring(0, 50) + '...');
+
+        // Duck background music while speaking
+        const savedVolume = this.backgroundMusic?.volume;
+        if (this.backgroundMusic && !this.backgroundMusic.paused) {
+            this.backgroundMusic.volume = Math.max(savedVolume * 0.3, 0.005);
+        }
+
+        // Disable mic while MAYA speaks
+        if (window.MayaListener) {
+            MayaListener.disable();
+            this.updateMicButton(true);
+        }
+
+        if (window.MayaVoice && !MayaVoice.isMuted) {
+            try {
+                // Let speech complete naturally - no hard timeout
+                // The voice module handles its own chunking and completion
+                await MayaVoice.speak(normalizedText);
+                
+                // If speech was aborted (paused), wait for resume then replay
+                if (MayaVoice.aborted && this.isPaused) {
+                    console.log('⏸️ Speech was paused, waiting for resume...');
+                    await this.waitIfPaused();
+                    // Replay the text from beginning after resume
+                    console.log('▶️ Resuming speech...');
+                    await MayaVoice.speak(normalizedText);
+                }
+            } catch (error) {
+                console.error('Voice error:', error);
+                await MayaUtils.sleep(Math.min(Math.max(normalizedText.length * 22, 900), 4000));
+            }
+        } else {
+            // No voice available, simulate reading time
+            await MayaUtils.sleep(Math.max(1200, Math.min(normalizedText.length * 28, 6000)));
+        }
+
+        // Restore background music volume after speaking
+        if (this.backgroundMusic && !this.backgroundMusic.paused && savedVolume != null) {
+            this.backgroundMusic.volume = savedVolume;
+        }
+
+        // Re-enable mic after MAYA finishes speaking
+        if (window.MayaListener) {
+            MayaListener.enable();
+            this.updateMicButton(false);
+            
+            // Auto-restart listening if auto-listen is enabled
+            if (this.autoListenEnabled) {
+                setTimeout(() => {
+                    if (this.autoListenEnabled && !MayaVoice.isPlaying && !MayaListener.isListening) {
+                        MayaListener.start();
+                    }
+                }, 500);
+            }
+        }
+    },
+
+    /**
+     * Close funnel and return to main app
+     * Used when returning user logs in
+     */
+    closeFunnel() {
+        console.log('🚪 Closing funnel overlay...');
+        
+        const overlay = document.getElementById('maya-overlay');
+        const textDisplay = document.getElementById('maya-text-display');
+        const inputArea = document.getElementById('maya-input-area');
+        const blobContainer = document.getElementById('maya-blob-container');
+        
+        // Stop any ongoing speech
+        if (window.MayaVoice) {
+            MayaVoice.stop();
+        }
+        
+        // Hide funnel controls
+        this.showFunnelControls(false);
+        
+        // Hide the overlay
+        if (overlay) {
+            overlay.classList.remove('show', 'funnel-mode');
+        }
+        
+        // Reset text display
+        if (textDisplay) {
+            textDisplay.style.display = 'none';
+            textDisplay.innerHTML = '';
+            textDisplay.classList.remove('email-gate-active');
+        }
+        
+        // Reset input area
+        if (inputArea) {
+            inputArea.style.display = 'none';
+        }
+        
+        // Reset blob
+        if (blobContainer) {
+            blobContainer.classList.remove('blob-top', 'blob-centered');
+        }
+        
+        // Reset funnel state
+        this.isActive = false;
+        this.currentPhase = null;
+        this.emailGateShown = false;
+        this.emailSubmissionInProgress = false;
+        this.teaserGateNarrated = false;
+        this.authPromptedFields = new Set();
+        
+        console.log('✅ Funnel closed successfully');
+    },
+
+    /**
+     * Update mic button state
+     */
+    updateMicButton(disabled) {
+        const micBtn = document.getElementById('maya-mic');
+        if (micBtn) {
+            if (disabled) {
+                micBtn.classList.add('disabled');
+                micBtn.title = this.language === 'hi' ? 'MAYA बोल रहे हैं...' : 'MAYA is speaking...';
+            } else {
+                micBtn.classList.remove('disabled');
+                const isAutoListen = this.autoListenEnabled;
+                micBtn.title = isAutoListen 
+                    ? (this.language === 'hi' ? 'ऑटो-सुनना चालू - बंद करने के लिए क्लिक करें' : 'Auto-listen on - click to turn off')
+                    : (this.language === 'hi' ? 'सुनना शुरू करने के लिए क्लिक करें' : 'Click to start listening');
+            }
+        }
+    }
+};
+
+// Make globally available
+window.MayaFunnel = MayaFunnel;
+
+// Debug function to check funnel status
+window.checkFunnelStatus = function() {
+    console.log('=== MAYA FUNNEL STATUS CHECK ===');
+    console.log('MayaFunnel available:', !!window.MayaFunnel);
+    console.log('MayaNumerology available:', !!window.MayaNumerology);
+    console.log('MayaUtils available:', !!window.MayaUtils);
+    console.log('MayaVoice available:', !!window.MayaVoice);
+    console.log('MayaStatements available:', !!window.MayaStatements);
+    console.log('Bootstrap Modal available:', !!window.bootstrap?.Modal);
+    console.log('');
+    console.log('Funnel state:');
+    console.log('  isActive:', MayaFunnel.isActive);
+    console.log('  currentPhase:', MayaFunnel.currentPhase);
+    console.log('  userData:', MayaFunnel.userData);
+    console.log('  calculations:', MayaFunnel.calculations);
+    console.log('');
+    console.log('Storage:');
+    console.log('  maya_profile:', MayaUtils?.storage?.get('maya_profile'));
+    console.log('  funnel_data:', MayaUtils?.storage?.get('funnel_data'));
+    console.log('  funnel_state:', MayaUtils?.storage?.get('funnel_state'));
+    console.log('================================');
+    return 'Use MayaFunnel.retryStart() to manually retry if stuck';
+};

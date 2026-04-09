@@ -1,0 +1,458 @@
+<style>
+        #youriframe {
+            position: relative;
+            margin-top: 1em;
+            border-radius: 20px;
+            height: 65vh;
+            width: 100%;
+            transition: all 0.5s ease;
+            display: none; /* Initially hidden, will be shown when needed */
+        }
+        .smallvid {
+            position: fixed !important;
+            right: 1em;
+            bottom: 1em;
+            width: 300px !important;
+            height: 180px !important;
+            z-index: 10000;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .video-item {
+            margin-bottom: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: flex-start;
+            border: 1px solid #ededed;
+            border-radius: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+        }
+        .video-item img {
+            border-radius: 10px;
+            width: 120px;
+            height: 90px;
+            margin-right: 10px;
+        }
+        .video-item .details {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .video-item h3 {
+            margin: 0;
+            font-size: 16px;
+            color: #333;
+        }
+        .video-item p {
+            margin: 0;
+            font-size: 14px;
+            color: #666;
+        }
+        #results {
+            max-height: 70vh;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        form {
+            display: flex;
+            align-items: center;
+            position: relative;
+            margin-bottom: 10px;
+        }
+        #search-button {
+            margin-left: 10px;
+            background: white;
+            color: black !important;
+            border: 1px solid #ededed;
+            cursor: pointer;
+            border-radius: 100px;
+            width: 200px;
+            height: 45px;
+        }
+        #search-button:hover {
+            background: black;
+            color: white !important;
+            border: 1px solid black;
+        }
+        #yourtextfield {
+            border: 1px solid #ededed;
+            padding: 10px;
+            padding-right: 40px;
+            padding-left: 25px;
+            flex: 1;
+            border-radius: 100px;
+        }
+        #mic-icon {
+            position: absolute;
+            right: 220px; /* Adjusted for better placement */
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            background: url('https://carbeam.zenovacorp.com/wp-content/uploads/2024/08/circle-microphone.png') no-repeat center center;
+            background-size: cover;
+        }
+        #listening-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 18px;
+            text-align: center;
+        }
+        .pulse {
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 0.7;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+            #results::-webkit-scrollbar {
+        width: 2px !important; /* Set scrollbar width to 0 */
+    }
+    </style>
+
+
+
+<form onsubmit="go_get(); return false;">
+    <input type="text" id="yourtextfield" placeholder="Search...">
+    <div id="mic-icon" onclick="startVoiceSearch()"></div>
+    <button type="submit" id="search-button">Search</button>
+</form>
+
+<div id="listening-popup" class="pulse">Listening...</div>
+
+<!-- Lazy load iframe -->
+<iframe id="youriframe" src="" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen="" class="smallvid"></iframe>
+<div id="results" style="display: block;"><div class="video-item">
+                            <img decoding="async" src="https://i.ytimg.com/vi/mQezde_qeXw/default.jpg" alt="sombr - Homewrecker (official video)">
+                            <div class="details">
+                                <h3>sombr - Homewrecker (official video)</h3>
+                                <p>Download/Stream: https://sombr.lnk.to/homewrecker
+
+Follow sombr: 
+Instagram: https://www.instagram.com/sombr/
+TikTok: https://www.tiktok.com/@sombr
+Website: https://sombrmusic.com
+
+Starring:
+sombr
+Quenlin Blackwell
+Milo Manheim
+
+Credits: 
+Director - Gus Black
+Executive Producers - Kelly Norris Sarno, LE Seydel
+Producer - Lukas Lennon
+Production Manager -...</p>
+                            </div>
+                        </div><div class="video-item">
+                            <img decoding="async" src="https://i.ytimg.com/vi/AFuE1LRxm80/default.jpg" alt="WAR MACHINE | Official Trailer | Netflix">
+                            <div class="details">
+                                <h3>WAR MACHINE | Official Trailer | Netflix</h3>
+                                <p>During the final stage of U.S. Army Ranger selection, an elite team’s training exercise turns into a fight for survival against an unimaginable threat. Watch...</p>
+                            </div>
+                        </div><div class="video-item">
+                            <img decoding="async" src="https://i.ytimg.com/vi/sXyj4iFEVd0/default.jpg" alt="roblox best gameplay">
+                            <div class="details">
+                                <h3>roblox best gameplay</h3>
+                                <p>Roblox insane moment aura #roblox #shorts #usa</p>
+                            </div>
+                        </div><div class="video-item">
+                            <img decoding="async" src="https://i.ytimg.com/vi/JDVRv15xqRI/default.jpg" alt="29 Intro">
+                            <div class="details">
+                                <h3>29 Intro</h3>
+                                <p>Provided to YouTube by Universal Music Group
+
+29 Intro · J. Cole
+
+The Fall-Off
+
+℗ 2026 Cole World, Inc., under exclusive license to Interscope Records
+
+Released on: 2026-02-06
+
+Producer, Vocalist:...</p>
+                            </div>
+                        </div><div class="video-item">
+                            <img decoding="async" src="https://i.ytimg.com/vi/JubgL46Xkmk/default.jpg" alt="Horizon Hunters Gathering - Announcement Trailer | PS5 Games">
+                            <div class="details">
+                                <h3>Horizon Hunters Gathering - Announcement Trailer | PS5 Games</h3>
+                                <p>http://playstation.com/en-us/games/horizon-hunters-gathering/
+
+Forge your legacy in Horizon Hunters Gathering – a tactical co-op action game that lets up to three players team up as heroic Hunters to...</p>
+                            </div>
+                        </div><div class="video-item">
+                            <img decoding="async" src="https://i.ytimg.com/vi/88Ym9SCKFpc/default.jpg" alt="Nintendo Direct: Partner Showcase 2.5.2026">
+                            <div class="details">
+                                <h3>Nintendo Direct: Partner Showcase 2.5.2026</h3>
+                                <p>A new Nintendo Direct: Partner Showcase livestream is on the way! Tune in on Feb 5 at 6am PT for roughly 30 minutes of information...</p>
+                            </div>
+                        </div><div class="video-item">
+                            <img decoding="async" src="https://i.ytimg.com/vi/9N72OEc9DPI/default.jpg" alt="YoungBoy Never Broke Again - I Want [Official Video]">
+                            <div class="details">
+                                <h3>YoungBoy Never Broke Again - I Want [Official Video]</h3>
+                                <p>YoungBoy Never Broke Again –  
+New Music: https://nbayoungboy.lnk.to/Music
+
+Connect with YoungBoy Never Broke Again: 
+http://www.youngboynba.com
+https://www.instagram.com/nba_youngboy
+https://www.soundcloud.com/nba-youngboy
+https://www.tiktok.com/@nbayoungboy
+
+The official YouTube channel of YoungBoy Never Broke Again. Subscribe for...</p>
+                            </div>
+                        </div><div class="video-item">
+                            <img decoding="async" src="https://i.ytimg.com/vi/L00r5BGgP64/default.jpg" alt="Rooster | Official Trailer | HBO Max">
+                            <div class="details">
+                                <h3>Rooster | Official Trailer | HBO Max</h3>
+                                <p>Welcome to college, Mr. Russo.
+
+Steve Carell stars in #Rooster, premiering March 8 on HBO Max.
+
+About HBO Max:
+HBO Max is the premier global streaming platform from...</p>
+                            </div>
+                        </div><div class="video-item">
+                            <img decoding="async" src="https://i.ytimg.com/vi/spXJwMbHZSw/default.jpg" alt="Minecraft Trapper VS 1000 Players">
+                            <div class="details">
+                                <h3>Minecraft Trapper VS 1000 Players</h3>
+                                <p>On the world's largest Hardcore Minecraft server, I challenged 1000 players to try to ban me off the Unstable SMP. This is my story of...</p>
+                            </div>
+                        </div><div class="video-item">
+                            <img decoding="async" src="https://i.ytimg.com/vi/2seS3W2VQ_Y/default.jpg" alt="Chief Keef - Talking Ish Ft.  Ballout (Official Music Video)">
+                            <div class="details">
+                                <h3>Chief Keef - Talking Ish Ft.  Ballout (Official Music Video)</h3>
+                                <p>Talking ish Single by Chief Keef ft Ballout
+Directed by
+ @Johnnytwotimez
+@colourfulmula 
+Stream/Download: https://chiefkeef.lnk.to/HarryPotter
+Stream/Download https://chiefkeef.lnk.to/ShakeDat
+Stream 'Almighty So 2' out now: https://chiefkeef.lnk.to/AlmightySo2
+Follow Chief Keef
+Instagram: https://instagram.com/chieffkeeffsossa?utm_medium=copy_link
+Twitter: https://twitter.com/chiefkeef?s=21 
+Tiktok: https://www.tiktok.com/@chiefkeefofficial1
+Facebook:...</p>
+                            </div>
+                        </div></div>
+
+<script src="js/runtime-env.js"></script>
+<script type="text/javascript">
+    const API_KEY = window.MAYA_SECRETS?.YOUTUBE_API_KEY || '';
+
+    function showConfigurationError(message) {
+        const iframe = document.getElementById('youriframe');
+        const resultsContainer = document.getElementById('results');
+
+        if (iframe) {
+            iframe.style.display = 'none';
+        }
+
+        if (resultsContainer) {
+            resultsContainer.style.display = 'block';
+            resultsContainer.innerHTML = `<div class="video-item"><div class="details"><h3>Configuration Required</h3><p>${message}</p></div></div>`;
+        }
+    }
+
+    function hasApiKey() {
+        if (API_KEY) {
+            return true;
+        }
+
+        showConfigurationError('Set VITE_PUBLIC_YOUTUBE_API_KEY in .env.local before using this page.');
+        return false;
+    }
+
+    function go_get() {
+        if (!hasApiKey()) {
+            return false;
+        }
+
+        const query = document.getElementById('yourtextfield').value;
+        const searchURL = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=10&key=${API_KEY}`;
+
+        const iframe = document.getElementById('youriframe');
+        const resultsContainer = document.getElementById('results');
+
+        fetch(searchURL)
+            .then(response => response.json())
+            .then(data => {
+                if (data.items && data.items.length > 0) {
+                    resultsContainer.innerHTML = '';
+                    data.items.forEach(item => {
+                        const videoId = item.id.videoId;
+                        const title = item.snippet.title;
+                        const description = truncateDescription(item.snippet.description);
+                        const thumbnail = item.snippet.thumbnails.default.url;
+
+                        const videoDiv = document.createElement('div');
+                        videoDiv.className = 'video-item';
+                        videoDiv.onclick = () => {
+                            iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+                            iframe.style.display = 'block';
+                            iframe.classList.remove('smallvid');
+                            resultsContainer.style.display = 'none';
+                        };
+
+                        videoDiv.innerHTML = `
+                            <img decoding="async" src="${thumbnail}" alt="${title}">
+                            <div class="details">
+                                <h3>${title}</h3>
+                                <p>${description}</p>
+                            </div>
+                        `;
+                        resultsContainer.appendChild(videoDiv);
+                    });
+
+                    resultsContainer.style.display = 'block';
+                    iframe.classList.add('smallvid');
+                } else {
+                    alert('No results found.');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+                alert('An error occurred while fetching video.');
+            });
+
+        return false;
+    }
+
+    function displayTrendingVideos() {
+        if (!hasApiKey()) {
+            return;
+        }
+
+        const trendingURL = `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&maxResults=10&key=${API_KEY}`;
+        
+        const iframe = document.getElementById('youriframe');
+        const resultsContainer = document.getElementById('results');
+
+        fetch(trendingURL)
+            .then(response => response.json())
+            .then(data => {
+                if (data.items && data.items.length > 0) {
+                    resultsContainer.innerHTML = '';
+                    data.items.forEach(item => {
+                        const videoId = item.id;
+                        const title = item.snippet.title;
+                        const description = truncateDescription(item.snippet.description);
+                        const thumbnail = item.snippet.thumbnails.default.url;
+
+                        const videoDiv = document.createElement('div');
+                        videoDiv.className = 'video-item';
+                        videoDiv.onclick = () => {
+                            iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+                            iframe.style.display = 'block';
+                            iframe.classList.remove('smallvid');
+                            resultsContainer.style.display = 'none';
+                        };
+
+                        videoDiv.innerHTML = `
+                            <img decoding="async" src="${thumbnail}" alt="${title}">
+                            <div class="details">
+                                <h3>${title}</h3>
+                                <p>${description}</p>
+                            </div>
+                        `;
+                        resultsContainer.appendChild(videoDiv);
+                    });
+
+                    // Show results container for trending videos
+                    resultsContainer.style.display = 'block';
+                    iframe.classList.add('smallvid');  // Keep iframe in small mode
+                } else {
+                    alert('No trending videos found.');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching trending videos:', error);
+                alert('An error occurred while fetching trending videos.');
+            });
+    }
+
+    function truncateDescription(description) {
+        const words = description.split(' ');
+        if (words.length > 25) {
+            return words.slice(0, 25).join(' ') + '...';
+        }
+        return description;
+    }
+
+    // Voice Search Functionality
+    let recognition;
+    let searchTimeout;
+
+    function initializeVoiceSearch() {
+        if (!('webkitSpeechRecognition' in window)) {
+            alert('Your browser does not support speech recognition.');
+            return;
+        }
+
+        recognition = new webkitSpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-IN'; // Default to Hindi; use 'hi-IN' for Hindi or 'en-US' for English
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            document.getElementById('yourtextfield').value = transcript;
+            clearTimeout(searchTimeout); // Clear previous timeout
+            searchTimeout = setTimeout(go_get, 1000); // Delay search to allow for full input
+            stopVoiceSearch(); // Hide popup after recognition ends
+        };
+
+        recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            alert('An error occurred with speech recognition.');
+            document.getElementById('listening-popup').style.display = 'none';
+        };
+
+        recognition.onend = () => {
+            document.getElementById('listening-popup').style.display = 'none';
+        };
+    }
+
+    function startVoiceSearch() {
+        if (recognition) {
+            document.getElementById('listening-popup').style.display = 'block';
+            recognition.start();
+        } else {
+            initializeVoiceSearch();
+            startVoiceSearch();
+        }
+    }
+
+    function stopVoiceSearch() {
+        if (recognition) {
+            recognition.stop();
+        }
+    }
+
+    // Initialize voice search on page load
+    window.onload = () => {
+        displayTrendingVideos();
+        initializeVoiceSearch();
+    };
+</script>

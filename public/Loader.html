@@ -1,0 +1,221 @@
+<style>
+/* Google Fonts */
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap");
+
+/* Styles */
+* {
+  box-sizing: border-box;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Montserrat", sans-serif;
+  font-weight: 600;
+}
+
+html,
+body {
+  font-family: "Montserrat", sans-serif;
+  font-weight: normal;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #0b0b0c;
+  overflow: hidden;
+}
+
+div#load_screen {
+  background: #0b0b0c;
+  opacity: 1;
+  position: fixed;
+  z-index: 10;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+div#loading {
+  position: relative;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+#pre_title {
+  opacity: 0;
+  font-size: 2.5em;
+  letter-spacing: 12px;
+  margin-left: 12px;
+  color: #e2c46a;
+  text-shadow: 0 0 20px rgba(226, 196, 106, 0.4);
+  animation: fadeIn 1.5s ease-out 3s forwards;
+}
+
+.tagline {
+  opacity: 0;
+  font-size: 0.9em;
+  letter-spacing: 2px;
+  color: #b0b2b8;
+  font-weight: 400;
+  margin: 0;
+  animation: fadeIn 1.5s ease-out 3.5s forwards;
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.pyramid-loader {
+  position: relative;
+  width: 280px;
+  height: auto;
+}
+
+.blobs {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.blob {
+  position: absolute;
+  box-shadow: 0px 0px 15px rgba(226, 196, 106, 0.6);
+  background: linear-gradient(135deg, #c79a3a 0%, #e2c46a 100%);
+  text-align: center;
+}
+
+.blob:nth-child(1) {
+  width: 16px;
+  height: 16px;
+  left: -8px;
+  border-radius: 100%;
+  animation: center_orb 3s infinite ease-in-out;
+}
+
+@keyframes center_orb {
+  0% {
+    top: 5px;
+    opacity: 0.6;
+    transform: rotate(0) scale(1);
+    box-shadow: 0px 0px 10px rgba(226, 196, 106, 0.4);
+  }
+  50% {
+    opacity: 1;
+    top: 25px;
+    transform: rotate(180deg) scale(1.15);
+    box-shadow: 0px 0px 25px rgba(226, 196, 106, 0.8);
+  }
+  100% {
+    opacity: 0.6;
+    top: 5px;
+    transform: rotate(360deg) scale(1);
+    box-shadow: 0px 0px 10px rgba(226, 196, 106, 0.4);
+  }
+}
+
+.pyramid {
+  position: relative;
+  width: 280px;
+  height: auto;
+}
+
+.pyramid-path {
+  fill: none;
+  stroke-linejoin: round;
+}
+
+.pyramid-main {
+  stroke-width: 2;
+  stroke: #e2c46a;
+  filter: drop-shadow(0 0 8px rgba(226, 196, 106, 0.5));
+}
+
+.pyramid-inner {
+  stroke-width: 0.5;
+  stroke: rgba(226, 196, 106, 0.5);
+}
+
+/* Loading dots */
+.loading-dots {
+  opacity: 0;
+  display: flex;
+  gap: 6px;
+  margin-top: 30px;
+  animation: fadeIn 0.5s ease-out 4s forwards;
+}
+
+.loading-dots span {
+  width: 8px;
+  height: 8px;
+  background: #e2c46a;
+  border-radius: 50%;
+  animation: dotPulse 1.4s infinite ease-in-out;
+}
+
+.loading-dots span:nth-child(1) { animation-delay: 0s; }
+.loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dotPulse {
+  0%, 80%, 100% { 
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% { 
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+</style>
+
+<div id="load_screen">
+  <div id="loading">
+    <div class="pyramid-loader">
+      <div class="blobs">
+        <div class="blob"></div>
+      </div>
+      <svg class="pyramid" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 792 612">
+        <path class="pyramid-path pyramid-main" d="M533.7 342.3l-81.3 155.3 -66-364L533.7 342.3zM386.3 133.7l-182 260 248 104" />
+        <path class="pyramid-path pyramid-inner" d="M386.3 348.3l147.3-6 -329.3 51.3L386.3 348.3zM386.3 133.7v214.7l66 149.3" />
+      </svg>
+    </div>
+    <h1 id="pre_title">Mayalogy</h1>
+    <p class="tagline">Vedic Astrology & Numerology</p>
+    <div class="loading-dots">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/walkway/0.0.1/walkway.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var svg = new Walkway({
+    selector: '.pyramid',
+    duration: 4000,
+    easing: 'easeInOutQuad',
+  }).draw(function() {
+    console.log('Pyramid animation complete');
+  });
+  
+  // Fade out loader after animation
+  setTimeout(function() {
+    document.getElementById('load_screen').style.opacity = '0';
+    document.getElementById('load_screen').style.transition = 'opacity 0.8s ease-out';
+    setTimeout(function() {
+      document.getElementById('load_screen').style.display = 'none';
+    }, 800);
+  }, 5500);
+});
+</script>

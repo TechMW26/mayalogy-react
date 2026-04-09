@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="theme-color" content="#0b0b0c">
+    <meta name="description" content="Mayalogy - Your Personal Vedic Astrology & Numerology Guide">
+    <title>Mayalogy - Vedic Astrology & Numerology</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Preconnect to CDNs for faster loading -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Bootstrap 5.3 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="css/maya.css?v=20260408l" rel="stylesheet">
+    
+    <!-- Favicon & Icons -->
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="favicon.png">
+    <link rel="shortcut icon" href="favicon.png">
+</head>
+<body>
+    <!-- Animated Splash Screen (React + Framer Motion) -->
+    <!-- CDN scripts are cached by SW on first load - instant on subsequent visits -->
+    <div id="preloader" class="maya-splash">
+        <div id="splash-root"></div>
+    </div>
+    
+    <!-- React 18 for Splash Screen -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Framer Motion -->
+    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { motion } = window.Motion || window.FramerMotion;
+
+        const GENERATED_ICON = "images/maya-logo.png";
+
+        const SplashScreen = () => {
+            const [step, setStep] = useState(0);
+
+            useEffect(() => {
+                const t1 = setTimeout(() => setStep(1), 500);
+                const t2 = setTimeout(() => setStep(2), 2500);
+                return () => { clearTimeout(t1); clearTimeout(t2); };
+            }, []);
+
+            const infinityPath = "M100,100 C145,60 190,60 190,100 C190,140 145,140 100,100 C55,60 10,60 10,100 C10,140 55,140 100,100 Z";
+            const iconPath = "M100,40 C150,40 160,50 160,100 C160,150 150,160 100,160 C50,160 40,150 40,100 C40,50 50,40 100,40 Z";
+
+            return (
+                <div className="relative" style={{width: '180px', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                    <svg
+                        viewBox="0 0 200 200"
+                        style={{width: '100%', height: '100%', filter: 'url(#neonGlow)'}}
+                    >
+                        <defs>
+                            <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#D4AF37" />
+                                <stop offset="50%" stopColor="#F9E29C" />
+                                <stop offset="100%" stopColor="#D4AF37" />
+                            </linearGradient>
+
+                            <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
+                                <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                                <feMerge>
+                                    <feMergeNode in="coloredBlur" />
+                                    <feMergeNode in="SourceGraphic" />
+                                </feMerge>
+                            </filter>
+
+                            <clipPath id="iconClip">
+                                <path d={iconPath} />
+                            </clipPath>
+                        </defs>
+
+                        {/* Image Layer */}
+                        <motion.image
+                            href={GENERATED_ICON} 
+                            xlinkHref={GENERATED_ICON}
+                            x="40"
+                            y="40"
+                            width="120"
+                            height="120"
+                            preserveAspectRatio="xMidYMid slice"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: step >= 2 ? 1 : 0 }}
+                            transition={{ duration: 1.0, ease: "linear" }}
+                            clipPath="url(#iconClip)" 
+                        />
+
+                        {/* Stroke Layer */}
+                        <motion.path
+                            d={step >= 2 ? iconPath : infinityPath}
+                            stroke="url(#goldGradient)"
+                            strokeWidth="3"
+                            fill="transparent"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            initial={{ pathLength: 0 }}
+                            animate={{
+                                pathLength: step >= 1 ? 1 : 0,
+                                d: step >= 2 ? iconPath : infinityPath,
+                            }}
+                            transition={{
+                                pathLength: { duration: 1.5, ease: "easeInOut" },
+                                d: { duration: 1.0, ease: [0.4, 0, 0.2, 1] }, 
+                            }}
+                        />
+                    </svg>
+                </div>
+            );
+        };
+
+        // Render splash screen
+        const splashRoot = document.getElementById('splash-root');
+        if (splashRoot) {
+            const root = ReactDOM.createRoot(splashRoot);
+            root.render(<SplashScreen />);
+        }
+    </script>
+
+    <!-- Main App Container -->
+    <div id="app-container" class="app-container d-none">
+        <!-- Header -->
+        <header id="main-header" class="main-header">
+            <div class="header-content">
+                <button class="btn btn-link menu-toggle" id="sidebar-toggle" aria-label="Toggle menu" title="Toggle menu" data-i18n-aria-label="Toggle menu" data-i18n-title="Toggle menu">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="header-logo">
+                    <img src="images/maya-logo.png" alt="Mayalogy" class="logo-icon">
+                    <span class="logo-name">Mayalogy</span>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-link" id="notifications-btn" aria-label="Notifications" title="Notifications" data-i18n-aria-label="Notifications" data-i18n-title="Notifications">
+                        <i class="bi bi-bell"></i>
+                        <span class="notification-badge d-none">3</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <div class="user-profile" data-page="profile" style="cursor: pointer;">
+                    <div class="avatar-circle" id="sidebar-avatar">
+                        <i class="bi bi-person"></i>
+                    </div>
+                    <div class="user-info" id="user-info">
+                        <span class="user-name" id="user-name" data-i18n="Guest">Guest</span>
+                        <div class="user-day-status" id="user-day-status">
+                            <!-- Day status pill will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-link sidebar-close d-md-none" id="sidebar-close">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" data-page="home">
+                            <i class="bi bi-house-heart"></i>
+                            <span data-i18n="Home">Home</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="horoscope">
+                            <i class="bi bi-stars"></i>
+                            <span data-i18n="Daily Horoscope">Daily Horoscope</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="kundli">
+                            <i class="bi bi-diagram-3"></i>
+                            <span data-i18n="Kundli">Kundli / Birth Chart</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="numerology">
+                            <i class="bi bi-123"></i>
+                            <span data-i18n="Numerology">Numerology Report</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="compatibility">
+                            <i class="bi bi-hearts"></i>
+                            <span data-i18n="Compatibility">Compatibility</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="remedies">
+                            <i class="bi bi-gem"></i>
+                            <span data-i18n="Remedies">Remedies & Gemstones</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="muhurat">
+                            <i class="bi bi-calendar-check"></i>
+                            <span data-i18n="Muhurat">Muhurat</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="panchang">
+                            <i class="bi bi-calendar3"></i>
+                            <span data-i18n="Panchang">Panchang</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="spiritual-music">
+                            <i class="bi bi-music-note-beamed"></i>
+                            <span data-i18n="Spiritual Music">Spiritual Music</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="vastu">
+                            <i class="bi bi-compass"></i>
+                            <span data-i18n="Vastu">Vastu Calibration</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="palm-reading">
+                            <i class="bi bi-hand-index"></i>
+                            <span data-i18n="Palm Reading">Palm Reading</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="chat-history">
+                            <i class="bi bi-chat-dots"></i>
+                            <span data-i18n="Chat History">Chat History</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="settings">
+                            <i class="bi bi-gear"></i>
+                            <span data-i18n="Settings">Settings</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <!-- Notifications Panel (slides from right) -->
+        <aside id="notifications-panel" class="notifications-panel">
+            <div class="notifications-header">
+                <h5><i class="bi bi-bell me-2"></i><span data-i18n="Notifications">Notifications</span></h5>
+                <button class="btn btn-link" id="notifications-close" title="Close notifications" data-i18n-title="Close notifications">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="notifications-body" id="notifications-body">
+                <!-- Dynamic notifications loaded via JS -->
+                <div class="notification-item">
+                    <div class="notification-icon"><i class="bi bi-hourglass-split"></i></div>
+                    <div class="notification-content">
+                        <p class="notification-text" data-i18n="Loading your personalized updates...">Loading your personalized updates...</p>
+                        <span class="notification-time" data-i18n="Please wait">Please wait</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        <div class="notifications-overlay" id="notifications-overlay"></div>
+
+        <!-- Main Content Area -->
+        <main id="main-content" class="main-content">
+            <!-- Dynamic content loads here -->
+        </main>
+
+        <!-- Bottom Navigation Bar -->
+        <nav id="bottom-nav" class="bottom-nav d-md-none">
+            <a href="#" class="nav-item active" data-page="home">
+                <i class="bi bi-house"></i>
+                <span data-i18n="Home">Home</span>
+            </a>
+            <a href="#" class="nav-item" data-page="horoscope">
+                <i class="bi bi-stars"></i>
+                <span data-i18n="Horoscope">Horoscope</span>
+            </a>
+            <button class="nav-item maya-btn" id="maya-nav-btn">
+                <div class="maya-blob-mini" id="maya-blob-mini">
+                    <div class="blob-glow"></div>
+                </div>
+            </button>
+            <a href="#" class="nav-item" data-page="kundli">
+                <i class="bi bi-diagram-3"></i>
+                <span data-i18n="Kundli">Kundli</span>
+            </a>
+            <a href="#" class="nav-item" data-page="profile">
+                <i class="bi bi-person"></i>
+                <span data-i18n="Profile">Profile</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- MAYA AI Fullscreen Overlay -->
+    <div id="maya-overlay" class="maya-overlay">
+        <div class="maya-overlay-header">
+            <button class="btn btn-link back-btn" id="maya-back">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <span class="maya-title">MAYA</span>
+            <button class="btn btn-link close-btn" id="maya-close">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="maya-blob-container" id="maya-blob-container">
+            <!-- Three.js blob renders here -->
+        </div>
+        <div class="maya-text-display" id="maya-text-display">
+            <p class="maya-speaking-text" id="maya-speaking-text"></p>
+        </div>
+        <!-- Funnel Controls (pause/resume) -->
+        <div class="maya-funnel-controls" id="maya-funnel-controls" style="display: none;">
+            <button class="maya-funnel-btn" id="maya-pause-btn" title="Pause" data-i18n-title="Pause">
+                <i class="bi bi-pause-fill"></i>
+            </button>
+        </div>
+        <div class="maya-input-area" id="maya-input-area" style="display: none;">
+            <button class="btn btn-outline-primary mic-btn" id="maya-mic" title="Hold to speak" data-i18n-title="Hold to speak">
+                <i class="bi bi-mic"></i>
+            </button>
+            <input type="text" class="form-control" id="maya-input" placeholder="Ask MAYA anything..." data-i18n-placeholder="Ask MAYA anything...">
+            <button class="btn btn-primary" id="maya-send">
+                <i class="bi bi-send"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Onboarding Modal -->
+    <div class="modal fade" id="onboardingModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+        <div class="modal-dialog modal-fullscreen-onboarding">
+            <div class="modal-content onboarding-modal">
+                <div class="modal-body p-0">
+                    <!-- Onboarding Header -->
+                    <div class="onboarding-header">
+                        <div class="onboarding-logo">
+                            <img src="images/maya-logo.png" alt="Mayalogy" class="logo-icon">
+                            <span class="logo-name">Mayalogy</span>
+                        </div>
+                        <div class="onboarding-progress">
+                            <div class="progress">
+                                <div class="progress-bar onboarding-progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <span class="onboarding-progress-text">Step 1 of 6</span>
+                        </div>
+                    </div>
+                    <!-- Onboarding Main Area -->
+                    <div class="onboarding-main">
+                        <!-- Onboarding Content -->
+                        <div class="onboarding-content" id="onboardingContent">
+                            <div class="text-center p-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-3" data-i18n="Loading your journey...">Loading your journey...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div class="modal fade" id="authModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content auth-modal">
+                <div class="modal-body">
+                    <div class="auth-container" id="auth-container">
+                        <!-- Auth content loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed top-0 start-50 translate-middle-x p-3" id="toast-container" style="z-index: 9999;"></div>
+
+    <!-- Network-only bootstrap: remove existing service workers and caches -->
+    <script>
+        if ('serviceWorker' in navigator || 'caches' in window) {
+            window.addEventListener('load', async () => {
+                try {
+                    const buildStamp = '20260408l';
+                    const hadController = !!navigator.serviceWorker?.controller;
+
+                    const localCacheKeyPatterns = [
+                        /translation_cache/i,
+                        /stmt_cache/i,
+                        /daily_horoscope/i,
+                        /network-only-build/i
+                    ];
+
+                    Object.keys(localStorage).forEach((key) => {
+                        if (localCacheKeyPatterns.some((pattern) => pattern.test(key))) {
+                            localStorage.removeItem(key);
+                        }
+                    });
+
+                    if ('serviceWorker' in navigator) {
+                        const registrations = await navigator.serviceWorker.getRegistrations();
+                        await Promise.all(registrations.map((registration) => registration.unregister()));
+                    }
+
+                    if ('caches' in window) {
+                        const cacheNames = await caches.keys();
+                        await Promise.all(cacheNames.map((name) => caches.delete(name)));
+                    }
+
+                    const currentBuild = localStorage.getItem('maya-network-only-build');
+                    const needsReload = hadController || currentBuild !== buildStamp;
+
+                    if (needsReload && !sessionStorage.getItem('maya-network-only-reloaded')) {
+                        sessionStorage.setItem('maya-network-only-reloaded', 'true');
+                        localStorage.setItem('maya-network-only-build', buildStamp);
+                        window.location.reload();
+                        return;
+                    }
+
+                    sessionStorage.removeItem('maya-network-only-reloaded');
+                    localStorage.setItem('maya-network-only-build', buildStamp);
+                    console.log('🌐 Network-only mode active');
+                } catch (error) {
+                    console.error('❌ Failed to enforce network-only mode:', error);
+                }
+            });
+        }
+    </script>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" onerror="console.warn('Bootstrap CDN failed to load')"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" onerror="console.warn('Three.js CDN failed to load')"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js" onerror="console.warn('GSAP CDN failed to load')"></script>
+    
+    <!-- MAYA App Scripts - v=20260408l for network-only reloads -->
+    <!-- IMPORTANT: runtime-env.js is generated from .env.local and must load before config.js -->
+    <script src="js/runtime-env.js?v=20260408l"></script>
+    <script src="js/config.js?v=20260408l"></script>
+    
+    <!-- Google Maps Places API (optional - for place autocomplete) -->
+    <script>
+        // Dynamically load Google Maps API if key is available
+        (function() {
+            const mapsKey = window.MAYA_SECRETS?.GOOGLE_MAPS_KEY;
+            if (mapsKey) {
+                const script = document.createElement('script');
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsKey}&libraries=places&callback=Function.prototype`;
+                script.async = true;
+                script.defer = true;
+                document.head.appendChild(script);
+                console.log('🗺️ Google Maps API loading...');
+            } else {
+                console.log('🗺️ Using fallback place search (Nominatim)');
+            }
+        })();
+    </script>
+    
+    <script src="js/utils.js?v=20260408l"></script>
+    <script src="js/i18n.js?v=20260408l"></script>
+    <script src="js/musicPlayer.js?v=20260408l"></script>
+    <script src="js/numerology.js?v=20260408l"></script>
+    <script src="js/astrology.js?v=20260408l"></script>
+    <script src="js/kundli.js?v=20260408l"></script>
+    <script src="js/horoscopeApi.js?v=20260408l"></script>
+    <script src="js/ai.js?v=20260408l"></script>
+    <script src="js/voice.js?v=20260408l"></script>
+    <script src="js/realtime.js?v=20260408l"></script>
+    <!-- Three.js dependent scripts need safety wrapper -->
+    <script src="js/blob.js?v=20260408l" onerror="console.error('Failed to load blob.js - likely Three.js missing')"></script>
+    <script src="js/firebase.js?v=20260408l"></script>
+    <script src="js/dbSync.js?v=20260408l"></script>
+    <script src="js/auth.js?v=20260408l"></script>
+    <script src="js/dynamicContent.js?v=20260408l"></script>
+    <script src="js/statements.js?v=20260408l"></script>
+    <script src="js/funnel.js?v=20260408l"></script>
+    <script src="js/onboarding.js?v=20260408l"></script>
+    <script src="js/pages.js?v=20260408l"></script>
+    <script src="js/app.js?v=20260408l"></script>
+    <!-- HEIC converter - loaded lazily, only needed for Palm Reading -->
+    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js" defer></script>
+</body>
+</html>

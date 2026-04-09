@@ -1,0 +1,25 @@
+{
+  "name": "Mayalogy - Cosmic Guide",
+  "short_name": "Mayalogy",
+  "description": "Exploring Life through Cosmos.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0b0c",
+  "theme_color": "#0b0b0c",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "favicon.png",
+      "sizes": "any",
+      "type": "image/png"
+    },
+    {
+      "src": "images/maya-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["astrology", "numerology", "horoscope", "vedic astrology"],
+  "lang": "en"
+}

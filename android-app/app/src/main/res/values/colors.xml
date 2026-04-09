@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="maya_primary">#8B5CF6</color>
+    <color name="maya_primary_dark">#7C3AED</color>
+    <color name="maya_secondary">#EC4899</color>
+    <color name="maya_accent">#F59E0B</color>
+    
+    <color name="background_dark">#0b0b0c</color>
+    <color name="system_bar_color">#0b0b0c</color>
+    <color name="background_card">#1A1625</color>
+    
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B8B5C3</color>
+    <color name="text_muted">#6B6880</color>
+    
+    <color name="success">#10B981</color>
+    <color name="warning">#F59E0B</color>
+    <color name="danger">#EF4444</color>
+    
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+</resources>

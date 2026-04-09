@@ -1,0 +1,86 @@
+<html>
+ <body onload="draw();">
+   <canvas id="canvas" width="500" height="500"></canvas>
+ </body>
+ <script>
+ var canvas = document.getElementById('canvas');
+function draw() {
+  var canvasParentWidth = document.getElementById("canvas").parentElement.offsetWidth;
+  console.log(canvasParentWidth);
+  document.getElementById("canvas").style.width = (canvasParentWidth - 10)+"px";
+  document.getElementById("canvas").style.height = (canvasParentWidth - 10)+"px";
+  //var canvas = document.getElementById('canvas');
+  if (canvas.getContext) {
+    var ctx = canvas.getContext('2d');
+
+    drawSquareHouse(ctx, 50, 0, 75, 25, 50, 50, 25, 25);
+    setText(ctx, 50, 25, "1", "subtext") 
+    
+    drawTriangleHouse(ctx, 0, 0, 50, 0, 25, 25);
+    setText(ctx, 25, 12, "2", "subtext") 
+    
+    drawTriangleHouse(ctx, 0, 0, 25, 25, 0, 50);
+    setText(ctx, 12, 25, "3", "subtext") 
+    
+    drawSquareHouse(ctx, 25, 25, 50, 50, 25, 75, 0, 50);
+    setText(ctx, 25, 50, "4", "subtext") 
+    
+    drawTriangleHouse(ctx, 0, 50, 25, 75, 0, 100);
+    setText(ctx, 12, 75, "5", "subtext") 
+    
+    drawTriangleHouse(ctx, 25, 75, 50, 100, 0, 100);
+    setText(ctx, 25, 88, "6", "subtext") 
+    
+    drawSquareHouse(ctx, 50, 50, 75, 75, 50, 100, 25, 75);
+    setText(ctx, 50, 75, "7", "subtext") 
+    
+    drawTriangleHouse(ctx, 75, 75, 100, 100, 50, 100);
+    setText(ctx, 75, 88, "8", "subtext") 
+    
+    drawTriangleHouse(ctx, 75, 75, 100, 50, 100, 100);
+    setText(ctx, 88, 75, "9", "subtext") 
+    
+    drawSquareHouse(ctx, 75, 25, 100, 50, 75, 75, 50, 50);
+    setText(ctx, 75, 50, "10", "subtext") 
+    
+    drawTriangleHouse(ctx, 100, 0, 100, 50, 75, 25);
+    setText(ctx, 88, 25, "11", "subtext") 
+    
+    drawTriangleHouse(ctx, 50, 0, 100, 0, 75, 25);
+    setText(ctx, 75, 12, "12", "subtext") 
+  }
+}
+
+function drawTriangleHouse(context, x1, y1, x2, y2, x3, y3) {
+  context.beginPath();
+  context.moveTo(x1 * canvas.width / 100, y1 * canvas.height / 100);
+  context.lineTo(x2 * canvas.width / 100, y2 * canvas.height / 100);
+  context.lineTo(x3 * canvas.width / 100, y3 * canvas.height / 100);
+  context.closePath();
+  context.lineWidth = 1;
+  context.strokeStyle = '#666666';
+  context.stroke()
+
+}
+
+function drawSquareHouse(context, x1, y1, x2, y2, x3, y3, x4, y4) {
+  context.beginPath();
+  context.moveTo(x1 * canvas.width / 100, y1 * canvas.height / 100);
+  context.lineTo(x2 * canvas.width / 100, y2 * canvas.height / 100);
+  context.lineTo(x3 * canvas.width / 100, y3 * canvas.height / 100);
+  context.lineTo(x4 * canvas.width / 100, y4 * canvas.height / 100);
+  context.closePath();
+  context.lineWidth = 1;
+  context.strokeStyle = '#666666';
+  context.stroke();
+}
+
+function setText(context, x, y, maintext, subtext) {
+  context.font = "16px Comic Sans MS";
+  context.fillStyle = "red";
+  context.fillText(maintext, x * canvas.width / 100, y * canvas.width / 100);
+  //context.fillStyle = "gray";
+  //context.fillText(subtext, (x-20) * canvas.width / 100, y * canvas.width / 100);
+}
+ </script>
+</html>
