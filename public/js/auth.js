@@ -136,7 +136,8 @@ const MayaAuth = {
                     birthPlace: result.user.birthPlace || profile.birthPlace,
                     birthLat: Number.isFinite(Number(result.user.birthLat)) ? Number(result.user.birthLat) : (profile.birthLat ?? null),
                     birthLon: Number.isFinite(Number(result.user.birthLon)) ? Number(result.user.birthLon) : (profile.birthLon ?? null),
-                    gender: result.user.gender || profile.gender
+                    gender: result.user.gender || profile.gender,
+                    language: result.user.language || profile.language || MayaUtils.storage.get('maya_language') || 'en'
                 });
                 
                 // Sync user data from Firebase (load settings, chat history, etc.)

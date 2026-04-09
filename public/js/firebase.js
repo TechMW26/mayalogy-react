@@ -302,9 +302,12 @@ const MayaFirebase = {
                 birthLat: birthData.birthLat || null,
                 birthLon: birthData.birthLon || null,
                 gender: birthData.gender || null,
-                language: birthData.language || 'en',
                 updatedAt: new Date().toISOString()
             };
+
+            if (typeof birthData.language === 'string') {
+                updates.language = birthData.language === 'hi' ? 'hi' : 'en';
+            }
 
             await this.request(`users/${emailKey}`, 'PATCH', updates);
 

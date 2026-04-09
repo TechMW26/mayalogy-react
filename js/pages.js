@@ -4154,6 +4154,85 @@ const MayaPages = {
     renderPalmReading(isHindi) {
         // Get saved palm readings
         const savedReadings = MayaUtils.storage.get('maya_palm_readings') || [];
+
+        const renderPalmReadingCards = () => {
+            if (savedReadings.length === 0) {
+                return `
+                    <div class="maya-vastu__empty-state">
+                        <div class="maya-vastu__empty-icon">
+                            <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+                                <circle cx="26" cy="26" r="25" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.3"/>
+                                <path d="M26 14v24M14 26h24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.2"/>
+                                <circle cx="26" cy="26" r="4" fill="currentColor" opacity="0.3"/>
+                                <path d="M17 17c3-5 7-7 9-7s6 2 9 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+                            </svg>
+                        </div>
+                        <h4>${isHindi ? 'अभी कोई रीडिंग नहीं' : 'No Readings Yet'}</h4>
+                        <p>${isHindi ? 'ऊपर बटन दबाकर अपनी पहली हस्तरेखा रीडिंग शुरू करें' : 'Tap the button above to start your first palm reading'}</p>
+                    </div>
+                `;
+            }
+
+            return savedReadings.map((reading, index) => {
+                const analysisData = reading.analysisData || {};
+                const isGuided = !!analysisData.isFallback;
+                const statusClass = isGuided ? 'maya-vastu__card--yellow' : 'maya-vastu__card--green';
+                const statusLabel = isGuided
+                    ? (isHindi ? 'मार्गदर्शित' : 'Guided')
+                    : (isHindi ? 'लाइव' : 'Live');
+                const statusIcon = isGuided ? 'bi-info-circle-fill' : 'bi-stars';
+                const insightCount = analysisData.lines?.length || 0;
+                const date = new Date(reading.date);
+                const dateStr = date.toLocaleDateString(isHindi ? 'hi-IN' : 'en-IN', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
+                });
+                const rawSummary = (isHindi
+                    ? (analysisData.overallSummaryHi || analysisData.overallSummary)
+                    : (analysisData.overallSummary || analysisData.overallSummaryHi)
+                ) || (isHindi ? 'सहेजी गई रीडिंग' : 'Saved palm reading');
+                const cardSummary = rawSummary.replace(/\s+/g, ' ').trim().slice(0, 96);
+
+                return `
+                    <div class="maya-vastu__card ${statusClass}" data-reading-index="${index}">
+                        <div class="maya-vastu__card-header">
+                            <div class="maya-vastu__card-icon">
+                                <i class="bi bi-hand-index"></i>
+                            </div>
+                            <div class="maya-vastu__card-info">
+                                <h4>${reading.name || (isHindi ? 'अनाम रीडिंग' : 'Unnamed Reading')}</h4>
+                                <span class="maya-vastu__card-date">
+                                    <i class="bi bi-calendar3"></i> ${dateStr}
+                                </span>
+                            </div>
+                            <div class="maya-vastu__card-score">
+                                <span class="maya-vastu__score-value">${statusLabel}</span>
+                            </div>
+                        </div>
+                        <div class="maya-vastu__card-body">
+                            <div class="maya-vastu__card-direction">
+                                <i class="bi bi-journal-text"></i>
+                                <span>${cardSummary}${rawSummary.length > 96 ? '...' : ''}</span>
+                            </div>
+                            <div class="maya-vastu__card-severity">
+                                <i class="bi ${statusIcon}"></i>
+                                <span>${insightCount ? (isHindi ? `${insightCount} प्रमुख संकेत` : `${insightCount} key insights`) : (isHindi ? 'रीडिंग उपलब्ध' : 'Reading available')}</span>
+                            </div>
+                        </div>
+                        <div class="maya-vastu__card-actions">
+                            <button class="maya-vastu__card-btn maya-vastu__card-btn--view" data-view-reading="${index}">
+                                <i class="bi bi-eye"></i>
+                                <span>${isHindi ? 'देखें' : 'View'}</span>
+                            </button>
+                            <button class="maya-vastu__card-btn maya-vastu__card-btn--delete" data-delete-reading="${index}" title="${isHindi ? 'हटाएं' : 'Delete'}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        };
         
         return `
             <div class="maya-page maya-palm-reading maya-palm-reading--fullscreen">
@@ -4161,44 +4240,60 @@ const MayaPages = {
                 <button class="maya-palm__back-btn" id="palmBackBtn">
                     <i class="bi bi-arrow-left"></i>
                 </button>
-                
-                <div class="maya-page__header">
-                    <h2 class="maya-page__title">${isHindi ? 'हस्तरेखा विश्लेषण' : 'Palm Reading'}</h2>
-                    <p class="maya-page__subtitle">${isHindi ? 'दोनों हथेलियों की तस्वीर लें और व्यक्तिगत वैदिक विश्लेषण प्राप्त करें' : 'Capture both palms for personalized Vedic palmistry analysis'}</p>
-                </div>
 
                 <div class="maya-palm__container">
-                    <!-- Saved Readings Section -->
-                    ${savedReadings.length > 0 ? `
-                    <div class="maya-card maya-palm__saved-section" id="palmSavedSection">
-                        <h4 class="maya-palm__saved-title">
-                            <i class="bi bi-clock-history"></i>
-                            ${isHindi ? 'पिछली रीडिंग्स' : 'Previous Readings'}
-                        </h4>
-                        <div class="maya-palm__saved-list" id="palmSavedList">
-                            ${savedReadings.map((reading, index) => `
-                                <div class="maya-palm__saved-item" data-view-reading="${index}">
-                                    <div class="maya-palm__saved-hands">
-                                        ${reading.combinedImage ? 
-                                            `<img src="${reading.combinedImage}" alt="Hands">` :
-                                            `<i class="bi bi-hand-index"></i>`
-                                        }
-                                    </div>
-                                    <div class="maya-palm__saved-info">
-                                        <span class="maya-palm__saved-name">${reading.name || (isHindi ? 'अनाम' : 'Unnamed')}</span>
-                                        <span class="maya-palm__saved-date">${new Date(reading.date).toLocaleDateString()}</span>
-                                    </div>
-                                    <button class="maya-palm__saved-delete" data-delete-reading="${index}" title="${isHindi ? 'हटाएं' : 'Delete'}">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
+                    <div id="palmHomeSection">
+                        <div class="maya-vastu__hero">
+                            <div class="maya-vastu__hero-bg"></div>
+                            <div class="maya-vastu__hero-content">
+                                <div class="maya-vastu__hero-icon">
+                                    <i class="bi bi-hand-index"></i>
                                 </div>
-                            `).join('')}
+                                <h2 class="maya-vastu__hero-title">${isHindi ? 'हस्तरेखा विश्लेषण' : 'Palm Reading'}</h2>
+                                <p class="maya-vastu__hero-sub">${isHindi ? 'दोनों हथेलियों की तस्वीर लेकर व्यक्तिगत वैदिक हस्तरेखा मार्गदर्शन प्राप्त करें' : 'Capture both palms for personalized Vedic palmistry guidance'}</p>
+                                <button class="maya-vastu__start-btn" id="startNewPalmReading">
+                                    <i class="bi bi-plus-circle"></i>
+                                    <span>${isHindi ? 'नई रीडिंग शुरू करें' : 'Start New Reading'}</span>
+                                    <i class="bi bi-arrow-right"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="maya-vastu__features">
+                            <div class="maya-vastu__feature">
+                                <div class="maya-vastu__feature-icon maya-vastu__feature-icon--camera"><i class="bi bi-hand-index"></i></div>
+                                <span>${isHindi ? 'बायां हाथ' : 'Left Hand'}</span>
+                            </div>
+                            <div class="maya-vastu__feature">
+                                <div class="maya-vastu__feature-icon maya-vastu__feature-icon--camera"><i class="bi bi-hand-index" style="transform: scaleX(-1);"></i></div>
+                                <span>${isHindi ? 'दायां हाथ' : 'Right Hand'}</span>
+                            </div>
+                            <div class="maya-vastu__feature">
+                                <div class="maya-vastu__feature-icon maya-vastu__feature-icon--ai"><i class="bi bi-stars"></i></div>
+                                <span>${isHindi ? 'AI रीडिंग' : 'AI Reading'}</span>
+                            </div>
+                            <div class="maya-vastu__feature">
+                                <div class="maya-vastu__feature-icon maya-vastu__feature-icon--remedy"><i class="bi bi-gem"></i></div>
+                                <span>${isHindi ? 'उपाय' : 'Remedies'}</span>
+                            </div>
+                        </div>
+
+                        <div class="maya-vastu__analyses-section" id="palmSavedSection">
+                            <h3 class="maya-vastu__section-title">
+                                <i class="bi bi-clock-history"></i>
+                                <span>${isHindi ? 'पिछली रीडिंग्स' : 'Past Readings'}</span>
+                                ${savedReadings.length > 0 ? `<span class="maya-vastu__badge">${savedReadings.length}</span>` : ''}
+                            </h3>
+                            <div class="maya-vastu__analyses-grid" id="palmSavedList">
+                                ${renderPalmReadingCards()}
+                            </div>
                         </div>
                     </div>
-                    ` : ''}
+
+                    <div id="palmReadingFlow" style="display:none;">
                     
                     <!-- Instructions Card - Step 1: Left Hand -->
-                    <div class="maya-card maya-palm__instructions" id="palmInstructions">
+                    <div class="maya-card maya-palm__instructions" id="palmInstructions" style="display:none;">
                         <div class="maya-palm__step-indicator">
                             <span class="maya-palm__step active" data-step="1">1</span>
                             <span class="maya-palm__step-line"></span>
@@ -4414,9 +4509,10 @@ const MayaPages = {
                             </button>
                             <button class="maya-btn maya-btn--primary" id="newPalmScanBtn">
                                 <i class="bi bi-camera"></i>
-                                ${isHindi ? 'नया स्कैन' : 'New Scan'}
+                                ${isHindi ? 'नई रीडिंग' : 'New Reading'}
                             </button>
                         </div>
+                    </div>
                     </div>
                 </div>
             </div>
@@ -4846,30 +4942,21 @@ const MayaPages = {
         
         // Hide header and footer for fullscreen mode
         const header = document.querySelector('.maya-header');
-        const footer = document.querySelector('.maya-footer');
+        const footer = document.querySelector('#bottom-nav') || document.querySelector('.maya-footer');
         if (header) header.style.display = 'none';
         if (footer) footer.style.display = 'none';
         
-        // Back button handler
+        const homeSection = document.getElementById('palmHomeSection');
+        const flowSection = document.getElementById('palmReadingFlow');
+        const startReadingBtn = document.getElementById('startNewPalmReading');
         const backBtn = document.getElementById('palmBackBtn');
-        if (backBtn) {
-            backBtn.addEventListener('click', () => {
-                // Show header and footer again
-                const header = document.querySelector('.maya-header');
-                const footer = document.querySelector('#bottom-nav');
-                if (header) header.style.display = '';
-                if (footer) footer.style.display = '';
-                // Navigate to home
-                this.render('home');
-            });
-        }
-        
         const startBtn = document.getElementById('startPalmScan');
         const cameraInput = document.getElementById('palmCameraInput');
         const instructionsCard = document.getElementById('palmInstructions');
         const previewCard = document.getElementById('palmPreview');
         const rightHandInstructions = document.getElementById('palmRightHandInstructions');
         const loadingCard = document.getElementById('palmLoading');
+        const errorCard = document.getElementById('palmError');
         const resultsCard = document.getElementById('palmResults');
         const palmImage = document.getElementById('palmImage');
         const retakeBtn = document.getElementById('retakePalmBtn');
@@ -4889,6 +4976,56 @@ const MayaPages = {
             scanRightHandBtn: !!scanRightHandBtn,
             confirmHandBtn: !!confirmHandBtn
         });
+
+        const showPalmHomeState = () => {
+            if (homeSection) homeSection.style.display = 'block';
+            if (flowSection) flowSection.style.display = 'none';
+            if (instructionsCard) instructionsCard.style.display = 'none';
+            if (previewCard) previewCard.style.display = 'none';
+            if (rightHandInstructions) rightHandInstructions.style.display = 'none';
+            if (loadingCard) loadingCard.style.display = 'none';
+            if (errorCard) errorCard.style.display = 'none';
+            if (resultsCard) resultsCard.style.display = 'none';
+        };
+
+        const startNewReadingFlow = () => {
+            this._resetPalmState();
+            if (cameraInput) cameraInput.value = '';
+            if (homeSection) homeSection.style.display = 'none';
+            if (flowSection) flowSection.style.display = 'block';
+            if (instructionsCard) instructionsCard.style.display = 'block';
+            if (previewCard) previewCard.style.display = 'none';
+            if (rightHandInstructions) rightHandInstructions.style.display = 'none';
+            if (loadingCard) loadingCard.style.display = 'none';
+            if (errorCard) errorCard.style.display = 'none';
+            if (resultsCard) resultsCard.style.display = 'none';
+        };
+
+        this._palmUiActions = {
+            showPalmHomeState,
+            startNewReadingFlow
+        };
+
+        if (startReadingBtn) {
+            startReadingBtn.onclick = () => {
+                startNewReadingFlow();
+            };
+        }
+
+        if (backBtn) {
+            backBtn.addEventListener('click', () => {
+                if (flowSection && flowSection.style.display !== 'none') {
+                    showPalmHomeState();
+                    return;
+                }
+
+                const currentHeader = document.querySelector('.maya-header');
+                const currentFooter = document.querySelector('#bottom-nav') || document.querySelector('.maya-footer');
+                if (currentHeader) currentHeader.style.display = '';
+                if (currentFooter) currentFooter.style.display = '';
+                this.render('home');
+            });
+        }
         
         // State for dual hand capture
         this._palmState = {
@@ -5062,13 +5199,7 @@ const MayaPages = {
         // New scan button
         if (newScanBtn) {
             newScanBtn.onclick = () => {
-                this._resetPalmState();
-                cameraInput.value = '';
-                instructionsCard.style.display = 'block';
-                previewCard.style.display = 'none';
-                rightHandInstructions.style.display = 'none';
-                loadingCard.style.display = 'none';
-                resultsCard.style.display = 'none';
+                startNewReadingFlow();
             };
         }
         
@@ -5088,6 +5219,8 @@ const MayaPages = {
         
         // Initialize modal handlers
         this._initSavePalmModal(isHindi);
+
+        showPalmHomeState();
     },
     
     /**
@@ -5518,11 +5651,13 @@ Respond with ONLY this JSON, nothing else:
         };
         
         // Hide all sections
+        document.getElementById('palmHomeSection')?.style.setProperty('display', 'none');
+        document.getElementById('palmReadingFlow')?.style.setProperty('display', 'block');
         document.getElementById('palmInstructions').style.display = 'none';
         document.getElementById('palmPreview').style.display = 'none';
         document.getElementById('palmRightHandInstructions').style.display = 'none';
         document.getElementById('palmLoading').style.display = 'none';
-        document.getElementById('palmSavedSection')?.style.setProperty('display', 'none');
+        document.getElementById('palmError')?.style.setProperty('display', 'none');
         
         // Render and show results
         this._renderCombinedHandsHero();
@@ -10443,7 +10578,8 @@ Rules:
                     birthPlace: resolvedBirthPlace.birthPlace || birthPlace,
                     birthLat: Number.isFinite(resolvedBirthPlace.birthLat) ? resolvedBirthPlace.birthLat : null,
                     birthLon: Number.isFinite(resolvedBirthPlace.birthLon) ? resolvedBirthPlace.birthLon : null,
-                    gender: genderRadio ? genderRadio.value : null
+                    gender: genderRadio ? genderRadio.value : null,
+                    language: MayaUtils.storage.get('maya_language') || existingProfile.language || 'en'
                 };
 
                 await MayaAuth.saveBirthDetails(profileData);
@@ -10531,12 +10667,33 @@ Rules:
                         const value = e.target.dataset.value === 'hi' ? 'hi' : 'en';
 
                         if (window.MayaApp?.applyLanguagePreference) {
-                            await MayaApp.applyLanguagePreference(value, { rerenderCurrentPage: true, force: true });
+                            await MayaApp.applyLanguagePreference(value, {
+                                rerenderCurrentPage: true,
+                                force: true,
+                                syncProfile: true
+                            });
                         } else {
-                            MayaUtils.storage.set('maya_language', value);
+                            if (window.MayaDBSync?.set) {
+                                MayaDBSync.set('maya_language', value);
+                            } else {
+                                MayaUtils.storage.set('maya_language', value);
+                            }
+
+                            const profile = MayaUtils.storage.get('maya_profile') || {};
+                            MayaUtils.storage.set('maya_profile', { ...profile, language: value });
+
                             if (window.MayaI18n) {
                                 await MayaI18n.setLanguage(value, { force: true });
                             }
+
+                            if (window.MayaAuth?.isAuthenticated && typeof MayaAuth.updateProfile === 'function') {
+                                try {
+                                    await MayaAuth.updateProfile({ language: value });
+                                } catch (error) {
+                                    console.warn('Failed to sync language preference:', error);
+                                }
+                            }
+
                             await this.render(this.currentPage || 'settings');
                         }
 

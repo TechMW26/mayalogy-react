@@ -750,7 +750,7 @@ const MayaI18n = {
             '.maya-settings__item-label',
             '.maya-settings__item-desc',
             '.maya-settings__group-title',
-            '.maya-btn',
+            '.maya-btn span',
             '.nav-link span',
             '.sidebar-link span',
             '.maya-card__title',
@@ -824,7 +824,7 @@ const MayaI18n = {
             '.maya-page__title',
             '.maya-page__subtitle',
             '.maya-section__title',
-            '.maya-btn',
+            '.maya-btn span',
             '.bottom-nav .nav-item span',
             '[data-i18n]'
         ];

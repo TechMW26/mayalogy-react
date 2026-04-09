@@ -156,10 +156,20 @@ const MayaApp = {
         void this.applyLanguagePreference(MayaUtils.storage.get('maya_language') || MayaUtils.storage.get('maya_profile')?.language || 'en', { force: true });
     },
 
-    async applyLanguagePreference(language = MayaUtils.storage.get('maya_language') || 'en', { rerenderCurrentPage = false, force = false } = {}) {
+    async applyLanguagePreference(language = MayaUtils.storage.get('maya_language') || 'en', { rerenderCurrentPage = false, force = false, syncProfile = false } = {}) {
         const resolvedLanguage = language === 'hi' ? 'hi' : 'en';
 
-        MayaUtils.storage.set('maya_language', resolvedLanguage);
+        if (window.MayaDBSync?.set) {
+            MayaDBSync.set('maya_language', resolvedLanguage);
+        } else {
+            MayaUtils.storage.set('maya_language', resolvedLanguage);
+        }
+
+        const profile = MayaUtils.storage.get('maya_profile') || {};
+        if (profile.language !== resolvedLanguage) {
+            MayaUtils.storage.set('maya_profile', { ...profile, language: resolvedLanguage });
+        }
+
         document.documentElement.lang = resolvedLanguage === 'hi' ? 'hi' : 'en';
 
         if (window.MayaStatements?.setLanguage) {
@@ -177,6 +187,14 @@ const MayaApp = {
         if (window.MayaI18n) {
             MayaI18n.init?.();
             await MayaI18n.setLanguage(resolvedLanguage, { force });
+        }
+
+        if (syncProfile && window.MayaAuth?.isAuthenticated && typeof MayaAuth.updateProfile === 'function') {
+            try {
+                await MayaAuth.updateProfile({ language: resolvedLanguage });
+            } catch (error) {
+                console.warn('Failed to sync language preference:', error);
+            }
         }
 
         this.updateSidebarUserInfo();
@@ -415,7 +433,7 @@ const MayaApp = {
         const profile = MayaUtils.storage.get('maya_profile');
         const hasProfile = profile && profile.birthDate;
         const isAuthenticated = window.MayaAuth ? MayaAuth.isAuthenticated : false;
-        const preferredLanguage = profile?.language || MayaUtils.storage.get('maya_language') || 'en';
+        const preferredLanguage = MayaUtils.storage.get('maya_language') || profile?.language || 'en';
 
         await this.applyLanguagePreference(preferredLanguage, { force: true });
         
@@ -512,6 +530,13 @@ const MayaApp = {
         if (mayaClose) {
             mayaClose.addEventListener('click', () => {
                 this.hideMaya();
+            });
+        }
+
+        const mayaHistory = document.getElementById('maya-history');
+        if (mayaHistory) {
+            mayaHistory.addEventListener('click', () => {
+                this.openMayaChatHistory();
             });
         }
 
@@ -1067,6 +1092,7 @@ const MayaApp = {
         if (overlay) {
             overlay.classList.add('show');
             overlay.classList.remove('funnel-mode');
+            overlay.classList.add('maya-overlay--chat');
             console.log('MAYA overlay shown');
             
             // Initialize blob if not already
@@ -1085,6 +1111,7 @@ const MayaApp = {
                 textDisplay.style.display = 'flex';
                 textDisplay.classList.add('maya-chat-mode');
                 textDisplay.innerHTML = `<div class="maya-chat-messages" id="maya-chat-messages"></div>`;
+                this.restoreMayaChatHistory();
             }
             
             // Show input area
@@ -1298,6 +1325,36 @@ const MayaApp = {
         }
     },
 
+    restoreMayaChatHistory() {
+        const container = document.getElementById('maya-chat-messages');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        const language = MayaUtils.storage.get('maya_language') || 'en';
+        const history = MayaUtils.storage.get('maya_chat_history') || [];
+        const recentHistory = history.slice(-12);
+
+        if (!recentHistory.length) {
+            this._addChatBubble(
+                'maya',
+                language === 'hi'
+                    ? 'मैं यहाँ हूँ. मुझसे ज्योतिष, अंकशास्त्र, प्रेम, करियर या आज की ऊर्जा के बारे में पूछें.'
+                    : 'I am here. Ask me about astrology, numerology, love, career, or today\'s energy.'
+            );
+            return;
+        }
+
+        recentHistory.forEach(entry => {
+            if (entry.question) {
+                this._addChatBubble('user', entry.question);
+            }
+            if (entry.answer) {
+                this._addChatBubble('maya', entry.answer);
+            }
+        });
+    },
+
     /**
      * Handle MAYA chat input
      */
@@ -1424,6 +1481,21 @@ const MayaApp = {
         MayaUtils.storage.set('maya_chat_history', chatHistory);
     },
 
+            openMayaChatHistory() {
+                this.hideMaya();
+
+                document.querySelectorAll('.nav-link, .bottom-nav .nav-item').forEach(link => {
+                    link.classList.remove('active');
+                });
+                document.querySelectorAll('[data-page="chat-history"]').forEach(link => {
+                    link.classList.add('active');
+                });
+
+                if (window.MayaPages) {
+                    MayaPages.render('chat-history');
+                }
+            },
+
     /**
      * Hide MAYA overlay
      */
@@ -1431,6 +1503,7 @@ const MayaApp = {
         const overlay = document.getElementById('maya-overlay');
         if (overlay) {
             overlay.classList.remove('show');
+                    overlay.classList.remove('maya-overlay--chat');
         }
         
         // Clean up chat-mode on text display
@@ -1455,8 +1528,8 @@ const MayaApp = {
             MayaListener.stop();
         }
 
-        // If funnel completed, reload page to show the home dashboard
-        if (window.MayaFunnel?.isActive || MayaUtils?.storage?.get('funnel_complete')) {
+        // Keep app state intact for normal chat closes. Only reset when closing an active funnel flow.
+        if (overlay?.classList.contains('funnel-mode') || window.MayaFunnel?.isActive) {
             window.location.reload();
         }
     },
