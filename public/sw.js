@@ -3,7 +3,7 @@
  * Network-only cleanup worker used to remove older cached deployments.
  */
 
-const CACHE_VERSION = '20260408l';
+const CACHE_VERSION = '20260409a';
 
 async function clearAllCaches() {
     const cacheNames = await caches.keys();

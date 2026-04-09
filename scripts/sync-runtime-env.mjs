@@ -1,17 +1,65 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-
-import { loadEnv } from 'vite';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(scriptDir, '..');
 const mode = process.argv[2] || process.env.NODE_ENV || 'development';
-const loadedEnv = loadEnv(mode, rootDir, '');
-const env = {
-  ...loadedEnv,
-  ...process.env,
-};
+
+function parseEnvFile(filePath) {
+  if (!existsSync(filePath)) {
+    return {};
+  }
+
+  const parsedEnv = {};
+  const fileText = readFileSync(filePath, 'utf8');
+
+  for (const rawLine of fileText.split(/\r?\n/u)) {
+    const line = rawLine.trim();
+
+    if (!line || line.startsWith('#')) {
+      continue;
+    }
+
+    const separatorIndex = line.indexOf('=');
+
+    if (separatorIndex <= 0) {
+      continue;
+    }
+
+    const key = line.slice(0, separatorIndex).trim();
+    let value = line.slice(separatorIndex + 1).trim();
+
+    if (
+      (value.startsWith('"') && value.endsWith('"'))
+      || (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+
+    parsedEnv[key] = value;
+  }
+
+  return parsedEnv;
+}
+
+const envFiles = [
+  resolve(rootDir, '.env'),
+  resolve(rootDir, '.env.local'),
+  resolve(rootDir, `.env.${mode}`),
+  resolve(rootDir, `.env.${mode}.local`),
+];
+
+const env = envFiles.reduce((mergedEnv, filePath) => ({
+  ...mergedEnv,
+  ...parseEnvFile(filePath),
+}), {});
+
+for (const [key, value] of Object.entries(process.env)) {
+  if (typeof value === 'string' && value.length > 0) {
+    env[key] = value;
+  }
+}
 
 function parseList(rawValue) {
   if (!rawValue) {
