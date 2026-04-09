@@ -1268,7 +1268,7 @@ const MayaApp = {
                 }
                 const inputEl = document.getElementById('maya-input');
                 if (inputEl) {
-                    inputEl.placeholder = language === 'hi' ? 'सुन रहा हूं...' : 'Listening...';
+                    inputEl.placeholder = language === 'hi' ? 'सुन रही हूँ...' : 'Listening...';
                 }
             };
             
@@ -1488,7 +1488,7 @@ const MayaApp = {
         }
         
         if (textElement) {
-            textElement.textContent = language === 'hi' ? "आपकी कॉस्मिक ऊर्जाओं को पढ़ रहा हूं..." : "Reading your cosmic energies...";
+            textElement.textContent = language === 'hi' ? "आपकी कॉस्मिक ऊर्जाओं को पढ़ रही हूँ..." : "Reading your cosmic energies...";
         }
 
         try {

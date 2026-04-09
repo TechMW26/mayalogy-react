@@ -4301,7 +4301,7 @@ const MayaPages = {
                             <div class="maya-spinner maya-spinner--sm"></div>
                             <p id="palmLoadingMessage">${isHindi ? 'हथेलियों को संयोजित किया जा रहा है...' : 'Combining your palms...'}</p>
                         </div>
-                        <span class="maya-palm__loading-hint">${isHindi ? 'MAYA आपकी रेखाओं को पढ़ रहा है' : 'MAYA is reading your lines'}</span>
+                        <span class="maya-palm__loading-hint">${isHindi ? 'MAYA आपकी रेखाओं को पढ़ रही है' : 'MAYA is reading your lines'}</span>
                         
                         <!-- Skeleton Preview -->
                         <div class="maya-palm__skeleton-preview">
@@ -4367,8 +4367,8 @@ const MayaPages = {
                             </div>
                             <div class="maya-palm__result-overlay">
                                 <span class="maya-palm__result-badge">
-                                    <i class="bi bi-check-circle-fill"></i>
-                                    ${isHindi ? 'विश्लेषण पूर्ण' : 'Analysis Complete'}
+                                    <i class="bi bi-check-circle-fill" id="palmResultBadgeIcon"></i>
+                                    <span id="palmResultBadgeText">${isHindi ? 'विश्लेषण पूर्ण' : 'Analysis Complete'}</span>
                                 </span>
                             </div>
                         </div>
@@ -5249,20 +5249,37 @@ Respond with ONLY this JSON, nothing else:
         // Show the images in cutouts
         const leftCutout = document.querySelector('#leftHandCutout img');
         const rightCutout = document.querySelector('#rightHandCutout img');
+        this._palmState.leftHandProcessed = leftImageForAI;
+        this._palmState.rightHandProcessed = rightImageForAI;
         if (leftCutout) leftCutout.src = leftImageForAI;
         if (rightCutout) rightCutout.src = rightImageForAI;
-        
-        // Start background removal in parallel (non-blocking, for display only)
-        const bgRemovalPromise = Promise.allSettled([
-            this._removeBackground(leftImageForAI).then(img => {
-                this._palmState.leftHandProcessed = img;
-                if (leftCutout) leftCutout.src = img;
-            }).catch(() => {}),
-            this._removeBackground(rightImageForAI).then(img => {
-                this._palmState.rightHandProcessed = img;
-                if (rightCutout) rightCutout.src = img;
-            }).catch(() => {})
-        ]);
+
+        // Prefer cleaned hand images for AI when they are ready quickly.
+        const withTimeout = (promise, timeoutMs, fallbackValue) =>
+            Promise.race([
+                promise.catch(() => fallbackValue),
+                new Promise(resolve => setTimeout(() => resolve(fallbackValue), timeoutMs))
+            ]);
+
+        const leftBgRemovalPromise = this._removeBackground(leftImageForAI)
+            .then(img => {
+                const refinedImage = img || leftImageForAI;
+                this._palmState.leftHandProcessed = refinedImage;
+                if (leftCutout) leftCutout.src = refinedImage;
+                return refinedImage;
+            })
+            .catch(() => leftImageForAI);
+
+        const rightBgRemovalPromise = this._removeBackground(rightImageForAI)
+            .then(img => {
+                const refinedImage = img || rightImageForAI;
+                this._palmState.rightHandProcessed = refinedImage;
+                if (rightCutout) rightCutout.src = refinedImage;
+                return refinedImage;
+            })
+            .catch(() => rightImageForAI);
+
+        const bgRemovalPromise = Promise.allSettled([leftBgRemovalPromise, rightBgRemovalPromise]);
         
         try {
             // Step 1: Combine images
@@ -5272,12 +5289,17 @@ Respond with ONLY this JSON, nothing else:
                 rightImageForAI
             );
             
+            const [leftImageForAnalysis, rightImageForAnalysis] = await Promise.all([
+                withTimeout(leftBgRemovalPromise, 5000, leftImageForAI),
+                withTimeout(rightBgRemovalPromise, 5000, rightImageForAI)
+            ]);
+
             // Step 2: Analyze with AI - validation is built into the prompt
-            loadingMessage.textContent = isHindi ? 'MAYA आपकी रेखाएँ पढ़ रहा है...' : 'MAYA is reading your lines...';
-            console.log(' Sending images to AI - Left:', leftImageForAI ? 'YES' : 'NO', 'Right:', rightImageForAI ? 'YES' : 'NO');
+            loadingMessage.textContent = isHindi ? 'MAYA आपकी रेखाएँ पढ़ रही है...' : 'MAYA is reading your lines...';
+            console.log(' Sending images to AI - Left:', leftImageForAnalysis ? 'YES' : 'NO', 'Right:', rightImageForAnalysis ? 'YES' : 'NO');
             const analysisData = await this._analyzePalm(
-                leftImageForAI,
-                rightImageForAI,
+                leftImageForAnalysis,
+                rightImageForAnalysis,
                 isHindi
             );
             
@@ -5344,7 +5366,7 @@ Respond with ONLY this JSON, nothing else:
                             currentHand: 'left',
                             analysisData: null
                         };
-                        document.getElementById('palmLeftHandInstructions').style.display = 'block';
+                        document.getElementById('palmInstructions').style.display = 'block';
                     };
                 }
             }
@@ -5442,11 +5464,11 @@ Respond with ONLY this JSON, nothing else:
         
         container.innerHTML = `
             <div class="maya-palm__combined-hand maya-palm__combined-hand--left">
-                <img src="${this._palmState.leftHandProcessed}" alt="Left Hand">
+                <img src="${this._palmState.leftHandProcessed || this._palmState.leftHandOriginal || this._palmState.leftHandImage}" alt="Left Hand">
                 <div class="maya-palm__golden-outline"></div>
             </div>
             <div class="maya-palm__combined-hand maya-palm__combined-hand--right">
-                <img src="${this._palmState.rightHandProcessed}" alt="Right Hand">
+                <img src="${this._palmState.rightHandProcessed || this._palmState.rightHandOriginal || this._palmState.rightHandImage}" alt="Right Hand">
                 <div class="maya-palm__golden-outline"></div>
             </div>
         `;
@@ -5704,7 +5726,7 @@ Respond with ONLY this JSON, nothing else:
             ? `\n\nUSER CONTEXT FOR HIGHLY PERSONALIZED READING:\n${userContext.join('\n')}\n\nCRITICAL: Use ALL this information to create a 100% UNIQUE reading specific to this person's life circumstances, age, zodiac traits, and numerology. NO GENERIC STATEMENTS.`
             : '\n\nNote: No user profile available. Analyze the palm images directly for unique physical characteristics.';
         
-        const prompt = `You are MAYA, a master Vedic palmist with 50+ years expertise in Samudrik Shastra. You are analyzing BOTH hands of a real person at timestamp: ${currentTimestamp}, Session: ${uniqueSessionId}
+        const prompt = `You are MAYA, a master female Vedic palmist with 50+ years expertise in Samudrik Shastra. You are analyzing BOTH hands of a real person at timestamp: ${currentTimestamp}, Session: ${uniqueSessionId}
 
 STEP 1 - IMAGE VALIDATION (do this FIRST before any analysis):
 Check BOTH images carefully:
@@ -5774,6 +5796,15 @@ Return ONLY valid JSON, absolutely no markdown or code blocks:
   "overallSummaryHi": "Equally detailed and personalized Hindi summary"
 }
 
+OUTPUT RULES:
+- Keep every leftHand/rightHand field to one short sentence, maximum 18 words.
+- Keep every summary/summaryHi field to one short sentence, maximum 22 words.
+- Keep every trait text/textHi to maximum 12 words.
+- Keep every remedy text/textHi to maximum 18 words.
+- Keep overallSummary/overallSummaryHi to exactly 2 short sentences.
+- Do not use quotation marks inside field values.
+- For every *Hi field*, write natural Hindi in Devanagari only. Do not mix English words except proper names like MAYA or the user's name.
+
 REMEMBER: 
 - Every statement must be UNIQUE to THIS person's actual palm features
 - Reference specific visual characteristics you observe
@@ -5833,7 +5864,7 @@ REMEMBER:
                         return { validationError: data.validationError };
                     }
                     
-                    return data;
+                    return { ...data, isFallback: false };
                 } catch (e) {
                     console.warn('Palm JSON parse failed:', e.message);
                     console.log(' JSON string length:', jsonStr.length);
@@ -5860,7 +5891,7 @@ REMEMBER:
                             console.log(' Attempting balanced JSON parse, length:', balancedJson.length);
                             const data = JSON.parse(balancedJson);
                             console.log(' Balanced parse succeeded, keys:', Object.keys(data));
-                            return data;
+                            return { ...data, isFallback: false };
                         }
                     } catch (e2) {
                         console.warn('Balanced JSON repair also failed:', e2.message);
@@ -5906,10 +5937,11 @@ REMEMBER:
         console.log(` Available Gemini API keys: ${apiKeys.length}`);
         
         // Same models as Vastu calibrator
-        const models = [
-            'gemini-2.5-flash',      // Primary: fast multimodal
-            'gemini-2.5-pro',        // Fallback: complex reasoning
-            'gemini-2.0-flash'       // Legacy fallback
+        const models = MAYA_CONFIG.GEMINI_MODELS || [
+            'gemini-2.5-flash',
+            'gemini-2.5-pro',
+            'gemini-2.0-flash',
+            'gemini-2.0-flash-lite'
         ];
         
         // Build parts array with both images
@@ -5952,7 +5984,8 @@ REMEMBER:
             }],
             generationConfig: {
                 temperature: 0.7,
-                maxOutputTokens: 4000
+                maxOutputTokens: 6000,
+                responseMimeType: 'application/json'
             },
             // Same safety settings as Vastu
             safetySettings: [
@@ -6040,6 +6073,17 @@ REMEMBER:
         console.log(' Lines data:', data?.lines);
         console.log(' Traits data:', data?.traits);
         console.log(' Remedies data:', data?.remedies);
+
+        const badgeText = document.getElementById('palmResultBadgeText');
+        const badgeIcon = document.getElementById('palmResultBadgeIcon');
+        if (badgeText) {
+            badgeText.textContent = data?.isFallback
+                ? (isHindi ? 'मार्गदर्शित रीडिंग' : 'Guided Reading')
+                : (isHindi ? 'विश्लेषण पूर्ण' : 'Analysis Complete');
+        }
+        if (badgeIcon) {
+            badgeIcon.className = data?.isFallback ? 'bi bi-info-circle-fill' : 'bi bi-check-circle-fill';
+        }
         
         // Store data for tab switching
         this._palmData = data;
@@ -6292,8 +6336,11 @@ REMEMBER:
         // If we got at least 2 lines, fill in with fallback for rest
         if (result.lines.length >= 2) {
             const fallback = this._fallbackPalmData(isHindi);
+            result.isFallback = true;
             result.traits = fallback.traits;
             result.remedies = fallback.remedies;
+            result.overallSummary = fallback.overallSummary;
+            result.overallSummaryHi = fallback.overallSummaryHi;
             return result;
         }
         
@@ -6304,45 +6351,6 @@ REMEMBER:
      * Fallback palm data when AI fails - personalized based on user profile
      */
     _fallbackPalmData(isHindi) {
-        const fallbackProfile = MayaUtils.storage.get('maya_profile') || {};
-        const fallbackUserName = fallbackProfile.name || (isHindi ? 'प्रिय साधक' : 'Dear seeker');
-
-        return {
-            lines: [
-                {
-                    name: 'Live Palm Reading',
-                    nameHi: 'लाइव पाम रीडिंग',
-                    icon: 'hand-index',
-                    status: 'neutral',
-                    leftHand: isHindi ? 'Fresh left-hand analysis अभी उपलब्ध नहीं है।' : 'Fresh left-hand analysis is not available right now.',
-                    rightHand: isHindi ? 'Fresh right-hand analysis अभी उपलब्ध नहीं है।' : 'Fresh right-hand analysis is not available right now.',
-                    summary: `${fallbackUserName}, a fresh palm reading is not available right now. Open this section again shortly for a live analysis.`,
-                    summaryHi: `${fallbackUserName}, fresh palm reading अभी उपलब्ध नहीं है। Live analysis के लिए इसे थोड़ी देर बाद फिर खोलें।`
-                }
-            ],
-            traits: {
-                positive: [],
-                neutral: [
-                    {
-                        text: 'Retry shortly for a live palm analysis.',
-                        textHi: 'लाइव पाम analysis के लिए थोड़ी देर बाद फिर प्रयास करें।'
-                    }
-                ],
-                negative: []
-            },
-            remedies: [
-                {
-                    icon: 'arrow-repeat',
-                    title: 'Retry',
-                    titleHi: 'फिर प्रयास करें',
-                    text: 'Open this reading again shortly for fresh live guidance.',
-                    textHi: 'Fresh live guidance के लिए इस reading को थोड़ी देर बाद फिर खोलें।'
-                }
-            ],
-            overallSummary: `${fallbackUserName}, a fresh live palm reading is not available right now. Open this section again shortly and I will analyze your palm directly.`,
-            overallSummaryHi: `${fallbackUserName}, fresh live palm reading अभी उपलब्ध नहीं है। इसे थोड़ी देर बाद फिर खोलें, फिर मैं आपकी हथेली को सीधे analyze करूंगा।`
-        };
-
         const profile = MayaUtils.storage.get('maya_profile') || {};
         const zodiac = profile.birthDate ? window.MayaAstrology?.getZodiac(profile.birthDate, profile) : null;
         const userName = profile.name || (isHindi ? 'प्रिय' : 'Dear seeker');
@@ -6381,6 +6389,7 @@ REMEMBER:
             : { text: 'Wisdom years bring clarity and respect from others', textHi: 'ज्ञान के वर्ष स्पष्टता और दूसरों से सम्मान लाते हैं' };
 
         return {
+            isFallback: true,
             lines: [
                 { name: 'Life Line', nameHi: 'जीवन रेखा', icon: 'heart-pulse', status: 'positive', leftHand: 'Strong innate vitality present from birth, blessed with natural resilience.', rightHand: 'Your active choices have enhanced your life force significantly.', summary: `${userName}, your Life Line shows excellent vitality and suggests a long, healthy life with strong recuperative powers when facing challenges.`, summaryHi: `${userName}, आपकी जीवन रेखा उत्कृष्ट जीवन शक्ति दर्शाती है और चुनौतियों का सामना करते समय मजबूत पुनर्प्राप्ति शक्ति के साथ एक लंबा, स्वस्थ जीवन सुझाती है।` },
                 { name: 'Heart Line', nameHi: 'हृदय रेखा', icon: 'heart', status: 'positive', leftHand: 'Born with deep capacity for love and emotional bonding.', rightHand: 'Life experiences have deepened your emotional maturity beautifully.', summary: `Your Heart Line reveals deep emotional intelligence. ${zodiac ? `As a ${zodiac.name}, ` : ''}you form lasting bonds and your loyalty in relationships is exceptional.`, summaryHi: `आपकी हृदय रेखा गहरी भावनात्मक बुद्धिमत्ता प्रकट करती है। ${zodiac ? `एक ${zodiac.nameHi || zodiac.name} के रूप में, ` : ''}आप स्थायी बंधन बनाते हैं और रिश्तों में आपकी वफादारी असाधारण है।` },

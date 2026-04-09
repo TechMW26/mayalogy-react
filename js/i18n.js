@@ -204,7 +204,7 @@ const MayaI18n = {
         'Ask MAYA': { hi: 'MAYA से पूछें' },
         'Ask MAYA anything...': { hi: 'MAYA से कुछ भी पूछें...' },
         'Type your question...': { hi: 'अपना प्रश्न लिखें...' },
-        'Thinking...': { hi: 'सोच रहा हूं...' },
+        'Thinking...': { hi: 'सोच रही हूँ...' },
         'No results found': { hi: 'कोई परिणाम नहीं मिला' },
         'Something went wrong': { hi: 'कुछ गलत हो गया' },
         'Please try again': { hi: 'कृपया पुनः प्रयास करें' },
@@ -395,10 +395,10 @@ const MayaI18n = {
         'The Master Teacher': { hi: 'महान शिक्षक' },
         
         // Complete Sentences - Chat
-        'How can I help you today?': { hi: 'आज मैं आपकी कैसे सहायता कर सकता हूं?' },
+        'How can I help you today?': { hi: 'आज मैं आपकी कैसे सहायता कर सकती हूँ?' },
         'Ask me anything about astrology': { hi: 'ज्योतिष के बारे में कुछ भी पूछें' },
         'Type your question here...': { hi: 'अपना प्रश्न यहां लिखें...' },
-        'Thinking about your question...': { hi: 'आपके प्रश्न पर विचार कर रहा हूं...' },
+        'Thinking about your question...': { hi: 'आपके प्रश्न पर विचार कर रही हूँ...' },
         
         // Complete Sentences - Profile & Settings
         'Your cosmic profile': { hi: 'आपकी ज्योतिषीय प्रोफाइल' },

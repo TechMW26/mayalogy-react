@@ -3186,7 +3186,7 @@ RULES:
         MayaListener.onStart = () => {
             micBtn.classList.add('listening');
             micBtn.querySelector('i').className = 'bi bi-mic-fill';
-            if (input) input.placeholder = this.language === 'hi' ? 'सुन रहा हूं...' : 'Listening...';
+            if (input) input.placeholder = this.language === 'hi' ? 'सुन रही हूँ...' : 'Listening...';
         };
 
         MayaListener.onEnd = () => {
