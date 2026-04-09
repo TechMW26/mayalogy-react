@@ -1392,10 +1392,11 @@ h1, h2, h3, h4, h5, h6, p {
 .maya-text-display.maya-chat-mode {
     text-align: left;
     align-items: stretch;
-    justify-content: flex-end;
+    justify-content: flex-start;
     top: 72px;
     padding: 5.5rem 1rem calc(88px + max(env(safe-area-inset-bottom, 0px), 20px));
     background: transparent;
+    overflow: hidden;
 }
 
 .maya-overlay.maya-overlay--chat .maya-text-display.maya-chat-mode::before {
@@ -1416,6 +1417,8 @@ h1, h2, h3, h4, h5, h6, p {
 .maya-chat-messages {
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
     gap: 0.75rem;
     width: 100%;
     max-width: 560px;
@@ -1423,6 +1426,8 @@ h1, h2, h3, h4, h5, h6, p {
     padding-bottom: 0.5rem;
     position: relative;
     z-index: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .maya-chat-bubble {

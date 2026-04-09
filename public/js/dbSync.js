@@ -11,8 +11,11 @@ const MayaDBSync = {
     currentUserEmail: null,
     syncQueue: [],
     isSyncing: false,
-    
-    // Data keys that should be synced to Firebase
+    hasFlushHandlers: false,
+    syncTimeout: null,
+    LOCAL_META_KEY: 'maya_sync_meta',
+
+    // Portable user data that should follow the account across devices.
     SYNCABLE_KEYS: [
         'maya_profile',
         'maya_profile_photo',
@@ -26,45 +29,105 @@ const MayaDBSync = {
         'maya_dismissed_notifications',
         'maya_current_page',
         'funnel_complete',
-        'maya_funnel_progress'
+        'maya_funnel_progress',
+        'funnel_data',
+        'maya_calculations',
+        'maya_user_data',
+        'conversations'
     ],
 
-    /**
-     * Initialize the sync layer with current user
-     */
-    init(userEmail = null) {
-        if (userEmail) {
-            this.currentUserEmail = userEmail;
-        } else {
-            // Try to get from session
-            const session = MayaUtils.storage.get('maya_session');
-            if (session && session.email) {
-                this.currentUserEmail = session.email;
-            }
-        }
-        
-        this.isInitialized = true;
-        console.log('🔄 MayaDBSync initialized', this.currentUserEmail ? `for ${this.currentUserEmail}` : '(no user)');
-        
-        // Start sync queue processor
-        this.processSyncQueue();
-        
-        return this;
+    COLLECTION_LIMITS: {
+        maya_chat_history: 50,
+        maya_palm_readings: 10,
+        maya_vastu_analyses: 20
     },
 
     /**
-     * Set data - saves to both localStorage and queues for Firebase sync
+     * Initialize the sync layer with current user.
      */
-    set(key, value) {
-        try {
-            // Always save to localStorage first (instant)
-            MayaUtils.storage.set(key, value);
-            
-            // Queue for Firebase sync if user is logged in and key is syncable
-            if (this.currentUserEmail && this.SYNCABLE_KEYS.includes(key)) {
-                this.queueSync(key, value);
+    init(userEmail = null) {
+        const resolvedUserEmail = userEmail
+            || MayaUtils.storage.get('maya_session')?.email
+            || MayaUtils.storage.get('maya_user')?.email
+            || null;
+
+        this.currentUserEmail = resolvedUserEmail;
+        this.isInitialized = true;
+        this.installFlushHandlers();
+
+        console.log('🔄 MayaDBSync initialized', this.currentUserEmail ? `for ${this.currentUserEmail}` : '(no user)');
+
+        void this.processSyncQueue({ reason: 'init' });
+        return this;
+    },
+
+    shouldSyncKey(key) {
+        return this.SYNCABLE_KEYS.includes(key);
+    },
+
+    normalizeTimestamp(value) {
+        const numericValue = Number(value);
+        if (Number.isFinite(numericValue) && numericValue > 0) {
+            return numericValue;
+        }
+
+        if (typeof value === 'string') {
+            const parsedValue = Date.parse(value);
+            if (Number.isFinite(parsedValue) && parsedValue > 0) {
+                return parsedValue;
             }
-            
+        }
+
+        return 0;
+    },
+
+    normalizeMetaEntry(entry, fallbackTimestamp = 0) {
+        const updatedAt = this.normalizeTimestamp(entry?.updatedAt || fallbackTimestamp);
+        if (!updatedAt) {
+            return null;
+        }
+
+        return {
+            updatedAt,
+            deleted: Boolean(entry?.deleted)
+        };
+    },
+
+    getLocalMeta() {
+        return MayaUtils.storage.get(this.LOCAL_META_KEY) || {};
+    },
+
+    writeLocalMeta(meta) {
+        MayaUtils.storage.set(this.LOCAL_META_KEY, meta, { skipSync: true });
+        return meta;
+    },
+
+    writeLocalMetaEntry(key, entry) {
+        if (!this.shouldSyncKey(key)) {
+            return;
+        }
+
+        const meta = this.getLocalMeta();
+        meta[key] = {
+            updatedAt: this.normalizeTimestamp(entry?.updatedAt) || Date.now(),
+            deleted: Boolean(entry?.deleted)
+        };
+        this.writeLocalMeta(meta);
+    },
+
+    clearLocalCache(keys = this.SYNCABLE_KEYS) {
+        keys.forEach(key => MayaUtils.storage.remove(key, { skipSync: true }));
+        MayaUtils.storage.remove(this.LOCAL_META_KEY, { skipSync: true });
+        this.syncQueue = [];
+    },
+
+    /**
+     * Set data - saves to local storage and records sync metadata.
+     */
+    set(key, value, options = {}) {
+        try {
+            MayaUtils.storage.set(key, value, { ...options, skipSync: true });
+            this.handleStorageMutation(key, value, 'SET', options);
             return true;
         } catch (e) {
             console.error('❌ MayaDBSync set error:', e);
@@ -73,23 +136,19 @@ const MayaDBSync = {
     },
 
     /**
-     * Get data - returns from localStorage (fast)
+     * Get data - returns from localStorage (fast).
      */
     get(key, defaultValue = null) {
         return MayaUtils.storage.get(key, defaultValue);
     },
 
     /**
-     * Remove data - removes from both localStorage and Firebase
+     * Remove data locally and queue cloud deletion when appropriate.
      */
-    remove(key) {
+    remove(key, options = {}) {
         try {
-            MayaUtils.storage.remove(key);
-            
-            if (this.currentUserEmail && this.SYNCABLE_KEYS.includes(key)) {
-                this.queueSync(key, null, 'DELETE');
-            }
-            
+            MayaUtils.storage.remove(key, { ...options, skipSync: true });
+            this.handleStorageMutation(key, null, 'DELETE', options);
             return true;
         } catch (e) {
             console.error('❌ MayaDBSync remove error:', e);
@@ -97,152 +156,425 @@ const MayaDBSync = {
         }
     },
 
-    /**
-     * Queue a sync operation for Firebase
-     */
-    queueSync(key, value, operation = 'SET') {
-        // Remove any existing pending sync for this key
-        this.syncQueue = this.syncQueue.filter(item => item.key !== key);
-        
-        // Add new sync operation
-        this.syncQueue.push({
-            key: key,
-            value: value,
-            operation: operation,
-            timestamp: Date.now()
+    handleStorageMutation(key, value, operation = 'SET', options = {}) {
+        if (!this.shouldSyncKey(key)) {
+            return false;
+        }
+
+        const timestamp = this.normalizeTimestamp(options.timestamp) || Date.now();
+        this.writeLocalMetaEntry(key, {
+            updatedAt: timestamp,
+            deleted: operation === 'DELETE'
         });
-        
-        // Debounce - process queue after short delay
-        clearTimeout(this.syncTimeout);
-        this.syncTimeout = setTimeout(() => this.processSyncQueue(), 1000);
+
+        if (this.currentUserEmail) {
+            this.queueSync(key, value, operation, timestamp);
+        }
+
+        return true;
+    },
+
+    trimCollection(key, value) {
+        if (!Array.isArray(value)) {
+            return value;
+        }
+
+        const limit = this.COLLECTION_LIMITS[key];
+        if (!limit || value.length <= limit) {
+            return value;
+        }
+
+        if (key === 'maya_chat_history') {
+            return value.slice(-limit);
+        }
+
+        return value.slice(0, limit);
+    },
+
+    extractItemTimestamp(item) {
+        if (!item || typeof item !== 'object') {
+            return 0;
+        }
+
+        return this.normalizeTimestamp(
+            item.timestamp
+            || item.date
+            || item.createdAt
+            || item.savedAt
+            || item.updatedAt
+            || item.id
+        );
+    },
+
+    getPortableItemId(item, index = 0) {
+        if (!item || typeof item !== 'object') {
+            return `value-${index}-${String(item)}`;
+        }
+
+        const candidateId = item.id
+            || item.timestamp
+            || item.date
+            || item.createdAt
+            || item.savedAt
+            || item.question
+            || item.name
+            || item.type
+            || item.title;
+
+        if (candidateId !== undefined && candidateId !== null && String(candidateId).trim()) {
+            return String(candidateId);
+        }
+
+        return `item-${index}-${this.extractItemTimestamp(item) || 'no-time'}-${Object.keys(item).sort().join('|')}`;
+    },
+
+    isPlainObject(value) {
+        return Object.prototype.toString.call(value) === '[object Object]';
+    },
+
+    mergePortableArray(key, localArray = [], cloudArray = []) {
+        const mergedItems = new Map();
+
+        cloudArray.forEach((item, index) => {
+            mergedItems.set(this.getPortableItemId(item, index), item);
+        });
+
+        localArray.forEach((item, index) => {
+            mergedItems.set(this.getPortableItemId(item, cloudArray.length + index), item);
+        });
+
+        const mergedArray = Array.from(mergedItems.values());
+
+        if (key === 'maya_chat_history') {
+            mergedArray.sort((left, right) => this.extractItemTimestamp(left) - this.extractItemTimestamp(right));
+        } else {
+            mergedArray.sort((left, right) => this.extractItemTimestamp(right) - this.extractItemTimestamp(left));
+        }
+
+        return this.trimCollection(key, mergedArray);
+    },
+
+    mergePortableValue(key, localValue, cloudValue) {
+        if (Array.isArray(localValue) && Array.isArray(cloudValue)) {
+            return this.mergePortableArray(key, localValue, cloudValue);
+        }
+
+        if (this.isPlainObject(localValue) && this.isPlainObject(cloudValue)) {
+            return { ...localValue, ...cloudValue };
+        }
+
+        return cloudValue ?? localValue;
+    },
+
+    valuesEqual(left, right) {
+        if (left === right) {
+            return true;
+        }
+
+        try {
+            return JSON.stringify(left) === JSON.stringify(right);
+        } catch (error) {
+            return false;
+        }
     },
 
     /**
-     * Process the sync queue - sends to Firebase
+     * Queue a sync operation for Firebase.
      */
-    async processSyncQueue() {
-        if (this.isSyncing || this.syncQueue.length === 0 || !this.currentUserEmail) {
+    queueSync(key, value, operation = 'SET', timestamp = Date.now()) {
+        if (!this.shouldSyncKey(key)) {
             return;
         }
-        
+
+        this.syncQueue = this.syncQueue.filter(item => item.key !== key);
+        this.syncQueue.push({
+            key,
+            value: this.trimCollection(key, value),
+            operation,
+            timestamp: this.normalizeTimestamp(timestamp) || Date.now()
+        });
+
+        clearTimeout(this.syncTimeout);
+        this.syncTimeout = setTimeout(() => void this.processSyncQueue({ reason: 'debounced' }), 350);
+    },
+
+    restoreSyncQueue(items) {
+        if (!Array.isArray(items) || items.length === 0) {
+            return;
+        }
+
+        items.slice().reverse().forEach(item => {
+            this.syncQueue = this.syncQueue.filter(existing => existing.key !== item.key);
+            this.syncQueue.unshift(item);
+        });
+    },
+
+    installFlushHandlers() {
+        if (this.hasFlushHandlers || typeof document === 'undefined') {
+            return;
+        }
+
+        const flushPendingSync = () => {
+            if (this.currentUserEmail && this.syncQueue.length > 0) {
+                void this.processSyncQueue({ reason: 'lifecycle' });
+            }
+        };
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                flushPendingSync();
+            }
+        });
+
+        window.addEventListener('pagehide', flushPendingSync);
+        window.addEventListener('beforeunload', flushPendingSync);
+        this.hasFlushHandlers = true;
+    },
+
+    /**
+     * Process the sync queue - sends to Firebase.
+     */
+    async processSyncQueue({ reason = 'manual' } = {}) {
+        if (this.isSyncing || this.syncQueue.length === 0 || !this.currentUserEmail) {
+            return { success: true, skipped: true, reason };
+        }
+
+        clearTimeout(this.syncTimeout);
+        this.syncTimeout = null;
         this.isSyncing = true;
-        
+
+        const pendingItems = [];
+
         try {
-            // Ensure Firebase is initialized
             if (!MayaFirebase.isInitialized) {
                 MayaFirebase.init();
             }
-            
+
             const emailKey = MayaFirebase.emailToKey(this.currentUserEmail);
-            
-            // Batch all pending syncs
             const syncData = {};
             const deleteKeys = [];
-            
+            const metaUpdates = {};
+
             while (this.syncQueue.length > 0) {
                 const item = this.syncQueue.shift();
-                
+                pendingItems.push(item);
+
+                metaUpdates[item.key] = {
+                    updatedAt: item.timestamp,
+                    deleted: item.operation === 'DELETE'
+                };
+
                 if (item.operation === 'DELETE') {
                     deleteKeys.push(item.key);
                 } else {
-                    syncData[item.key] = item.value;
+                    syncData[item.key] = this.trimCollection(item.key, item.value);
                 }
             }
-            
-            // Perform sync operations
+
             if (Object.keys(syncData).length > 0) {
                 console.log('🔄 Syncing to Firebase:', Object.keys(syncData));
                 await MayaFirebase.request(`user_data/${emailKey}`, 'PATCH', {
                     ...syncData,
-                    _lastSynced: new Date().toISOString()
+                    _lastSynced: new Date().toISOString(),
+                    _syncedFrom: reason
                 });
                 console.log('✅ Firebase sync complete');
             }
-            
-            // Handle deletes
+
+            if (Object.keys(metaUpdates).length > 0) {
+                await MayaFirebase.request(`user_data/${emailKey}/_meta`, 'PATCH', metaUpdates);
+            }
+
             for (const key of deleteKeys) {
                 await MayaFirebase.request(`user_data/${emailKey}/${key}`, 'DELETE');
             }
-            
+
+            return {
+                success: true,
+                syncedKeys: Object.keys(syncData),
+                deletedKeys: deleteKeys
+            };
         } catch (error) {
             console.error('❌ Firebase sync error:', error);
-            // Re-queue failed items for retry
-            // Items are already removed from queue, so they won't retry automatically
-            // This is intentional to prevent infinite retry loops
+            this.restoreSyncQueue(pendingItems);
+            return { success: false, error: error.message };
         } finally {
             this.isSyncing = false;
+
+            if (this.syncQueue.length > 0 && this.currentUserEmail) {
+                clearTimeout(this.syncTimeout);
+                this.syncTimeout = setTimeout(() => void this.processSyncQueue({ reason: 'retry' }), 1000);
+            }
         }
     },
 
     /**
-     * Sync all local data to Firebase (full sync)
+     * Sync all known local user data to Firebase.
      */
     async syncAllToFirebase() {
         if (!this.currentUserEmail) {
             console.warn('⚠️ Cannot sync - no user logged in');
             return { success: false, error: 'No user logged in' };
         }
-        
-        try {
-            console.log('🔄 Starting full sync to Firebase...');
-            
-            const emailKey = MayaFirebase.emailToKey(this.currentUserEmail);
-            const syncData = {};
-            
-            for (const key of this.SYNCABLE_KEYS) {
-                const value = MayaUtils.storage.get(key);
-                if (value !== null) {
-                    syncData[key] = value;
-                }
+
+        console.log('🔄 Starting full sync to Firebase...');
+
+        const localMeta = this.getLocalMeta();
+
+        for (const key of this.SYNCABLE_KEYS) {
+            const value = MayaUtils.storage.get(key);
+            const metaEntry = this.normalizeMetaEntry(localMeta[key]);
+
+            if (metaEntry?.deleted) {
+                this.queueSync(key, null, 'DELETE', metaEntry.updatedAt);
+                continue;
             }
-            
-            syncData._lastSynced = new Date().toISOString();
-            syncData._syncedFrom = 'local';
-            
-            await MayaFirebase.request(`user_data/${emailKey}`, 'PUT', syncData);
-            
-            console.log('✅ Full sync to Firebase complete');
-            return { success: true };
-            
-        } catch (error) {
-            console.error('❌ Full sync error:', error);
-            return { success: false, error: error.message };
+
+            if (value !== null && value !== undefined) {
+                const timestamp = metaEntry?.updatedAt || Date.now();
+                if (!metaEntry) {
+                    this.writeLocalMetaEntry(key, { updatedAt: timestamp, deleted: false });
+                }
+                this.queueSync(key, value, 'SET', timestamp);
+            }
         }
+
+        return await this.processSyncQueue({ reason: 'full-sync' });
     },
 
     /**
-     * Load all data from Firebase to localStorage
-     * Called on login to restore user's data on new device
+     * Load all data from Firebase to localStorage.
+     * Called on login and on auth restore to hydrate the device.
      */
     async loadFromFirebase() {
         if (!this.currentUserEmail) {
             console.warn('⚠️ Cannot load - no user logged in');
             return { success: false, error: 'No user logged in' };
         }
-        
+
         try {
             console.log('🔄 Loading data from Firebase...');
-            
+
             const emailKey = MayaFirebase.emailToKey(this.currentUserEmail);
             const cloudData = await MayaFirebase.request(`user_data/${emailKey}`, 'GET');
-            
+
             if (!cloudData) {
                 console.log('ℹ️ No cloud data found - first time user or no sync yet');
-                return { success: true, loaded: false };
+                return { success: true, loaded: false, count: 0 };
             }
-            
-            // Merge cloud data with local (cloud wins for sync)
-            let loadedCount = 0;
+
+            const localMeta = this.getLocalMeta();
+            const nextMeta = { ...localMeta };
+            const cloudMeta = cloudData._meta || {};
+            const cloudLastSynced = this.normalizeTimestamp(cloudData._lastSynced);
+            let restoredCount = 0;
+            let queuedCount = 0;
+            let removedCount = 0;
+
             for (const key of this.SYNCABLE_KEYS) {
-                if (cloudData[key] !== undefined) {
-                    MayaUtils.storage.set(key, cloudData[key]);
-                    loadedCount++;
+                const cloudValue = cloudData[key];
+                const localValue = MayaUtils.storage.get(key);
+                const cloudHasValue = cloudValue !== undefined && cloudValue !== null;
+                const localHasValue = localValue !== undefined && localValue !== null;
+                const cloudEntry = this.normalizeMetaEntry(cloudMeta[key], cloudHasValue ? cloudLastSynced : 0);
+                const localEntry = this.normalizeMetaEntry(localMeta[key]);
+
+                if (cloudEntry && (!localEntry || cloudEntry.updatedAt > localEntry.updatedAt)) {
+                    if (cloudEntry.deleted) {
+                        if (localHasValue) {
+                            MayaUtils.storage.remove(key, { skipSync: true });
+                            removedCount++;
+                        }
+                    } else if (cloudHasValue) {
+                        MayaUtils.storage.set(key, this.trimCollection(key, cloudValue), { skipSync: true });
+                        restoredCount++;
+                    }
+
+                    nextMeta[key] = cloudEntry;
+                    continue;
+                }
+
+                if (localEntry && (!cloudEntry || localEntry.updatedAt > cloudEntry.updatedAt)) {
+                    if (localEntry.deleted) {
+                        this.queueSync(key, null, 'DELETE', localEntry.updatedAt);
+                        queuedCount++;
+                    } else if (localHasValue) {
+                        this.queueSync(key, localValue, 'SET', localEntry.updatedAt);
+                        queuedCount++;
+                    }
+
+                    nextMeta[key] = localEntry;
+                    continue;
+                }
+
+                if (!cloudEntry && !localEntry) {
+                    if (cloudHasValue && localHasValue) {
+                        const mergedValue = this.mergePortableValue(key, localValue, cloudValue);
+                        const timestamp = Date.now();
+
+                        MayaUtils.storage.set(key, this.trimCollection(key, mergedValue), { skipSync: true });
+                        nextMeta[key] = { updatedAt: timestamp, deleted: false };
+                        this.queueSync(key, mergedValue, 'SET', timestamp);
+                        restoredCount++;
+                        queuedCount++;
+                    } else if (cloudHasValue) {
+                        const timestamp = cloudLastSynced || Date.now();
+                        MayaUtils.storage.set(key, this.trimCollection(key, cloudValue), { skipSync: true });
+                        nextMeta[key] = { updatedAt: timestamp, deleted: false };
+                        restoredCount++;
+                    } else if (localHasValue) {
+                        const timestamp = Date.now();
+                        nextMeta[key] = { updatedAt: timestamp, deleted: false };
+                        this.queueSync(key, localValue, 'SET', timestamp);
+                        queuedCount++;
+                    }
+
+                    continue;
+                }
+
+                if (cloudEntry?.deleted) {
+                    if (localHasValue) {
+                        MayaUtils.storage.remove(key, { skipSync: true });
+                        removedCount++;
+                    }
+
+                    nextMeta[key] = cloudEntry;
+                    continue;
+                }
+
+                if (!localHasValue && cloudHasValue) {
+                    MayaUtils.storage.set(key, this.trimCollection(key, cloudValue), { skipSync: true });
+                    restoredCount++;
+                }
+
+                nextMeta[key] = cloudEntry || localEntry || nextMeta[key];
+
+                if (cloudHasValue && localHasValue && !this.valuesEqual(localValue, cloudValue)) {
+                    const mergedValue = this.mergePortableValue(key, localValue, cloudValue);
+                    const timestamp = Date.now();
+
+                    MayaUtils.storage.set(key, this.trimCollection(key, mergedValue), { skipSync: true });
+                    nextMeta[key] = { updatedAt: timestamp, deleted: false };
+                    this.queueSync(key, mergedValue, 'SET', timestamp);
+                    restoredCount++;
+                    queuedCount++;
                 }
             }
-            
-            console.log(`✅ Loaded ${loadedCount} items from Firebase`);
-            return { success: true, loaded: true, count: loadedCount };
-            
+
+            this.writeLocalMeta(nextMeta);
+
+            if (this.syncQueue.length > 0) {
+                await this.processSyncQueue({ reason: 'post-load' });
+            }
+
+            console.log(`✅ Hydrated synced data: restored ${restoredCount}, queued ${queuedCount}, removed ${removedCount}`);
+            return {
+                success: true,
+                loaded: true,
+                count: restoredCount,
+                queued: queuedCount,
+                removed: removedCount
+            };
         } catch (error) {
             console.error('❌ Load from Firebase error:', error);
             return { success: false, error: error.message };
@@ -250,111 +582,76 @@ const MayaDBSync = {
     },
 
     /**
-     * Merge Firebase data with local data (smart merge)
-     * Uses timestamps to determine which data is newer
+     * Smart sync now hydrates first and pushes newer local changes back.
      */
     async smartSync() {
         if (!this.currentUserEmail) {
             return { success: false, error: 'No user logged in' };
         }
-        
-        try {
-            const emailKey = MayaFirebase.emailToKey(this.currentUserEmail);
-            const cloudData = await MayaFirebase.request(`user_data/${emailKey}`, 'GET');
-            
-            const localLastSync = MayaUtils.storage.get('_lastSynced');
-            const cloudLastSync = cloudData?._lastSynced;
-            
-            // If cloud is newer, load from cloud
-            if (cloudLastSync && (!localLastSync || new Date(cloudLastSync) > new Date(localLastSync))) {
-                console.log('☁️ Cloud data is newer - loading from Firebase');
-                return await this.loadFromFirebase();
-            }
-            
-            // If local is newer or same, sync to cloud
-            console.log('💾 Local data is newer - syncing to Firebase');
-            return await this.syncAllToFirebase();
-            
-        } catch (error) {
-            console.error('❌ Smart sync error:', error);
-            return { success: false, error: error.message };
-        }
+
+        return await this.loadFromFirebase();
     },
 
     /**
-     * Called when user logs in - load their data
+     * Called when user logs in - load their data and push any newer local state.
      */
     async onUserLogin(email) {
-        this.currentUserEmail = email;
+        this.init(email);
         console.log('👤 User logged in, syncing data for:', email);
-        
-        // Load data from Firebase
+
         const result = await this.loadFromFirebase();
-        
-        // Then sync any local changes back
-        if (result.success) {
+
+        if (result.success && result.loaded === false) {
             await this.syncAllToFirebase();
         }
-        
+
         return result;
     },
 
     /**
-     * Called when user logs out - clear sync state
+     * Called when user logs out - clear sync state.
      */
     onUserLogout() {
         console.log('👋 User logged out, clearing sync state');
+        clearTimeout(this.syncTimeout);
+        this.syncTimeout = null;
         this.currentUserEmail = null;
         this.syncQueue = [];
     },
 
     /**
-     * Save chat message to both local and Firebase
+     * Save chat message to both local and Firebase.
      */
     async saveChatMessage(message) {
-        // Get existing history
         const chatHistory = this.get('maya_chat_history') || [];
-        
-        // Add new message
+
         chatHistory.push({
             ...message,
             timestamp: message.timestamp || Date.now()
         });
-        
-        // Keep only last 100 messages
-        if (chatHistory.length > 100) {
-            chatHistory.splice(0, chatHistory.length - 100);
-        }
-        
-        // Save
-        this.set('maya_chat_history', chatHistory);
+
+        this.set('maya_chat_history', this.trimCollection('maya_chat_history', chatHistory));
     },
 
     /**
-     * Save reading (palm, vastu, etc.) 
+     * Save reading (palm, vastu, etc.).
      */
     async saveReading(type, readingData) {
         const key = type === 'palm' ? 'maya_palm_readings' : 'maya_vastu_analyses';
         const readings = this.get(key) || [];
-        
-        readings.push({
+
+        readings.unshift({
             ...readingData,
             id: Date.now(),
             createdAt: new Date().toISOString()
         });
-        
-        // Keep only last 20 readings
-        if (readings.length > 20) {
-            readings.splice(0, readings.length - 20);
-        }
-        
-        this.set(key, readings);
-        
-        // Also save to Firebase readings collection for detailed storage
+
+        this.set(key, this.trimCollection(key, readings));
+
         if (this.currentUserEmail) {
             try {
                 await MayaFirebase.saveReading(this.currentUserEmail, {
-                    type: type,
+                    type,
                     ...readingData
                 });
             } catch (e) {
@@ -364,15 +661,11 @@ const MayaDBSync = {
     },
 
     /**
-     * Clear all user data (for account deletion/reset)
+     * Clear all user data (for account deletion/reset).
      */
     async clearAllUserData() {
-        // Clear local storage
-        for (const key of this.SYNCABLE_KEYS) {
-            MayaUtils.storage.remove(key);
-        }
-        
-        // Clear from Firebase
+        this.clearLocalCache();
+
         if (this.currentUserEmail) {
             try {
                 const emailKey = MayaFirebase.emailToKey(this.currentUserEmail);
@@ -381,7 +674,7 @@ const MayaDBSync = {
                 console.error('Could not clear Firebase data:', e);
             }
         }
-        
+
         console.log('🗑️ All user data cleared');
     }
 };

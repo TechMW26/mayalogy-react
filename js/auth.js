@@ -13,7 +13,7 @@ const MayaAuth = {
     /**
      * Initialize auth state from storage
      */
-    init() {
+    async init() {
         console.log('🔐 Initializing Auth module...');
         
         // Initialize Firebase first
@@ -31,6 +31,20 @@ const MayaAuth = {
             this.currentUser = storedUser;
             this.token = storedToken;
             this.isAuthenticated = true;
+            MayaUtils.storage.set('maya_session', {
+                email: storedUser.email,
+                token: storedToken
+            }, { skipSync: true });
+
+            if (window.MayaDBSync) {
+                MayaDBSync.init(storedUser.email);
+                try {
+                    await MayaDBSync.loadFromFirebase();
+                } catch (error) {
+                    console.warn('⚠️ Could not restore synced user data:', error);
+                }
+            }
+
             console.log('✅ Auth restored from storage:', storedUser.email);
         } else {
             console.log('👤 No stored auth found');
@@ -71,12 +85,21 @@ const MayaAuth = {
             console.log('📝 Registration result:', result.success ? 'Success' : result.error);
             
             if (result.success) {
+                const previousUser = MayaUtils.storage.get('maya_user');
+                if (window.MayaDBSync && previousUser?.email && previousUser.email !== result.user.email) {
+                    MayaDBSync.clearLocalCache();
+                }
+
                 this.currentUser = result.user;
                 this.token = result.token;
                 this.isAuthenticated = true;
                 
                 MayaUtils.storage.set('maya_user', this.currentUser);
                 MayaUtils.storage.set('maya_token', this.token);
+                MayaUtils.storage.set('maya_session', {
+                    email: this.currentUser.email,
+                    token: this.token
+                }, { skipSync: true });
                 
                 // Initialize DB sync for new user
                 if (window.MayaDBSync) {
@@ -118,12 +141,21 @@ const MayaAuth = {
             console.log('🔑 Login result:', result.success ? 'Success' : result.error);
             
             if (result.success) {
+                const previousUser = MayaUtils.storage.get('maya_user');
+                if (window.MayaDBSync && previousUser?.email && previousUser.email !== result.user.email) {
+                    MayaDBSync.clearLocalCache();
+                }
+
                 this.currentUser = result.user;
                 this.token = result.token;
                 this.isAuthenticated = true;
                 
                 MayaUtils.storage.set('maya_user', this.currentUser);
                 MayaUtils.storage.set('maya_token', this.token);
+                MayaUtils.storage.set('maya_session', {
+                    email: this.currentUser.email,
+                    token: this.token
+                }, { skipSync: true });
                 
                 // Also update local profile with user data from Firebase
                 const profile = MayaUtils.storage.get('maya_profile') || {};
@@ -161,23 +193,24 @@ const MayaAuth = {
      * Logout user
      */
     logout() {
+        if (window.MayaDBSync) {
+            MayaDBSync.clearLocalCache();
+            MayaDBSync.onUserLogout();
+        }
+
         this.currentUser = null;
         this.token = null;
         this.isAuthenticated = false;
         
-        MayaUtils.storage.remove('maya_user');
-        MayaUtils.storage.remove('maya_token');
-        MayaUtils.storage.remove('maya_profile');
-        MayaUtils.storage.remove('funnel_complete');
+        MayaUtils.storage.remove('maya_user', { skipSync: true });
+        MayaUtils.storage.remove('maya_token', { skipSync: true });
+        MayaUtils.storage.remove('maya_session', { skipSync: true });
+        MayaUtils.storage.remove('maya_profile', { skipSync: true });
+        MayaUtils.storage.remove('funnel_complete', { skipSync: true });
         
         // Clear conversation history
         if (window.MayaAI) {
             MayaAI.clearHistory();
-        }
-        
-        // Clear sync state
-        if (window.MayaDBSync) {
-            MayaDBSync.onUserLogout();
         }
         
         return true;

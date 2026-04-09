@@ -1028,8 +1028,12 @@ const MayaPages = {
         
         const historyList = chatHistory.length > 0 ? `
             <div class="maya-chat-history__list">
-                ${chatHistory.slice().reverse().map((chat, index) => `
-                    <div class="maya-chat-history__item" data-chat-id="${chat.id || index}">
+                ${chatHistory.slice().reverse().map((chat, index) => {
+                    const originalIndex = chatHistory.length - 1 - index;
+                    const chatId = String(chat.id || `legacy-${originalIndex}`);
+
+                    return `
+                    <div class="maya-chat-history__item" data-chat-id="${chatId}">
                         <div class="maya-chat-history__item-icon">
                             <i class="bi bi-chat-dots"></i>
                         </div>
@@ -1041,11 +1045,12 @@ const MayaPages = {
                                 ${this.formatChatDate(chat.timestamp)}
                             </div>
                         </div>
-                        <button class="maya-chat-history__item-delete" data-delete-chat="${chat.id || index}" title="${isHindi ? 'हटाएं' : 'Delete'}">
+                        <button class="maya-chat-history__item-delete" data-delete-chat="${chatId}" title="${isHindi ? 'हटाएं' : 'Delete'}">
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>
-                `).join('')}
+                `;
+                }).join('')}
             </div>
             <div class="maya-chat-history__actions">
                 <button class="maya-btn maya-btn--danger-outline maya-btn--sm" id="clearAllChats">
@@ -9261,13 +9266,33 @@ Rules:
     },
     
     /**
+     * Resolve a chat entry from its rendered history ID.
+     */
+    _resolveChatHistoryEntry(chatId) {
+        const chatHistory = MayaUtils.storage.get('maya_chat_history') || [];
+        const normalizedId = String(chatId);
+
+        const actualIndex = chatHistory.findIndex((chat, index) => {
+            const fallbackId = `legacy-${index}`;
+            return String(chat.id || fallbackId) === normalizedId;
+        });
+
+        if (actualIndex === -1) {
+            return { chatHistory, actualIndex: -1, chat: null };
+        }
+
+        return {
+            chatHistory,
+            actualIndex,
+            chat: chatHistory[actualIndex]
+        };
+    },
+
+    /**
      * Show chat detail modal with full conversation
      */
     showChatDetailModal(chatId, isHindi) {
-        const chatHistory = MayaUtils.storage.get('maya_chat_history') || [];
-        const reversedIndex = parseInt(chatId);
-        const actualIndex = chatHistory.length - 1 - reversedIndex;
-        const chat = chatHistory[actualIndex];
+        const { chat } = this._resolveChatHistoryEntry(chatId);
         
         if (!chat) return;
         
@@ -9366,11 +9391,10 @@ Rules:
      * Delete a single chat item
      */
     deleteChatItem(chatId, isHindi) {
-        const chatHistory = MayaUtils.storage.get('maya_chat_history') || [];
-        const index = parseInt(chatId);
-        
-        if (index >= 0 && index < chatHistory.length) {
-            chatHistory.splice(chatHistory.length - 1 - index, 1); // Reverse index since we display reversed
+        const { chatHistory, actualIndex } = this._resolveChatHistoryEntry(chatId);
+
+        if (actualIndex >= 0 && actualIndex < chatHistory.length) {
+            chatHistory.splice(actualIndex, 1);
             MayaUtils.storage.set('maya_chat_history', chatHistory);
             MayaUtils.toast.success(isHindi ? 'चैट हटा दी गई' : 'Chat deleted');
             this.render('chat-history');

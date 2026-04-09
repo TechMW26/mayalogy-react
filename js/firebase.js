@@ -81,6 +81,7 @@ const MayaFirebase = {
         
         const options = {
             method: method,
+            keepalive: method !== 'GET',
             headers: {
                 'Content-Type': 'application/json'
             }
@@ -254,7 +255,8 @@ const MayaFirebase = {
                     birthPlace: user.birthPlace,
                     birthLat: user.birthLat,
                     birthLon: user.birthLon,
-                    gender: user.gender
+                    gender: user.gender,
+                    language: user.language
                 }
             };
         } catch (error) {

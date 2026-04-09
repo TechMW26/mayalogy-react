@@ -62,7 +62,7 @@ const MayaApp = {
 
         // Initialize modules
         if (window.MayaAuth) {
-            MayaAuth.init();
+            await MayaAuth.init();
         }
 
         // Initialize voice - loads saved mute preference

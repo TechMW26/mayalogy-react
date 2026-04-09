@@ -10,15 +10,13 @@ const MayaUtils = {
      * Now integrates with MayaDBSync for Firebase sync when available
      */
     storage: {
-        set(key, value) {
+        set(key, value, options = {}) {
             try {
                 const prefixedKey = MAYA_CONFIG.APP.STORAGE_PREFIX + key;
                 localStorage.setItem(prefixedKey, JSON.stringify(value));
                 
-                // If DBSync is available and initialized, queue for Firebase sync
-                if (window.MayaDBSync && MayaDBSync.isInitialized && MayaDBSync.currentUserEmail) {
-                    // Queue sync without the prefix (DBSync handles its own storage)
-                    MayaDBSync.queueSync(key, value);
+                if (!options.skipSync && window.MayaDBSync?.isInitialized && typeof MayaDBSync.handleStorageMutation === 'function') {
+                    MayaDBSync.handleStorageMutation(key, value, 'SET', options);
                 }
                 
                 return true;
@@ -39,14 +37,13 @@ const MayaUtils = {
             }
         },
 
-        remove(key) {
+        remove(key, options = {}) {
             try {
                 const prefixedKey = MAYA_CONFIG.APP.STORAGE_PREFIX + key;
                 localStorage.removeItem(prefixedKey);
                 
-                // If DBSync is available, queue deletion for Firebase
-                if (window.MayaDBSync && MayaDBSync.isInitialized && MayaDBSync.currentUserEmail) {
-                    MayaDBSync.queueSync(key, null, 'DELETE');
+                if (!options.skipSync && window.MayaDBSync?.isInitialized && typeof MayaDBSync.handleStorageMutation === 'function') {
+                    MayaDBSync.handleStorageMutation(key, null, 'DELETE', options);
                 }
                 
                 return true;
