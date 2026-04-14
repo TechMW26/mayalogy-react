@@ -18966,3 +18966,583 @@ select,
     }
 }
 
+/* ============================================================
+   VALIDATION LOOP UI — Fixed centered animated card
+   ============================================================ */
+
+.maya-validation-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10010;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    animation: valOverlayIn 0.3s ease;
+}
+
+.maya-validation-overlay.closing {
+    animation: valOverlayOut 0.3s ease forwards;
+}
+
+@keyframes valOverlayIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes valOverlayOut {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
+
+.maya-validation-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.4rem;
+    padding: 2rem 1.5rem;
+    width: 90%;
+    max-width: 380px;
+    background: linear-gradient(145deg, rgba(30, 30, 35, 0.95), rgba(20, 20, 25, 0.98));
+    border: 1px solid rgba(226, 196, 106, 0.2);
+    border-radius: 20px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5), 0 0 60px rgba(226, 196, 106, 0.08);
+    animation: valCardIn 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.maya-validation-overlay.closing .maya-validation-container {
+    animation: valCardOut 0.25s ease forwards;
+}
+
+@keyframes valCardIn {
+    from { opacity: 0; transform: scale(0.85) translateY(20px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes valCardOut {
+    from { opacity: 1; transform: scale(1) translateY(0); }
+    to   { opacity: 0; transform: scale(0.9) translateY(10px); }
+}
+
+.maya-validation-question {
+    font-size: 1.1rem;
+    color: var(--maya-text-primary);
+    text-align: center;
+    margin: 0;
+    line-height: 1.55;
+    max-width: 100%;
+    font-weight: 500;
+}
+
+.maya-validation-options {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.7rem;
+    width: 100%;
+}
+
+.maya-validation-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--maya-text-primary);
+    padding: 0.7rem 1.5rem;
+    border-radius: 999px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.maya-validation-btn:hover,
+.maya-validation-btn:focus {
+    background: rgba(226, 196, 106, 0.12);
+    border-color: var(--maya-primary);
+    color: var(--maya-primary-light);
+    transform: translateY(-1px);
+}
+
+.maya-validation-btn:active {
+    transform: scale(0.97);
+}
+
+.maya-validation-btn.selected {
+    background: var(--maya-primary);
+    color: var(--maya-bg-primary);
+    border-color: var(--maya-primary);
+    transform: scale(1.05);
+    box-shadow: 0 0 16px rgba(226, 196, 106, 0.35);
+}
+
+.maya-validation-btn.primary {
+    background: var(--maya-primary);
+    color: var(--maya-bg-primary);
+    border-color: var(--maya-primary);
+}
+
+.maya-validation-btn.primary:hover {
+    background: var(--maya-primary-light);
+}
+
+/* Deep reveal chapter choice grid */
+.deep-reveal-choice-grid {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.8rem;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.deep-chapter-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    justify-content: center;
+    font-size: 1rem;
+    padding: 0.8rem 1.4rem;
+    min-width: 100px;
+}
+
+.deep-chapter-btn i {
+    font-size: 1.1rem;
+}
+
+/* Guided conversation chips */
+.maya-guided-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.8rem;
+    justify-content: center;
+}
+
+.maya-chip-btn {
+    background: var(--maya-bg-tertiary);
+    border: 1px solid var(--maya-border);
+    color: var(--maya-text-secondary);
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.maya-chip-btn:hover {
+    background: rgba(226, 196, 106, 0.1);
+    border-color: var(--maya-primary);
+    color: var(--maya-primary-light);
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================================
+   PRE-FUNNEL LANDING SCREEN (Screen 1)
+   ============================================================ */
+
+.maya-landing-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 70vh;
+    padding: 2rem 1.5rem;
+    animation: fadeInUp 0.6s ease;
+}
+
+.landing-visual {
+    position: relative;
+    margin-bottom: 2rem;
+}
+
+.landing-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 160px;
+    height: 160px;
+    background: radial-gradient(circle, rgba(226, 196, 106, 0.25) 0%, transparent 70%);
+    border-radius: 50%;
+    animation: landingPulse 3s ease-in-out infinite;
+}
+
+.landing-logo-img {
+    width: 80px;
+    height: 80px;
+    position: relative;
+    z-index: 1;
+}
+
+.landing-headline {
+    font-family: 'Raleway', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--maya-text-primary, #fff);
+    margin-bottom: 0.75rem;
+    line-height: 1.3;
+    text-align: center;
+}
+
+.  {
+    font-size: 0.95rem;
+    color: var(--maya-text-secondary, #aaa);
+    line-height: 1.5;
+    margin-bottom: 2rem;
+    max-width: 320px;
+    text-align: center !important;
+}
+
+.landing-begin-btn {
+    padding: 0.9rem 2.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 999px;
+    letter-spacing: 0.02em;
+}
+
+@keyframes landingPulse {
+    0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+    50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+}
+
+/* ============================================================
+   ROTATING STATUS TEXT (Screen 8)
+   ============================================================ */
+
+.calc-rotating-status {
+    font-size: 0.9rem;
+    color: var(--maya-text-secondary, #aaa);
+    transition: opacity 0.3s ease;
+    min-height: 1.4em;
+}
+
+/* ============================================================
+   CONTINUE GATE BUTTON
+   ============================================================ */
+
+.maya-continue-gate-btn {
+    padding: 0.75rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 999px;
+    letter-spacing: 0.02em;
+}
+
+/* ============================================================
+   SUSPENSE UNLOCK (Screen 16)
+   ============================================================ */
+
+.suspense-unlock-container {
+    animation: fadeInUp 0.5s ease;
+}
+
+.suspense-unlock-container h3 {
+    font-family: 'Raleway', sans-serif;
+    font-weight: 700;
+    color: var(--maya-text-primary, #fff);
+}
+
+.maya-unlock-btn {
+    padding: 0.9rem 2rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    border-radius: 999px;
+}
+
+/* ============================================================
+   OVERLAY VALIDATION & CONTINUE (inside calculation overlay)
+   ============================================================ */
+
+.calc-overlay-validation {
+    margin-top: 1.5rem;
+    padding: 1rem 0;
+    animation: fadeInUp 0.4s ease;
+}
+
+.calc-overlay-validation .maya-validation-container {
+    padding: 0.5rem 0;
+}
+
+.calc-overlay-continue {
+    margin-top: 1.5rem;
+    padding: 1rem 0;
+    animation: fadeInUp 0.4s ease;
+}
+
+.maya-continue-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px;
+    animation: fadeInUp 0.4s ease;
+}
+
+/* ============================================================
+   PROGRESS METER — gamification reading tracker
+   ============================================================ */
+
+.maya-progress-meter {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10002;
+    width: auto;
+    max-width: 320px;
+    padding: 10px 20px;
+    background: rgba(20, 20, 25, 0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 999px;
+    border: 1px solid rgba(226, 196, 106, 0.12);
+    transition: opacity 0.4s ease;
+}
+
+.maya-progress-meter.fade-out {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Track: background rail behind all dots */
+.progress-meter-track {
+    display: flex;
+    align-items: center;
+    position: relative;
+    gap: 0;
+    height: 12px;
+}
+
+/* Static rail behind dots */
+.progress-meter-track::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 6px;
+    right: 6px;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-50%);
+    border-radius: 2px;
+}
+
+/* Animated fill line */
+.progress-fill-line {
+    position: absolute;
+    top: 50%;
+    left: 6px;
+    height: 2px;
+    background: var(--maya-accent, #e2c46a);
+    transform: translateY(-50%);
+    transition: width 0.6s ease;
+    width: 0;
+    z-index: 0;
+    border-radius: 2px;
+}
+
+.progress-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+    width: 30px;
+    height: 12px;
+}
+
+.progress-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.4s ease;
+    flex-shrink: 0;
+}
+
+.progress-stage.completed .progress-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--maya-accent, #e2c46a);
+    border-color: var(--maya-accent, #e2c46a);
+    box-shadow: 0 0 5px rgba(226, 196, 106, 0.4);
+}
+
+.progress-stage.active .progress-dot {
+    width: 10px;
+    height: 10px;
+    background: var(--maya-accent, #e2c46a);
+    border-color: #fff;
+    box-shadow: 0 0 10px rgba(226, 196, 106, 0.7);
+    animation: progressPulse 1.5s ease-in-out infinite;
+}
+
+/* Labels: hidden by default, visible only on active stage */
+.progress-label {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: rgba(226, 196, 106, 0.9);
+    white-space: nowrap;
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.progress-stage.active .progress-label {
+    opacity: 1;
+}
+
+@keyframes progressPulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(226, 196, 106, 0.5); }
+    50% { box-shadow: 0 0 14px rgba(226, 196, 106, 0.9); }
+}
+
+/* ============================================================
+   UI STREAMLINING & CENTER ALIGNMENT
+   ============================================================ */
+
+/* Ensure all funnel text displays are centered */
+.maya-text-display {
+    text-align: center;
+}
+
+/* Center the email gate form */
+.email-gate-container {
+    text-align: center;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.gate-header {
+    text-align: center;
+}
+
+.gate-benefits {
+    text-align: left;
+    max-width: 320px;
+    margin: 1rem auto 1.5rem;
+}
+
+.gate-form {
+    max-width: 360px;
+    margin: 0 auto;
+}
+
+.gate-note {
+    text-align: center;
+}
+
+/* Center the auth flow */
+.auth-flow-container {
+    text-align: center;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.auth-form {
+    max-width: 360px;
+    margin: 0 auto;
+}
+
+/* Center deep reveal prompt */
+.deep-reveal-prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+}
+
+.deep-chapter-btn {
+    min-width: 100px;
+    text-align: center;
+}
+
+/* Center suspense unlock */
+.suspense-unlock-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    animation: fadeInUp 0.5s ease;
+}
+
+/* Landing screen responsive */
+@media (max-width: 380px) {
+    .landing-headline {
+        font-size: 1.3rem;
+    }
+    .landing-subtext {
+        font-size: 0.85rem;
+    }
+    .landing-begin-btn {
+        padding: 0.8rem 2rem;
+        font-size: 1rem;
+    }
+}
+
+/* ============================================================
+   CHAT MODE — compact blob, proper layout, no progress bar
+   ============================================================ */
+
+/* Mini blob for chat mode */
+.blob-chat-mini {
+    transform: scale(0.35) !important;
+    margin-top: -40px !important;
+    pointer-events: none;
+    opacity: 0.75;
+    transition: transform 0.5s ease, opacity 0.5s ease;
+}
+
+/* Chat mode overlay hides the progress meter */
+.maya-overlay--chat .maya-progress-meter {
+    display: none !important;
+}
+
+/* Chat mode text display — messages take remaining space */
+.maya-overlay--chat .maya-text-display.maya-chat-mode {
+    top: 100px;
+    padding-top: 1rem;
+}
+
+/* Guided chips — horizontal scroll row */
+.maya-overlay--chat .maya-guided-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    padding: 0 0.5rem 1rem;
+}
+
+.maya-overlay--chat .maya-chip-btn {
+    flex: 0 0 auto;
+    font-size: 0.82rem;
+    padding: 0.5rem 1rem;
+    white-space: nowrap;
+}

@@ -25,25 +25,397 @@ const MayaFunnel = {
     calculationOverlay: null,
     kundliChart: null,
     personalization: null,
+
+    // --- New funnel redesign state ---
+    validationResponses: [],
+    emotionalAnchor: null,
+    strongestAccurateHit: null,
+    chosenDeepDiveTopic: null,
+    unresolvedThread: null,
+    returnHookType: null,
+    chapterOrder: null,
+
     stageTiming: {
-        introSettle: 1200,
-        calculationLeadIn: 220,
-        calcStepDelay: 850,
-        letterDelay: 140,
-        vowelDelay: 180,
-        kundliSignalDelay: 320,
-        kundliInsightDelay: 260,
-        stageSettle: 1200
+        introSettle: 600,
+        calculationLeadIn: 180,
+        calcStepDelay: 500,
+        letterDelay: 100,
+        vowelDelay: 130,
+        kundliSignalDelay: 240,
+        kundliInsightDelay: 200,
+        stageSettle: 600,
+        validationSettle: 500,
+        suspensePause: 800
     },
     
     // Funnel phases
     PHASES: {
         CALCULATING: 'calculating',
+        VALIDATION: 'validation',
         TEASER_REVEAL: 'teaser_reveal',
+        SUSPENSE_BRIDGE: 'suspense_bridge',
         EMAIL_GATE: 'email_gate',
         LOGIN_OR_REGISTER: 'login_or_register',
         DEEP_REVEAL: 'deep_reveal',
         COMPLETE: 'complete'
+    },
+
+    // ============================================================
+    //  PROGRESS STAGES for gamification meter
+    // ============================================================
+    PROGRESS_STAGES: [
+        { key: 'chart_opened', en: 'Chart', hi: 'चार्ट' },
+        { key: 'first_impression', en: 'Impression', hi: 'झलक' },
+        { key: 'kundli', en: 'Kundli', hi: 'कुंडली' },
+        { key: 'life_path', en: 'Life Path', hi: 'जीवन पथ' },
+        { key: 'destiny', en: 'Destiny', hi: 'भाग्य' },
+        { key: 'soul_urge', en: 'Soul', hi: 'आत्मा' },
+        { key: 'accuracy_hit', en: 'Accuracy', hi: 'सटीकता' },
+        { key: 'deep_patterns', en: 'Patterns', hi: 'पैटर्न' },
+        { key: 'full_reading', en: 'Complete', hi: 'पूर्ण' }
+    ],
+    currentProgressIndex: -1,
+
+    // ============================================================
+    //  SESSION MEMORY — tracks user reactions for personalization
+    // ============================================================
+    sessionMemory: {
+        validationAnswers: {},
+        emotionalAnchors: [],
+        strongHits: [],
+        userQuestions: [],
+        unresolvedTopics: [],
+        progressUnlocks: []
+    },
+
+    resetSessionMemory() {
+        this.sessionMemory = {
+            validationAnswers: {},
+            emotionalAnchors: [],
+            strongHits: [],
+            userQuestions: [],
+            unresolvedTopics: [],
+            progressUnlocks: []
+        };
+    },
+
+    recordValidation(question, answer) {
+        this.sessionMemory.validationAnswers[question] = answer;
+        if (answer === 'yes') {
+            this.sessionMemory.strongHits.push(question);
+        }
+    },
+
+    recordEmotionalAnchor(text) {
+        if (text && text.length > 5) {
+            this.sessionMemory.emotionalAnchors.push({ text, timestamp: Date.now() });
+        }
+    },
+
+    buildMemoryContext(isHindi) {
+        const mem = this.sessionMemory;
+        const parts = [];
+        if (mem.strongHits.length) {
+            const hits = mem.strongHits.slice(-3).join('; ');
+            parts.push(isHindi
+                ? `User ने इन बातों पर "हाँ" कहा: ${hits}`
+                : `User confirmed these as accurate: ${hits}`);
+        }
+        if (mem.emotionalAnchors.length) {
+            const anchors = mem.emotionalAnchors.slice(-2).map(a => a.text).join('; ');
+            parts.push(isHindi
+                ? `User ने ये emotional reactions दिए: ${anchors}`
+                : `User showed emotional response to: ${anchors}`);
+        }
+        if (Object.keys(mem.validationAnswers).length) {
+            const negative = Object.entries(mem.validationAnswers)
+                .filter(([, v]) => v === 'no')
+                .map(([q]) => q)
+                .slice(-2);
+            if (negative.length) {
+                parts.push(isHindi
+                    ? `User ने इन बातों से असहमति जताई: ${negative.join('; ')}`
+                    : `User disagreed with: ${negative.join('; ')}`);
+            }
+        }
+        return parts.length ? parts.join('\n') : '';
+    },
+
+    // ============================================================
+    //  MAYA VOICE LIBRARY — 100+ bilingual personality lines
+    // ============================================================
+    voiceLibrary: {
+        opening: {
+            en: [
+                "Welcome. I'm opening your chart now.",
+                "I'm glad you came here today.",
+                "Let's take this step slowly.",
+                "This reading begins with your birth pattern.",
+                "I'll start with what stands out the most.",
+                "Every chart begins by revealing one quiet truth.",
+                "Your chart is already showing a strong signal.",
+                "Let me look at the structure carefully.",
+                "I want to confirm something before I say it clearly.",
+                "I'm tracing the shape of your chart now."
+            ],
+            hi: [
+                "स्वागत है। मैं अभी आपकी chart खोल रही हूँ।",
+                "अच्छा हुआ कि आप आज यहाँ आए।",
+                "चलिए, ये कदम धीरे-धीरे उठाते हैं।",
+                "ये reading आपके birth pattern से शुरू होती है।",
+                "सबसे पहले वो बताऊँगी जो सबसे ज्यादा दिख रहा है।",
+                "हर chart एक शांत सच्चाई से खुलती है।",
+                "आपकी chart में पहले से एक मजबूत signal दिख रहा है।",
+                "ध्यान से structure देख रही हूँ।",
+                "पहले कुछ confirm कर लूँ, फिर साफ बताऊँगी।",
+                "आपकी chart का ढाँचा trace कर रही हूँ।"
+            ]
+        },
+        analysis: {
+            en: [
+                "I'm checking the balance between your planets.",
+                "There is a repeating pattern here.",
+                "One part of your chart is louder than the rest.",
+                "I'm looking closely at your timing cycles.",
+                "There's an emotional pattern underneath this.",
+                "This part of the chart usually speaks about inner life.",
+                "I'm confirming the relationship indicators.",
+                "I'm checking how your personal numbers interact.",
+                "This combination is interesting.",
+                "I want to see how these patterns connect."
+            ],
+            hi: [
+                "आपके ग्रहों का balance check कर रही हूँ।",
+                "यहाँ एक repeating pattern है।",
+                "आपकी chart का एक हिस्सा बाकियों से ज्यादा बोल रहा है।",
+                "आपके timing cycles ध्यान से देख रही हूँ।",
+                "इसके नीचे एक emotional pattern छिपा है।",
+                "chart का ये हिस्सा अंदर की जिंदगी के बारे में बोलता है।",
+                "relationship indicators confirm कर रही हूँ।",
+                "देख रही हूँ कि आपके numbers कैसे interact करते हैं।",
+                "ये combination दिलचस्प है।",
+                "देखती हूँ ये patterns कैसे जुड़ते हैं।"
+            ]
+        },
+        emotionalMirror: {
+            en: [
+                "You tend to hold more inside than people realize.",
+                "You often appear steady even when you are thinking deeply.",
+                "There is strength in your chart, but it comes with pressure.",
+                "You understand people quickly, but trust takes longer.",
+                "You sometimes carry responsibility quietly.",
+                "Part of you wants clarity before you move forward.",
+                "You are not someone who makes careless decisions.",
+                "You notice more than you usually say.",
+                "You probably think about things long after conversations end.",
+                "Your chart shows a thoughtful nature."
+            ],
+            hi: [
+                "आप अंदर बहुत कुछ रखते हैं जो लोगों को पता नहीं होता।",
+                "बाहर से stable लगते हैं, पर अंदर गहरी सोच चलती रहती है।",
+                "आपकी chart में ताकत है, पर उसके साथ pressure भी है।",
+                "लोगों को जल्दी समझ लेते हैं, पर भरोसा करने में वक्त लगता है।",
+                "आप चुपचाप जिम्मेदारी उठा लेते हैं।",
+                "आगे बढ़ने से पहले आप clarity चाहते हैं।",
+                "आप लापरवाही से फैसले नहीं लेते।",
+                "आप जितना बोलते हैं उससे ज्यादा notice करते हैं।",
+                "बात खत्म होने के बाद भी आप उसके बारे में सोचते रहते हैं।",
+                "आपकी chart एक सोचने-समझने वाला स्वभाव दिखाती है।"
+            ]
+        },
+        validation: {
+            en: [
+                "I want to check something with you.",
+                "Tell me honestly.",
+                "Does this feel familiar to you?",
+                "Have you experienced something like this?",
+                "Does this pattern show up in your life?",
+                "I'd like your honest answer here.",
+                "Only you would know this part.",
+                "Does this feel accurate?",
+                "Think about this carefully.",
+                "Does this match your experience?"
+            ],
+            hi: [
+                "एक बात confirm करना चाहती हूँ।",
+                "ईमानदारी से बताइए।",
+                "क्या ये सुनकर कुछ familiar लगा?",
+                "क्या कभी ऐसा महसूस हुआ है?",
+                "क्या ये pattern आपकी जिंदगी में दिखता है?",
+                "यहाँ आपका सच्चा जवाब चाहिए।",
+                "ये हिस्सा सिर्फ आप जानते हैं।",
+                "क्या ये सही लग रहा है?",
+                "इसके बारे में ध्यान से सोचिए।",
+                "क्या ये आपके experience से मिलता है?"
+            ]
+        },
+        suspense: {
+            en: [
+                "There is one more thing I want to look at.",
+                "This part of your chart becomes more personal.",
+                "I want to say this carefully.",
+                "There's something unusual here.",
+                "This pattern doesn't appear in every chart.",
+                "I don't want to rush this explanation.",
+                "This is where your chart becomes more specific.",
+                "I'm noticing something that deserves attention.",
+                "There's another layer I haven't opened yet.",
+                "This part connects to something important."
+            ],
+            hi: [
+                "एक और चीज है जो देखना चाहती हूँ।",
+                "chart का ये हिस्सा ज्यादा personal हो जाता है।",
+                "ये ध्यान से कहना चाहती हूँ।",
+                "यहाँ कुछ unusual दिख रहा है।",
+                "ये pattern हर chart में नहीं आता।",
+                "इसे जल्दबाजी में नहीं समझाना चाहती।",
+                "यहाँ से आपकी chart ज्यादा specific हो जाती है।",
+                "कुछ ऐसा notice हुआ है जो ध्यान माँगता है।",
+                "एक और layer है जो अभी खोली नहीं है।",
+                "ये हिस्सा किसी अहम चीज से जुड़ा है।"
+            ]
+        },
+        relationship: {
+            en: [
+                "Your emotional world is deeper than most people see.",
+                "You tend to attract people who need stability.",
+                "You sometimes give more than you receive.",
+                "You value loyalty more than excitement.",
+                "You are careful with your heart.",
+                "You may need emotional clarity before you trust.",
+                "You notice emotional shifts quickly.",
+                "You are not someone who takes relationships lightly.",
+                "Your chart suggests strong emotional awareness.",
+                "You look for sincerity more than drama."
+            ],
+            hi: [
+                "आपकी भावनाओं की दुनिया लोगों की सोच से गहरी है।",
+                "आपकी तरफ ऐसे लोग आते हैं जिन्हें stability चाहिए।",
+                "आप कभी-कभी उतना वापस नहीं पाते जितना देते हैं।",
+                "आपके लिए loyalty, excitement से ज्यादा जरूरी है।",
+                "आप अपना दिल सँभालकर रखते हैं।",
+                "भरोसा करने से पहले आपको emotional clarity चाहिए।",
+                "आप emotional बदलाव जल्दी भाँप लेते हैं।",
+                "आप रिश्तों को हल्के में नहीं लेते।",
+                "आपकी chart मजबूत emotional awareness दिखाती है।",
+                "आप drama नहीं, सच्चाई ढूँढते हैं।"
+            ]
+        },
+        career: {
+            en: [
+                "You work best when your thinking is respected.",
+                "You are not designed for meaningless work.",
+                "Your strengths grow when you are trusted.",
+                "You often notice solutions before others do.",
+                "You prefer depth over superficial activity.",
+                "You are capable of shaping outcomes.",
+                "You function well when there is purpose.",
+                "You may feel restless when your work lacks meaning.",
+                "You think in patterns, not fragments.",
+                "Your direction becomes clearer when you trust your instincts."
+            ],
+            hi: [
+                "जब आपकी सोच की कदर होती है, तो आप सबसे अच्छा काम करते हैं।",
+                "आप बेमतलब के काम के लिए नहीं बने।",
+                "जब भरोसा मिलता है तो आपकी ताकत बढ़ती है।",
+                "आप अक्सर दूसरों से पहले solution देख लेते हैं।",
+                "आप ऊपरी activity से ज्यादा गहराई पसंद करते हैं।",
+                "आप नतीजे बदलने की क्षमता रखते हैं।",
+                "जब मकसद हो तो आप बेहतरीन काम करते हैं।",
+                "जब काम में meaning न हो तो बेचैनी होती है।",
+                "आप टुकड़ों में नहीं, patterns में सोचते हैं।",
+                "जब अपनी instinct पर भरोसा करते हैं तो रास्ता साफ दिखता है।"
+            ]
+        },
+        timing: {
+            en: [
+                "There are a few timing windows ahead.",
+                "One period looks especially active.",
+                "I would pay attention to this phase.",
+                "This window could bring movement.",
+                "Your chart shows a shift approaching.",
+                "There may be an opportunity in this cycle.",
+                "This period deserves patience.",
+                "This timing could change direction.",
+                "One window looks stronger than the rest.",
+                "I want you to watch this moment closely."
+            ],
+            hi: [
+                "आगे कुछ timing windows दिख रही हैं।",
+                "एक दौर खास तौर पर active लग रहा है।",
+                "इस phase पर ध्यान देना चाहिए।",
+                "ये window कुछ हरकत ला सकती है।",
+                "आपकी chart में एक shift करीब आ रहा है।",
+                "इस cycle में कोई मौका हो सकता है।",
+                "इस दौर में सब्र चाहिए।",
+                "ये timing direction बदल सकती है।",
+                "एक window बाकी सबसे मजबूत दिख रही है।",
+                "इस पल को ध्यान से देखिए।"
+            ]
+        },
+        warning: {
+            en: [
+                "I want to say this carefully.",
+                "There is one pattern that deserves attention.",
+                "This is not a mistake, but it is a pattern.",
+                "You may recognize this when it happens.",
+                "This part of your chart asks for awareness.",
+                "It's better to see this early.",
+                "This pattern repeats when pressure rises.",
+                "I would approach this situation slowly.",
+                "Pay attention to your reactions here.",
+                "Awareness is your advantage."
+            ],
+            hi: [
+                "ये ध्यान से कहना चाहती हूँ।",
+                "एक pattern है जो ध्यान माँगता है।",
+                "ये गलती नहीं है, पर ये एक pattern है।",
+                "जब ऐसा हो तो शायद आप पहचान जाएँ।",
+                "chart का ये हिस्सा जागरूकता माँगता है।",
+                "इसे जल्दी देख लेना बेहतर है।",
+                "जब pressure बढ़ता है तो ये pattern लौटता है।",
+                "इस situation में धीरे-धीरे चलिए।",
+                "यहाँ अपने reactions पर ध्यान दीजिए।",
+                "जागरूकता आपकी सबसे बड़ी ताकत है।"
+            ]
+        },
+        completion: {
+            en: [
+                "You've now heard the deeper layer.",
+                "Let the reading settle for a moment.",
+                "This is not fate. It's a pattern.",
+                "Patterns can be changed.",
+                "I'm here if you want to explore more.",
+                "We can go deeper whenever you want.",
+                "There are still parts of your chart we can explore.",
+                "You can ask me anything.",
+                "This reading belongs to you now.",
+                "I'll stay here with you."
+            ],
+            hi: [
+                "अब आपने गहरी layer सुन ली है।",
+                "reading को एक पल settle होने दीजिए।",
+                "ये भाग्य नहीं है। ये एक pattern है।",
+                "patterns बदले जा सकते हैं।",
+                "और जानना चाहें तो मैं यहाँ हूँ।",
+                "जब चाहें, और गहराई में जा सकते हैं।",
+                "आपकी chart के कुछ हिस्से अभी बाकी हैं।",
+                "कुछ भी पूछ सकते हैं।",
+                "ये reading अब आपकी है।",
+                "मैं आपके साथ यहाँ हूँ।"
+            ]
+        }
+    },
+
+    /**
+     * Pick a random line from the voice library for a given category.
+     */
+    getVoiceLine(category) {
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const pool = this.voiceLibrary[category];
+        if (!pool) return '';
+        const lines = isHindi ? pool.hi : pool.en;
+        return lines[Math.floor(Math.random() * lines.length)];
     },
 
     /**
@@ -386,6 +758,22 @@ const MayaFunnel = {
     buildBaseAIContext(predictionItems = null) {
         const profile = this.personalization || {};
         const items = Array.isArray(predictionItems) ? predictionItems : this.buildPredictionItems();
+        const lang = MayaUtils?.storage?.get('maya_language') || this.userData?.language || 'en';
+        const isHindi = lang === 'hi';
+
+        // Full kundli planetary data for AI
+        const detailedChartFacts = (this.kundliChart && window.MayaKundli?.buildDetailedChartFacts)
+            ? MayaKundli.buildDetailedChartFacts(this.kundliChart, this.userData?.birthDate)
+            : '';
+
+        // Lal Kitab planet-in-house analysis specific to this user's chart
+        const lalKitabContext = (this.kundliChart?.planets?.length && this.kundliChart?.ascendant?.name && window.getLalKitabForChart)
+            ? getLalKitabForChart(this.kundliChart.planets, this.kundliChart.ascendant.name)
+            : '';
+
+        // MCQ answers context so AI can personalize based on user selections
+        const memoryContext = this.buildMemoryContext(isHindi);
+
         return {
             ...this.calculations,
             gender: this.userData?.gender || '',
@@ -404,6 +792,10 @@ const MayaFunnel = {
             narrativeLens: profile.narrativeLens || '',
             chartHighlights: profile.highlights || [],
             predictionItems: items,
+            detailedChartFacts,
+            lalKitabContext,
+            memoryContext,
+            validationResponses: this.validationResponses || [],
             userData: {
                 gender: this.userData?.gender || '',
                 westernZodiac: profile.western?.name || '',
@@ -583,7 +975,7 @@ const MayaFunnel = {
 
         if (isHindi) {
             return nextSignal.kind === 'strong'
-                ? `${nextSignal.monthName} के आस-पास एक सहायक मोड़ खुल रहा है, जहाँ ${nextSignal.theme} की दिशा और साफ़ दिखेगी।`
+                ? `${nextSignal.monthName} के आस-पास एक सहायक मोड़ खुल रहा है, जहाँ ${nextSignal.theme} की दिशा और साफ दिखेगी।`
                 : `${nextSignal.monthName} के आस-पास थोड़ा संभलकर चलना होगा, क्योंकि वहीं ${nextSignal.theme} का दबाव उभर सकता है।`;
         }
 
@@ -741,6 +1133,9 @@ const MayaFunnel = {
         // Initialize content cache for pre-generated content
         this.contentCache = {};
         this.contentGenerating = {};
+
+        // Reset session memory for fresh funnel run
+        this.resetSessionMemory();
         
         // Pre-generate ALL AI content in background for smooth delivery
         this.pregenerateAllContent();
@@ -845,7 +1240,10 @@ const MayaFunnel = {
         const detailedFacts = (this.kundliChart && window.MayaKundli?.buildDetailedChartFacts)
             ? MayaKundli.buildDetailedChartFacts(this.kundliChart, this.userData?.birthDate)
             : '';
-        const chartLines = detailedFacts || [
+        const lalKitabFacts = (this.kundliChart?.planets?.length && this.kundliChart?.ascendant?.name && window.getLalKitabForChart)
+            ? getLalKitabForChart(this.kundliChart.planets, this.kundliChart.ascendant.name)
+            : '';
+        const chartLines = [detailedFacts, lalKitabFacts].filter(Boolean).join('\n') || [
             chartSummary?.ascendant?.name ? `${isHindi ? 'लग्न' : 'Ascendant'}: ${localize(chartSummary.ascendant.name)}` : '',
             chartSummary?.moonSign ? `${isHindi ? 'चंद्र राशि' : 'Moon sign'}: ${localize(chartSummary.moonSign)}` : '',
             chartSummary?.currentDasha?.vedic || chartSummary?.currentDasha?.planet
@@ -859,6 +1257,14 @@ const MayaFunnel = {
         const todayStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         const currentYear = now.getFullYear();
         const currentMonthStr = now.toLocaleDateString('en-US', { month: 'long' });
+
+        // Include MCQ answers so AI can refine reading
+        const memCtx = this.buildMemoryContext(isHindi);
+        const mcqBlock = memCtx
+            ? (isHindi
+                ? `\n\n## USER के जवाब (PERSONALISE करने के लिए use करें):\n${memCtx}`
+                : `\n\n## USER RESPONSES (use to PERSONALISE):\n${memCtx}`)
+            : '';
 
         // Include already spoken context so the summary doesn't repeat opening/kundli narration
         const alreadySpoken = this.spokenNarrations?.length
@@ -879,7 +1285,7 @@ User gender: ${this.userData?.gender === 'male' ? 'Male (पुरुष)' : thi
 
 आज: ${todayStr}
 ⚠️ जो months बीत चुके हैं (January-${currentMonthStr} ${currentYear}) उन्हें PAST tense में refer करें। Future predictions में specific month + year बोलें।
-${alreadySpokenBlock}
+${alreadySpokenBlock}${mcqBlock}
 
 अब numbers repeat मत कीजिए। इसके बजाय, नीचे दिए गए EXACT planetary positions और dasha timeline को use करके एक SPECIFIC past event predict कीजिए जो सिर्फ इस user पर fit हो।
 
@@ -897,14 +1303,15 @@ RULES:
 - MAYA feminine forms: हूँ, रही, सकती, देख रही (ये MAYA के लिए हैं)।
 - ⚠️ USER GENDER: User को address करते वक्त उनका ACTUAL gender use करें। अगर user MALE है तो: "आप जानते हैं", "आप समझते हैं", "आपको मिलेगा"। अगर user FEMALE है तो: "आप जानती हैं", "आप समझती हैं", "आपको मिलेगा"। Male user को feminine forms में address करना FORBIDDEN है।
 - "आप" use करें। नाम MAX 1 बार use करें। TTS-safe रखिए।
-- भाषा simple light Hinglish - सिर्फ भारी/शुद्ध/किताबी Sanskrit-laden Hindi बदलिए (जैसे "सम्भावना" → "मौक़ा", "परिस्थिति" → "हालात")। आम बोलचाल के Hindi words (ज़िन्दगी, दिल, वक़्त, तकलीफ़, हिम्मत, फ़ैसला, रिश्ता) Devanagari में ही रखिए - ये Hindi-origin हैं।
+- भाषा simple light Hinglish - सिर्फ भारी/शुद्ध/किताबी Sanskrit-laden Hindi बदलिए (जैसे "सम्भावना" → "मौका", "परिस्थिति" → "हालात")। आम बोलचाल के Hindi words (जिंदगी, दिल, वक्त, दिक्कत, हिम्मत, फैसला, रिश्ता) देवनागरी में ही रखिए - ये Hindi-origin हैं।
+- 🚫 URDU BAN: उर्दू/अरबी/फारसी शब्द FORBIDDEN। Nuqta sounds (za, qa, kha, gha, fa) FORBIDDEN - ये Urdu हैं Hindi नहीं। Banned: इश्क/मोहब्बत→प्यार, ख्वाब→सपना, शख्सियत→personality, सुकून→शांति, हौसला→हिम्मत, वजह→कारण, खुदा→भगवान। Plain Hindi बोलिए।
 - एक ही शब्द लगातार 2 sentences में repeat मत करें - synonyms use करें।`
             : `You are MAYA - a wise female Vedic numerology expert. You're speaking to ${this.firstName} who just saw their numbers.
 User gender: ${this.userData?.gender === 'male' ? 'Male' : this.userData?.gender === 'female' ? 'Female' : 'Not specified'}
 
 Today: ${todayStr}
 ⚠️ Months already passed (January-${currentMonthStr} ${currentYear}) must be referenced in past tense. Future predictions must include specific month + year.
-${alreadySpokenBlock}
+${alreadySpokenBlock}${mcqBlock}
 
 DO NOT repeat the numbers or anything from the ALREADY TOLD section above. Instead, use the EXACT planetary positions and dasha timeline below to predict ONE SPECIFIC past event that feels deeply personal.
 
@@ -1077,37 +1484,51 @@ RULES:
     getNarrativeStageGuide(sectionKey, isHindi = false) {
         const guides = isHindi
             ? {
-                opening: 'Act 1. Invitation phase. ऐसा लगे जैसे एक sealed personal file खुल रही है. सिर्फ पहला hard clue दीजिए, पूरा verdict नहीं। आख़िर में ऐसा thread छोड़िए जो kundli layer की तरफ खींचे।',
+                opening: 'Act 1. Invitation phase. ऐसा लगे जैसे एक sealed personal file खुल रही है. सिर्फ पहला hard clue दीजिए, पूरा verdict नहीं। आखिर में ऐसा thread छोड़िए जो kundli layer की तरफ खींचे।',
                 kundli: 'Act 2. Chart structure phase. ऐसे बोलिए जैसे chart live trace हो रहा है. Ascendant, चंद्र राशि, दशा, या planetary clustering से life structure दिखाइए, और numbers की तरफ unresolved handoff दीजिए।',
-                loveIntro: 'Act 3 transition. Emotional layer अब खुल रही है. Tone intimate हो, लेकिन reset नहीं।',
-                love: 'Act 3. Relationship layer. User के emotional pattern का एक private but believable contradiction खोलिए. Curiosity बनी रहे।',
-                careerIntro: 'Act 4 transition. अब outer world, work, aur money pattern की तरफ lens shift हो रही है. Momentum same रहना चाहिए।',
-                career: 'Act 4. Outer path layer. Talent, friction, aur practical direction को एक ही narrative thread में जोड़िए।',
-                yearIntro: 'Act 5 transition. अब timing windows करीब आ रही हैं. Voice में measured anticipation रहे।',
-                year: 'Act 5. Timing layer. आने वाले महीनों को living timeline की तरह बोलिए, और एक window को बाकी से ज़्यादा charged feel कराइए।',
-                warningIntro: 'Act 6 transition. पहले trust hold कीजिए, फिर caution खोलिए. Tone protective हो, dramatic नहीं।',
-                warning: 'Act 6. Shadow layer. एक specific trigger, उसका pattern, और protective boundary बताइए. यह same story का honest underside लगे।',
-                emailGate: 'Act 7. Locked chamber. ऐसा feel कराइए कि next layer ज्यादा private, chart-specific, और saved रखने लायक है।',
-                deepRevealPrep: 'Act 7 threshold. User को feel होना चाहिए कि अब reading deeper और more personal होने वाली है, without sounding salesy.',
-                completion: 'Closing beat. Reading को softly settle कराइए, लेकिन curiosity और conversation का दरवाज़ा खुला रखिए।',
+                identityTruth: 'Teaser segment 1. एक grounded identity observation — "आप ऐसे इंसान हैं जो..." format में। Pattern-based, flattery-free।',
+                emotionalPattern: 'Teaser segment 2. एक emotional pattern जो user daily जीता है — ऐसा कुछ जो उन्हें inside-out describe करे।',
+                unresolvedThread: 'Teaser segment 3. एक open loop — ऐसा unresolved thread जो naturally resolution माँगे और user को आगे सुनने पर मजबूर करे।',
+                combinedTeaser: 'Combined teaser arc. तीन layers: पहले identity truth ("आप ऐसे इंसान हैं जो..."), फिर emotional pattern (inside-out), फिर unresolved thread (open loop)। तीनों एक कहानी की तरह बहें, अलग-अलग टुकड़े नहीं। हर layer chart evidence पर based हो।',
+                accuracyShock: 'Act 3. "How does she know?" moment. Chart data से एक SPECIFIC past event predict कीजिए — timing (month/year), nature, और emotional impact सहित। यह reader को चौंकाने वाला हो।',
+                suspenseBridge: 'Gate transition. Controlled tension — 1 sentence जो सबसे intense unresolved pattern name करे, 1 sentence जो कहे "इसे अभी यहीं नहीं बताऊँगी", और 1 sentence जो reading save करने की sense of importance पैदा करे।',
+                loveIntro: 'Act 4 transition. Emotional layer अब खुल रही है. Tone intimate हो, लेकिन reset नहीं।',
+                love: 'Act 4. Relationship layer. User के emotional pattern का एक private but believable contradiction खोलिए. Curiosity बनी रहे।',
+                careerIntro: 'Act 5 transition. अब outer world, work, aur money pattern की तरफ lens shift हो रही है. Momentum same रहना चाहिए।',
+                career: 'Act 5. Outer path layer. Talent, friction, aur practical direction को एक ही narrative thread में जोड़िए।',
+                yearIntro: 'Act 6 transition. अब timing windows करीब आ रही हैं. Voice में measured anticipation रहे।',
+                year: 'Act 6. Timing layer. आने वाले महीनों को living timeline की तरह बोलिए, और एक window को बाकी से ज्यादा charged feel कराइए।',
+                warningIntro: 'Act 7 transition. पहले trust hold कीजिए, फिर caution खोलिए. Tone protective हो, dramatic नहीं।',
+                warning: 'Act 7. Shadow layer. एक specific trigger, उसका pattern, और protective boundary बताइए. यह same story का honest underside लगे।',
+                emailGate: 'Save gate. ऐसा feel कराइए कि reading save करना जरूरी है — private file जो सिर्फ उनकी है। "Save my file" framing।',
+                deepRevealPrep: 'Deep reveal threshold. User को feel होना चाहिए कि अब reading deeper और more personal होने वाली है, without sounding salesy.',
+                returnHook: 'Return trigger. एक unresolved timing shift बताइए — "अभी नहीं बता सकती, पर आपकी chart में [month] में कुछ shift है — कल इसके बारे में और बात करते हैं।"',
+                completion: 'Closing beat. Reading को softly settle कराइए, लेकिन curiosity और conversation का दरवाजा खुला रखिए।',
                 authCheck: 'Operational interlude. Mystery टूटे नहीं; बस short, calm continuity रखिए।',
                 welcomeBack: 'Re-entry beat. ऐसा लगे जैसे वही file फिर से खोली जा रही है, शुरुआत से नहीं।',
-                newUser: 'Protection beat. Reading को valuable personal file की तरह frame कीजिए जिसे सुरक्षित रखना ज़रूरी है।',
+                newUser: 'Protection beat. Reading को valuable personal file की तरह frame कीजिए जिसे सुरक्षित रखना जरूरी है।',
                 calculationRecovery: 'Recovery beat. Momentum पूरी तरह मत तोड़िए; बस बताइए कि alignment दोबारा हो रहा है।'
             }
             : {
                 opening: 'Act 1. Invitation phase. Sound like a sealed personal file is being opened. Give only the first hard clue, not the whole verdict, and leave a thread that pulls naturally into the kundli layer.',
                 kundli: 'Act 2. Chart-structure phase. Speak as if the chart is being traced live. Use ascendant, moon sign, dasha, or planetary clustering to show the structure of the life, then leave an unresolved handoff toward the numbers.',
-                loveIntro: 'Act 3 transition. The emotional layer is opening now. Keep it intimate without resetting the scene.',
-                love: 'Act 3. Relationship layer. Reveal one private but believable contradiction in the user\'s emotional pattern and keep curiosity alive.',
-                careerIntro: 'Act 4 transition. Shift the lens toward work, money, and outer direction while keeping the same momentum.',
-                career: 'Act 4. Outer-path layer. Tie talent, friction, and practical direction into one narrative thread.',
-                yearIntro: 'Act 5 transition. The timing windows are getting closer. Let the voice carry measured anticipation.',
-                year: 'Act 5. Timing layer. Speak about the coming months like a living timeline, and make one window feel more charged than the rest.',
-                warningIntro: 'Act 6 transition. Hold trust first, then open the caution. Sound protective, not dramatic.',
-                warning: 'Act 6. Shadow layer. Name one specific trigger, its repeating pattern, and a protective boundary. It must feel like the honest underside of the same story.',
-                emailGate: 'Act 7. Locked chamber. Make the next layer feel more private, chart-specific, and worth saving.',
-                deepRevealPrep: 'Act 7 threshold. The user should feel that the reading is about to become deeper and more personal without sounding salesy.',
+                identityTruth: 'Teaser segment 1. A grounded identity observation — "You are someone who..." format. Pattern-based, flattery-free.',
+                emotionalPattern: 'Teaser segment 2. An emotional pattern the user lives with daily — something that describes them from the inside out.',
+                unresolvedThread: 'Teaser segment 3. An open loop — an unresolved thread that naturally demands resolution and compels the user to keep listening.',
+                combinedTeaser: 'Combined teaser arc. Three layers: identity truth ("You are someone who..."), then emotional pattern (inside-out), then unresolved thread (open loop). All three must flow as one connected narrative, not isolated observations. Every layer must be grounded in specific chart evidence.',
+                accuracyShock: 'Act 3. "How does she know?" moment. Predict a SPECIFIC past event from chart data — with timing (month/year), nature, and emotional impact. This should genuinely surprise the user.',
+                suspenseBridge: 'Gate transition. Controlled tension — 1 sentence naming the most intense unresolved pattern, 1 sentence saying "I will not tell you this here", and 1 sentence creating a sense of importance around saving the reading.',
+                loveIntro: 'Act 4 transition. The emotional layer is opening now. Keep it intimate without resetting the scene.',
+                love: 'Act 4. Relationship layer. Reveal one private but believable contradiction in the user\'s emotional pattern and keep curiosity alive.',
+                careerIntro: 'Act 5 transition. Shift the lens toward work, money, and outer direction while keeping the same momentum.',
+                career: 'Act 5. Outer-path layer. Tie talent, friction, and practical direction into one narrative thread.',
+                yearIntro: 'Act 6 transition. The timing windows are getting closer. Let the voice carry measured anticipation.',
+                year: 'Act 6. Timing layer. Speak about the coming months like a living timeline, and make one window feel more charged than the rest.',
+                warningIntro: 'Act 7 transition. Hold trust first, then open the caution. Sound protective, not dramatic.',
+                warning: 'Act 7. Shadow layer. Name one specific trigger, its repeating pattern, and a protective boundary. It must feel like the honest underside of the same story.',
+                emailGate: 'Save gate. Make the user feel the reading deserves to be saved — a private file that belongs only to them. Use "save my file" framing.',
+                deepRevealPrep: 'Deep reveal threshold. The user should feel that the reading is about to become deeper and more personal without sounding salesy.',
+                returnHook: 'Return trigger. Name one unresolved timing shift — "I cannot tell you yet, but your chart shows a shift in [month] — let us talk about this tomorrow."',
                 completion: 'Closing beat. Let the reading settle softly while leaving the door open for further conversation.',
                 authCheck: 'Operational interlude. Do not break the atmosphere; keep continuity calm and brief.',
                 welcomeBack: 'Re-entry beat. It should feel like reopening the same file, not starting from scratch.',
@@ -1145,7 +1566,7 @@ RULES:
                 ? `Chart highlights: ${profile.highlights.slice(0, 3).join('; ')}`
                 : ''
         ].filter(Boolean).join('\n');
-        const chartFacts = [visibleKundliFacts, detailedChartFacts || fallbackChartFacts]
+        const chartFacts = [visibleKundliFacts, detailedChartFacts || fallbackChartFacts, context.lalKitabContext]
             .filter(Boolean)
             .join('\n');
 
@@ -1160,6 +1581,14 @@ RULES:
             .join(isHindi ? ' | ' : ' | ');
         const narrativeStageGuide = this.getNarrativeStageGuide(sectionKey, isHindi);
 
+        // Build MCQ/validation context for AI so it can personalise based on user selections
+        const memCtx = this.buildMemoryContext(isHindi);
+        const microPromptContext = Object.entries(context)
+            .filter(([k]) => k.startsWith('microPrompt_'))
+            .map(([k, v]) => `${k.replace('microPrompt_', '')}: ${v}`)
+            .join(', ');
+        const userSelections = [memCtx, microPromptContext ? (isHindi ? `User की पसंद: ${microPromptContext}` : `User selections: ${microPromptContext}`) : ''].filter(Boolean).join('\n');
+
         const now = new Date();
         const todayStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         const currentMonth = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -1168,40 +1597,47 @@ RULES:
         const currentMonthNum = now.getMonth(); // 0-indexed
 
         const temporalRules = isHindi
-            ? `## TEMPORAL AWARENESS (CRITICAL)\nआज की तारीख़: ${todayStr}, समय: ${currentTime}\nCurrent month: ${currentMonth}\n\n⚠️ STRICT DATE RULES:\n- आज ${todayStr} है। जो महीने बीत चुके हैं (January-${now.toLocaleDateString('en-US', { month: 'long' })} ${currentYear} तक) उनके बारे में PAST tense में बोलिए - "वो time गुज़र चुका", "उस दौर में", "पीछे मुड़कर देखें तो"।\n- जो महीने आने वाले हैं, उन्हें FUTURE tense में - "आने वाले", "अगले", "${currentYear} के बाकी महीनों में"।\n- अगर next year (${currentYear + 1}) के किसी month का ज़िक्र करें, तो ALWAYS "${currentYear + 1} का January/February/March" बोलिए - साल skip मत कीजिए।\n- बीते हुए events के लिए remedies/solutions मत दीजिए - वो time जा चुका है। Past events सिर्फ pattern recognition के लिए reference कीजिए।\n- Future predictions में specific month + year हमेशा बोलिए।`
+            ? `## TEMPORAL AWARENESS (CRITICAL)\nआज की तारीख: ${todayStr}, समय: ${currentTime}\nCurrent month: ${currentMonth}\n\n⚠️ STRICT DATE RULES:\n- आज ${todayStr} है। जो महीने बीत चुके हैं (January-${now.toLocaleDateString('en-US', { month: 'long' })} ${currentYear} तक) उनके बारे में PAST tense में बोलिए - "वो time गुजर चुका", "उस दौर में", "पीछे मुड़कर देखें तो"।\n- जो महीने आने वाले हैं, उन्हें FUTURE tense में - "आने वाले", "अगले", "${currentYear} के बाकी महीनों में"।\n- अगर next year (${currentYear + 1}) के किसी month का mention करें, तो ALWAYS "${currentYear + 1} का January/February/March" बोलिए - साल skip मत कीजिए।\n- बीते हुए events के लिए remedies/solutions मत दीजिए - वो time जा चुका है। Past events सिर्फ pattern recognition के लिए reference कीजिए।\n- Future predictions में specific month + year हमेशा बोलिए।`
             : `## TEMPORAL AWARENESS (CRITICAL)\nToday's date: ${todayStr}, Time: ${currentTime}\nCurrent month: ${currentMonth}\n\n⚠️ STRICT DATE RULES:\n- Today is ${todayStr}. Months that have already passed (January-${now.toLocaleDateString('en-US', { month: 'long' })} ${currentYear}) MUST be referred to in PAST tense - "that period has passed", "looking back", "during that time".\n- Upcoming months MUST use FUTURE tense - "in the coming", "ahead in", "the remaining months of ${currentYear}".\n- If referencing a month in next year (${currentYear + 1}), ALWAYS say "${currentYear + 1} January/February/March" - never skip the year.\n- Do NOT give remedies or solutions for past events - that time has passed. Reference past events ONLY for pattern recognition.\n- Always include specific month + year in future predictions.`;
 
         const userGender = this.userData?.gender || '';
         const genderLabel = userGender === 'male' ? 'Male (पुरुष)' : userGender === 'female' ? 'Female (महिला)' : 'Not specified';
 
         const commonFacts = isHindi
-            ? `${temporalRules}\n\nUser gender: ${genderLabel}\n\nNumerology:\n- Life Path: ${numbers.lifePath || 'unknown'}\n- Destiny: ${numbers.destiny || 'unknown'}\n- Soul Urge: ${numbers.soulUrge || 'unknown'}\n- Personal Year: ${numbers.personalYear || 'unknown'}\n\n${chartFacts}${timingHints ? `\nTiming hints: ${timingHints}` : ''}\n\nIMPORTANT: Use the EXACT planetary positions, dasha periods, and house analysis given above to make SPECIFIC predictions. Reference the actual planet names, signs, degrees, and dasha years. For example: "शनि मीन राशि में 14.2° पर है और आपकी राहु दशा 2019 में शुरू हुई - इसका मतलब है कि 2020-2021 में..." This makes predictions feel personally calculated. Do NOT give vague generic predictions. Every claim must trace back to a specific chart fact above.`
-            : `${temporalRules}\n\nUser gender: ${genderLabel}\n\nNumerology:\n- Life Path: ${numbers.lifePath || 'unknown'}\n- Destiny: ${numbers.destiny || 'unknown'}\n- Soul Urge: ${numbers.soulUrge || 'unknown'}\n- Personal Year: ${numbers.personalYear || 'unknown'}\n\n${chartFacts}${timingHints ? `\nTiming hints: ${timingHints}` : ''}\n\nIMPORTANT: Use the EXACT planetary positions, dasha periods, and house analysis given above to make SPECIFIC predictions. Reference the actual planet names, signs, degrees, and dasha transition years. For example: "Saturn in Pisces at 14.2° combined with your Rahu dasha starting 2019 means that in 2020-2021..." This makes predictions feel personally calculated. Do NOT give vague generic predictions. Every claim must trace back to a specific chart fact above.`;
+            ? `${temporalRules}\n\nUser gender: ${genderLabel}\n\nNumerology:\n- Life Path: ${numbers.lifePath || 'unknown'}\n- Destiny: ${numbers.destiny || 'unknown'}\n- Soul Urge: ${numbers.soulUrge || 'unknown'}\n- Personal Year: ${numbers.personalYear || 'unknown'}\n\n${chartFacts}${timingHints ? `\nTiming hints: ${timingHints}` : ''}${userSelections ? `\n\n## USER RESPONSES (use these to PERSONALISE)\n${userSelections}\nIMPORTANT: User ने ऊपर दिए सवालों के जवाब दिए हैं। इन जवाबों से user की real life situation पता चलती है। Reading इन answers से DIRECTLY influenced होनी चाहिए — अगर user ने कहा "सीधी बात बोलो" तो filterless बोलिए, अगर "not_fully" कहा career में तो career dissatisfaction address कीजिए, अगर "हाँ" कहा repeating mistake पर तो उस pattern को name और explain कीजिए।` : ''}\n\nIMPORTANT: Use the EXACT planetary positions, dasha periods, and house analysis given above to make SPECIFIC predictions. Reference the actual planet names, signs, degrees, and dasha years. For example: "शनि मीन राशि में 14.2° पर है और आपकी राहु दशा 2019 में शुरू हुई - इसका मतलब है कि 2020-2021 में..." This makes predictions feel personally calculated. Do NOT give vague generic predictions. Every claim must trace back to a specific chart fact above.\nIf planet-in-house analysis data is provided above, weave those effects naturally into your reading — reference the remedies (उपाय), benefic/malefic effects, and specific rules for the user's planetary placements. Do NOT mention the source name or any book title — just present these insights as part of your own Vedic reading seamlessly.`
+            : `${temporalRules}\n\nUser gender: ${genderLabel}\n\nNumerology:\n- Life Path: ${numbers.lifePath || 'unknown'}\n- Destiny: ${numbers.destiny || 'unknown'}\n- Soul Urge: ${numbers.soulUrge || 'unknown'}\n- Personal Year: ${numbers.personalYear || 'unknown'}\n\n${chartFacts}${timingHints ? `\nTiming hints: ${timingHints}` : ''}${userSelections ? `\n\n## USER RESPONSES (use these to PERSONALISE)\n${userSelections}\nIMPORTANT: The user answered the questions above. These reveal their real life situation. Your reading MUST be directly shaped by these answers — if user chose "harder truth", be filterless; if they said "not_fully" about career, address career dissatisfaction; if they confirmed a repeating mistake, name and explain that pattern.` : ''}\n\nIMPORTANT: Use the EXACT planetary positions, dasha periods, and house analysis given above to make SPECIFIC predictions. Reference the actual planet names, signs, degrees, and dasha transition years. For example: "Saturn in Pisces at 14.2° combined with your Rahu dasha starting 2019 means that in 2020-2021..." This makes predictions feel personally calculated. Do NOT give vague generic predictions. Every claim must trace back to a specific chart fact above.\nIf planet-in-house analysis data is provided above, weave those effects naturally into your reading — reference the remedies, benefic/malefic effects, and specific rules for the user's planetary placements. Do NOT mention the source name or any book title — just present these insights as part of your own Vedic reading seamlessly.`;
 
         const sharedRules = isHindi
-            ? `Rules:\n- सिर्फ उन्हीं patterns पर बात करें जो ऊपर दिए facts से support होते हैं।\n- एक strength और एक friction point दोनों बताइए।\n- अगर संकेत mixed हैं, तो mixed ही कहिए।\n- western zodiac, vedic moon sign, और ascendant को कभी mix मत कीजिए। अगर इनमें से कुछ mention करें, तो label साफ़ रखें।\n- "आप powerful हैं", "success आ रहा है", "greatness तय है" जैसी default praise मत दीजिए।\n- love, money, marriage, fame, victory, या breakthroughs के guarantees मत दीजिए।\n- psychic, energy reading, mind reading, या vague spirituality का दावा मत कीजिए।\n- वही न कहिए जो बहुत users पर equally fit ho सकता है।\n- user का नाम हमेशा Devanagari (हिंदी लिपि) में लिखिए, Roman script में नहीं। उदाहरण: Rahul → राहुल, Priya → प्रिया, Aviraj → अविराज। यह TTS pronunciation के लिए ज़रूरी है।\n- 🚫 नाम ZYADA बार मत दोहराइए। पूरे response में user का नाम MAX 1-2 बार ही use कीजिए। बाकी जगह "आप", "आपके", "आपकी" use कीजिए। हर sentence में नाम repeat करना FORBIDDEN है।\n- 🚫 WORD REPETITION BAN: एक ही शब्द या phrase लगातार 2 sentences में repeat मत कीजिए। Synonyms use कीजिए। जैसे: "energy" → "ऊर्जा/ताकत/vibe", "pattern" → "ढंग/तरीका/cycle", "strong" → "मज़बूत/powerful/deep"। Back-to-back same word = BAD.\n- 🚫 YOGA/DOSHA/DASHA REPETITION BAN: एक ही yoga, dosha, या dasha का नाम बार-बार अलग-अलग sections में मत दोहराइए। अगर पहले किसी section में mention हो चुका है तो दोबारा नाम मत लीजिए — कोई दूसरा angle, दूसरी planetary combination use कीजिए, या indirect reference दीजिए ("वही दशा", "वही pattern")। एक ही technical term बार-बार repeat करना robotic लगता है।\n- 🚫 ROMANIZED HINDI BAN: Hindi/Sanskrit words कभी भी Roman/Latin script में मत लिखिए (जैसे "aapka", "kundli", "rashi", "graha", "dasha", "mahadasha", "shani", "mangal")। Hindi word है तो Devanagari में लिखिए (आपका, कुंडली, राशि, ग्रह, दशा, महादशा, शनि, मंगल)। English word है तो English में। Romanized Hindi = FORBIDDEN।\n- भाषा SIMPLE, LIGHT spoken Hinglish रखिए - जैसे दोस्तों से बात करते हैं वैसे। जो Hindi words आम बोलचाल में बोले जाते हैं (जैसे: ज़िन्दगी, दिल, रास्ता, पैसा, काम, वक़्त, ख़ुशी, तकलीफ़, दर्द, सोच, हिम्मत, ताक़त, फ़ैसला, रिश्ता, ख़्वाब, ज़रूरत, etc.) वो Devanagari में ही लिखिए - ये Hindi-origin words हैं और इन्हें English में बदलने की ज़रूरत नहीं। सिर्फ HEAVY/LITERARY/BOOKISH Sanskrit-laden Hindi बदलिए: "सम्भावना" → "chance/मौक़ा", "परिस्थिति" → "situation/हालात", "विशेष" → "ख़ास", "प्रभाव" → "असर", "अनुभव" → "महसूस", "व्यक्तित्व" → "शख़्सियत", "सम्पूर्ण" → "पूरा", "आवश्यक" → "ज़रूरी", "उपस्थित" → "मौजूद"। राहु, केतु, शनि, गुरु, लग्न, दशा, नक्षत्र, कुंडली, राशि, ग्रह जैसे Vedic terms और common Hindi words हमेशा Devanagari में ही रखिए।\n- ⚠️ GENDER-AWARE LANGUAGE (CRITICAL): User का gender ऊपर दिया है। Hindi में user के बारे में बात करते वक्त CORRECT gendered verb forms use कीजिए। अगर user MALE है तो: "आप जानते हैं", "आपके अंदर है", "आप समझते हैं", "आपको मिलेगा", "आप कर सकते हैं", "आपकी ज़िन्दगी में"। अगर user FEMALE है तो: "आप जानती हैं", "आपके अंदर है", "आप समझती हैं", "आपको मिलेगा", "आप कर सकती हैं", "आपकी ज़िन्दगी में"। MAYA खुद female है (मैं देख रही हूँ, मुझे दिख रहा है) - लेकिन USER को address करते वक्त उनका ACTUAL gender use करें। Male user को "आप जानती हैं" कहना FORBIDDEN है।\n- सीधे "आप" से बात कीजिए। TTS-safe रखिए।\n- पूरे response को एक बहती हुई कहानी की तरह लिखिए - हर sentence पिछले sentence से जुड़ा हो और अगले sentence की ज़मीन तैयार करे। अलग-अलग टुकड़े मत फेंकिए जो बोलने पर disconnected लगें। सोचिए कि आप एक continuous paragraph बोल रहे हैं, bullet points नहीं पढ़ रहे।`
-            : `Rules:\n- Only describe patterns supported by the facts above.\n- Include one strength and one friction point.\n- If the evidence is mixed, say it is mixed.\n- Never conflate western zodiac, vedic moon sign, and ascendant. If you mention one, label it clearly.\n- Do not default to praise like "you are powerful", "success is coming", or "you are destined for greatness".\n- Do not promise love, marriage, money, fame, victory, or breakthroughs.\n- Do not claim psychic access, energy reading, or mind reading.\n- Do not write anything that could fit most users equally well.\n- If you are writing in Hindi, keep Hindi words in Devanagari and keep natural English terms like chart, timing, pattern, pressure, career, relationship, money, and energy in English script rather than transliterating them. Always write the user's name in Devanagari script for proper pronunciation.\n- 🚫 NAME REPETITION BAN: Use the user's name MAX 1-2 times in the entire response. Use "you", "your" everywhere else. Repeating the name in every sentence is FORBIDDEN.\n- 🚫 WORD REPETITION BAN: Do NOT repeat the same word or phrase in back-to-back sentences. Use synonyms. e.g. "energy" → "force/drive/vibe", "pattern" → "cycle/tendency/thread". Same word in consecutive sentences = BAD.\n- 🚫 YOGA/DOSHA/DASHA REPETITION BAN: Do NOT repeatedly name the same yoga, dosha, or dasha across sections. If already mentioned in a previous section, do NOT name it again — use a different angle, a different planetary combination, or reference it indirectly (e.g. "that same cycle", "the pattern I mentioned"). Repeating the same technical term across multiple sections sounds robotic.\n- 🚫 ROMANIZED HINDI BAN: NEVER write Hindi/Sanskrit words in Roman/Latin script (e.g. "aapka", "kundli", "rashi", "graha", "dasha", "mahadasha", "shani", "mangal"). If a word is Hindi/Sanskrit, write it in Devanagari (आपका, कुंडली, राशि, ग्रह, दशा, महादशा, शनि, मंगल). If English, write in English. No romanized Hindi ever.\n- ⚠️ GENDER-AWARE LANGUAGE (CRITICAL): The user's gender is specified above. When addressing the user, use gender-appropriate language. For Hindi text: if user is MALE, use masculine verb forms ("आप जानते हैं", "आप समझते हैं", "आप कर सकते हैं"). If user is FEMALE, use feminine verb forms ("आप जानती हैं", "आप समझती हैं", "आप कर सकती हैं"). MAYA herself is always female ("मैं देख रही हूँ") but the USER must be addressed with THEIR correct gender. Calling a male user "आप जानती हैं" is FORBIDDEN. For English: use correct pronouns (he/him/his for male, she/her/hers for female) in any third-person references.\n- Speak directly to the user. Keep it TTS-safe.\n- Write the entire response as one flowing narrative - each sentence must connect to the previous one and set up the next. Do not drop isolated observations that sound disconnected when spoken aloud. Think of each response as one continuous spoken paragraph, not a list of separate points.`;
+            ? `Rules:\n- सिर्फ उन्हीं patterns पर बात करें जो ऊपर दिए facts से support होते हैं।\n- एक strength और एक friction point दोनों बताइए।\n- अगर संकेत mixed हैं, तो mixed ही कहिए।\n- western zodiac, vedic moon sign, और ascendant को कभी mix मत कीजिए। अगर इनमें से कुछ mention करें, तो label साफ रखें।\n- "आप powerful हैं", "success आ रहा है", "greatness तय है" जैसी default praise मत दीजिए।\n- love, money, marriage, fame, victory, या breakthroughs के guarantees मत दीजिए।\n- psychic, energy reading, mind reading, या vague spirituality का दावा मत कीजिए।\n- वही न कहिए जो बहुत users पर equally fit हो सकता है।\n- user का नाम हमेशा Devanagari (हिन्दी लिपि) में लिखिए, Roman script में नहीं। उदाहरण: Rahul → राहुल, Priya → प्रिया, Aviraj → अविराज। यह TTS pronunciation के लिए जरूरी है।\n- 🚫 नाम ज्यादा बार मत दोहराइए। पूरे response में user का नाम MAX 1-2 बार ही use कीजिए। बाकी जगह "आप", "आपके", "आपकी" use कीजिए। हर sentence में नाम repeat करना FORBIDDEN है।\n- 🚫 WORD REPETITION BAN: एक ही शब्द या phrase लगातार 2 sentences में repeat मत कीजिए। Synonyms use कीजिए। जैसे: "energy" → "ऊर्जा/ताकत/vibe", "pattern" → "ढंग/तरीका/cycle", "strong" → "मजबूत/powerful/deep"। Back-to-back same word = BAD.\n- 🚫 YOGA/DOSHA/DASHA REPETITION BAN: एक ही yoga, dosha, या dasha का नाम बार-बार अलग-अलग sections में मत दोहराइए। अगर पहले किसी section में mention हो चुका है तो दोबारा नाम मत लीजिए — कोई दूसरा angle, दूसरी planetary combination use कीजिए, या indirect reference दीजिए ("वही दशा", "वही pattern")। एक ही technical term बार-बार repeat करना robotic लगता है।\n- 🔊 YOGA NAME TTS PRONUNCIATION (CRITICAL): जब भी कोई योग का नाम बोलें, उसे ONLY देवनागरी में लिखिए ताकि TTS सही बोले। English/Roman transliteration FORBIDDEN। सही format: गजकेसरी योग (NOT Gaja Kesari Yoga), बुधादित्य योग (NOT Budha Aditya Yoga), चन्द्र मंगल योग, हंस योग, मालव्य योग, रुचक योग, भद्र योग, शश योग, नीचभंग राजयोग, धन योग, विपरीत राजयोग, केमद्रुम योग, काल सर्प दोष, मंगल दोष। Numbers भी Hindi में: पहला भाव, सातवाँ भाव, दसवाँ भाव।\n- 🚫 ROMANIZED HINDI BAN: Hindi/Sanskrit words कभी भी Roman/Latin script में मत लिखिए (जैसे "aapka", "kundli", "rashi", "graha", "dasha", "mahadasha", "shani", "mangal")। Hindi word है तो देवनागरी में लिखिए (आपका, कुंडली, राशि, ग्रह, दशा, महादशा, शनि, मंगल)। English word है तो English में। Romanized Hindi = FORBIDDEN।\n- 🚫 URDU/ARABIC/PERSIAN BAN (CRITICAL): उर्दू, अरबी, या फारसी मूल के शब्द BILKUL मत use कीजिए। ये एक HINDI app है — सिर्फ शुद्ध हिन्दी या Hinglish। NUQTA (dots below letters like ज़, क़, ख़, ग़, फ़) ABSOLUTELY FORBIDDEN — ये Urdu sounds हैं, Hindi में नहीं। अगर किसी शब्द में nuqta dot दिखे तो बिना nuqta लिखिए (ज़ → ज, फ़ → फ, क़ → क, ख़ → ख, ग़ → ग)। Banned words → Hindi alternatives: इश्क/मोहब्बत → प्यार/प्रेम, ख्वाब → सपना, शख्सियत → personality, तालुक/ताल्लुक → रिश्ता/connection, किस्मत/तक़दीर → भाग्य/luck/destiny, सुकून → शांति/peace, हौसला → हिम्मत/courage, वजह → कारण/reason, गुजरना → बीतना, खुदा → भगवान/God, वक्त → समय/time, राज़/राज → रहस्य/secret, ग़ौर → ध्यान, नज़र → नजर/दृष्टि, हक़ीक़त → सच्चाई/reality, तस्वीर → picture/चित्र, ख़बर → खबर, मंज़िल → लक्ष्य/goal, हक़ → अधिकार/right, अल्फ़ाज़ → शब्द/words, रूह → आत्मा/soul, जज़्बात → भावनाएँ/feelings, ख़याल → विचार/thought, ज़माना → दौर/युग, ज़रिया → माध्यम/medium, इज़्ज़त → सम्मान/respect, मज़बूत → मजबूत, ज़रूरत → जरूरत, ज़िन्दगी → जिंदगी, ख़ास → खास, ख़ुशी → खुशी, फ़ैसला → फैसला। Plain हिन्दी बोलचाल use कीजिए — जिंदगी, ज्यादा, जरूरत, खुशी, फैसला, ताकत, मौका, गलती, खास, साफ, खत्म, बाकी, समय, रहस्य — ये सब plain Hindi हैं और ठीक हैं।\n- भाषा SIMPLE, LIGHT spoken Hinglish रखिए - जैसे दोस्तों से बात करते हैं वैसे। आम बोलचाल के Hindi words (जिंदगी, दिल, रास्ता, पैसा, काम, वक्त, खुशी, दिक्कत, दर्द, सोच, हिम्मत, ताकत, फैसला, रिश्ता, सपना, जरूरत, etc.) देवनागरी में ही लिखिए। सिर्फ HEAVY/LITERARY/BOOKISH Sanskrit-laden Hindi बदलिए: "सम्भावना" → "chance/मौका", "परिस्थिति" → "situation/हालात", "विशेष" → "खास", "प्रभाव" → "असर", "अनुभव" → "महसूस", "सम्पूर्ण" → "पूरा", "आवश्यक" → "जरूरी", "उपस्थित" → "मौजूद"। राहु, केतु, शनि, गुरु, लग्न, दशा, नक्षत्र, कुंडली, राशि, ग्रह जैसे Vedic terms और common Hindi words हमेशा देवनागरी में ही रखिए।\n- ⚠️ GENDER-AWARE LANGUAGE (CRITICAL): User का gender ऊपर दिया है। Hindi में user के बारे में बात करते वक्त CORRECT gendered verb forms use कीजिए। अगर user MALE है तो: "आप जानते हैं", "आपके अंदर है", "आप समझते हैं", "आपको मिलेगा", "आप कर सकते हैं", "आपकी जिंदगी में"। अगर user FEMALE है तो: "आप जानती हैं", "आपके अंदर है", "आप समझती हैं", "आपको मिलेगा", "आप कर सकती हैं", "आपकी जिंदगी में"। MAYA खुद female है (मैं देख रही हूँ, मुझे दिख रहा है) - लेकिन USER को address करते वक्त उनका ACTUAL gender use करें। Male user को "आप जानती हैं" कहना FORBIDDEN है।\n- सीधे "आप" से बात कीजिए। TTS-safe रखिए।\n- पूरे response को एक बहती हुई कहानी की तरह लिखिए - हर sentence पिछले sentence से जुड़ा हो और अगले sentence की जमीन तैयार करे। अलग-अलग टुकड़े मत फेंकिए जो बोलने पर disconnected लगें। सोचिए कि आप एक continuous paragraph बोल रहे हैं, bullet points नहीं पढ़ रहे।`
+            : `Rules:\n- Only describe patterns supported by the facts above.\n- Include one strength and one friction point.\n- If the evidence is mixed, say it is mixed.\n- Never conflate western zodiac, vedic moon sign, and ascendant. If you mention one, label it clearly.\n- Do not default to praise like "you are powerful", "success is coming", or "you are destined for greatness".\n- Do not promise love, marriage, money, fame, victory, or breakthroughs.\n- Do not claim psychic access, energy reading, or mind reading.\n- Do not write anything that could fit most users equally well.\n- If you are writing in Hindi, keep Hindi words in Devanagari and keep natural English terms like chart, timing, pattern, pressure, career, relationship, money, and energy in English script rather than transliterating them. Always write the user's name in Devanagari script for proper pronunciation.\n- 🚫 NAME REPETITION BAN: Use the user's name MAX 1-2 times in the entire response. Use "you", "your" everywhere else. Repeating the name in every sentence is FORBIDDEN.\n- 🚫 WORD REPETITION BAN: Do NOT repeat the same word or phrase in back-to-back sentences. Use synonyms. e.g. "energy" → "force/drive/vibe", "pattern" → "cycle/tendency/thread". Same word in consecutive sentences = BAD.\n- 🚫 YOGA/DOSHA/DASHA REPETITION BAN: Do NOT repeatedly name the same yoga, dosha, or dasha across sections. If already mentioned in a previous section, do NOT name it again — use a different angle, a different planetary combination, or reference it indirectly (e.g. "that same cycle", "the pattern I mentioned"). Repeating the same technical term across multiple sections sounds robotic.\n- 🔊 YOGA NAME TTS PRONUNCIATION (CRITICAL): When speaking yoga names, ALWAYS write them in Devanagari script for correct TTS pronunciation. NEVER use English/Roman transliteration for yoga names. Correct: गजकेसरी योग (NOT Gaja Kesari Yoga), बुधादित्य योग (NOT Budha Aditya Yoga), चन्द्र मंगल योग, हंस योग, मालव्य योग, रुचक योग, भद्र योग, शश योग, नीचभंग राजयोग, धन योग, विपरीत राजयोग, केमद्रुम योग, काल सर्प दोष, मंगल दोष। House numbers in Hindi: पहला भाव, सातवाँ भाव, दसवाँ भाव.\n- 🚫 ROMANIZED HINDI BAN: NEVER write Hindi/Sanskrit words in Roman/Latin script (e.g. "aapka", "kundli", "rashi", "graha", "dasha", "mahadasha", "shani", "mangal"). If a word is Hindi/Sanskrit, write it in Devanagari (आपका, कुंडली, राशि, ग्रह, दशा, महादशा, शनि, मंगल). If English, write in English. No romanized Hindi ever.\n- ⚠️ GENDER-AWARE LANGUAGE (CRITICAL): The user's gender is specified above. When addressing the user, use gender-appropriate language. For Hindi text: if user is MALE, use masculine verb forms ("आप जानते हैं", "आप समझते हैं", "आप कर सकते हैं"). If user is FEMALE, use feminine verb forms ("आप जानती हैं", "आप समझती हैं", "आप कर सकती हैं"). MAYA herself is always female ("मैं देख रही हूँ") but the USER must be addressed with THEIR correct gender. Calling a male user "आप जानती हैं" is FORBIDDEN. For English: use correct pronouns (he/him/his for male, she/her/hers for female) in any third-person references.\n- Speak directly to the user. Keep it TTS-safe.\n- Write the entire response as one flowing narrative - each sentence must connect to the previous one and set up the next. Do not drop isolated observations that sound disconnected when spoken aloud. Think of each response as one continuous spoken paragraph, not a list of separate points.`;
 
         const sectionPrompts = isHindi
             ? {
-                opening: `आप current user के लिए ONE opening narration लिख रही हैं। 5-6 वाक्य। पहली line में नाम लेकर warm greeting दीजिए और साफ़ कहिए कि आप MAYA हैं। इस introduction line के ठीक बाद एक [[pause-500]] token लगाइए ताकि user को introduce सुनने का समय मिले। दूसरी line में grounded-mystic buildup बनाइए और कहिए कि उनकी kundli, timing, या जन्म pattern में एक hidden layer अभी खुलने वाला है। तीसरी line में वही पहला factual clue दीजिए जो उनकी birth pattern, western sign, moon sign, numbers, या current timing में सबसे ज़्यादा standout करता है, लेकिन literal जन्मतिथि को पढ़कर मत सुनाइए। चौथी line में एक real strength और एक quiet tension को lightly hold कीजिए। आखिरी line में strong curiosity पैदा करें ताकि user naturally अगला layer सुनना चाहे, और साफ़ कहें कि शुरुआत kundli और timing से होगी। यह intimate, fresh, और unscripted लगे। generic cosmic filler मत लिखिए।`,
-                kundli: `आप current user के लिए ONE kundli formation narration लिख रही हैं। सबसे पहले एक warm, inviting line से शुरू कीजिए जैसे "चलिए, अब हम साथ मिलकर आपकी कुंडली की गहराइयों में उतरते हैं" या "आइए, अब हम साथ में देखते हैं कि आपके ग्रह क्या कह रहे हैं" - यह line natural और exploratory feel होनी चाहिए, पहले से reveal नहीं करनी चाहिए। फिर visible chart markers जैसे ascendant, moon sign, current dasha, dominant element, या chart highlight में से 2-3 facts use कीजिए। Reading को grounded रखिए और end में numbers की तरफ natural transition दीजिए। 5-7 वाक्य। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
-                loveIntro: `आप current user के लिए love section का ONE short transition लिख रही हैं। 1-2 वाक्य। Direct, warm, और section-specific। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
-                love: `आप current user के लिए ONE unique DEEP love reading लिख रही हैं। यह FILTERLESS reading है - कोई sugar-coating नहीं, सीधी बात। ऊपर दिए गए "7TH HOUSE & MARRIAGE ANALYSIS" section को ध्यान से पढ़िए - अगर user likely married है तो marriage dynamics, partner से real friction points, और relationship का actual texture बताइए। अगर likely unmarried है तो attachment pattern, dating behaviour, और partnership timing specific months/years के साथ बताइए। Venus की exact राशि, 7th house lord, और relevant दशा periods को NAME करके reference कीजिए। बताइए कि इन planetary positions की वजह से EXACTLY क्या relationship dynamic बनती है - vague "love life अच्छी होगी" BILKUL मत कहिए। 5-7 वाक्य - raw, real, और eerily specific। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
-                careerIntro: `आप current user के लिए career section का ONE short transition लिख रही हैं। 1-2 वाक्य। Work style, money flow, या practical direction की तरफ clean shift दीजिए। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
-                career: `आप current user के लिए ONE unique DEEP career and money reading लिख रही हैं। यह FILTERLESS reading है - नकली positivity नहीं चाहिए। पहले बताई बातें repeat मत कीजिए। ऊपर दिए chart data से 10th house, दशा period, और planetary positions use करके बताइए कि user का career EXACTLY किस direction में naturally pull हो रहा है और कहाँ वो गलत तरफ energy waste कर रहे हैं। एक very specific underused strength और एक concrete next move बताइए with timeline (specific month/year)। 5-7 वाक्य - practical और actionable, generic advice नहीं। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
-                yearIntro: `आप current user के लिए timing section का ONE short transition लिख रही हैं। 1-2 वाक्य। आने वाले महीनों की timing windows की तरफ clean shift दीजिए। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
-                year: `आप current user के लिए ONE unique DEEP timing reading लिख रही हैं। TEMPORAL AWARENESS section ध्यान से पढ़ें - जो months बीत चुके हैं उन्हें past tense में reference करें, और ONLY आने वाले months की predictions दें। पहले दिए timing hints repeat मत कीजिए। दशा transitions, planetary transits, और personal year number को combine करके अगले 3-6 महीनों की 2-3 NEW specific windows बताइए - हर window में exact month + year + क्या करना है/क्या बचना है। एक hidden trap भी बताइए with timing। 5-7 वाक्य - sharp और specific। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
-                warningIntro: `आप current user के लिए caution section का ONE short transition लिख रही हैं। 1-2 वाक्य। पहले कही गई strengths को acknowledge करें, फिर एक honest pressure point की तरफ move करें। डराइए नहीं। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
-                warning: `आप current user के लिए ONE honest DEEP warning section लिख रही हैं। यह FILTERLESS reading है - sach बोलिए, package मत कीजिए। पहले दिए caution hints repeat मत कीजिए। Chart data से एक NEW specific self-sabotage pattern identify कीजिए - planetary position से exact reason बताइए कि ये pattern क्यों बनता है, कब trigger होता है (specific months/situations), और practically कैसे बचना है। Generic "careful रहिए" मत कहिए - actual planetary evidence दीजिए। 5-7 वाक्य। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
-                calculationRecovery: `आप current user के लिए ONE short recovery line लिख रही हैं। 1-2 वाक्य। बताइए कि reading data पूरी तरह sync नहीं हुआ है और तुरंत फिर से align करना होगा। इसे operational रखें, mystical sales copy मत बनाइए। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
-                emailGate: `आप current user के लिए ONE email gate transition लिख रही हैं। 2-3 वाक्य। पहले FOMO create कीजिए — बताइए कि उनकी कुंडली में कुछ ऐसा दिखा है जो अभी बताना ज़रूरी है, लेकिन वो deeper layer private saved file में है जिसमें chart-specific timing windows, do/avoid steps, और warnings हैं। फिर CLEARLY कहिए कि screen पर एक email field दिखेगा और उन्हें अपना email address वहाँ type करना है — जैसे "अभी screen पर email field आ रहा है, बस अपना email वहाँ type कर दीजिए ताकि ये reading safe रहे और मैं आगे की deeper layer खोल सकूँ।" सिर्फ एक बार माँगें, ज़्यादा insist मत करें। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
-                fomoHook: `आप current user के लिए ONE fear/FOMO hook लिख रही हैं। 2-3 वाक्य। कुंडली और numbers के आधार पर एक concerning या serious pattern बताइए - जैसे आने वाले महीनों में कोई challenge, relationship में hidden tension, career में कोई trap, या कोई repeating self-sabotage pattern। इसे ऐसे बोलिए कि user को लगे "मुझे इसके बारे में और जानना होगा।" यह prediction confident और specific होनी चाहिए, vague नहीं। डराइए नहीं, लेकिन urgency ज़रूर बनाइए। End में hint दीजिए कि full details private reading में हैं। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
-                authCheck: `आप current user के लिए ONE short record-check line लिख रही हैं। 1 sentence। बताइए कि आप उनकी saved reading check कर रही हैं। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
-                welcomeBack: `आप current user के लिए returning-user prompt लिख रही हैं। 2-3 वाक्य। Warm recognition, saved reading, और password ask। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
-                newUser: `आप current user के लिए new-user prompt लिख रही हैं। 2-3 वाक्य। Password create करके reading save और protect करने की बात करें। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
-                deepRevealPrep: `आप current user के लिए deep reveal prep लिख रही हैं। 2-3 वाक्य। बताइए कि अब तक जो बताया वो surface layer थी, अब deeper patterns खुलेंगे जो ज़्यादा personal और private हैं। End में consent-style question दीजिए। ज़्यादा से ज़्यादा एक [[pause-250]] token।`,
-                completion: `आप current user के लिए ONE short completion message लिख रही हैं। जो reading दी गई है उसे grounded way में close कीजिए और questions invite कीजिए। 2-3 वाक्य। ज़्यादा से ज़्यादा एक [[pause-250]] token।`
+                opening: `आप current user के लिए ONE opening narration लिख रही हैं। 5-6 वाक्य। पहली line में नाम लेकर warm greeting दीजिए और साफ कहिए कि आप MAYA हैं। इस introduction line के ठीक बाद एक [[pause-500]] token लगाइए ताकि user को introduce सुनने का समय मिले। दूसरी line में grounded-mystic buildup बनाइए और कहिए कि उनकी kundli, timing, या जन्म pattern में एक hidden layer अभी खुलने वाला है। तीसरी line में वही पहला factual clue दीजिए जो उनकी birth pattern, western sign, moon sign, numbers, या current timing में सबसे ज्यादा standout करता है, लेकिन literal जन्मतिथि को पढ़कर मत सुनाइए। चौथी line में एक real strength और एक quiet tension को lightly hold कीजिए। आखिरी line में strong curiosity पैदा करें ताकि user naturally अगला layer सुनना चाहे, और साफ कहें कि शुरुआत kundli और timing से होगी। यह intimate, fresh, और unscripted लगे। generic cosmic filler मत लिखिए।`,
+                kundli: `आप current user के लिए ONE kundli formation narration लिख रही हैं। सबसे पहले एक warm, inviting line से शुरू कीजिए जैसे "चलिए, अब हम साथ मिलकर आपकी कुंडली की गहराइयों में उतरते हैं" या "आइए, अब हम साथ में देखते हैं कि आपके ग्रह क्या कह रहे हैं" - यह line natural और exploratory feel होनी चाहिए, पहले से reveal नहीं करनी चाहिए। फिर visible chart markers जैसे ascendant, moon sign, current dasha, dominant element, या chart highlight में से 2-3 facts use कीजिए। Reading को grounded रखिए और end में numbers की तरफ natural transition दीजिए। 5-7 वाक्य। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                loveIntro: `आप current user के लिए love section का ONE short transition लिख रही हैं। 1-2 वाक्य। Direct, warm, और section-specific। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                love: `आप current user के लिए ONE unique DEEP love reading लिख रही हैं। यह FILTERLESS reading है - कोई sugar-coating नहीं, सीधी बात। ऊपर दिए गए "7TH HOUSE & MARRIAGE ANALYSIS" section को ध्यान से पढ़िए - अगर user likely married है तो marriage dynamics, partner से real friction points, और relationship का actual texture बताइए। अगर likely unmarried है तो attachment pattern, dating behaviour, और partnership timing specific months/years के साथ बताइए। Venus की exact राशि, 7th house lord, और relevant दशा periods को NAME करके reference कीजिए। बताइए कि इन planetary positions की वजह से EXACTLY क्या relationship dynamic बनती है - vague "love life अच्छी होगी" BILKUL मत कहिए। 5-7 वाक्य - raw, real, और eerily specific। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                careerIntro: `आप current user के लिए career section का ONE short transition लिख रही हैं। 1-2 वाक्य। Work style, money flow, या practical direction की तरफ clean shift दीजिए। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                career: `आप current user के लिए ONE unique DEEP career and money reading लिख रही हैं। यह FILTERLESS reading है - नकली positivity नहीं चाहिए। पहले बताई बातें repeat मत कीजिए। ऊपर दिए chart data से 10th house, दशा period, और planetary positions use करके बताइए कि user का career EXACTLY किस direction में naturally pull हो रहा है और कहाँ वो गलत तरफ energy waste कर रहे हैं। एक very specific underused strength और एक concrete next move बताइए with timeline (specific month/year)। 5-7 वाक्य - practical और actionable, generic advice नहीं। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                yearIntro: `आप current user के लिए timing section का ONE short transition लिख रही हैं। 1-2 वाक्य। आने वाले महीनों की timing windows की तरफ clean shift दीजिए। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                year: `आप current user के लिए ONE unique DEEP timing reading लिख रही हैं। TEMPORAL AWARENESS section ध्यान से पढ़ें - जो months बीत चुके हैं उन्हें past tense में reference करें, और ONLY आने वाले months की predictions दें। पहले दिए timing hints repeat मत कीजिए। दशा transitions, planetary transits, और personal year number को combine करके अगले 3-6 महीनों की 2-3 NEW specific windows बताइए - हर window में exact month + year + क्या करना है/क्या बचना है। एक hidden trap भी बताइए with timing। 5-7 वाक्य - sharp और specific। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                warningIntro: `आप current user के लिए caution section का ONE short transition लिख रही हैं। 1-2 वाक्य। पहले कही गई strengths को acknowledge करें, फिर एक honest pressure point की तरफ move करें। डराइए नहीं। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                warning: `आप current user के लिए ONE honest DEEP warning section लिख रही हैं। यह FILTERLESS reading है - sach बोलिए, package मत कीजिए। पहले दिए caution hints repeat मत कीजिए। Chart data से एक NEW specific self-sabotage pattern identify कीजिए - planetary position से exact reason बताइए कि ये pattern क्यों बनता है, कब trigger होता है (specific months/situations), और practically कैसे बचना है। Generic "careful रहिए" मत कहिए - actual planetary evidence दीजिए। 5-7 वाक्य। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                calculationRecovery: `आप current user के लिए ONE short recovery line लिख रही हैं। 1-2 वाक्य। बताइए कि reading data पूरी तरह sync नहीं हुआ है और तुरंत फिर से align करना होगा। इसे operational रखें, mystical sales copy मत बनाइए। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                emailGate: `आप current user के लिए ONE email gate transition लिख रही हैं। 2-3 वाक्य। पहले FOMO create कीजिए — बताइए कि उनकी कुंडली में कुछ ऐसा दिखा है जो अभी बताना जरूरी है, लेकिन वो deeper layer private saved file में है जिसमें chart-specific timing windows, do/avoid steps, और warnings हैं। फिर CLEARLY कहिए कि screen पर एक email field दिखेगा और उन्हें अपना email address वहाँ type करना है — जैसे "अभी screen पर email field आ रहा है, बस अपना email वहाँ type कर दीजिए ताकि ये reading safe रहे और मैं आगे की deeper layer खोल सकूँ।" सिर्फ एक बार माँगें, ज्यादा insist मत करें। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                fomoHook: `आप current user के लिए ONE fear/FOMO hook लिख रही हैं। 2-3 वाक्य। कुंडली और numbers के आधार पर एक concerning या serious pattern बताइए - जैसे आने वाले महीनों में कोई challenge, relationship में hidden tension, career में कोई trap, या कोई repeating self-sabotage pattern। इसे ऐसे बोलिए कि user को लगे "मुझे इसके बारे में और जानना होगा।" यह prediction confident और specific होनी चाहिए, vague नहीं। डराइए नहीं, लेकिन urgency जरूर बनाइए। End में hint दीजिए कि full details private reading में हैं। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                combinedTeaser: `आप current user के लिए एक COMBINED teaser reading लिख रही हैं जिसमें तीन हिस्से एक flowing paragraph में हों। पूरी reading 8-10 वाक्य। तीनों हिस्सों को [[pause-250]] token से अलग कीजिए।\n\nहिस्सा 1 - IDENTITY TRUTH: "आप ऐसे इंसान हैं जो..." format। Chart data और numbers से एक core pattern-based observation जो flattery-free हो — सिर्फ accurate self-description जो user खुद पहचान ले। 2-3 वाक्य।\n\n[[pause-250]]\n\nहिस्सा 2 - EMOTIONAL PATTERN: कोई ऐसा daily emotional pattern जो user actually जीता है — inner conflict, recurring feeling, या relationship dynamic जो chart data confirm करती है। यह "inside-out" description हो। 2-3 वाक्य।\n\n[[pause-250]]\n\nहिस्सा 3 - UNRESOLVED THREAD: Chart data से एक ऐसा open loop जो naturally resolution माँगे — कोई timing shift, relationship question, या career crossroad जो अभी unresolved है। User को लगे "मुझे इस बारे में और जानना है।" 2-3 वाक्य।\n\nतीनों हिस्से एक दूसरे से connected होने चाहिए — एक कहानी की तरह, अलग-अलग टुकड़े नहीं। हर हिस्से में SPECIFIC chart evidence use कीजिए (planetary positions, dasha periods, house activations)। Generic observations FORBIDDEN हैं।`,
+                identityTruth: `आप current user के लिए ONE grounded identity truth लिख रही हैं। 2-3 वाक्य। "आप ऐसे इंसान हैं जो..." format use कीजिए। Chart data और numbers से एक core pattern-based observation दीजिए जो flattery-free हो — कोई praise नहीं, सिर्फ accurate self-description जो user खुद पहचान ले। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                emotionalPattern: `आप current user के लिए ONE emotional pattern observation लिख रही हैं। 2-3 वाक्य। कोई ऐसा daily emotional pattern बताइए जो user actually जीता है — inner conflict, recurring feeling, या relationship dynamic जो chart data confirm करती है। यह "inside-out" description हो — बाहर से दिखने वाली बात नहीं, अंदर महसूस होने वाली। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                unresolvedThread: `आप current user के लिए ONE unresolved thread लिख रही हैं। 2-3 वाक्य। Chart data से एक ऐसा open loop बनाइए जो naturally resolution माँगे — कोई timing shift, relationship question, या career crossroad जो अभी unresolved है। इसे ऐसे कहिए कि user को लगे "मुझे इस बारे में और जानना है।" यह thread आगे deep reading में resolve होगा। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                accuracyShock: `आप current user के लिए ONE "how does she know?" moment लिख रही हैं। 3-4 वाक्य। Chart data (दशा transitions, planetary positions, house activations) से एक SPECIFIC past event predict कीजिए — timing (approximate month/year), nature (relationship change, career shift, health issue, family event, emotional crisis), और emotional impact सहित। यह इतना specific हो कि user सोचे "ये कैसे पता?" Generic "आपकी जिन्दगी में बदलाव आया" मत कहिए — exact time period और event type name कीजिए। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                suspenseBridge: `आप current user के लिए ONE suspense bridge लिख रही हैं। EXACTLY 3 sentences। Sentence 1: सबसे intense unresolved pattern name कीजिए जो chart data में दिखता है। Sentence 2: कहिए कि "ये अभी यहाँ नहीं बताऊँगी" या "इसका पूरा truth अभी यहाँ खोलना ठीक नहीं होगा।" Sentence 3: Reading save करने की importance naturally convey कीजिए — "आपकी पूरी file तैयार है, बस इसे save कर लीजिए।" ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                returnHook: `आप current user के लिए ONE return hook लिख रही हैं। 2-3 वाक्य। Chart data से एक upcoming timing shift identify कीजिए (specific month) और कहिए कि आप अभी इसके बारे में पूरी बात नहीं कर सकती — "कल इसके बारे में और बात करते हैं" या "अगली बार इसे गहराई से देखेंगे।" यह naturally अगली session के लिए motivation बने। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                authCheck: `आप current user के लिए ONE short record-check line लिख रही हैं। 1 sentence। बताइए कि आप उनकी saved reading check कर रही हैं। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                welcomeBack: `आप current user के लिए returning-user prompt लिख रही हैं। 2-3 वाक्य। Warm recognition, saved reading, और password ask। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                newUser: `आप current user के लिए new-user prompt लिख रही हैं। 2-3 वाक्य। Password create करके reading save और protect करने की बात करें। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                deepRevealPrep: `आप current user के लिए deep reveal prep लिख रही हैं। 2-3 वाक्य। बताइए कि अब तक जो बताया वो surface layer थी, अब deeper patterns खुलेंगे जो ज्यादा personal और private हैं। End में consent-style question दीजिए। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                completion: `आप current user के लिए ONE short completion message लिख रही हैं। जो reading दी गई है उसे grounded way में close कीजिए और questions invite कीजिए। 2-3 वाक्य। ज्यादा से ज्यादा एक [[pause-250]] token।`
             }
             : {
                 opening: `Write ONE opening narration for the current user. 5-6 sentences. In the first sentence, greet them by name warmly and briefly introduce yourself as MAYA. Place a [[pause-500]] token IMMEDIATELY after this introduction sentence so the user has a moment to absorb who is speaking. In the second sentence, create grounded mystic buildup and say that a hidden layer in their kundli, timing, or birth pattern is about to open. Only in the third sentence should you name the first detail that stands out from their birth pattern, western sign, moon sign, numbers, or current timing, and do not recite the literal birth date unless it is truly necessary. In the fourth sentence, hold one real strength and one quiet tension lightly. The final sentence must create curiosity so they naturally want the next layer, while clearly saying the reading will begin through kundli and timing. It must sound fresh, intimate, and unscripted. Do not use generic cosmic filler.`,
@@ -1217,6 +1653,13 @@ RULES:
                 calculationRecovery: `Write ONE short recovery line for the current user. 1-2 sentences. Explain that the reading data did not fully sync and needs to be aligned again right away. Keep it operational rather than mystical or salesy. Use at most one [[pause-250]] token.`,
                 emailGate: `Write ONE email-gate transition for the current user. 2-3 sentences. First create FOMO — say you found something in their chart that needs to be shared now, but the deeper layer is in a private saved file with chart-specific timing windows, do/avoid steps, and warnings. Then CLEARLY instruct the user to type their email in the field that is about to appear on screen — something like "You'll see an email field on screen now — just type your email there so this reading stays saved and I can unlock the deeper layer for you." Ask only once, do not push or repeat the ask. Use at most one [[pause-250]] token.`,
                 fomoHook: `Write ONE fear/FOMO hook for the current user. 2-3 sentences. Based on their kundli and numbers, reveal one concerning or serious pattern - such as an upcoming challenge in the next few months, a hidden relationship tension, a career trap, or a repeating self-sabotage cycle. Say it in a way that makes the user think "I need to know more about this." The prediction must be confident and specific, not vague. Do not fear-monger, but create genuine urgency. End with a hint that full details are in the private reading. Use at most one [[pause-250]] token.`,
+                combinedTeaser: `Write a COMBINED teaser reading for the current user containing three connected segments in one flowing narrative. Total 8-10 sentences. Separate the three segments with [[pause-250]] tokens.\n\nSegment 1 - IDENTITY TRUTH: Use "You are someone who..." format. A core pattern-based observation from chart data and numbers that is flattery-free — just an accurate self-description the user would immediately recognize. 2-3 sentences.\n\n[[pause-250]]\n\nSegment 2 - EMOTIONAL PATTERN: Name a daily emotional pattern the user actually lives with — an inner conflict, recurring feeling, or relationship dynamic that chart data confirms. An "inside-out" description of what the user feels privately. 2-3 sentences.\n\n[[pause-250]]\n\nSegment 3 - UNRESOLVED THREAD: Create an open loop from chart data that naturally demands resolution — a timing shift, relationship question, or career crossroad currently unresolved. The user must feel "I need to know more." 2-3 sentences.\n\nAll three segments must connect as one flowing story, not isolated observations. Every segment must cite SPECIFIC chart evidence (planetary positions, dasha periods, house activations). Generic observations are FORBIDDEN.`,
+                identityTruth: `Write ONE grounded identity truth for the current user. 2-3 sentences. Use "You are someone who..." format. Give a core pattern-based observation from chart data and numbers that is flattery-free — no praise, just an accurate self-description the user would immediately recognize in themselves. Use at most one [[pause-250]] token.`,
+                emotionalPattern: `Write ONE emotional pattern observation for the current user. 2-3 sentences. Name a daily emotional pattern the user actually lives with — an inner conflict, a recurring feeling, or a relationship dynamic that chart data confirms. This should be an "inside-out" description — not what others see, but what the user feels inside. Use at most one [[pause-250]] token.`,
+                unresolvedThread: `Write ONE unresolved thread for the current user. 2-3 sentences. Create an open loop from chart data that naturally demands resolution — a timing shift, a relationship question, or a career crossroad that is currently unresolved. Say it so the user feels "I need to know more about this." This thread will be resolved in the deep reading. Use at most one [[pause-250]] token.`,
+                accuracyShock: `Write ONE "how does she know?" moment for the current user. 3-4 sentences. From chart data (dasha transitions, planetary positions, house activations), predict a SPECIFIC past event — with approximate timing (month/year), nature (relationship change, career shift, health issue, family event, emotional crisis), and emotional impact. This must be specific enough that the user thinks "how does she know this?" Do NOT say generic "you went through a change" — name the exact time period and event type. Use at most one [[pause-250]] token.`,
+                suspenseBridge: `Write ONE suspense bridge for the current user. EXACTLY 3 sentences. Sentence 1: Name the most intense unresolved pattern visible in chart data. Sentence 2: Say "I will not reveal this here" or "It would not be right to open the full truth of this here." Sentence 3: Naturally convey the importance of saving the reading — "Your full file is ready, just save it." Use at most one [[pause-250]] token.`,
+                returnHook: `Write ONE return hook for the current user. 2-3 sentences. Identify an upcoming timing shift from chart data (specific month) and say you cannot fully discuss it now — "Let us talk about this tomorrow" or "Next time we will look at this more deeply." This should naturally motivate the user to return for another session. Use at most one [[pause-250]] token.`,
                 authCheck: `Write ONE short record-check line for the current user. 1 sentence. Say that you are checking their saved reading. Use at most one [[pause-250]] token.`,
                 welcomeBack: `Write ONE returning-user prompt for the current user. 2-3 sentences. Include warm recognition, mention the saved reading, and ask for the password. Use at most one [[pause-250]] token.`,
                 newUser: `Write ONE new-user prompt for the current user. 2-3 sentences. Explain that creating a password will save and protect the reading. Use at most one [[pause-250]] token.`,
@@ -1224,7 +1667,14 @@ RULES:
                 completion: `Write ONE short completion message for the current user. Close the reading in a grounded way and invite questions. 2-3 sentences. Use at most one [[pause-250]] token.`
             };
 
-        return `${sectionPrompts[sectionKey] || sectionPrompts.completion}\n\nNarrative arc for this section:\n${narrativeStageGuide}\n\n${commonFacts}\n\n${this._buildAlreadySpokenContext(sectionKey, isHindi)}\n\n${sharedRules}\n\nReturn only the spoken text.`;
+        const memoryContext = this.buildMemoryContext(isHindi);
+        const memoryBlock = memoryContext
+            ? (isHindi
+                ? `\n\n## USER SESSION MEMORY (reference naturally, don't quote):\n${memoryContext}`
+                : `\n\n## USER SESSION MEMORY (reference naturally, don't quote):\n${memoryContext}`)
+            : '';
+
+        return `${sectionPrompts[sectionKey] || sectionPrompts.completion}\n\nNarrative arc for this section:\n${narrativeStageGuide}\n\n${commonFacts}\n\n${this._buildAlreadySpokenContext(sectionKey, isHindi)}${memoryBlock}\n\n${sharedRules}\n\nReturn only the spoken text.`;
     },
 
     /**
@@ -1549,7 +1999,7 @@ RULES:
             <div class="calculation-container">
                 <div class="calculation-title">
                     <h2>${isHindi ? 'आपकी कुंडली और अंक तैयार हो रहे हैं' : 'Forming Your Kundli and Numbers'}</h2>
-                    <p class="calc-note">${isHindi ? 'जन्म स्थान, जन्म समय और अंक-पैटर्न एक ही रीडिंग में जुड़ रहे हैं।' : 'Birth place, birth time, and number patterns are aligning into one reading.'}</p>
+                    <p class="calc-rotating-status" id="calc-rotating-status">${isHindi ? 'ग्रहों की स्थिति ट्रेस हो रही है…' : 'Tracing planetary positions…'}</p>
                 </div>
                 <div class="calculation-display" id="calc-display">
                     <div class="calc-waiting">
@@ -1566,12 +2016,53 @@ RULES:
             </div>
         `;
         document.body.appendChild(this.calculationOverlay);
+
+        // Start rotating status text
+        this._startRotatingStatus(isHindi);
+    },
+
+    /**
+     * Rotating status text for calculation overlay (Screen 8)
+     */
+    _startRotatingStatus(isHindi) {
+        const statusMessages = isHindi
+            ? [
+                'ग्रहों की स्थिति ट्रेस हो रही है…',
+                'भावनात्मक पैटर्न मैप हो रहे हैं…',
+                'समय चक्र की समीक्षा हो रही है…'
+            ]
+            : [
+                'Tracing planetary positions…',
+                'Mapping emotional patterns…',
+                'Reviewing timing cycles…'
+            ];
+
+        let index = 0;
+        this._rotatingStatusTimer = setInterval(() => {
+            index = (index + 1) % statusMessages.length;
+            const el = document.getElementById('calc-rotating-status');
+            if (el) {
+                el.style.opacity = '0';
+                setTimeout(() => {
+                    el.textContent = statusMessages[index];
+                    el.style.opacity = '1';
+                }, 300);
+            } else {
+                clearInterval(this._rotatingStatusTimer);
+            }
+        }, 3000);
     },
 
     /**
      * Hide calculation overlay
      */
     async hideCalculationOverlay() {
+        // Clear rotating status timer
+        if (this._rotatingStatusTimer) {
+            clearInterval(this._rotatingStatusTimer);
+            this._rotatingStatusTimer = null;
+        }
+
         if (this.calculationOverlay) {
             this.calculationOverlay.classList.add('fade-out');
             await MayaUtils.sleep(500);
@@ -1587,56 +2078,740 @@ RULES:
         }
     },
 
+    // ============================================================
+    //  VALIDATION LOOPS & INTERACTIVE UI
+    // ============================================================
+
     /**
-     * Begin the cosmic journey - FLOWING narrative with pre-cached content
+     * Show a validation question with 2-3 option buttons.
+     * Returns the user's chosen option value.
+     * @param {string} question - Spoken + displayed question
+     * @param {Array<{label:string, value:string}>} options
+     * @param {string} [spokenQuestion] - If provided, spoken instead of question text
+     * @returns {Promise<string>} selected value
+     */
+    async showValidationQuestion(question, options, spokenQuestion) {
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+
+        // Speak the question while building the UI
+        const speakPromise = this.speak(spokenQuestion || question);
+
+        // Always render as a fixed centered overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'maya-validation-overlay';
+        overlay.innerHTML = `
+            <div class="maya-validation-container">
+                <p class="maya-validation-question">${question}</p>
+                <div class="maya-validation-options" id="maya-validation-options">
+                    ${options.map(opt => `
+                        <button class="maya-validation-btn" data-value="${opt.value}">
+                            ${opt.label}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        await speakPromise;
+
+        return new Promise((resolve) => {
+            const container = overlay.querySelector('#maya-validation-options');
+            if (!container) { overlay.remove(); resolve(options[0]?.value || 'yes'); return; }
+
+            container.querySelectorAll('.maya-validation-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const value = btn.dataset.value;
+                    // Highlight selected
+                    container.querySelectorAll('.maya-validation-btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    // Store response
+                    this.validationResponses.push({ question, answer: value, timestamp: Date.now() });
+                    this.recordValidation(question, value);
+                    // Animate out then remove
+                    setTimeout(() => {
+                        overlay.classList.add('closing');
+                        setTimeout(() => overlay.remove(), 300);
+                        resolve(value);
+                    }, 350);
+                });
+            });
+        });
+    },
+
+    /**
+     * Respond to a validation answer with a short AI-aware acknowledgement.
+     */
+    async respondToValidation(answer, context = '') {
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const profile = this.personalization || {};
+        const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
+        const moonSign = profile.moonSign || profile.vedic?.name || '';
+        const ascendant = profile.ascendant?.name || '';
+
+        // Build chart-specific acknowledgment that references their actual data
+        let response = '';
+        if (answer === 'yes') {
+            if (isHindi) {
+                const yesPool = [
+                    dasha ? `बिल्कुल। आपकी ${dasha} दशा यही इशारा कर रही है — ये random नहीं है, chart में clearly दिख रहा है।` : '',
+                    moonSign ? `मुझे यही दिख रहा था। ${moonSign} चन्द्र राशि और आपकी current timing मिलकर यही बता रही है।` : '',
+                    ascendant ? `हाँ, ${ascendant} लग्न वालों में ये pattern बहुत specific तरीके से आता है — और आपने confirm कर दिया।` : '',
+                    `यही chart में सबसे तेज signal है। इसका मतलब अगली layers और भी accurate होंगी।`
+                ].filter(Boolean);
+                response = yesPool[Math.floor(Math.random() * yesPool.length)];
+            } else {
+                const yesPool = [
+                    dasha ? `Exactly. Your ${dasha} dasha is driving this — it is not random, it is right there in your chart.` : '',
+                    moonSign ? `I thought so. Your ${moonSign} Moon combined with current timing confirms this pattern clearly.` : '',
+                    ascendant ? `Yes. With ${ascendant} rising, this pattern shows up in a very specific way — and you just confirmed it.` : '',
+                    `That is the strongest signal in your chart. This means the deeper layers will be even more accurate.`
+                ].filter(Boolean);
+                response = yesPool[Math.floor(Math.random() * yesPool.length)];
+            }
+        } else if (answer === 'somewhat') {
+            if (isHindi) {
+                const somewhatPool = [
+                    dasha ? `हम्म, ${dasha} दशा का असर कभी-कभी धीमे-धीमे आता है — शायद ये अंदर ज्यादा चल रहा है बाहर कम दिख रहा है।` : '',
+                    `समझ आता है। ये pattern अभी बन रहा है — पूरा खुलेगा तो आप खुद पहचान लेंगे।`,
+                    `ठीक है, इसका मतलब ये अभी surface पर नहीं आया पूरी तरह — लेकिन chart में है, तो timing आने पर clearly महसूस होगा।`
+                ].filter(Boolean);
+                response = somewhatPool[Math.floor(Math.random() * somewhatPool.length)];
+            } else {
+                const somewhatPool = [
+                    dasha ? `That makes sense. The ${dasha} dasha effect sometimes builds slowly — it may be running deeper than you realize.` : '',
+                    `I see. This pattern is still forming — when it fully surfaces, you will recognize it immediately.`,
+                    `That tells me it has not peaked yet. But the chart shows it clearly, so the timing will bring it forward.`
+                ].filter(Boolean);
+                response = somewhatPool[Math.floor(Math.random() * somewhatPool.length)];
+            }
+        } else {
+            if (isHindi) {
+                const noPool = [
+                    dasha ? `दिलचस्प है। ${dasha} दशा का ये signal कभी-कभी जिन्दगी के उस हिस्से में दिखता है जहाँ हम सोचते नहीं — relationships, health, या inner restlessness में।` : '',
+                    `अच्छा, तो शायद ये किसी और angle से आ रहा है। Chart में तो दिख रहा है — इसलिए आगे की reading में clear होगा।`,
+                    `ये जानना भी important है। हर answer मुझे आपकी chart ज्यादा precisely पढ़ने में मदद करता है।`
+                ].filter(Boolean);
+                response = noPool[Math.floor(Math.random() * noPool.length)];
+            } else {
+                const noPool = [
+                    dasha ? `Interesting. The ${dasha} dasha signal sometimes shows up in unexpected areas — relationships, health, or a quiet inner restlessness.` : '',
+                    `Good to know. The chart still shows this pattern, so it may be coming from a different direction. The deeper reading will clarify.`,
+                    `That is useful. Every answer helps me read your chart more precisely.`
+                ].filter(Boolean);
+                response = noPool[Math.floor(Math.random() * noPool.length)];
+            }
+        }
+
+        if (response) await this.speak(response);
+        await MayaUtils.sleep(this.stageTiming.validationSettle);
+    },
+
+    /**
+     * Show a lightweight mini-check after a number reveal.
+     * @param {string} checkQuestion
+     * @returns {Promise<string>}
+     */
+    /**
+     * Show a "Continue" button gate that pauses the flow until user taps.
+     * Used between calculation reveals to give user control over pacing.
+     */
+    async showContinueGate() {
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const overlayActive = !!this.calculationOverlay && document.body.contains(this.calculationOverlay);
+        
+        // If we're in the calculation overlay, show button inside it
+        if (overlayActive) {
+            const calcContainer = this.calculationOverlay.querySelector('.calculation-container');
+            if (!calcContainer) return;
+            return new Promise((resolve) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'calc-overlay-continue text-center';
+                wrapper.innerHTML = `<button class="btn btn-primary btn-lg maya-continue-gate-btn">${isHindi ? 'आगे बढ़ें' : 'Continue'}</button>`;
+                calcContainer.appendChild(wrapper);
+                wrapper.querySelector('button').addEventListener('click', () => {
+                    wrapper.remove();
+                    resolve();
+                });
+            });
+        }
+
+        // Otherwise show in the text display area
+        const textDisplay = document.getElementById('maya-text-display');
+        const blobContainer = document.getElementById('maya-blob-container');
+        if (!textDisplay) return;
+
+        if (blobContainer) {
+            blobContainer.classList.remove('blob-centered');
+            blobContainer.classList.add('blob-top');
+        }
+        textDisplay.style.display = 'flex';
+
+        return new Promise((resolve) => {
+            const btnContainer = document.createElement('div');
+            btnContainer.className = 'maya-continue-wrapper text-center py-3';
+            btnContainer.innerHTML = `<button class="btn btn-primary btn-lg maya-continue-gate-btn">${isHindi ? 'आगे बढ़ें' : 'Continue'}</button>`;
+            textDisplay.innerHTML = '';
+            textDisplay.appendChild(btnContainer);
+            btnContainer.querySelector('button').addEventListener('click', () => {
+                textDisplay.style.display = 'none';
+                if (blobContainer) {
+                    blobContainer.classList.remove('blob-top');
+                    blobContainer.classList.add('blob-centered');
+                }
+                resolve();
+            });
+        });
+    },
+
+    async showMiniCheck(checkQuestion) {
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const options = isHindi
+            ? [
+                { label: 'हाँ, बिल्कुल', value: 'yes' },
+                { label: 'थोड़ा-बहुत', value: 'somewhat' },
+                { label: 'नहीं', value: 'no' }
+            ]
+            : [
+                { label: 'Yes, very true', value: 'yes' },
+                { label: 'Somewhat true', value: 'somewhat' },
+                { label: 'Not really', value: 'no' }
+            ];
+
+        const answer = await this.showValidationQuestion(checkQuestion, options);
+        await this.respondToValidation(answer);
+        return answer;
+    },
+
+    /**
+     * Run the "How does she know?" moment — predict a past event.
+     */
+    async showAccuracyShockMoment() {
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const aiContext = this.buildBaseAIContext();
+
+        const shockNarration = await this.withFiller(
+            () => this.generateDirectReadingSection('accuracyShock', aiContext),
+            'revealing'
+        );
+
+        if (shockNarration && shockNarration.length > 20) {
+            await this.speak(shockNarration);
+            this.spokenNarrations.push({ stage: 'accuracyShock', text: shockNarration });
+            this.strongestAccurateHit = shockNarration;
+        }
+
+        // Ask validation
+        const question = isHindi
+            ? 'क्या ऐसा कोई दौर आपकी जिन्दगी में आया था जिसने आपको बदल दिया?'
+            : 'Did a phase like that change you?';
+
+        const answer = await this.showMiniCheck(question);
+        this.emotionalAnchor = answer;
+        if (answer === 'yes' && shockNarration) {
+            this.recordEmotionalAnchor(shockNarration);
+            this.sessionMemory.strongHits.push('accuracy_shock_confirmed');
+        }
+    },
+
+    /**
+     * Show the suspense bridge — controlled tension before the gate.
+     */
+    async showSuspenseBridge() {
+        this.currentPhase = this.PHASES.SUSPENSE_BRIDGE;
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+
+        // If already logged in, skip email gate entirely and go to deep reveal
+        if (this.isUserLoggedIn || window.MayaAuth?.isAuthenticated) {
+            await this.showDeepReveal();
+            return;
+        }
+
+        // Speak email gate narration, then go straight to email form — no extra button
+        const predictionItems = this.buildPredictionItems();
+        const emailAiCtx = this.buildBaseAIContext(predictionItems);
+        const emailNarration = await this.withFiller(
+            () => this.generateDirectReadingSection('emailGate', emailAiCtx),
+            'thinking'
+        );
+        if (emailNarration && emailNarration.length > 20) {
+            await this.speak(emailNarration);
+            this.spokenNarrations.push({ stage: 'emailGate', text: emailNarration });
+        } else {
+            // Fallback if AI fails
+            const fallback = isHindi
+                ? `आपकी chart में कुछ ऐसा दिखा है जिसे अभी privately बताना जरूरी है। Screen पर email field आ रहा है — बस अपना email type कर दीजिए ताकि ये reading safe रहे और मैं आगे की deeper layer खोल सकूँ।`
+                : `There is something in your chart I need to share privately. You will see an email field on screen — just type your email so this reading stays saved and I can unlock the deeper layer for you.`;
+            await this.speak(fallback);
+        }
+
+        // Flow into the save-my-file gate
+        await this.showEmailGate();
+        const emailInput = document.getElementById('gate-email');
+        if (emailInput && document.body.contains(emailInput)) {
+            this.focusAuthField(emailInput);
+        }
+    },
+
+    /**
+     * Show the deep reveal with chapter choice — user picks starting topic.
+     * @returns {string[]} ordered chapter keys
+     */
+    async showDeepRevealWithChoice() {
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const textDisplay = document.getElementById('maya-text-display');
+        const blobContainer = document.getElementById('maya-blob-container');
+
+        if (blobContainer) {
+            blobContainer.classList.remove('blob-centered');
+            blobContainer.classList.add('blob-top');
+        }
+
+        if (textDisplay) {
+            textDisplay.style.display = 'flex';
+            textDisplay.innerHTML = `
+                <div class="deep-reveal-prompt text-center py-4">
+                    <div class="deep-reveal-choice-grid" id="deep-reveal-choices">
+                        <button class="maya-validation-btn deep-chapter-btn" data-chapter="love">
+                            <i class="bi bi-heart-fill"></i>
+                            ${isHindi ? 'प्रेम' : 'Love'}
+                        </button>
+                        <button class="maya-validation-btn deep-chapter-btn" data-chapter="career">
+                            <i class="bi bi-briefcase-fill"></i>
+                            ${isHindi ? 'करियर' : 'Career'}
+                        </button>
+                        <button class="maya-validation-btn deep-chapter-btn" data-chapter="year">
+                            <i class="bi bi-clock-fill"></i>
+                            ${isHindi ? 'समय' : 'Timing'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        return new Promise((resolve) => {
+            const container = document.getElementById('deep-reveal-choices');
+            if (!container) { resolve('default'); return; }
+
+            container.querySelectorAll('.deep-chapter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const chapter = btn.dataset.chapter;
+                    this.chosenDeepDiveTopic = chapter;
+                    if (textDisplay) textDisplay.style.display = 'none';
+                    if (blobContainer) {
+                        blobContainer.classList.remove('blob-top');
+                        blobContainer.classList.add('blob-centered');
+                    }
+                    resolve(chapter);
+                });
+            });
+        });
+    },
+
+    /**
+     * Show a micro-prompt between deep reading chapters.
+     * @param {string} chapterKey e.g. 'love', 'career'
+     * @returns {Promise<string>}
+     */
+    async showChapterMicroPrompt(chapterKey) {
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const prompts = {
+            love: {
+                question: isHindi
+                    ? 'मैं हल्के में बताऊँ या बिल्कुल सीधी बात करूँ?'
+                    : 'Do you want the softer truth or the harder truth?',
+                options: isHindi
+                    ? [{ label: 'सीधी बात बोलो', value: 'harder' }, { label: 'हल्के में बताओ', value: 'softer' }]
+                    : [{ label: 'Softer', value: 'softer' }, { label: 'Harder', value: 'harder' }]
+            },
+            career: {
+                question: isHindi
+                    ? 'क्या आपका मौजूदा काम आपकी इस खासियत को सच में इस्तेमाल करता है?'
+                    : 'Does your current work actually use this side of you?',
+                options: isHindi
+                    ? [{ label: 'हाँ', value: 'yes' }, { label: 'पूरी तरह नहीं', value: 'not_fully' }, { label: 'नहीं', value: 'no' }]
+                    : [{ label: 'Yes', value: 'yes' }, { label: 'Not fully', value: 'not_fully' }, { label: 'No', value: 'no' }]
+            },
+            year: {
+                question: isHindi
+                    ? 'आने वाले महीनों में आप किस चीज पर सबसे ज्यादा ध्यान देना चाहते हैं?'
+                    : 'What matters most to you in the coming months?',
+                options: isHindi
+                    ? [{ label: 'पैसा और growth', value: 'money' }, { label: 'रिश्ते और प्यार', value: 'relationships' }, { label: 'सेहत और शांति', value: 'health' }]
+                    : [{ label: 'Money & growth', value: 'money' }, { label: 'Relationships', value: 'relationships' }, { label: 'Health & peace', value: 'health' }]
+            },
+            warning: {
+                question: isHindi
+                    ? 'क्या आपको लगता है कि कोई एक गलती आप बार-बार दोहराते हैं?'
+                    : 'Do you feel there is one mistake you keep repeating?',
+                options: isHindi
+                    ? [{ label: 'हाँ, पता है कौनसी', value: 'aware' }, { label: 'हाँ, पर समझ नहीं आती', value: 'unaware' }, { label: 'नहीं लगता', value: 'no' }]
+                    : [{ label: 'Yes, I know which one', value: 'aware' }, { label: 'Yes, but can\'t pinpoint', value: 'unaware' }, { label: 'Not really', value: 'no' }]
+            }
+        };
+
+        const prompt = prompts[chapterKey];
+        if (!prompt) return 'default';
+
+        return await this.showValidationQuestion(prompt.question, prompt.options);
+    },
+
+    /**
+     * Build the chapter delivery order based on user choice.
+     */
+    getChapterOrder(choice) {
+        const allChapters = ['love', 'career', 'year', 'warning'];
+        if (choice === 'love') return allChapters;
+        if (choice === 'career') return ['career', 'love', 'year', 'warning'];
+        if (choice === 'year') return ['year', 'love', 'career', 'warning'];
+        return allChapters; // default
+    },
+
+    /**
+     * Show the return hook at the end of the session.
+     */
+    async showReturnHook() {
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const aiContext = this.buildBaseAIContext();
+
+        const hookNarration = await this.withFiller(
+            () => this.generateDirectReadingSection('returnHook', aiContext),
+            'thinking'
+        );
+
+        if (hookNarration && hookNarration.length > 20) {
+            await this.speak(hookNarration);
+            this.returnHookType = 'timing_shift';
+        }
+    },
+
+    // ============================================================
+    //  LIVE ANALYSIS THEATRE — Filler lines during calculations
+    // ============================================================
+
+    /**
+     * Speak a contextual live-analysis filler line during calculation phases.
+     * Uses the voice library for richer, more varied lines.
+     */
+    async speakAnalysisFiller(phase) {
+        // Map phases to voice library categories
+        const categoryMap = {
+            kundli: 'analysis',
+            lifePath: 'analysis',
+            destiny: 'analysis',
+            soulUrge: 'emotionalMirror',
+            love: 'relationship',
+            career: 'career',
+            year: 'timing',
+            warning: 'warning',
+            thinking: 'suspense',
+            revealing: 'suspense'
+        };
+        const category = categoryMap[phase] || 'analysis';
+        const line = this.getVoiceLine(category);
+        if (line) await this.speak(line);
+    },
+
+    /**
+     * Build a personalized validation question using actual chart data.
+     */
+    buildPersonalizedValidation() {
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const profile = this.personalization || {};
+        const lp = this.calculations?.lifePath;
+        const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
+        const moonSign = profile.moonSign || profile.vedic?.name || '';
+        const ascendant = profile.ascendant?.name || '';
+        const isMale = this.userData?.gender === 'male';
+        const dashaStartYear = profile.currentDasha?.startYear || '';
+
+        // Saturn dasha — multiple variants
+        if (dasha && /saturn|shani/i.test(dasha)) {
+            const variants = isHindi ? [
+                `आपकी शनि दशा${dashaStartYear ? ` ${dashaStartYear} से` : ''} चल रही है — क्या पिछले कुछ सालों में जिम्मेदारियाँ अचानक बढ़ गई हैं, जैसे सब कुछ आप पर आ गया?`,
+                `शनि दशा में अक्सर एक phase आता है जहाँ लगता है कि मेहनत का result नहीं मिल रहा — क्या आपने ये महसूस किया?`,
+                `क्या ${dashaStartYear ? `${dashaStartYear} के बाद` : 'कुछ सालों में'} कोई relationship या family situation ऐसी बनी जिसने आपको अंदर से mature कर दिया?`
+            ] : [
+                `Your Saturn dasha${dashaStartYear ? ` started ${dashaStartYear}` : ''} — have you felt responsibilities suddenly multiply, as if everything landed on your shoulders?`,
+                `During Saturn dasha there is often a phase where hard work does not seem to pay off — have you experienced that?`,
+                `Has a relationship or family situation ${dashaStartYear ? `since ${dashaStartYear}` : 'in recent years'} forced you to grow up faster than you wanted?`
+            ];
+            return variants[Math.floor(Math.random() * variants.length)];
+        }
+
+        // Rahu dasha — multiple variants
+        if (dasha && /rahu/i.test(dasha)) {
+            const variants = isHindi ? [
+                `राहु दशा${dashaStartYear ? ` ${dashaStartYear} से` : ''} चल रही है — क्या आपको लगा कि जिन्दगी में अचानक direction बदल गई, बिना plan किए?`,
+                `राहु period में अक्सर एक ऐसी चीज से obsession हो जाता है जो पहले कभी matter नहीं करती थी — क्या ये हुआ?`,
+                `क्या ${dashaStartYear ? `${dashaStartYear} के आसपास` : 'कुछ समय पहले'} कोई बड़ा change आया — job, city, या जिन्दगी का पूरा setup बदला?`
+            ] : [
+                `Your Rahu dasha${dashaStartYear ? ` started ${dashaStartYear}` : ''} — have you felt life suddenly shift direction without any plan?`,
+                `During Rahu periods, people often develop an unexpected obsession with something that never mattered before — has that happened?`,
+                `Did a major change happen ${dashaStartYear ? `around ${dashaStartYear}` : 'recently'} — a job shift, a city move, or your entire life setup changed?`
+            ];
+            return variants[Math.floor(Math.random() * variants.length)];
+        }
+
+        // Jupiter dasha
+        if (dasha && /jupiter|guru/i.test(dasha)) {
+            const variants = isHindi ? [
+                `गुरु दशा${dashaStartYear ? ` ${dashaStartYear} से` : ''} चल रही है — क्या हाल ही में कोई मौका आया जो उम्मीद से बड़ा निकला?`,
+                `गुरु period में अक्सर teaching, mentoring या spiritual interest बढ़ता है — क्या आपने ये अपने अंदर notice किया?`,
+                `क्या ${dashaStartYear ? `${dashaStartYear} के बाद` : 'कुछ समय से'} लगता है कि आप पहले से ज्यादा wise decisions ले रहे हैं — लेकिन दुनिया ने अभी recognize नहीं किया?`
+            ] : [
+                `Your Jupiter dasha${dashaStartYear ? ` started ${dashaStartYear}` : ''} — did an opportunity show up recently that turned out bigger than expected?`,
+                `Jupiter periods often spark interest in teaching, mentoring, or spirituality — have you noticed this shift in yourself?`,
+                `Have you felt ${dashaStartYear ? `since ${dashaStartYear}` : 'lately'} that you are making wiser decisions but the world has not caught up to recognize it?`
+            ];
+            return variants[Math.floor(Math.random() * variants.length)];
+        }
+
+        // Ketu dasha
+        if (dasha && /ketu/i.test(dasha)) {
+            const variants = isHindi ? [
+                `केतु दशा${dashaStartYear ? ` ${dashaStartYear} से` : ''} चल रही है — क्या कभी लगता है कि कुछ छूट रहा है, पर समझ नहीं आता क्या?`,
+                `केतु period में अक्सर पुरानी चीजें टूटती हैं — कोई attachment, koi belief, या कोई रिश्ता। क्या ऐसा कुछ हुआ?`,
+                `क्या ${dashaStartYear ? `${dashaStartYear} के बाद` : 'कुछ समय से'} किसी चीज से naturally detach हो गए जो पहले बहुत matter करती थी?`
+            ] : [
+                `Your Ketu dasha${dashaStartYear ? ` started ${dashaStartYear}` : ''} — do you feel something is missing but you cannot name what it is?`,
+                `Ketu periods often break old attachments — a belief, a habit, or a relationship. Has something like that happened?`,
+                `Have you ${dashaStartYear ? `since ${dashaStartYear}` : 'recently'} naturally detached from something that used to matter a lot?`
+            ];
+            return variants[Math.floor(Math.random() * variants.length)];
+        }
+
+        // Mercury dasha
+        if (dasha && /mercury|budh/i.test(dasha)) {
+            const variants = isHindi ? [
+                `बुध दशा चल रही है — क्या आपने notice किया कि हाल में communication या learning से जुड़ा कोई बड़ा shift आया?`,
+                `बुध period में overthinking बढ़ जाती है — क्या रात को सोते वक्त दिमाग बंद नहीं होता, हजार thoughts चलते रहते हैं?`
+            ] : [
+                `Your Mercury dasha is active — have you noticed a major shift in how you communicate or learn?`,
+                `Mercury periods amplify overthinking — do you find your mind racing at night, unable to switch off?`
+            ];
+            return variants[Math.floor(Math.random() * variants.length)];
+        }
+
+        // Venus dasha
+        if (dasha && /venus|shukra/i.test(dasha)) {
+            const variants = isHindi ? [
+                `शुक्र दशा चल रही है — क्या relationships या comfort से जुड़ा कोई बड़ा change आया हाल में?`,
+                `शुक्र period में अक्सर luxury या beauty की तरफ pull बढ़ता है — क्या आपने ये अपने अंदर देखा?`
+            ] : [
+                `Your Venus dasha is active — has there been a major shift in relationships or your comfort zone recently?`,
+                `Venus periods often increase a pull toward luxury or beauty — have you noticed this?`
+            ];
+            return variants[Math.floor(Math.random() * variants.length)];
+        }
+
+        // Mars dasha
+        if (dasha && /mars|mangal/i.test(dasha)) {
+            const variants = isHindi ? [
+                `मंगल दशा चल रही है — क्या हाल में गुस्सा या impatience बढ़ा है, छोटी-छोटी बातों पर react हो जाता है?`,
+                `मंगल period में energy तो बढ़ती है लेकिन conflicts भी — क्या किसी से टकराव हुआ हाल में?`
+            ] : [
+                `Your Mars dasha is active — have you noticed more anger or impatience flaring up over small things?`,
+                `Mars periods bring energy but also conflict — have you had an unexpected clash with someone recently?`
+            ];
+            return variants[Math.floor(Math.random() * variants.length)];
+        }
+
+        // Moon dasha
+        if (dasha && /moon|chandra/i.test(dasha)) {
+            const variants = isHindi ? [
+                `चन्द्र दशा चल रही है — क्या emotions ज्यादा intense हो गए हैं, जैसे mood swings या sudden emotional waves?`,
+                `चन्द्र period में home और family matters ज्यादा surface पर आते हैं — क्या घर से जुड़ा कोई बड़ा change हुआ?`
+            ] : [
+                `Your Moon dasha is active — have your emotions become more intense, with unexpected mood shifts?`,
+                `Moon periods bring home and family matters to the surface — has something major shifted at home?`
+            ];
+            return variants[Math.floor(Math.random() * variants.length)];
+        }
+
+        // Sun dasha
+        if (dasha && /sun|surya/i.test(dasha)) {
+            const variants = isHindi ? [
+                `सूर्य दशा चल रही है — क्या career या authority से जुड़ा कोई major shift आया, जैसे promotion, recognition, या किसी से टकराव?`,
+            ] : [
+                `Your Sun dasha is active — has there been a career shift, a recognition moment, or an authority clash?`,
+            ];
+            return variants[Math.floor(Math.random() * variants.length)];
+        }
+
+        // Lifepath based (fallback)
+        if ([7, 11, 22].includes(lp)) {
+            return isHindi
+                ? `Life path ${lp} — क्या आप अक्सर दूसरों से अलग सोचते हैं, और इसकी वजह से एक तरह का अकेलापन महसूस होता है?`
+                : `As a life path ${lp} — do you often think differently from others and feel a quiet loneliness because of it?`;
+        }
+        if ([2, 6, 9].includes(lp)) {
+            return isHindi
+                ? `Life path ${lp} — क्या आप दूसरों की जरूरतें अपनी से पहले रख देते हैं, अक्सर बिना सोचे?`
+                : `As a life path ${lp} — do you put others' needs before your own, often without thinking?`;
+        }
+        if ([1, 5, 8].includes(lp)) {
+            return isHindi
+                ? `Life path ${lp} — क्या कभी लगता है कि pace तो आपकी तेज है, पर दुनिया साथ नहीं दे रही?`
+                : `As a life path ${lp} — do you sometimes feel your pace is fast but the world is not keeping up?`;
+        }
+        if ([3, 33].includes(lp)) {
+            return isHindi
+                ? `Life path ${lp} — क्या लोग आपसे कहते हैं कि आप बहुत expressive हैं, लेकिन अंदर एक part है जो कोई नहीं जानता?`
+                : `As a life path ${lp} — do people say you are very expressive, but there is a part inside that nobody knows?`;
+        }
+        if ([4].includes(lp)) {
+            return isHindi
+                ? `Life path 4 — क्या आपने महसूस किया कि आप structure और stability में ज्यादा comfortable हैं, लेकिन जिन्दगी बार-बार uncertainty फेंकती है?`
+                : `As a life path 4 — do you find comfort in structure, but life keeps throwing uncertainty at you?`;
+        }
+        // Ultimate fallback with moon sign
+        return isHindi
+            ? `${moonSign ? `${moonSign} चन्द्र राशि` : 'आपकी कुंडली'} में जो pattern दिख रहा है — क्या जिन्दगी में कोई चीज बार-बार repeat होती है, एक ही तरह की situation बार-बार आती है?`
+            : `Based on what ${moonSign ? `your ${moonSign} Moon` : 'your chart'} is showing — do you feel certain situations keep repeating in your life, the same kind of thing happening again and again?`;
+    },
+
+    /**
+     * Begin the cosmic journey - STREAMLINED flowing narrative
+     * Flow: Opening → Early Suspense Hit → Kundli → Validation → Numbers → Accuracy Shock → Teaser → Gate
      */
     async beginJourney() {
         console.log('🌟 Beginning cosmic journey...');
-        
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        this.resetSessionMemory();
+
         try {
-            // STEP 1: Start with the best available personal opening without stalling the funnel.
+            // Show progress meter
+            this.showProgressMeter();
+
+            // STEP 1: Opening hit — personalized, specific, grounded
             console.log('🗣️ Speaking personalized opening...');
             const openingNarration = await this.getOpeningNarration();
             await this.speak(openingNarration);
             if (openingNarration) this.spokenNarrations.push({ stage: 'opening', text: openingNarration });
+            this.advanceProgress('chart_opened');
             await MayaUtils.sleep(this.stageTiming.introSettle);
 
-            // Show calculation overlay
+            // STEP 2: EARLY SUSPENSE HIT — one emotional mirror + one curiosity hook right after intro
+            console.log('✨ Early suspense hit...');
+            const mirrorLine = this.getVoiceLine('emotionalMirror');
+            const suspenseLine = this.getVoiceLine('suspense');
+            await this.speak(mirrorLine);
+            this.recordEmotionalAnchor(mirrorLine);
+            await MayaUtils.sleep(300);
+            await this.speak(suspenseLine);
+            this.advanceProgress('first_impression');
+
+            // STEP 3: Show calculation overlay
             console.log('📊 Showing calculation overlay...');
             this.showCalculationOverlay();
             await MayaUtils.sleep(this.stageTiming.calculationLeadIn);
 
-            // Kundli formation with visual animation
+            // STEP 4: Kundli formation — personalized AI narration plays over chart animation
             console.log('🪐 Animating Kundli...');
             await this.animateKundliFormation();
+            this.advanceProgress('kundli');
 
-            // Life Path with visual animation
-            console.log('📊 Animating Life Path...');
+            // STEP 5: ONE personalized validation based on actual chart data
+            console.log('✅ Personalized validation...');
+            this.currentPhase = this.PHASES.VALIDATION;
+            const personalQ = this.buildPersonalizedValidation();
+            await this.showMiniCheck(personalQ);
+
+            // STEP 6-8: Number calculations flow without interruption
+            console.log('📊 Flowing through number calculations...');
             await this.animateLifePathCalculation();
-            
-            // Destiny Number with visual animation
-            console.log('📊 Animating Destiny...');
+            this.advanceProgress('life_path');
             await this.animateDestinyCalculation();
-            
-            // Soul Urge with visual animation
-            console.log('📊 Animating Soul Urge...');
+            this.advanceProgress('destiny');
             await this.animateSoulUrgeCalculation();
+            this.advanceProgress('soul_urge');
 
-            // Hide overlay and transition
+            // STEP 9: Hide overlay
             console.log('📊 Hiding overlay...');
             await this.hideCalculationOverlay();
-            
-            // Teaser reveal
+
+            // STEP 10: Teaser reveal (includes accuracy shock + identity + emotional pattern)
             console.log('🎁 Showing teaser reveal...');
             await this.showTeaserReveal();
-            
+            this.advanceProgress('accuracy_hit');
+            this.advanceProgress('deep_patterns');
+
+            // STEP 11: Suspense bridge → email gate
+            console.log('🌉 Suspense bridge...');
+            await this.showSuspenseBridge();
+            this.advanceProgress('full_reading');
+
             console.log('✅ Cosmic journey complete!');
-            
+
         } catch (error) {
             console.error('❌ Error in beginJourney:', error);
             // Try to continue even if something fails
             await this.hideCalculationOverlay();
             await this.showTeaserReveal();
+        }
+    },
+
+    // ============================================================
+    //  PROGRESS METER — visual gamification during funnel
+    // ============================================================
+
+    showProgressMeter() {
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const overlay = document.getElementById('maya-overlay');
+        if (!overlay) return;
+
+        // Remove existing if any
+        const existing = document.getElementById('maya-progress-meter');
+        if (existing) existing.remove();
+
+        const meter = document.createElement('div');
+        meter.id = 'maya-progress-meter';
+        meter.className = 'maya-progress-meter';
+        meter.innerHTML = `
+            <div class="progress-meter-track">
+                ${this.PROGRESS_STAGES.map((stage, i) => `
+                    <div class="progress-stage" data-stage="${stage.key}" data-index="${i}">
+                        <div class="progress-dot"></div>
+                        <span class="progress-label">${isHindi ? stage.hi : stage.en}</span>
+                    </div>
+                `).join('')}
+                <div class="progress-fill-line" id="progressFillLine"></div>
+            </div>
+        `;
+        overlay.appendChild(meter);
+        this.currentProgressIndex = -1;
+    },
+
+    advanceProgress(stageKey) {
+        const index = this.PROGRESS_STAGES.findIndex(s => s.key === stageKey);
+        if (index < 0 || index <= this.currentProgressIndex) return;
+        this.currentProgressIndex = index;
+        this.sessionMemory.progressUnlocks.push({ key: stageKey, timestamp: Date.now() });
+
+        const meter = document.getElementById('maya-progress-meter');
+        if (!meter) return;
+
+        // Light up all dots up to current
+        meter.querySelectorAll('.progress-stage').forEach((el, i) => {
+            el.classList.toggle('completed', i < index);
+            el.classList.toggle('active', i === index);
+        });
+
+        // Animate fill line
+        const fillLine = document.getElementById('progressFillLine');
+        if (fillLine) {
+            const totalStages = this.PROGRESS_STAGES.length - 1;
+            const pct = totalStages > 0 ? (index / totalStages) * 100 : 0;
+            fillLine.style.width = `${pct}%`;
+        }
+    },
+
+    hideProgressMeter() {
+        const meter = document.getElementById('maya-progress-meter');
+        if (meter) {
+            meter.classList.add('fade-out');
+            setTimeout(() => meter.remove(), 500);
         }
     },
 
@@ -2166,26 +3341,31 @@ RULES:
             blobContainer.classList.add('blob-centered');
         }
 
-        // STEP 1: grounded integrated summary
         const lang = MayaUtils.storage.get('maya_language') || this.userData.language || 'en';
         if (window.MayaStatements) MayaStatements.setLanguage(lang);
         const predictionItems = this.buildPredictionItems();
         const aiContext = this.buildBaseAIContext(predictionItems);
+
+        // Single combined AI call for all 3 teaser segments + email ask
         const teaserNarration = await this.getContent('teaserRevealNarration', async () => {
+            const combined = await this.withFiller(
+                () => this.generateDirectReadingSection('combinedTeaser', aiContext),
+                'revealing'
+            );
+            if (combined && combined.length > 40) {
+                // Extract unresolved thread for later reference (last segment)
+                const parts = combined.split(/\[\[pause-250\]\]/i).map(s => s.trim()).filter(Boolean);
+                if (parts.length >= 3) this.unresolvedThread = parts[parts.length - 1];
+                return combined;
+            }
+            // Fallback: try individual calls if combined fails
             const segments = [];
-
-            // SEGMENT 1: Short personal prediction (past event / current situation based on kundli)
-            const summary = await this.withFiller(() => this.generateAISummary(), 'thinking');
-            if (summary && summary.length > 20) {
-                segments.push(summary.trim());
-            }
-
-            // SEGMENT 2: FOMO/fear hook - predict something concerning to create urgency
-            const fomoHook = await this.withFiller(() => this.generateDirectReadingSection('fomoHook', aiContext), 'revealing');
-            if (fomoHook && fomoHook.length > 20) {
-                segments.push(fomoHook.trim());
-            }
-
+            const identityTruth = await this.generateDirectReadingSection('identityTruth', aiContext);
+            if (identityTruth?.length > 20) segments.push(identityTruth.trim());
+            const emotionalPattern = await this.generateDirectReadingSection('emotionalPattern', aiContext);
+            if (emotionalPattern?.length > 20) segments.push(emotionalPattern.trim());
+            const unresolvedThread = await this.generateDirectReadingSection('unresolvedThread', aiContext);
+            if (unresolvedThread?.length > 20) { segments.push(unresolvedThread.trim()); this.unresolvedThread = unresolvedThread; }
             return segments.join(' [[pause-250]] ');
         });
 
@@ -2195,18 +3375,9 @@ RULES:
                 this.spokenNarrations.push({ stage: 'teaser', text: teaserNarration });
             }
         } finally {
-            // STEP 2: Speak email gate ask BEFORE showing the form
-            const emailAsk = await this.withFiller(() => this.generateDirectReadingSection('emailGate', aiContext), 'thinking');
-            if (emailAsk && emailAsk.length > 20) {
-                await this.speak(emailAsk);
-            }
-
+            // Skip the separate emailGate AI narration — the suspense bridge + email form handle the ask.
+            // Speaking "enter your email" AND showing the form felt like asking twice.
             this.teaserGateNarrated = true;
-            await this.showEmailGate();
-            const emailInput = document.getElementById('gate-email');
-            if (emailInput && document.body.contains(emailInput)) {
-                this.focusAuthField(emailInput);
-            }
         }
     },
 
@@ -2299,8 +3470,8 @@ RULES:
         textDisplay.innerHTML = `
             <div class="email-gate-container">
                 <div class="gate-header">
-                    <h3>${isHindi ? 'अपनी निजी रीडिंग खोलिए' : 'Unlock Your Personalized Reading'}</h3>
-                    <p class="gate-subtitle">${isHindi ? 'आपकी निजी कुंडली फ़ाइल तैयार है' : `${this.firstName}, your private chart file is ready`}</p>
+                    <h3>${isHindi ? 'अपनी निजी रीडिंग सेव करें' : 'Save Your Private Reading'}</h3>
+                    <p class="gate-subtitle">${isHindi ? 'आपकी पूरी फाइल तैयार है — इसे अपने पास रखें' : `${this.firstName}, your full file is ready — keep it safe`}</p>
                 </div>
                 <div class="gate-benefits">
                     <div class="benefit-item">
@@ -2326,7 +3497,7 @@ RULES:
                                placeholder="${isHindi ? 'अपनी ईमेल आईडी भरिए' : 'Enter your email address'}" required autocomplete="email">
                     </div>
                     <button type="submit" class="btn btn-primary btn-lg w-100 mt-3">
-                        <i class="bi bi-unlock-fill me-2"></i>${isHindi ? 'मेरी रीडिंग खोलिए' : 'Unlock My Reading'}
+                        <i class="bi bi-unlock-fill me-2"></i>${isHindi ? 'पूरी रीडिंग अनलॉक करें' : 'Unlock Full Reading'}
                     </button>
                     <p class="gate-note mt-3">
                         <i class="bi bi-shield-check"></i> ${isHindi ? 'आपकी रीडिंग निजी और सुरक्षित रहेगी' : 'Your reading stays private and secure'}
@@ -2896,37 +4067,13 @@ RULES:
         if (prepMsg) {
             await this.speak(prepMsg);
         }
-        
-        // Show continue button
-        if (blobContainer) {
-            blobContainer.classList.remove('blob-centered');
-            blobContainer.classList.add('blob-top');
-        }
-        
-        textDisplay.style.display = 'flex';
-        
-        const buttonText = lang === 'hi' 
-            ? '<i class="bi bi-play-fill me-2"></i>हाँ, शुरू करें'
-            : '<i class="bi bi-play-fill me-2"></i>Yes, I\'m Ready';
-        
-        textDisplay.innerHTML = `
-            <div class="deep-reveal-prompt text-center py-4">
-                <button id="continue-reveal-btn" class="btn btn-lg btn-primary pulse-animation">
-                    ${buttonText}
-                </button>
-            </div>
-        `;
 
-        document.getElementById('continue-reveal-btn').addEventListener('click', async () => {
-            textDisplay.style.display = 'none';
-            
-            if (blobContainer) {
-                blobContainer.classList.remove('blob-top');
-                blobContainer.classList.add('blob-centered');
-            }
-            
-            await this.deliverDeepReading();
-        });
+        // Chapter choice — let user pick starting direction
+        const choice = await this.showDeepRevealWithChoice();
+        this.chapterOrder = this.getChapterOrder(choice);
+
+        // Deliver reading with chosen order
+        await this.deliverDeepReading();
     },
 
     /**
@@ -2962,97 +4109,21 @@ RULES:
             }
             return;
         }
-        
-        // LOVE READING - flowing narrative WITHOUT repeating numbers
-        const loveIntro = await this.withFiller(() => this.generateDirectReadingSection('loveIntro', aiContext), 'love');
-        if (loveIntro) {
-            await this.speak(loveIntro);
-            await MayaUtils.sleep(300);
-        }
-        
-        let loveReading = null;
-        try {
-            if (window.MayaStatements?.getLoveReadingAI) {
-                loveReading = await this.withFiller(() => MayaStatements.getLoveReadingAI(numbers.lifePath, numbers.soulUrge, this.firstName, aiContext), 'love');
+
+        // Deliver chapters in user-chosen order with micro-prompts
+        const chapters = this.chapterOrder || ['love', 'career', 'year', 'warning'];
+
+        for (const chapter of chapters) {
+            await this._deliverChapter(chapter, numbers, aiContext);
+
+            // Micro-prompt after each chapter — answers feed into AI for next chapters
+            const microAnswer = await this.showChapterMicroPrompt(chapter);
+            if (microAnswer && microAnswer !== 'default') {
+                aiContext[`microPrompt_${chapter}`] = microAnswer;
             }
-        } catch (e) {
-            console.warn('AI love reading failed:', e.message);
-        }
-        if (!loveReading) {
-            loveReading = await this.withFiller(() => this.generateDirectReadingSection('love', aiContext), 'love');
-        }
-        if (loveReading) {
-            await this.speak(loveReading);
-            this.spokenNarrations.push({ stage: 'love', text: loveReading });
-            await MayaUtils.sleep(800);
-        }
-        const careerIntro = await this.withFiller(() => this.generateDirectReadingSection('careerIntro', aiContext), 'career');
-        if (careerIntro) {
-            await this.speak(careerIntro);
-            await MayaUtils.sleep(300);
         }
         
-        let careerReading = null;
-        try {
-            if (window.MayaStatements?.getCareerReadingAI) {
-                careerReading = await this.withFiller(() => MayaStatements.getCareerReadingAI(numbers.destiny, numbers.lifePath, this.firstName, aiContext), 'career');
-            }
-        } catch (e) {
-            console.warn('AI career reading failed:', e.message);
-        }
-        if (!careerReading) {
-            careerReading = await this.withFiller(() => this.generateDirectReadingSection('career', aiContext), 'career');
-        }
-        if (careerReading) {
-            await this.speak(careerReading);
-            this.spokenNarrations.push({ stage: 'career', text: careerReading });
-            await MayaUtils.sleep(800);
-        }
-        const yearIntro = await this.withFiller(() => this.generateDirectReadingSection('yearIntro', aiContext), 'year');
-        if (yearIntro) {
-            await this.speak(yearIntro);
-            await MayaUtils.sleep(300);
-        }
-        
-        let yearReading = null;
-        try {
-            if (window.MayaStatements?.getYearReadingAI) {
-                yearReading = await this.withFiller(() => MayaStatements.getYearReadingAI(numbers.personalYear, predictionItems, this.firstName, aiContext), 'year');
-            }
-        } catch (e) {
-            console.warn('AI year reading failed:', e.message);
-        }
-        if (!yearReading) {
-            yearReading = await this.withFiller(() => this.generateDirectReadingSection('year', aiContext), 'year');
-        }
-        if (yearReading) {
-            await this.speak(yearReading);
-            this.spokenNarrations.push({ stage: 'year', text: yearReading });
-            await MayaUtils.sleep(800);
-        }
-        const warningIntro = await this.withFiller(() => this.generateDirectReadingSection('warningIntro', aiContext), 'thinking');
-        if (warningIntro) {
-            await this.speak(warningIntro);
-            await MayaUtils.sleep(300);
-        }
-        
-        let warning = null;
-        try {
-            if (window.MayaStatements?.getWarningReadingAI) {
-                warning = await this.withFiller(() => MayaStatements.getWarningReadingAI(numbers.lifePath, numbers.personalYear, this.firstName, aiContext), 'revealing');
-            }
-        } catch (e) {
-            console.warn('AI warning reading failed:', e.message);
-        }
-        if (!warning) {
-            warning = await this.withFiller(() => this.generateDirectReadingSection('warning', aiContext), 'revealing');
-        }
-        if (warning) {
-            await this.speak(warning);
-            await MayaUtils.sleep(1000);
-        }
-        
-        // COMPLETION - AI outro
+        // COMPLETION — AI outro
         let completionText = null;
         try {
             if (window.MayaStatements?.getCompletionOutro) {
@@ -3075,9 +4146,49 @@ RULES:
         
         // Fade out music
         this.fadeOutMusic();
+
+        // Return hook — leave an open thread for next session
+        await this.showReturnHook();
         
-        // Show chat interface
+        // Show chat interface with guided prompts
         this.showChatInterface();
+    },
+
+    /**
+     * Deliver a single deep reading chapter (love / career / year / warning)
+     */
+    async _deliverChapter(chapter, numbers, aiContext) {
+        const introSection = `${chapter}Intro`;
+        const intro = await this.withFiller(() => this.generateDirectReadingSection(introSection, aiContext), chapter === 'warning' ? 'thinking' : chapter);
+        if (intro) {
+            await this.speak(intro);
+            await MayaUtils.sleep(300);
+        }
+
+        let reading = null;
+        try {
+            if (chapter === 'love' && window.MayaStatements?.getLoveReadingAI) {
+                reading = await this.withFiller(() => MayaStatements.getLoveReadingAI(numbers.lifePath, numbers.soulUrge, this.firstName, aiContext), 'love');
+            } else if (chapter === 'career' && window.MayaStatements?.getCareerReadingAI) {
+                reading = await this.withFiller(() => MayaStatements.getCareerReadingAI(numbers.destiny, numbers.lifePath, this.firstName, aiContext), 'career');
+            } else if (chapter === 'year' && window.MayaStatements?.getYearReadingAI) {
+                reading = await this.withFiller(() => MayaStatements.getYearReadingAI(numbers.personalYear, this.buildPredictionItems(), this.firstName, aiContext), 'year');
+            } else if (chapter === 'warning' && window.MayaStatements?.getWarningReadingAI) {
+                reading = await this.withFiller(() => MayaStatements.getWarningReadingAI(numbers.lifePath, numbers.personalYear, this.firstName, aiContext), 'revealing');
+            }
+        } catch (e) {
+            console.warn(`AI ${chapter} reading failed:`, e.message);
+        }
+
+        if (!reading) {
+            reading = await this.withFiller(() => this.generateDirectReadingSection(chapter, aiContext), chapter === 'warning' ? 'revealing' : chapter);
+        }
+
+        if (reading) {
+            await this.speak(reading);
+            this.spokenNarrations.push({ stage: chapter, text: reading });
+            await MayaUtils.sleep(800);
+        }
     },
 
     /**
@@ -3089,26 +4200,54 @@ RULES:
         const blobContainer = document.getElementById('maya-blob-container');
         const overlay = document.getElementById('maya-overlay');
         
+        // Hide progress bar — chat mode doesn't need it
+        this.hideProgressMeter();
+        
         // Hide funnel controls (pause button)
         this.showFunnelControls(false);
         
-        // Remove funnel mode - show back/close buttons for chat
+        // Switch overlay to chat mode
         if (overlay) {
             overlay.classList.remove('funnel-mode');
+            overlay.classList.add('maya-overlay--chat');
         }
         
         if (blobContainer) {
             blobContainer.classList.remove('blob-centered');
             blobContainer.classList.add('blob-top');
+            blobContainer.classList.add('blob-chat-mini');
         }
         
         const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
         const isHindi = lang === 'hi';
 
+        // Build guided conversation chips (Screen 24 completion chips)
+        const chips = isHindi
+            ? [
+                { label: 'मेरा प्रेम पैटर्न', query: 'मेरे love और relationship patterns के बारे में detail में बताओ' },
+                { label: 'मेरे अगले 3 महीने', query: 'मेरे अगले 3 महीनों में क्या होने वाला है? Timing और events बताओ' },
+                { label: 'मेरी छिपी ताकत', query: 'मेरी सबसे बड़ी hidden strength क्या है जो मेरे numbers में दिखती है?' },
+                { label: 'मेरा सबसे बड़ा गलती पैटर्न', query: 'मेरा सबसे बड़ा repeating mistake pattern क्या है जो मुझे रोकता है?' }
+            ]
+            : [
+                { label: 'My Love Pattern', query: 'Tell me about my love and relationship patterns in detail' },
+                { label: 'My Next 3 Months', query: 'What is going to happen in my next 3 months? Tell me about timing and events' },
+                { label: 'My Hidden Strength', query: 'What is my biggest hidden strength that shows up in my numbers?' },
+                { label: 'My Biggest Mistake Pattern', query: 'What is my biggest repeating mistake pattern that holds me back?' }
+            ];
+
         if (textDisplay) {
             textDisplay.style.display = 'flex';
             textDisplay.classList.add('maya-chat-mode');
-            textDisplay.innerHTML = `<div class="maya-chat-messages" id="maya-chat-messages"></div>`;
+            textDisplay.innerHTML = `
+                <div class="maya-chat-messages" id="maya-chat-messages">
+                    <div class="maya-guided-chips" id="maya-guided-chips">
+                        ${chips.map(chip => `
+                            <button class="maya-chip-btn" data-query="${chip.query}">${chip.label}</button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
         }
         
         if (inputArea) {
@@ -3125,9 +4264,25 @@ RULES:
             if (!message) return;
             input.value = '';
             
+            // Hide chips after first interaction
+            const chipsContainer = document.getElementById('maya-guided-chips');
+            if (chipsContainer) chipsContainer.remove();
+
             this._addChatBubble('user', message);
             await this.handleUserQuestion(message);
         };
+
+        // Wire up guided chips
+        const chipsContainer = document.getElementById('maya-guided-chips');
+        if (chipsContainer) {
+            chipsContainer.querySelectorAll('.maya-chip-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    input.value = btn.dataset.query;
+                    chipsContainer.remove();
+                    handleSend();
+                });
+            });
+        }
 
         sendBtn?.addEventListener('click', handleSend);
         input?.addEventListener('keypress', (e) => {

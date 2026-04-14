@@ -12,6 +12,7 @@ const SCRIPT_SOURCES = [
   { src: `/js/numerology.js?v=${BUILD_STAMP}` },
   { src: `/js/astrology.js?v=${BUILD_STAMP}` },
   { src: `/js/kundli.js?v=${BUILD_STAMP}` },
+  { src: `/js/lalkitab-knowledge.js?v=${BUILD_STAMP}` },
   { src: `/js/horoscopeApi.js?v=${BUILD_STAMP}` },
   { src: `/js/ai.js?v=${BUILD_STAMP}` },
   { src: `/js/voice.js?v=${BUILD_STAMP}` },

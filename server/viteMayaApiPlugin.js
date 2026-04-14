@@ -44,9 +44,12 @@ function writeResult(res, result) {
 async function handleRequest(req, res, handler) {
   try {
     const payload = await readJsonBody(req);
+    console.log('[TTS DEBUG] payload keys:', Object.keys(payload), 'text length:', (payload.text || '').length, 'voiceId:', payload.voiceId || '(none)');
     const result = await handler(payload, process.env);
+    console.log('[TTS DEBUG] result status:', result.status, 'isBinary:', result.isBinary);
     writeResult(res, result);
   } catch (error) {
+    console.error('[TTS DEBUG] handleRequest caught error:', error.message);
     writeResult(res, {
       status: 400,
       body: { error: error.message || 'Request failed' },

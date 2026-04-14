@@ -1107,44 +1107,213 @@ const MayaKundli = {
     calculateYogas(planets, ascendantSign) {
         const yogas = [];
         const signs = MAYA_CONFIG.ZODIAC.SIGNS;
-        
-        // Check for common yogas
+        const signIndex = (signName) => signs.findIndex(s => s === signName);
+        const signGap = (a, b) => ((signIndex(a) - signIndex(b) + 12) % 12);
+
         const planetPositions = {};
+        const planetDegrees = {};
         planets.forEach(p => {
             planetPositions[p.name] = p.sign.name;
+            planetDegrees[p.name] = p.degree;
         });
 
-        // Gaja Kesari Yoga (Jupiter in kendra from Moon)
+        const kendraGaps = [0, 3, 6, 9]; // 1st, 4th, 7th, 10th
+        const trikonaGaps = [0, 4, 8]; // 1st, 5th, 9th
+
+        // Gaja Kesari Yoga — Jupiter in kendra (1,4,7,10) from Moon
         if (planetPositions['Jupiter'] && planetPositions['Moon']) {
+            const gap = signGap(planetPositions['Jupiter'], planetPositions['Moon']);
+            if (kendraGaps.includes(gap)) {
+                yogas.push({
+                    name: 'गजकेसरी योग',
+                    hindi: 'गजकेसरी योग',
+                    description: `Jupiter (${planetPositions['Jupiter']}) in kendra from Moon (${planetPositions['Moon']}) - wisdom, respect, financial stability`,
+                    strength: gap === 0 ? 'Very Strong' : 'Strong'
+                });
+            }
+        }
+
+        // Budha Aditya Yoga — Sun-Mercury same sign
+        if (planetPositions['Sun'] && planetPositions['Mercury'] && planetPositions['Sun'] === planetPositions['Mercury']) {
+            const sunDeg = planetDegrees['Sun'] || 0;
+            const mercDeg = planetDegrees['Mercury'] || 0;
+            const orb = Math.abs(sunDeg - mercDeg);
+            // Combust Mercury (within ~5°) weakens the yoga
+            const strength = orb < 5 ? 'Weak (combust)' : orb < 12 ? 'Strong' : 'Medium';
             yogas.push({
-                name: 'Gaja Kesari Yoga',
-                hindi: 'गज केसरी योग',
-                description: 'Jupiter and Moon in favorable positions - brings wisdom, wealth and fame',
-                strength: 'Strong'
+                name: 'बुधादित्य योग',
+                hindi: 'बुधादित्य योग',
+                description: `Sun-Mercury conjunction in ${planetPositions['Sun']} (${orb.toFixed(1)}° apart) - sharp intellect, communication skill`,
+                strength
             });
         }
 
-        // Budha Aditya Yoga (Sun-Mercury conjunction)
-        if (planetPositions['Sun'] === planetPositions['Mercury']) {
+        // Chandra Mangal Yoga — Moon-Mars same sign
+        if (planetPositions['Moon'] && planetPositions['Mars'] && planetPositions['Moon'] === planetPositions['Mars']) {
             yogas.push({
-                name: 'Budha Aditya Yoga',
-                hindi: 'बुध आदित्य योग',
-                description: 'Sun-Mercury conjunction - intelligence, communication skills, success in education',
+                name: 'चन्द्र मंगल योग',
+                hindi: 'चन्द्र मंगल योग',
+                description: `Moon-Mars conjunction in ${planetPositions['Moon']} - strong willpower, wealth through effort`,
                 strength: 'Medium'
             });
         }
 
-        // Chandra Mangal Yoga
-        if (planetPositions['Moon'] === planetPositions['Mars']) {
-            yogas.push({
-                name: 'Chandra Mangal Yoga',
-                hindi: 'चंद्र मंगल योग',
-                description: 'Moon-Mars conjunction - wealth through business, strong willpower',
-                strength: 'Medium'
-            });
+        // Hamsa Yoga — Jupiter in kendra from Ascendant in own/exaltation sign
+        if (ascendantSign && planetPositions['Jupiter']) {
+            const jupSign = planetPositions['Jupiter'];
+            const jupKendra = kendraGaps.includes(signGap(jupSign, ascendantSign));
+            const jupStrong = ['Sagittarius', 'Pisces', 'Cancer'].includes(jupSign);
+            if (jupKendra && jupStrong) {
+                yogas.push({
+                    name: 'हंस योग',
+                    hindi: 'हंस योग',
+                    description: `Jupiter in ${jupSign} (own/exalted) in kendra from lagna - spirituality, fortune, noble character`,
+                    strength: 'Strong'
+                });
+            }
         }
 
-        // Add default if no yogas found
+        // Malavya Yoga — Venus in kendra from Ascendant in own/exaltation sign
+        if (ascendantSign && planetPositions['Venus']) {
+            const venSign = planetPositions['Venus'];
+            const venKendra = kendraGaps.includes(signGap(venSign, ascendantSign));
+            const venStrong = ['Taurus', 'Libra', 'Pisces'].includes(venSign);
+            if (venKendra && venStrong) {
+                yogas.push({
+                    name: 'मालव्य योग',
+                    hindi: 'मालव्य योग',
+                    description: `Venus in ${venSign} (own/exalted) in kendra - luxury, beauty, artistic talent, strong relationships`,
+                    strength: 'Strong'
+                });
+            }
+        }
+
+        // Ruchaka Yoga — Mars in kendra from Ascendant in own/exaltation sign
+        if (ascendantSign && planetPositions['Mars']) {
+            const marsSign = planetPositions['Mars'];
+            const marsKendra = kendraGaps.includes(signGap(marsSign, ascendantSign));
+            const marsStrong = ['Aries', 'Scorpio', 'Capricorn'].includes(marsSign);
+            if (marsKendra && marsStrong) {
+                yogas.push({
+                    name: 'रुचक योग',
+                    hindi: 'रुचक योग',
+                    description: `Mars in ${marsSign} (own/exalted) in kendra - courage, leadership, victory over enemies`,
+                    strength: 'Strong'
+                });
+            }
+        }
+
+        // Bhadra Yoga — Mercury in kendra from Ascendant in own/exaltation sign
+        if (ascendantSign && planetPositions['Mercury']) {
+            const mercSign = planetPositions['Mercury'];
+            const mercKendra = kendraGaps.includes(signGap(mercSign, ascendantSign));
+            const mercStrong = ['Gemini', 'Virgo'].includes(mercSign);
+            if (mercKendra && mercStrong) {
+                yogas.push({
+                    name: 'भद्र योग',
+                    hindi: 'भद्र योग',
+                    description: `Mercury in ${mercSign} (own/exalted) in kendra - sharp mind, business success, eloquence`,
+                    strength: 'Strong'
+                });
+            }
+        }
+
+        // Shasha Yoga — Saturn in kendra from Ascendant in own/exaltation sign
+        if (ascendantSign && planetPositions['Saturn']) {
+            const satSign = planetPositions['Saturn'];
+            const satKendra = kendraGaps.includes(signGap(satSign, ascendantSign));
+            const satStrong = ['Capricorn', 'Aquarius', 'Libra'].includes(satSign);
+            if (satKendra && satStrong) {
+                yogas.push({
+                    name: 'शश योग',
+                    hindi: 'शश योग',
+                    description: `Saturn in ${satSign} (own/exalted) in kendra - authority, discipline, lasting success`,
+                    strength: 'Strong'
+                });
+            }
+        }
+
+        // Neecha Bhanga Raja Yoga — debilitated planet with cancellation
+        const debilitationSigns = { Sun: 'Libra', Moon: 'Scorpio', Mars: 'Cancer', Mercury: 'Pisces', Jupiter: 'Capricorn', Venus: 'Virgo', Saturn: 'Aries' };
+        const exaltationSigns = { Sun: 'Aries', Moon: 'Taurus', Mars: 'Capricorn', Mercury: 'Virgo', Jupiter: 'Cancer', Venus: 'Pisces', Saturn: 'Libra' };
+        const signLords = { Aries: 'Mars', Taurus: 'Venus', Gemini: 'Mercury', Cancer: 'Moon', Leo: 'Sun', Virgo: 'Mercury', Libra: 'Venus', Scorpio: 'Mars', Sagittarius: 'Jupiter', Capricorn: 'Saturn', Aquarius: 'Saturn', Pisces: 'Jupiter' };
+
+        for (const [planet, debSign] of Object.entries(debilitationSigns)) {
+            if (planetPositions[planet] === debSign) {
+                // Check if lord of debilitation sign is in kendra from Ascendant
+                const lord = signLords[debSign];
+                if (lord && planetPositions[lord] && ascendantSign) {
+                    const lordGap = signGap(planetPositions[lord], ascendantSign);
+                    if (kendraGaps.includes(lordGap)) {
+                        yogas.push({
+                            name: 'नीचभंग राजयोग',
+                            hindi: 'नीचभंग राजयोग',
+                            description: `${planet} debilitated in ${debSign} but ${lord} (sign lord) in kendra cancels it - rise after struggles, unexpected success`,
+                            strength: 'Strong'
+                        });
+                        break; // only report first occurrence
+                    }
+                }
+            }
+        }
+
+        // Dhana Yoga — lords of 2nd and 11th related
+        if (ascendantSign) {
+            const houseSignIndex = (houseNum) => (signIndex(ascendantSign) + houseNum - 1) % 12;
+            const secondSign = signs[houseSignIndex(2)];
+            const eleventhSign = signs[houseSignIndex(11)];
+            const lord2 = signLords[secondSign];
+            const lord11 = signLords[eleventhSign];
+            if (lord2 && lord11 && planetPositions[lord2] && planetPositions[lord11] && planetPositions[lord2] === planetPositions[lord11]) {
+                yogas.push({
+                    name: 'धन योग',
+                    hindi: 'धन योग',
+                    description: `2nd lord (${lord2}) and 11th lord (${lord11}) conjoined in ${planetPositions[lord2]} - strong wealth potential`,
+                    strength: 'Medium'
+                });
+            }
+        }
+
+        // Viparita Raja Yoga — lords of 6th, 8th, 12th in each other's houses
+        if (ascendantSign) {
+            const houseSignIndex = (houseNum) => (signIndex(ascendantSign) + houseNum - 1) % 12;
+            const lord6 = signLords[signs[houseSignIndex(6)]];
+            const lord8 = signLords[signs[houseSignIndex(8)]];
+            const lord12 = signLords[signs[houseSignIndex(12)]];
+            const dusthanaLords = [lord6, lord8, lord12].filter(Boolean);
+            const dusthanaSigns = [signs[houseSignIndex(6)], signs[houseSignIndex(8)], signs[houseSignIndex(12)]];
+            for (const lord of dusthanaLords) {
+                if (planetPositions[lord] && dusthanaSigns.includes(planetPositions[lord]) && planetPositions[lord] !== signs[houseSignIndex(dusthanaLords.indexOf(lord) === 0 ? 6 : dusthanaLords.indexOf(lord) === 1 ? 8 : 12)]) {
+                    yogas.push({
+                        name: 'विपरीत राजयोग',
+                        hindi: 'विपरीत राजयोग',
+                        description: `Dusthana lord ${lord} placed in another dusthana house - gain through adversity, hidden blessings`,
+                        strength: 'Medium'
+                    });
+                    break;
+                }
+            }
+        }
+
+        // Kemadruma Yoga (negative) — Moon with no planets in 2nd or 12th from it
+        if (planetPositions['Moon']) {
+            const moonIdx = signIndex(planetPositions['Moon']);
+            const adjSigns = [signs[(moonIdx + 1) % 12], signs[(moonIdx + 11) % 12]];
+            const adjPlanets = planets.filter(p => p.name !== 'Moon' && p.name !== 'Rahu' && p.name !== 'Ketu' && adjSigns.includes(p.sign.name));
+            if (adjPlanets.length === 0) {
+                // Check cancellation: planet in kendra from Moon or Lagna
+                const moonKendraPlanets = planets.filter(p => p.name !== 'Moon' && p.name !== 'Rahu' && p.name !== 'Ketu' && kendraGaps.includes(signGap(p.sign.name, planetPositions['Moon'])));
+                if (moonKendraPlanets.length === 0) {
+                    yogas.push({
+                        name: 'केमद्रुम योग',
+                        hindi: 'केमद्रुम योग',
+                        description: `Moon isolated in ${planetPositions['Moon']} with no support - periods of emotional loneliness, financial fluctuations`,
+                        strength: 'Challenging'
+                    });
+                }
+            }
+        }
+
         if (yogas.length === 0) {
             yogas.push({
                 name: 'Analyzing...',

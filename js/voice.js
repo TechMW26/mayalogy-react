@@ -208,15 +208,15 @@ const MayaVoice = {
                 "बस, इस pattern को trace कर रही हूँ।",
                 "अभी, कुछ interesting दिख रहा है।",
                 "ये dots connect करने दीजिए मुझे।",
-                "आपकी कुंडली काफ़ी गहरी है, एक पल।",
+                "आपकी कुंडली काफी गहरी है, एक पल।",
                 "दशा timeline cross-check कर रही हूँ।",
-                "अच्छा, ये तो काफ़ी दिलचस्प है।",
+                "अच्छा, ये तो काफी दिलचस्प है।",
                 "एक और angle देख लेती हूँ।",
                 "बस एक detail verify हो जाए।",
                 "आज आपकी कुंडली में बहुत कुछ चल रहा है।",
                 "मैं ठीक से देखना चाहती हूँ।",
-                "आपके ग्रह काफ़ी कहानी बता रहे हैं।",
-                "कई चीज़ें एक साथ align हो रही हैं।",
+                "आपके ग्रह काफी कुछ बता रहे हैं।",
+                "कई चीजें एक साथ align हो रही हैं।",
                 "इसे ध्यान से पढ़ती हूँ।"
             ],
             calculating: [
@@ -237,30 +237,30 @@ const MayaVoice = {
                 "हर अंक यहाँ मायने रखता है।"
             ],
             revealing: [
-                "ये हिस्सा ज़रूरी है, ध्यान से सुनिए।",
+                "ये हिस्सा जरूरी है, ध्यान से सुनिए।",
                 "अब सुनिए, आपकी कुंडली असल में क्या कह रही है।",
-                "इस बात पर ग़ौर कीजिए।",
+                "इस बात पर ध्यान दीजिए।",
                 "अब बात personal होने वाली है।",
                 "जो deeper layer में मिला, वो share करती हूँ।",
                 "ये अगला हिस्सा बहुत matter करता है।",
-                "असली तस्वीर अब बन रही है।",
-                "ये वो बात है जो ज़्यादातर लोग miss करते हैं।",
+                "असली picture अब बन रही है।",
+                "ये वो बात है जो ज्यादातर लोग miss करते हैं।",
                 "अभी कुछ बहुत specific बताने वाली हूँ।",
                 "सुनिए, ये सीधा आपकी कुंडली से बोल रही हूँ।",
                 "ये detail सबको नहीं मिलती।",
                 "ये हिस्सा शायद आपको surprise करे।",
                 "ये बात मैं हर किसी को नहीं कहती।",
-                "ध्यान दीजिए, ये सिर्फ़ आपके लिए है।",
+                "ध्यान दीजिए, ये सिर्फ आपके लिए है।",
                 "अब important part आ रहा है।"
             ],
             love: [
                 "आपका शुक्र कुछ बता रहा है।",
-                "सातवें भाव को ग़ौर से देखती हूँ।",
-                "आपका relationship karma काफ़ी clear है।",
-                "आपकी heart line काफ़ी strong है।",
+                "सातवें भाव को ध्यान से देखती हूँ।",
+                "आपका relationship karma काफी clear है।",
+                "आपकी heart line काफी strong है।",
                 "मैं देख सकती हूँ आप कैसे प्यार करते हैं।",
                 "आपका emotional blueprint बहुत specific है।",
-                "romantic timing में कुछ ख़ास दिख रहा है।",
+                "romantic timing में कुछ खास दिख रहा है।",
                 "partnership का angle पढ़ रही हूँ।"
             ],
             career: [
@@ -270,7 +270,7 @@ const MayaVoice = {
                 "wealth houses आपकी कुंडली में active हैं।",
                 "आपका work pattern मुझे clear दिख रहा है।",
                 "career path में एक unique signature है।",
-                "पैसों के ग्रह interesting तरीक़े से बैठे हैं।",
+                "पैसों के ग्रह interesting तरीके से बैठे हैं।",
                 "professional destiny को देखती हूँ।"
             ],
             year: [
@@ -286,7 +286,7 @@ const MayaVoice = {
             kundli: [
                 "आपकी birth chart के भाव shape ले रहे हैं।",
                 "लग्न सब कुछ की foundation set करता है।",
-                "हर भाव आपकी ज़िंदगी का अलग chapter है।",
+                "हर भाव आपकी जिंदगी का अलग chapter है।",
                 "हर ग्रह कहाँ बैठा है, map कर रही हूँ।",
                 "आपकी कुंडली का pattern काफ़ी distinctive है।",
                 "लग्न कुंडली बहुत कुछ reveal करती है।",
@@ -362,8 +362,7 @@ const MayaVoice = {
 
     /**
      * Wrapper for AI generation that speaks fillers naturally while waiting.
-     * Speaks 1 filler immediately, then waits 4-7s before the next.
-     * Max 3 fillers per wait to avoid sounding robotic.
+     * Speaks at most 1 filler while waiting. Kept to 1 to avoid random mid-flow speech.
      */
     async withFillers(asyncFn, options = {}) {
         const type = options.type || 'thinking';
@@ -372,24 +371,16 @@ const MayaVoice = {
         let done = false;
         const resultPromise = asyncFn().finally(() => { done = true; });
 
-        // Speak fillers with natural, varied pacing
+        // Speak at most ONE filler to avoid sounding random
         const fillerLoop = async () => {
-            let count = 0;
-            const maxFillers = 3;
-            while (!done && count < maxFillers) {
-                const phrase = this.getRandomFiller(type);
-                if (!phrase) break;
-                try {
-                    await this.speak(phrase);
-                } catch (e) { /* non-critical */ }
-                count++;
-                if (done || count >= maxFillers) break;
-                // Natural pause: 4–7 seconds (randomised) between fillers
-                const gap = 4000 + Math.floor(Math.random() * 3000);
-                await new Promise(r => setTimeout(r, gap));
-            }
+            if (done) return;
+            const phrase = this.getRandomFiller(type);
+            if (!phrase) return;
+            try {
+                await this.speak(phrase);
+            } catch (e) { /* non-critical */ }
         };
-        fillerLoop(); // fire-and-forget loop
+        fillerLoop(); // fire-and-forget
 
         return await resultPromise;
     },

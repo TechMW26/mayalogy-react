@@ -9,6 +9,34 @@ const MayaOnboarding = {
     userData: {},
     isComplete: false,
     locationOutsideHandler: null,
+
+    // Ritual voice lines spoken at each onboarding step (micro-confirmations)
+    ritualVoiceLines: {
+        language: {
+            en: null, // No voice before language is chosen
+            hi: null
+        },
+        welcome: {
+            en: "Good. Let me note that down.",
+            hi: "अच्छा। लिख लेती हूँ।"
+        },
+        gender: {
+            en: "Noted.",
+            hi: "ठीक है।"
+        },
+        birthDate: {
+            en: "This is where your visible timeline begins.",
+            hi: "यहीं से आपकी timeline शुरू होती है।"
+        },
+        birthTime: {
+            en: "This helps me see your chart more clearly.",
+            hi: "इससे chart और साफ़ दिखेगा।"
+        },
+        birthPlace: {
+            en: "I have what I need. Let me begin.",
+            hi: "जो चाहिए था, मिल गया। शुरू करती हूँ।"
+        }
+    },
     
     // Funnel State Keys
     STORAGE_KEYS: {
@@ -23,6 +51,7 @@ const MayaOnboarding = {
         of: { en: 'of', hi: 'में से' },
         back: { en: 'Back', hi: 'वापस' },
         continue: { en: 'Continue', hi: 'आगे बढ़ें' },
+        openMyChart: { en: 'Open My Chart', hi: 'मेरी कुंडली खोलें' },
         unknownBirthTime: { en: "I don't know my birth time", hi: 'मुझे अपना जन्म समय नहीं पता' },
         confirmReveal: { en: 'Yes, tell me!', hi: 'हाँ, बताइए!' },
         existingAccount: { en: 'Already have an account?', hi: 'क्या आपका पहले से अकाउंट है?' },
@@ -57,8 +86,8 @@ const MayaOnboarding = {
         },
         {
             id: 'welcome',
-            question: "Namaste! I'm MAYA, your personal astrology guide. What name should I call you by?",
-            questionHi: "नमस्ते! मैं माया हूं। मैं आपको किस नाम से बुलाऊं?",
+            question: "What name should I use when I read your chart?",
+            questionHi: "मैं आपकी chart पढ़ते समय आपको किस नाम से बुलाऊँ?",
             field: 'name',
             type: 'text',
             placeholder: 'Enter your name',
@@ -67,8 +96,8 @@ const MayaOnboarding = {
         },
         {
             id: 'gender',
-            question: (name) => `Nice to meet you, ${name}! What's your gender?`,
-            questionHi: (name) => `${name}, आपसे मिलकर खुशी हुई! आपका लिंग क्या है?`,
+            question: (name) => `${name}, I want to speak to you correctly and personally. What's your gender?`,
+            questionHi: (name) => `${name}, मैं आपसे सही और personal तरीके से बात करना चाहती हूँ। आपका लिंग क्या है?`,
             field: 'gender',
             type: 'select',
             options: [
@@ -80,8 +109,8 @@ const MayaOnboarding = {
         },
         {
             id: 'birthDate',
-            question: "What's your date of birth?",
-            questionHi: "आपकी जन्म तिथि क्या है?",
+            question: "This is where your visible timeline begins. What's your date of birth?",
+            questionHi: "यहीं से आपकी timeline शुरू होती है। आपकी जन्म तिथि क्या है?",
             field: 'birthDate',
             type: 'date',
             validation: (value) => value && value.length > 0
@@ -98,8 +127,8 @@ const MayaOnboarding = {
         },
         {
             id: 'birthPlace',
-            question: "Where were you born?",
-            questionHi: "आप कहां पैदा हुए थे?",
+            question: "Place matters. It changes how the sky was arranged around you. Where were you born?",
+            questionHi: "जगह मायने रखती है। इससे आसमान की स्थिति बदलती है। आप कहाँ पैदा हुए थे?",
             field: 'birthPlace',
             type: 'location',
             placeholder: 'Enter your birth city',
@@ -224,8 +253,59 @@ const MayaOnboarding = {
     async start() {
         console.log('📝 MayaOnboarding.start() called');
         this.init();
-        console.log('📝 init done, calling showStep');
-        this.showStep(this.currentStep);
+        console.log('📝 init done');
+
+        // Show pre-funnel landing if user hasn't seen any step yet
+        if (this.currentStep === 0 && !MayaUtils.storage.get('maya_landing_seen')) {
+            await this.showLandingScreen();
+        } else {
+            this.showStep(this.currentStep);
+        }
+    },
+
+    /**
+     * Show pre-funnel landing screen (Screen 1)
+     * Cosmic gradient, headline, subtext, "Begin My Reading" button, voice line
+     */
+    async showLandingScreen() {
+        const container = document.getElementById('onboardingContent');
+        if (!container) return;
+
+        // Hide progress bar on landing
+        const progressBar = document.querySelector('.onboarding-progress');
+        if (progressBar) progressBar.style.display = 'none';
+
+        container.innerHTML = `
+            <div class="maya-landing-screen text-center">
+                <div class="landing-visual">
+                    <div class="landing-glow"></div>
+                    <img src="/images/maya-logo.png" alt="Mayalogy" class="landing-logo-img">
+                </div>
+                <h2 class="landing-headline">Open Your Personal<br>Astrology Reading</h2>
+                <p class="landing-subtext">Your birth chart holds patterns most people never see.<br>MAYA will read yours — live, in her own voice.</p>
+                <button type="button" class="btn btn-primary btn-lg landing-begin-btn" id="landingBeginBtn">
+                    Begin My Reading
+                </button>
+            </div>
+        `;
+
+        // Speak landing voice line
+        try {
+            if (window.MayaVoice?.speak) {
+                MayaVoice.speak("Your birth chart holds patterns most people never see. Let me read yours.");
+            } else if (window.MayaFunnel?.speak) {
+                MayaFunnel.speak("Your birth chart holds patterns most people never see. Let me read yours.");
+            }
+        } catch (e) {
+            console.warn('Landing voice line failed:', e.message);
+        }
+
+        document.getElementById('landingBeginBtn').addEventListener('click', () => {
+            MayaUtils.storage.set('maya_landing_seen', true);
+            // Restore progress bar
+            if (progressBar) progressBar.style.display = '';
+            this.showStep(0);
+        });
     },
 
     /**
@@ -374,7 +454,7 @@ const MayaOnboarding = {
                 ` : ''}
                 ${step.type === 'text' || step.type === 'date' || step.type === 'time' || step.type === 'location' ? `
                     <button type="button" class="btn btn-primary" id="nextStepBtn">
-                        ${this.t('continue')}
+                        ${step.id === 'birthPlace' ? this.t('openMyChart') : this.t('continue')}
                     </button>
                 ` : ''}
             </div>
@@ -753,6 +833,10 @@ const MayaOnboarding = {
         console.log('User data after step:', this.userData);
         
         this.saveProgress();
+
+        // Speak ritual micro-confirmation before advancing
+        await this.speakRitualLine(step.id);
+
         this.currentStep++;
         
         if (this.currentStep < this.steps.length) {
@@ -763,9 +847,29 @@ const MayaOnboarding = {
     },
 
     /**
+     * Speak a ritual micro-confirmation voice line after a step is completed.
+     */
+    async speakRitualLine(stepId) {
+        const isHindi = this.isHindiUI();
+        const lines = this.ritualVoiceLines[stepId];
+        if (!lines) return;
+        const line = isHindi ? lines.hi : lines.en;
+        if (!line) return;
+        try {
+            if (window.MayaVoice?.speak) {
+                await MayaVoice.speak(line);
+            } else if (window.MayaFunnel?.speak) {
+                await MayaFunnel.speak(line);
+            }
+        } catch (e) {
+            console.warn('Ritual voice line failed:', e.message);
+        }
+    },
+
+    /**
      * Handle selection
      */
-    handleSelection(step, value) {
+    async handleSelection(step, value) {
         if (step.field) {
             this.userData[step.field] = value;
             
@@ -785,6 +889,10 @@ const MayaOnboarding = {
         console.log('User data after selection:', this.userData);
         
         this.saveProgress();
+
+        // Speak ritual micro-confirmation before advancing
+        await this.speakRitualLine(step.id);
+
         this.currentStep++;
         
         if (this.currentStep < this.steps.length) {

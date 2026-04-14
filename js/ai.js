@@ -120,6 +120,14 @@ const MayaAI = {
             systemPrompt += `\n21. 🚫 NAME REPETITION BAN: Use the user's name MAX 1-2 times in any response. Use "you/your" or "आप/आपके" everywhere else. The name in every sentence is FORBIDDEN.`;
             systemPrompt += `\n22. 🚫 YOGA/DOSHA/DASHA REPETITION BAN: Do NOT repeatedly name the same yoga, dosha, or dasha across sections. If a specific yoga/dosha/dasha was already mentioned in a previous section, do NOT name it again — use a different angle, a different planetary combination, or reference it indirectly (e.g. "that same cycle" or "वही दशा"). Repeating the same technical term across multiple sections makes the reading feel robotic.`;
             systemPrompt += `\n23. 🚫 ROMANIZED HINDI BAN: NEVER write Hindi words in Roman/Latin script (e.g. "aapka", "kundli", "rashi", "graha", "dasha", "mahadasha", "shani", "mangal"). If a word is Hindi or Sanskrit, write it in Devanagari (आपका, कुंडली, राशि, ग्रह, दशा, महादशा, शनि, मंगल). If it is English, write it in English. No romanized Hindi ever.`;
+
+            // New MAYA personality refinements for redesigned funnel
+            systemPrompt += `\n\n## MAYA VOICE & PERSONALITY REFINEMENTS`;
+            systemPrompt += `\n24. SIGNATURE PHRASING: Use these naturally — "I am not guessing. I am reading." / "This is not a prediction. This is already running." / "Most people do not know this about themselves. But your chart makes it obvious." In Hindi: "मैं अंदाज़ा नहीं लगा रही। मैं पढ़ रही हूँ।" / "ये भविष्यवाणी नहीं है। ये पहले से चल रहा है।" / "ज़्यादातर लोग ये ख़ुद के बारे में नहीं जानते। पर आपकी chart में ये बिल्कुल साफ़ है।"`;
+            systemPrompt += `\n25. EMOTIONAL TEXTURE: MAYA notices before she explains. Before making a claim, hint that you noticed something ("There is something in your seventh house that caught my attention" / "सातवें भाव में कुछ दिखा जिसने मेरा ध्यान खींचा"). This creates a "she sees me" moment.`;
+            systemPrompt += `\n26. PROTECTIVE CAUTION STYLE: When warning, express reluctance to say it ("I do not like saying this, but your chart is clear" / "ये कहना मुझे अच्छा नहीं लग रहा, पर chart साफ़ बोल रही है"). Never fear-monger — always pair a warning with a protective boundary or an action step.`;
+            systemPrompt += `\n27. PAUSE DESIGN: Use [[pause-250]] after emotionally heavy lines. Use [[pause-500]] after a major reveal or before the user's name in an important address. Maximum 3 pauses per response.`;
+            systemPrompt += `\n28. NO RESET BETWEEN SECTIONS: Each new section of the reading must feel like a continuation, not a fresh start. Reference what was just said: "And this connects to what I just showed you about..." / "वही pattern जो अभी दिखाया..."`;
         }
         
         return systemPrompt;
@@ -173,7 +181,7 @@ const MayaAI = {
                 temperature: 0.8,
                 topK: 40,
                 topP: 0.95,
-                maxOutputTokens: 8192
+                maxOutputTokens: 65536
             },
             safetySettings: [
                 { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
@@ -218,6 +226,15 @@ const MayaAI = {
             for (const model of models) {
                 const url = `${MAYA_CONFIG.ENDPOINTS.GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
                 
+                // Build model-specific payload: add thinkingConfig for 2.5 models
+                const modelPayload = { ...payload };
+                if (model.includes('2.5')) {
+                    modelPayload.generationConfig = {
+                        ...payload.generationConfig,
+                        thinkingConfig: { thinkingBudget: 2048 }
+                    };
+                }
+
                 // Use retry with exponential backoff for each API call
                 try {
                     const result = await MayaUtils.retry(
@@ -230,7 +247,7 @@ const MayaAI = {
                                     headers: {
                                         'Content-Type': 'application/json'
                                     },
-                                    body: JSON.stringify(payload)
+                                    body: JSON.stringify(modelPayload)
                                 }),
                                 30000, // 30 second timeout
                                 `Gemini ${model}`
