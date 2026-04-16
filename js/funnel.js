@@ -1517,6 +1517,7 @@ RULES:
             ? {
                 opening: 'Act 1. Invitation phase. ऐसा लगे जैसे एक sealed personal file खुल रही है. सिर्फ पहला hard clue दीजिए, पूरा verdict नहीं। आखिर में ऐसा thread छोड़िए जो kundli layer की तरफ खींचे।',
                 kundli: 'Act 2. Chart structure phase. ऐसे बोलिए जैसे chart live trace हो रहा है. Ascendant, चंद्र राशि, दशा, या planetary clustering से life structure दिखाइए, और numbers की तरफ unresolved handoff दीजिए।',
+                numbersReveal: 'Act 2b. Numbers revelation phase. तीनों numbers (Life Path, Destiny, Soul Urge) अभी-अभी calculate हुए हैं। पहले kundli/chart data को PRIMARY reference रखते हुए बताइए कि chart में क्या दिखा, फिर numbers को secondary confirmation की तरह जोड़िए — "और numbers भी यही बोल रहे हैं"। ये chart + numbers का combined revelation है। 5-7 वाक्य।',
                 identityTruth: 'Teaser segment 1. एक grounded identity observation — "आप ऐसे इंसान हैं जो..." format में। Pattern-based, flattery-free।',
                 emotionalPattern: 'Teaser segment 2. एक emotional pattern जो user daily जीता है — ऐसा कुछ जो उन्हें inside-out describe करे।',
                 unresolvedThread: 'Teaser segment 3. एक open loop — ऐसा unresolved thread जो naturally resolution माँगे और user को आगे सुनने पर मजबूर करे।',
@@ -1543,6 +1544,7 @@ RULES:
             : {
                 opening: 'Act 1. Invitation phase. Sound like a sealed personal file is being opened. Give only the first hard clue, not the whole verdict, and leave a thread that pulls naturally into the kundli layer.',
                 kundli: 'Act 2. Chart-structure phase. Speak as if the chart is being traced live. Use ascendant, moon sign, dasha, or planetary clustering to show the structure of the life, then leave an unresolved handoff toward the numbers.',
+                numbersReveal: 'Act 2b. Numbers revelation phase. All three numbers (Life Path, Destiny, Soul Urge) have just been calculated. Lead with KUNDLI/CHART data as the PRIMARY reference — what the chart is showing — then weave numbers in as secondary confirmation ("and the numbers are saying the same thing"). This is a combined chart + numbers revelation. 5-7 sentences.',
                 identityTruth: 'Teaser segment 1. A grounded identity observation — "You are someone who..." format. Pattern-based, flattery-free.',
                 emotionalPattern: 'Teaser segment 2. An emotional pattern the user lives with daily — something that describes them from the inside out.',
                 unresolvedThread: 'Teaser segment 3. An open loop — an unresolved thread that naturally demands resolution and compels the user to keep listening.',
@@ -1639,13 +1641,14 @@ RULES:
             : `${temporalRules}\n\nUser gender: ${genderLabel}\n\nNumerology:\n- Life Path: ${numbers.lifePath || 'unknown'}\n- Destiny: ${numbers.destiny || 'unknown'}\n- Soul Urge: ${numbers.soulUrge || 'unknown'}\n- Personal Year: ${numbers.personalYear || 'unknown'}\n\n${chartFacts}${timingHints ? `\nTiming hints: ${timingHints}` : ''}${userSelections ? `\n\n## USER RESPONSES (use these to PERSONALISE)\n${userSelections}\nIMPORTANT: The user answered the questions above. These reveal their real life situation. Your reading MUST be directly shaped by these answers — if user chose "harder truth", be filterless; if they said "not_fully" about career, address career dissatisfaction; if they confirmed a repeating mistake, name and explain that pattern.` : ''}\n\nIMPORTANT: Use the EXACT planetary positions, dasha periods, and house analysis given above to make SPECIFIC predictions. Reference the actual planet names, signs, degrees, and dasha transition years. For example: "Saturn in Pisces at 14.2° combined with your Rahu dasha starting 2019 means that in 2020-2021..." This makes predictions feel personally calculated. Do NOT give vague generic predictions. Every claim must trace back to a specific chart fact above.\nIf planet-in-house analysis data is provided above, weave those effects naturally into your reading — reference the remedies, benefic/malefic effects, and specific rules for the user's planetary placements. Do NOT mention the source name or any book title — just present these insights as part of your own Vedic reading seamlessly.`;
 
         const sharedRules = isHindi
-            ? `Rules:\n- सिर्फ उन्हीं patterns पर बात करें जो ऊपर दिए facts से support होते हैं।\n- एक strength और एक friction point दोनों बताइए।\n- अगर संकेत mixed हैं, तो mixed ही कहिए।\n- western zodiac, vedic moon sign, और ascendant को कभी mix मत कीजिए। अगर इनमें से कुछ mention करें, तो label साफ रखें।\n- "आप powerful हैं", "success आ रहा है", "greatness तय है" जैसी default praise मत दीजिए।\n- love, money, marriage, fame, victory, या breakthroughs के guarantees मत दीजिए।\n- psychic, energy reading, mind reading, या vague spirituality का दावा मत कीजिए।\n- वही न कहिए जो बहुत users पर equally fit हो सकता है।\n- user का नाम हमेशा Devanagari (हिन्दी लिपि) में लिखिए, Roman script में नहीं। उदाहरण: Rahul → राहुल, Priya → प्रिया, Aviraj → अविराज। यह TTS pronunciation के लिए जरूरी है।\n- 🚫 नाम ज्यादा बार मत दोहराइए। पूरे response में user का नाम MAX 1-2 बार ही use कीजिए। बाकी जगह "आप", "आपके", "आपकी" use कीजिए। हर sentence में नाम repeat करना FORBIDDEN है।\n- 🚫 WORD REPETITION BAN: एक ही शब्द या phrase लगातार 2 sentences में repeat मत कीजिए। Synonyms use कीजिए। जैसे: "energy" → "ऊर्जा/ताकत/vibe", "pattern" → "ढंग/तरीका/cycle", "strong" → "मजबूत/powerful/deep"। Back-to-back same word = BAD.\n- 🚫 YOGA/DOSHA/DASHA REPETITION BAN: एक ही yoga, dosha, या dasha का नाम बार-बार अलग-अलग sections में मत दोहराइए। अगर पहले किसी section में mention हो चुका है तो दोबारा नाम मत लीजिए — कोई दूसरा angle, दूसरी planetary combination use कीजिए, या indirect reference दीजिए ("वही दशा", "वही pattern")। एक ही technical term बार-बार repeat करना robotic लगता है।\n- 🔊 YOGA NAME TTS PRONUNCIATION (CRITICAL): जब भी कोई योग का नाम बोलें, उसे ONLY देवनागरी में लिखिए ताकि TTS सही बोले। English/Roman transliteration FORBIDDEN। सही format: गजकेसरी योग (NOT Gaja Kesari Yoga), बुधादित्य योग (NOT Budha Aditya Yoga), चन्द्र मंगल योग, हंस योग, मालव्य योग, रुचक योग, भद्र योग, शश योग, नीचभंग राजयोग, धन योग, विपरीत राजयोग, केमद्रुम योग, काल सर्प दोष, मंगल दोष। Numbers भी Hindi में: पहला भाव, सातवाँ भाव, दसवाँ भाव।\n- 🚫 ROMANIZED HINDI BAN: Hindi/Sanskrit words कभी भी Roman/Latin script में मत लिखिए (जैसे "aapka", "kundli", "rashi", "graha", "dasha", "mahadasha", "shani", "mangal")। Hindi word है तो देवनागरी में लिखिए (आपका, कुंडली, राशि, ग्रह, दशा, महादशा, शनि, मंगल)। English word है तो English में। Romanized Hindi = FORBIDDEN।\n- 🚫 URDU/ARABIC/PERSIAN BAN (CRITICAL): उर्दू, अरबी, या फारसी मूल के शब्द BILKUL मत use कीजिए। ये एक HINDI app है — सिर्फ शुद्ध हिन्दी या Hinglish। NUQTA (dots below letters like ज़, क़, ख़, ग़, फ़) ABSOLUTELY FORBIDDEN — ये Urdu sounds हैं, Hindi में नहीं। अगर किसी शब्द में nuqta dot दिखे तो बिना nuqta लिखिए (ज़ → ज, फ़ → फ, क़ → क, ख़ → ख, ग़ → ग)। Banned words → Hindi alternatives: इश्क/मोहब्बत → प्यार/प्रेम, ख्वाब → सपना, शख्सियत → personality, तालुक/ताल्लुक → रिश्ता/connection, किस्मत/तक़दीर → भाग्य/luck/destiny, सुकून → शांति/peace, हौसला → हिम्मत/courage, वजह → कारण/reason, गुजरना → बीतना, खुदा → भगवान/God, वक्त → समय/time, राज़/राज → रहस्य/secret, ग़ौर → ध्यान, नज़र → नजर/दृष्टि, हक़ीक़त → सच्चाई/reality, तस्वीर → picture/चित्र, ख़बर → खबर, मंज़िल → लक्ष्य/goal, हक़ → अधिकार/right, अल्फ़ाज़ → शब्द/words, रूह → आत्मा/soul, जज़्बात → भावनाएँ/feelings, ख़याल → विचार/thought, ज़माना → दौर/युग, ज़रिया → माध्यम/medium, इज़्ज़त → सम्मान/respect, मज़बूत → मजबूत, ज़रूरत → जरूरत, ज़िन्दगी → जिंदगी, ख़ास → खास, ख़ुशी → खुशी, फ़ैसला → फैसला। Plain हिन्दी बोलचाल use कीजिए — जिंदगी, ज्यादा, जरूरत, खुशी, फैसला, ताकत, मौका, गलती, खास, साफ, खत्म, बाकी, समय, रहस्य — ये सब plain Hindi हैं और ठीक हैं।\n- भाषा SIMPLE, LIGHT spoken Hinglish रखिए - जैसे दोस्तों से बात करते हैं वैसे। आम बोलचाल के Hindi words (जिंदगी, दिल, रास्ता, पैसा, काम, वक्त, खुशी, दिक्कत, दर्द, सोच, हिम्मत, ताकत, फैसला, रिश्ता, सपना, जरूरत, etc.) देवनागरी में ही लिखिए। सिर्फ HEAVY/LITERARY/BOOKISH Sanskrit-laden Hindi बदलिए: "सम्भावना" → "chance/मौका", "परिस्थिति" → "situation/हालात", "विशेष" → "खास", "प्रभाव" → "असर", "अनुभव" → "महसूस", "सम्पूर्ण" → "पूरा", "आवश्यक" → "जरूरी", "उपस्थित" → "मौजूद"। राहु, केतु, शनि, गुरु, लग्न, दशा, नक्षत्र, कुंडली, राशि, ग्रह जैसे Vedic terms और common Hindi words हमेशा देवनागरी में ही रखिए।\n- ⚠️ GENDER-AWARE LANGUAGE (CRITICAL): User का gender ऊपर दिया है। Hindi में user के बारे में बात करते वक्त CORRECT gendered verb forms use कीजिए। अगर user MALE है तो: "आप जानते हैं", "आपके अंदर है", "आप समझते हैं", "आपको मिलेगा", "आप कर सकते हैं", "आपकी जिंदगी में"। अगर user FEMALE है तो: "आप जानती हैं", "आपके अंदर है", "आप समझती हैं", "आपको मिलेगा", "आप कर सकती हैं", "आपकी जिंदगी में"। MAYA खुद female है (मैं देख रही हूँ, मुझे दिख रहा है) - लेकिन USER को address करते वक्त उनका ACTUAL gender use करें। Male user को "आप जानती हैं" कहना FORBIDDEN है।\n- सीधे "आप" से बात कीजिए। TTS-safe रखिए।\n- पूरे response को एक बहती हुई कहानी की तरह लिखिए - हर sentence पिछले sentence से जुड़ा हो और अगले sentence की जमीन तैयार करे। अलग-अलग टुकड़े मत फेंकिए जो बोलने पर disconnected लगें। सोचिए कि आप एक continuous paragraph बोल रहे हैं, bullet points नहीं पढ़ रहे।`
-            : `Rules:\n- Only describe patterns supported by the facts above.\n- Include one strength and one friction point.\n- If the evidence is mixed, say it is mixed.\n- Never conflate western zodiac, vedic moon sign, and ascendant. If you mention one, label it clearly.\n- Do not default to praise like "you are powerful", "success is coming", or "you are destined for greatness".\n- Do not promise love, marriage, money, fame, victory, or breakthroughs.\n- Do not claim psychic access, energy reading, or mind reading.\n- Do not write anything that could fit most users equally well.\n- If you are writing in Hindi, keep Hindi words in Devanagari and keep natural English terms like chart, timing, pattern, pressure, career, relationship, money, and energy in English script rather than transliterating them. Always write the user's name in Devanagari script for proper pronunciation.\n- 🚫 NAME REPETITION BAN: Use the user's name MAX 1-2 times in the entire response. Use "you", "your" everywhere else. Repeating the name in every sentence is FORBIDDEN.\n- 🚫 WORD REPETITION BAN: Do NOT repeat the same word or phrase in back-to-back sentences. Use synonyms. e.g. "energy" → "force/drive/vibe", "pattern" → "cycle/tendency/thread". Same word in consecutive sentences = BAD.\n- 🚫 YOGA/DOSHA/DASHA REPETITION BAN: Do NOT repeatedly name the same yoga, dosha, or dasha across sections. If already mentioned in a previous section, do NOT name it again — use a different angle, a different planetary combination, or reference it indirectly (e.g. "that same cycle", "the pattern I mentioned"). Repeating the same technical term across multiple sections sounds robotic.\n- 🔊 YOGA NAME TTS PRONUNCIATION (CRITICAL): When speaking yoga names, ALWAYS write them in Devanagari script for correct TTS pronunciation. NEVER use English/Roman transliteration for yoga names. Correct: गजकेसरी योग (NOT Gaja Kesari Yoga), बुधादित्य योग (NOT Budha Aditya Yoga), चन्द्र मंगल योग, हंस योग, मालव्य योग, रुचक योग, भद्र योग, शश योग, नीचभंग राजयोग, धन योग, विपरीत राजयोग, केमद्रुम योग, काल सर्प दोष, मंगल दोष। House numbers in Hindi: पहला भाव, सातवाँ भाव, दसवाँ भाव.\n- 🚫 ROMANIZED HINDI BAN: NEVER write Hindi/Sanskrit words in Roman/Latin script (e.g. "aapka", "kundli", "rashi", "graha", "dasha", "mahadasha", "shani", "mangal"). If a word is Hindi/Sanskrit, write it in Devanagari (आपका, कुंडली, राशि, ग्रह, दशा, महादशा, शनि, मंगल). If English, write in English. No romanized Hindi ever.\n- ⚠️ GENDER-AWARE LANGUAGE (CRITICAL): The user's gender is specified above. When addressing the user, use gender-appropriate language. For Hindi text: if user is MALE, use masculine verb forms ("आप जानते हैं", "आप समझते हैं", "आप कर सकते हैं"). If user is FEMALE, use feminine verb forms ("आप जानती हैं", "आप समझती हैं", "आप कर सकती हैं"). MAYA herself is always female ("मैं देख रही हूँ") but the USER must be addressed with THEIR correct gender. Calling a male user "आप जानती हैं" is FORBIDDEN. For English: use correct pronouns (he/him/his for male, she/her/hers for female) in any third-person references.\n- Speak directly to the user. Keep it TTS-safe.\n- Write the entire response as one flowing narrative - each sentence must connect to the previous one and set up the next. Do not drop isolated observations that sound disconnected when spoken aloud. Think of each response as one continuous spoken paragraph, not a list of separate points.`;
+            ? `Rules:\n- सिर्फ उन्हीं patterns पर बात करें जो ऊपर दिए facts से support होते हैं।\n- एक strength और एक friction point दोनों बताइए।\n- अगर संकेत mixed हैं, तो mixed ही कहिए।\n- ⚖️ KUNDLI-FIRST BALANCE (CRITICAL): हर reading में KUNDLI/VEDIC DATA को PRIMARY source रखिए — planetary positions, dasha periods, house analysis, yogas, और transits। Numerology (life path, destiny, soul urge) SECONDARY support के लिए use कीजिए। अगर kundli data available है तो reading का 70% kundli-based और 30% numerology-based होना चाहिए। सिर्फ numbers पर based reading FORBIDDEN है जब तक chart data उपलब्ध है।\n- western zodiac, vedic moon sign, और ascendant को कभी mix मत कीजिए। अगर इनमें से कुछ mention करें, तो label साफ रखें।\n- "आप powerful हैं", "success आ रहा है", "greatness तय है" जैसी default praise मत दीजिए।\n- love, money, marriage, fame, victory, या breakthroughs के guarantees मत दीजिए।\n- psychic, energy reading, mind reading, या vague spirituality का दावा मत कीजिए।\n- वही न कहिए जो बहुत users पर equally fit हो सकता है।\n- user का नाम हमेशा Devanagari (हिन्दी लिपि) में लिखिए, Roman script में नहीं। उदाहरण: Rahul → राहुल, Priya → प्रिया, Aviraj → अविराज। यह TTS pronunciation के लिए जरूरी है।\n- 🚫 नाम ज्यादा बार मत दोहराइए। पूरे response में user का नाम MAX 1-2 बार ही use कीजिए। बाकी जगह "आप", "आपके", "आपकी" use कीजिए। हर sentence में नाम repeat करना FORBIDDEN है।\n- 🚫 WORD REPETITION BAN: एक ही शब्द या phrase लगातार 2 sentences में repeat मत कीजिए। Synonyms use कीजिए। जैसे: "energy" → "ऊर्जा/ताकत/vibe", "pattern" → "ढंग/तरीका/cycle", "strong" → "मजबूत/powerful/deep"। Back-to-back same word = BAD.\n- 🚫 YOGA/DOSHA/DASHA REPETITION BAN: एक ही yoga, dosha, या dasha का नाम बार-बार अलग-अलग sections में मत दोहराइए। अगर पहले किसी section में mention हो चुका है तो दोबारा नाम मत लीजिए — कोई दूसरा angle, दूसरी planetary combination use कीजिए, या indirect reference दीजिए ("वही दशा", "वही pattern")। एक ही technical term बार-बार repeat करना robotic लगता है।\n- 🔊 YOGA NAME TTS PRONUNCIATION (CRITICAL): जब भी कोई योग का नाम बोलें, उसे ONLY देवनागरी में लिखिए ताकि TTS सही बोले। English/Roman transliteration FORBIDDEN। सही format: गजकेसरी योग (NOT Gaja Kesari Yoga), बुधादित्य योग (NOT Budha Aditya Yoga), चन्द्र मंगल योग, हंस योग, मालव्य योग, रुचक योग, भद्र योग, शश योग, नीचभंग राजयोग, धन योग, विपरीत राजयोग, केमद्रुम योग, काल सर्प दोष, मंगल दोष। Numbers भी Hindi में: पहला भाव, सातवाँ भाव, दसवाँ भाव।\n- 🚫 ROMANIZED HINDI BAN: Hindi/Sanskrit words कभी भी Roman/Latin script में मत लिखिए (जैसे "aapka", "kundli", "rashi", "graha", "dasha", "mahadasha", "shani", "mangal")। Hindi word है तो देवनागरी में लिखिए (आपका, कुंडली, राशि, ग्रह, दशा, महादशा, शनि, मंगल)। English word है तो English में। Romanized Hindi = FORBIDDEN।\n- 🚫 URDU/ARABIC/PERSIAN BAN (CRITICAL): उर्दू, अरबी, या फारसी मूल के शब्द BILKUL मत use कीजिए। ये एक HINDI app है — सिर्फ शुद्ध हिन्दी या Hinglish। NUQTA (dots below letters like ज़, क़, ख़, ग़, फ़) ABSOLUTELY FORBIDDEN — ये Urdu sounds हैं, Hindi में नहीं। अगर किसी शब्द में nuqta dot दिखे तो बिना nuqta लिखिए (ज़ → ज, फ़ → फ, क़ → क, ख़ → ख, ग़ → ग)। Banned words → Hindi alternatives: इश्क/मोहब्बत → प्यार/प्रेम, ख्वाब → सपना, शख्सियत → personality, तालुक/ताल्लुक → रिश्ता/connection, किस्मत/तक़दीर → भाग्य/luck/destiny, सुकून → शांति/peace, हौसला → हिम्मत/courage, वजह → कारण/reason, गुजरना → बीतना, खुदा → भगवान/God, वक्त → समय/time, राज़/राज → रहस्य/secret, ग़ौर → ध्यान, नज़र → नजर/दृष्टि, हक़ीक़त → सच्चाई/reality, तस्वीर → picture/चित्र, ख़बर → खबर, मंज़िल → लक्ष्य/goal, हक़ → अधिकार/right, अल्फ़ाज़ → शब्द/words, रूह → आत्मा/soul, जज़्बात → भावनाएँ/feelings, ख़याल → विचार/thought, ज़माना → दौर/युग, ज़रिया → माध्यम/medium, इज़्ज़त → सम्मान/respect, मज़बूत → मजबूत, ज़रूरत → जरूरत, ज़िन्दगी → जिंदगी, ख़ास → खास, ख़ुशी → खुशी, फ़ैसला → फैसला। Plain हिन्दी बोलचाल use कीजिए — जिंदगी, ज्यादा, जरूरत, खुशी, फैसला, ताकत, मौका, गलती, खास, साफ, खत्म, बाकी, समय, रहस्य — ये सब plain Hindi हैं और ठीक हैं।\n- भाषा SIMPLE, LIGHT spoken Hinglish रखिए - जैसे दोस्तों से बात करते हैं वैसे। आम बोलचाल के Hindi words (जिंदगी, दिल, रास्ता, पैसा, काम, वक्त, खुशी, दिक्कत, दर्द, सोच, हिम्मत, ताकत, फैसला, रिश्ता, सपना, जरूरत, etc.) देवनागरी में ही लिखिए। सिर्फ HEAVY/LITERARY/BOOKISH Sanskrit-laden Hindi बदलिए: "सम्भावना" → "chance/मौका", "परिस्थिति" → "situation/हालात", "विशेष" → "खास", "प्रभाव" → "असर", "अनुभव" → "महसूस", "सम्पूर्ण" → "पूरा", "आवश्यक" → "जरूरी", "उपस्थित" → "मौजूद"। राहु, केतु, शनि, गुरु, लग्न, दशा, नक्षत्र, कुंडली, राशि, ग्रह जैसे Vedic terms और common Hindi words हमेशा देवनागरी में ही रखिए।\n- ⚠️ GENDER-AWARE LANGUAGE (CRITICAL): User का gender ऊपर दिया है। Hindi में user के बारे में बात करते वक्त CORRECT gendered verb forms use कीजिए। अगर user MALE है तो: "आप जानते हैं", "आपके अंदर है", "आप समझते हैं", "आपको मिलेगा", "आप कर सकते हैं", "आपकी जिंदगी में"। अगर user FEMALE है तो: "आप जानती हैं", "आपके अंदर है", "आप समझती हैं", "आपको मिलेगा", "आप कर सकती हैं", "आपकी जिंदगी में"। MAYA खुद female है (मैं देख रही हूँ, मुझे दिख रहा है) - लेकिन USER को address करते वक्त उनका ACTUAL gender use करें। Male user को "आप जानती हैं" कहना FORBIDDEN है।\n- सीधे "आप" से बात कीजिए। TTS-safe रखिए।\n- पूरे response को एक बहती हुई कहानी की तरह लिखिए - हर sentence पिछले sentence से जुड़ा हो और अगले sentence की जमीन तैयार करे। अलग-अलग टुकड़े मत फेंकिए जो बोलने पर disconnected लगें। सोचिए कि आप एक continuous paragraph बोल रहे हैं, bullet points नहीं पढ़ रहे।`
+            : `Rules:\n- Only describe patterns supported by the facts above.\n- Include one strength and one friction point.\n- If the evidence is mixed, say it is mixed.\n- ⚖️ KUNDLI-FIRST BALANCE (CRITICAL): Make KUNDLI/VEDIC DATA the PRIMARY source for every reading — planetary positions, dasha periods, house analysis, yogas, and transits. Use Numerology (life path, destiny, soul urge) as SECONDARY support. When chart data is available, the reading should be ~70% kundli-based and ~30% numerology-based. A reading based ONLY on numbers is FORBIDDEN when chart data exists.\n- Never conflate western zodiac, vedic moon sign, and ascendant. If you mention one, label it clearly.\n- Do not default to praise like "you are powerful", "success is coming", or "you are destined for greatness".\n- Do not promise love, marriage, money, fame, victory, or breakthroughs.\n- Do not claim psychic access, energy reading, or mind reading.\n- Do not write anything that could fit most users equally well.\n- If you are writing in Hindi, keep Hindi words in Devanagari and keep natural English terms like chart, timing, pattern, pressure, career, relationship, money, and energy in English script rather than transliterating them. Always write the user's name in Devanagari script for proper pronunciation.\n- 🚫 NAME REPETITION BAN: Use the user's name MAX 1-2 times in the entire response. Use "you", "your" everywhere else. Repeating the name in every sentence is FORBIDDEN.\n- 🚫 WORD REPETITION BAN: Do NOT repeat the same word or phrase in back-to-back sentences. Use synonyms. e.g. "energy" → "force/drive/vibe", "pattern" → "cycle/tendency/thread". Same word in consecutive sentences = BAD.\n- 🚫 YOGA/DOSHA/DASHA REPETITION BAN: Do NOT repeatedly name the same yoga, dosha, or dasha across sections. If already mentioned in a previous section, do NOT name it again — use a different angle, a different planetary combination, or reference it indirectly (e.g. "that same cycle", "the pattern I mentioned"). Repeating the same technical term across multiple sections sounds robotic.\n- 🔊 YOGA NAME TTS PRONUNCIATION (CRITICAL): When speaking yoga names, ALWAYS write them in Devanagari script for correct TTS pronunciation. NEVER use English/Roman transliteration for yoga names. Correct: गजकेसरी योग (NOT Gaja Kesari Yoga), बुधादित्य योग (NOT Budha Aditya Yoga), चन्द्र मंगल योग, हंस योग, मालव्य योग, रुचक योग, भद्र योग, शश योग, नीचभंग राजयोग, धन योग, विपरीत राजयोग, केमद्रुम योग, काल सर्प दोष, मंगल दोष। House numbers in Hindi: पहला भाव, सातवाँ भाव, दसवाँ भाव.\n- 🚫 ROMANIZED HINDI BAN: NEVER write Hindi/Sanskrit words in Roman/Latin script (e.g. "aapka", "kundli", "rashi", "graha", "dasha", "mahadasha", "shani", "mangal"). If a word is Hindi/Sanskrit, write it in Devanagari (आपका, कुंडली, राशि, ग्रह, दशा, महादशा, शनि, मंगल). If English, write in English. No romanized Hindi ever.\n- ⚠️ GENDER-AWARE LANGUAGE (CRITICAL): The user's gender is specified above. When addressing the user, use gender-appropriate language. For Hindi text: if user is MALE, use masculine verb forms ("आप जानते हैं", "आप समझते हैं", "आप कर सकते हैं"). If user is FEMALE, use feminine verb forms ("आप जानती हैं", "आप समझती हैं", "आप कर सकती हैं"). MAYA herself is always female ("मैं देख रही हूँ") but the USER must be addressed with THEIR correct gender. Calling a male user "आप जानती हैं" is FORBIDDEN. For English: use correct pronouns (he/him/his for male, she/her/hers for female) in any third-person references.\n- Speak directly to the user. Keep it TTS-safe.\n- Write the entire response as one flowing narrative - each sentence must connect to the previous one and set up the next. Do not drop isolated observations that sound disconnected when spoken aloud. Think of each response as one continuous spoken paragraph, not a list of separate points.`;
 
         const sectionPrompts = isHindi
             ? {
                 opening: `आप current user के लिए ONE opening narration लिख रही हैं। 5-6 वाक्य। पहली line में नाम लेकर warm greeting दीजिए और साफ कहिए कि आप MAYA हैं। इस introduction line के ठीक बाद एक [[pause-500]] token लगाइए ताकि user को introduce सुनने का समय मिले। दूसरी line में grounded-mystic buildup बनाइए और कहिए कि उनकी kundli, timing, या जन्म pattern में एक hidden layer अभी खुलने वाला है। तीसरी line में वही पहला factual clue दीजिए जो उनकी birth pattern, western sign, moon sign, numbers, या current timing में सबसे ज्यादा standout करता है, लेकिन literal जन्मतिथि को पढ़कर मत सुनाइए। चौथी line में एक real strength और एक quiet tension को lightly hold कीजिए। आखिरी line में strong curiosity पैदा करें ताकि user naturally अगला layer सुनना चाहे, और साफ कहें कि शुरुआत kundli और timing से होगी। यह intimate, fresh, और unscripted लगे। generic cosmic filler मत लिखिए।`,
                 kundli: `आप current user के लिए ONE kundli formation narration लिख रही हैं। सबसे पहले एक warm, inviting line से शुरू कीजिए जैसे "चलिए, अब हम साथ मिलकर आपकी कुंडली की गहराइयों में उतरते हैं" या "आइए, अब हम साथ में देखते हैं कि आपके ग्रह क्या कह रहे हैं" - यह line natural और exploratory feel होनी चाहिए, पहले से reveal नहीं करनी चाहिए। फिर visible chart markers जैसे ascendant, moon sign, current dasha, dominant element, या chart highlight में से 2-3 facts use कीजिए। Reading को grounded रखिए और end में numbers की तरफ natural transition दीजिए। 5-7 वाक्य। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                numbersReveal: `आप current user के लिए ONE unified numbers reading लिख रही हैं। तीनों numbers (Life Path ${this.calculations?.lifePath || ''}, Destiny ${this.calculations?.destiny || ''}, Soul Urge ${this.calculations?.soulUrge || ''}) अभी-अभी एक साथ calculate हुए हैं। KUNDLI/CHART DATA को primary source रखते हुए बताइए कि planetary positions, दशा, और yogas में क्या दिख रहा है — फिर numbers को confirmation की तरह जोड़िए ("और Life Path ${this.calculations?.lifePath || ''} भी यही confirm कर रहा है")। तीनों numbers की combined story बताइए — ये तीनों मिलकर कैसा personality + destiny + inner desire portrait बनाते हैं। 5-7 वाक्य। ज्यादा से ज्यादा एक [[pause-250]] token।`,
                 loveIntro: `आप current user के लिए love section का ONE short transition लिख रही हैं। 1-2 वाक्य। Direct, warm, और section-specific। ज्यादा से ज्यादा एक [[pause-250]] token।`,
                 love: `आप current user के लिए ONE unique DEEP love reading लिख रही हैं। यह FILTERLESS reading है - कोई sugar-coating नहीं, सीधी बात। ऊपर दिए गए "7TH HOUSE & MARRIAGE ANALYSIS" section को ध्यान से पढ़िए - अगर user likely married है तो marriage dynamics, partner से real friction points, और relationship का actual texture बताइए। अगर likely unmarried है तो attachment pattern, dating behaviour, और partnership timing specific months/years के साथ बताइए। Venus की exact राशि, 7th house lord, और relevant दशा periods को NAME करके reference कीजिए। बताइए कि इन planetary positions की वजह से EXACTLY क्या relationship dynamic बनती है - vague "love life अच्छी होगी" BILKUL मत कहिए। 5-7 वाक्य - raw, real, और eerily specific। ज्यादा से ज्यादा एक [[pause-250]] token।`,
                 careerIntro: `आप current user के लिए career section का ONE short transition लिख रही हैं। 1-2 वाक्य। Work style, money flow, या practical direction की तरफ clean shift दीजिए। ज्यादा से ज्यादा एक [[pause-250]] token।`,
@@ -1673,6 +1676,7 @@ RULES:
             : {
                 opening: `Write ONE opening narration for the current user. 5-6 sentences. In the first sentence, greet them by name warmly and briefly introduce yourself as MAYA. Place a [[pause-500]] token IMMEDIATELY after this introduction sentence so the user has a moment to absorb who is speaking. In the second sentence, create grounded mystic buildup and say that a hidden layer in their kundli, timing, or birth pattern is about to open. Only in the third sentence should you name the first detail that stands out from their birth pattern, western sign, moon sign, numbers, or current timing, and do not recite the literal birth date unless it is truly necessary. In the fourth sentence, hold one real strength and one quiet tension lightly. The final sentence must create curiosity so they naturally want the next layer, while clearly saying the reading will begin through kundli and timing. It must sound fresh, intimate, and unscripted. Do not use generic cosmic filler.`,
                 kundli: `Write ONE kundli formation narration for the current user. Start with a warm, inviting line like "Let's explore your kundli together" or "Come, let me walk you through what your planets are saying" - make it feel like a shared journey, not a lecture. Then use 2-3 visible chart markers such as ascendant, moon sign, current dasha, dominant element, or chart highlights. Keep it grounded and end with a natural transition toward the numbers. 5-7 sentences. Use at most one [[pause-250]] token.`,
+                numbersReveal: `Write ONE unified numbers reading for the current user. All three numbers (Life Path ${this.calculations?.lifePath || ''}, Destiny ${this.calculations?.destiny || ''}, Soul Urge ${this.calculations?.soulUrge || ''}) have just been calculated together. Lead with KUNDLI/CHART DATA as the primary source — explain what the planetary positions, dasha, and yogas are showing — then weave the numbers in as confirmation ("and Life Path ${this.calculations?.lifePath || ''} confirms exactly that"). Tell the combined story of all three numbers — how together they paint a personality + destiny + inner desire portrait. 5-7 sentences. Use at most one [[pause-250]] token.`,
                 loveIntro: `Write ONE short transition into the love section for the current user. 1-2 sentences. Make it warm, direct, and section-specific. Use at most one [[pause-250]] token.`,
                 love: `Write ONE unique FILTERLESS love reading for the current user. No sugar-coating - be direct and real. Read the "7TH HOUSE & MARRIAGE ANALYSIS" section carefully - if the user is likely married, discuss actual marriage dynamics, real friction points with the partner, and the relationship's true texture. If likely unmarried, discuss attachment behaviour, dating patterns, and partnership timing with specific months/years. NAME the exact Venus sign, 7th house lord, and relevant dasha periods. Explain EXACTLY what relationship dynamic these planetary positions create - do NOT say vague things like "love life will improve". 5-7 sentences - raw, real, and eerily specific. Use at most one [[pause-250]] token.`,
                 careerIntro: `Write ONE short transition into the career section for the current user. 1-2 sentences. Shift naturally toward work style, money flow, or practical direction. Use at most one [[pause-250]] token.`,
@@ -2127,6 +2131,9 @@ RULES:
         // Speak the question while building the UI
         const speakPromise = this.speak(spokenQuestion || question);
 
+        // Add "None of the above" option with custom input
+        const noneLabel = isHindi ? 'इनमें से कोई नहीं' : 'None of the above';
+
         // Always render as a fixed centered overlay
         const overlay = document.createElement('div');
         overlay.className = 'maya-validation-overlay';
@@ -2139,6 +2146,17 @@ RULES:
                             ${opt.label}
                         </button>
                     `).join('')}
+                    <button class="maya-validation-btn maya-validation-btn--none" data-value="__none__">
+                        ${noneLabel}
+                    </button>
+                </div>
+                <div class="maya-validation-custom" id="maya-validation-custom" style="display:none;">
+                    <input type="text" class="maya-validation-custom-input" id="maya-custom-input"
+                           placeholder="${isHindi ? 'अपने शब्दों में बताइए...' : 'Tell me in your own words...'}"
+                           autocomplete="off">
+                    <button class="maya-validation-btn primary maya-custom-submit" id="maya-custom-submit">
+                        ${isHindi ? 'भेजें' : 'Submit'}
+                    </button>
                 </div>
             </div>
         `;
@@ -2148,24 +2166,50 @@ RULES:
 
         return new Promise((resolve) => {
             const container = overlay.querySelector('#maya-validation-options');
+            const customArea = overlay.querySelector('#maya-validation-custom');
+            const customInput = overlay.querySelector('#maya-custom-input');
+            const customSubmit = overlay.querySelector('#maya-custom-submit');
             if (!container) { overlay.remove(); resolve(options[0]?.value || 'yes'); return; }
 
             container.querySelectorAll('.maya-validation-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const value = btn.dataset.value;
-                    // Highlight selected
+
+                    // "None of the above" — show custom input
+                    if (value === '__none__') {
+                        container.style.display = 'none';
+                        customArea.style.display = 'flex';
+                        setTimeout(() => customInput.focus(), 100);
+                        return;
+                    }
+
+                    // Normal option selected
                     container.querySelectorAll('.maya-validation-btn').forEach(b => b.classList.remove('selected'));
                     btn.classList.add('selected');
-                    // Store response
                     this.validationResponses.push({ question, answer: value, timestamp: Date.now() });
                     this.recordValidation(question, value);
-                    // Animate out then remove
                     setTimeout(() => {
                         overlay.classList.add('closing');
                         setTimeout(() => overlay.remove(), 300);
                         resolve(value);
                     }, 350);
                 });
+            });
+
+            // Custom input submit
+            const submitCustom = () => {
+                const text = customInput.value.trim();
+                if (!text) return;
+                const customValue = `custom: ${text}`;
+                this.validationResponses.push({ question, answer: customValue, timestamp: Date.now() });
+                this.recordValidation(question, customValue);
+                overlay.classList.add('closing');
+                setTimeout(() => overlay.remove(), 300);
+                resolve(customValue);
+            };
+            if (customSubmit) customSubmit.addEventListener('click', submitCustom);
+            if (customInput) customInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') submitCustom();
             });
         });
     },
@@ -2901,8 +2945,53 @@ RULES:
     },
 
     /**
-     * Begin the cosmic journey - STREAMLINED flowing narrative
-     * Flow: Opening → Early Suspense Hit → Kundli → Validation → Numbers → Accuracy Shock → Teaser → Gate
+     * Ask a single profile question with chart-aware acknowledgment.
+     * @param {object} q - question from getProfileQuestions()
+     * @returns {Promise<string>} the selected value
+     */
+    async askSingleProfileQuestion(q) {
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const profile = this.personalization || {};
+        const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
+
+        const answer = await this.showValidationQuestion(
+            q.question,
+            q.options.map(o => ({ label: o.label, value: o.value })),
+            q.spoken
+        );
+
+        // Store the answer with insight
+        const chosen = q.options.find(o => o.value === answer);
+        const insightText = chosen?.insight || answer;
+        this.sessionMemory.profileAnswers[q.key] = `${answer} (${insightText})`;
+
+        // Chart-aware acknowledgment
+        const acks = isHindi
+            ? [
+                dasha ? `हम्म… ${dasha} दशा में यही दिख रहा था।` : 'हम्म… chart में यही signal था।',
+                'बिल्कुल — ये confirm करता है जो मैं देख रही थी।',
+                'ठीक है, अब picture और clear हो रही है।',
+                'समझ आया — ये chart के उस हिस्से से जुड़ता है जो मैं अभी पढ़ रही थी।',
+                'ये जवाब important है। इससे आगे की reading और precise होगी।'
+            ]
+            : [
+                dasha ? `Hmm… that's exactly what the ${dasha} dasha was showing.` : 'Hmm… that matches the signal in your chart.',
+                'That confirms what I was seeing.',
+                'Good — the picture is getting clearer now.',
+                'I see — this connects to the part of the chart I was just reading.',
+                'This answer is important. It makes the rest of the reading much more precise.'
+            ];
+        const ack = acks[Math.floor(Math.random() * acks.length)];
+        await this.speak(ack);
+        await MayaUtils.sleep(200);
+
+        return answer;
+    },
+
+    /**
+     * Begin the cosmic journey - CONVERSATIONAL flowing narrative
+     * Questions are distributed throughout the funnel with AI conversations in between.
+     * Flow: Intro → Kundli + Q1 → LifePath + Q2 → Destiny + Q3 → SoulUrge + Q4 → Teaser + Q5 → Gate
      */
     async beginJourney() {
         console.log('🌟 Beginning cosmic journey...');
@@ -2913,57 +3002,115 @@ RULES:
             // Show progress meter
             this.showProgressMeter();
 
-            // STEP 1: Short personal greeting + fixed kundli transition
-            console.log('🗣️ Speaking kundli transition...');
-            const greetLine = isHindi
-                ? `${this.firstName}, मेरे पास सब कुछ है जो चाहिए। अब कुंडली बनाती हूँ — असली reading कुंडली बनने के बाद शुरू होगी।`
-                : `${this.firstName}, I have everything I need. Let me plot your birth chart now — the real reading begins once the kundli takes shape.`;
-            await this.speak(greetLine);
-            this.spokenNarrations.push({ stage: 'opening', text: greetLine });
+            // Get all questions up front so we can distribute them
+            const allQuestions = this.getProfileQuestions();
+
+            // ═══ STEP 1: Proper MAYA Introduction ═══
+            console.log('🗣️ MAYA introduction...');
+            const introLine = isHindi
+                ? `नमस्ते ${this.firstName}, मैं MAYA हूँ — आपकी vedic astrology guide।`
+                : `Namaste ${this.firstName}, I am MAYA — your vedic astrology guide.`;
+            await this.speak(introLine);
+            await MayaUtils.sleep(400);
+
+            // Kundli transition line
+            const kundliTransLine = isHindi
+                ? `मेरे पास आपकी सारी details हैं। अब कुंडली बनाती हूँ — असली reading कुंडली बनने के बाद शुरू होगी।`
+                : `I have all your details. Let me plot your birth chart now — the real reading begins once the kundli takes shape.`;
+            await this.speak(kundliTransLine);
+            this.spokenNarrations.push({ stage: 'opening', text: `${introLine} ${kundliTransLine}` });
             this.advanceProgress('chart_opened');
             this.advanceProgress('first_impression');
             await MayaUtils.sleep(this.stageTiming.introSettle);
 
-            // STEP 2: Show calculation overlay & form the kundli
+            // ═══ STEP 2: Kundli formation ═══
             console.log('📊 Showing calculation overlay...');
             this.showCalculationOverlay();
             await MayaUtils.sleep(this.stageTiming.calculationLeadIn);
 
-            // STEP 3: Kundli formation — personalized AI narration plays over chart animation
             console.log('🪐 Animating Kundli...');
             await this.animateKundliFormation();
             this.advanceProgress('kundli');
 
-            // STEP 4: Akinator-style smart profiling questions (MCQs)
-            console.log('🎯 Running smart profile questions...');
-            await this.runProfileQuestions();
+            // ═══ STEP 3: First question — after kundli (recent upheaval) ═══
+            if (allQuestions[0]) {
+                console.log('🎯 Q1 after kundli: recent_upheaval...');
+                const transQ1 = isHindi
+                    ? 'कुंडली बन चुकी है। कुछ signals बहुत clear दिख रहे हैं — पर कुछ बातें सिर्फ आप confirm कर सकते हैं।'
+                    : 'Your kundli is formed. Some signals are very clear — but a few things only you can confirm.';
+                await this.speak(transQ1);
+                await MayaUtils.sleep(200);
+                await this.askSingleProfileQuestion(allQuestions[0]);
+            }
 
-            // STEP 5: ONE personalized validation based on actual chart data + MCQ answers
+            // ═══ STEP 4: ALL numbers in one unified UI ═══
+            console.log('📊 Unified numbers calculation...');
+            await this.animateAllNumbersCalculation();
+            this.advanceProgress('life_path');
+            this.advanceProgress('destiny');
+            this.advanceProgress('soul_urge');
+
+            // ═══ STEP 5: Second question — after numbers (current phase) ═══
+            if (allQuestions[1]) {
+                console.log('🎯 Q2 after numbers: current_phase...');
+                const transQ2 = isHindi
+                    ? 'Numbers और chart दोनों अपनी बात बोल चुके हैं — पर अभी इस वक्त आप कहाँ खड़े हैं, वो समझना जरूरी है।'
+                    : 'Both the chart and your numbers have spoken — but understanding where you stand right now is equally important.';
+                await this.speak(transQ2);
+                await MayaUtils.sleep(200);
+                await this.askSingleProfileQuestion(allQuestions[1]);
+            }
+
+            // ═══ STEP 6: Third question — money pattern ═══
+            if (allQuestions[2]) {
+                console.log('🎯 Q3: money_pattern...');
+                const transQ3 = isHindi
+                    ? 'Destiny number और chart दोनों मिलकर money flow का pattern बताते हैं — देखती हूँ कि मेरा analysis match करता है या नहीं।'
+                    : 'Your destiny number and chart together reveal a money flow pattern — let me see if my analysis matches your experience.';
+                await this.speak(transQ3);
+                await MayaUtils.sleep(200);
+                await this.askSingleProfileQuestion(allQuestions[2]);
+            }
+
+            // ═══ STEP 7: Fourth question — relationship status ═══
+            if (allQuestions[3]) {
+                console.log('🎯 Q4: relationship_status...');
+                const transQ4 = isHindi
+                    ? 'Soul urge number बताता है कि दिल क्या चाहता है — और relationships उसी का reflection होते हैं। एक बात पूछूँ?'
+                    : 'The soul urge number reveals what the heart truly wants — and relationships are a reflection of that. Let me ask you something.';
+                await this.speak(transQ4);
+                await MayaUtils.sleep(200);
+                await this.askSingleProfileQuestion(allQuestions[3]);
+            }
+
+            // ═══ STEP 8: Hide overlay ═══
+            console.log('📊 Hiding overlay...');
+            await this.hideCalculationOverlay();
+
+            // ═══ STEP 9: Personalized validation (yes/somewhat/no) ═══
             console.log('✅ Personalized validation...');
             this.currentPhase = this.PHASES.VALIDATION;
             const personalQ = this.buildPersonalizedValidation();
             await this.showMiniCheck(personalQ);
 
-            // STEP 6-8: Number calculations flow without interruption
-            console.log('📊 Flowing through number calculations...');
-            await this.animateLifePathCalculation();
-            this.advanceProgress('life_path');
-            await this.animateDestinyCalculation();
-            this.advanceProgress('destiny');
-            await this.animateSoulUrgeCalculation();
-            this.advanceProgress('soul_urge');
-
-            // STEP 9: Hide overlay
-            console.log('📊 Hiding overlay...');
-            await this.hideCalculationOverlay();
-
-            // STEP 10: Teaser reveal (includes accuracy shock + identity + emotional pattern)
+            // ═══ STEP 10: Teaser reveal (accuracy shock + identity + emotional pattern) ═══
             console.log('🎁 Showing teaser reveal...');
             await this.showTeaserReveal();
             this.advanceProgress('accuracy_hit');
             this.advanceProgress('deep_patterns');
 
-            // STEP 11: Suspense bridge → email gate
+            // ═══ STEP 11: Fifth question — after teaser (repeating pattern) ═══
+            if (allQuestions[4]) {
+                console.log('🎯 Q5 after teaser: repeating_pattern...');
+                const transQ5 = isHindi
+                    ? 'अब तक जो दिखा वो surface है। एक और गहरी बात है — एक pattern जो बार-बार आता है।'
+                    : 'What I have shown so far is the surface. There is one deeper thing — a pattern that keeps coming back.';
+                await this.speak(transQ5);
+                await MayaUtils.sleep(200);
+                await this.askSingleProfileQuestion(allQuestions[4]);
+            }
+
+            // ═══ STEP 12: Suspense bridge → email gate ═══
             console.log('🌉 Suspense bridge...');
             await this.showSuspenseBridge();
             this.advanceProgress('full_reading');
@@ -3326,6 +3473,207 @@ RULES:
         this.appendResultCard('soul-urge', 'Your Soul Urge', soulUrge, 'soul-urge');
 
         await speakPromise;
+        await MayaUtils.sleep(this.stageTiming.stageSettle);
+    },
+
+    // ============================================================
+    //  UNIFIED NUMBERS CALCULATION — All 3 in one beautiful UI
+    // ============================================================
+
+    /**
+     * Calculate and animate Life Path, Destiny, and Soul Urge
+     * numbers simultaneously in one unified, beautifully animated UI.
+     * AI narrates about all three numbers together for engagement.
+     */
+    async animateAllNumbersCalculation() {
+        const display = document.getElementById('calc-display');
+        if (!display) return;
+
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+
+        // ── Gather all calculation data up front ──
+        const date = window.MayaAstrology
+            ? MayaAstrology.parseDate(this.userData.birthDate)
+            : new Date(this.userData.birthDate);
+        if (!date) { console.error('Invalid birth date'); return; }
+
+        const day = date.getDate();
+        const month = date.getMonth() + 1;
+        const year = date.getFullYear();
+        const lifePath = this.calculations.lifePath;
+        const dayReduced = MayaNumerology.reduceNumber(day, false);
+        const monthReduced = MayaNumerology.reduceNumber(month, false);
+        const yearSum = String(year).split('').reduce((s, d) => s + parseInt(d), 0);
+        const yearReduced = MayaNumerology.reduceNumber(year, false);
+        const lpTotal = dayReduced + monthReduced + yearReduced;
+
+        const destiny = this.calculations.destiny;
+        const fullName = this.userData.name.toUpperCase();
+        const nameLetters = fullName.replace(/[^A-Z]/g, '');
+        const nameBreakdown = MayaNumerology.getNameBreakdown(this.userData.name);
+        const destSum = nameBreakdown.reduce((s, item) => s + item.value, 0);
+
+        const soulUrge = this.calculations.soulUrge;
+        const vowels = ['A', 'E', 'I', 'O', 'U'];
+        let vowelSum = 0;
+        for (const ch of nameLetters) {
+            if (vowels.includes(ch)) vowelSum += MayaNumerology.getLetterValue(ch);
+        }
+
+        // ── Show loading ──
+        this.showCalcLoading(isHindi
+            ? 'तीनों cosmic numbers एक साथ निकाल रहे हैं...'
+            : 'Calculating all three cosmic numbers...');
+
+        // ── Fire AI narration in background (about ALL numbers) ──
+        const aiContext = this.buildBaseAIContext();
+        const spokenDate = this.formatDateSpoken(this.userData.birthDate);
+
+        const narrativePromise = this.withFiller(() => this.getContent('allNumbersNarrative', async () => {
+            // Try a unified prompt that covers all three numbers
+            const combinedPrompt = this.buildDirectSectionPrompt('numbersReveal', aiContext);
+            if (window.MayaAI?.callGemini) {
+                const result = await MayaAI.callGemini(combinedPrompt);
+                if (result && result.length > 30) return this.sanitizeNarrationText(result);
+            }
+            // Fallback to life path explanation
+            if (window.MayaStatements?.getLifePathExplanation) {
+                const explanation = await MayaStatements.getLifePathExplanation(
+                    day, month, year, dayReduced, monthReduced, yearSum, yearReduced, lpTotal,
+                    lifePath, this.firstName, spokenDate, aiContext
+                );
+                if (explanation && explanation.length > 20) return explanation;
+            }
+            return null;
+        }), 'calculating');
+
+        // ── Build unified UI ──
+        display.innerHTML = `
+            <div class="unified-numbers">
+                <div class="unified-numbers__header">
+                    <h3>${isHindi ? '✦ आपके Cosmic Numbers ✦' : '✦ Your Cosmic Numbers ✦'}</h3>
+                </div>
+
+                <div class="unified-numbers__grid">
+                    <!-- LIFE PATH CARD -->
+                    <div class="unified-num-card" id="unum-lifepath" data-state="waiting">
+                        <div class="unified-num-card__icon"><i class="bi bi-star-fill"></i></div>
+                        <div class="unified-num-card__label">${isHindi ? 'Life Path' : 'Life Path'}</div>
+                        <div class="unified-num-card__value" id="unum-lp-value">
+                            <span class="unified-num-card__spinner"></span>
+                        </div>
+                        <div class="unified-num-card__steps" id="unum-lp-steps"></div>
+                    </div>
+
+                    <!-- DESTINY CARD -->
+                    <div class="unified-num-card" id="unum-destiny" data-state="waiting">
+                        <div class="unified-num-card__icon"><i class="bi bi-bullseye"></i></div>
+                        <div class="unified-num-card__label">${isHindi ? 'Destiny' : 'Destiny'}</div>
+                        <div class="unified-num-card__value" id="unum-dest-value">
+                            <span class="unified-num-card__spinner"></span>
+                        </div>
+                        <div class="unified-num-card__steps" id="unum-dest-steps"></div>
+                    </div>
+
+                    <!-- SOUL URGE CARD -->
+                    <div class="unified-num-card" id="unum-soulurge" data-state="waiting">
+                        <div class="unified-num-card__icon"><i class="bi bi-heart-pulse-fill"></i></div>
+                        <div class="unified-num-card__label">${isHindi ? 'Soul Urge' : 'Soul Urge'}</div>
+                        <div class="unified-num-card__value" id="unum-su-value">
+                            <span class="unified-num-card__spinner"></span>
+                        </div>
+                        <div class="unified-num-card__steps" id="unum-su-steps"></div>
+                    </div>
+                </div>
+
+                <div class="unified-numbers__breakdown" id="unum-breakdown"></div>
+            </div>
+        `;
+
+        await MayaUtils.sleep(400);
+
+        // ── Animate LIFE PATH (stagger 1) ──
+        const lpCard = document.getElementById('unum-lifepath');
+        const lpSteps = document.getElementById('unum-lp-steps');
+        const lpValue = document.getElementById('unum-lp-value');
+        if (lpCard) lpCard.dataset.state = 'calculating';
+
+        await MayaUtils.sleep(300);
+        this.addCalculationStep(lpSteps, `${day} → ${dayReduced}`, 'Day');
+        await MayaUtils.sleep(250);
+        this.addCalculationStep(lpSteps, `${month} → ${monthReduced}`, 'Month');
+        await MayaUtils.sleep(250);
+        this.addCalculationStep(lpSteps, `${year} → ${yearReduced}`, 'Year');
+        await MayaUtils.sleep(300);
+        this.addCalculationStep(lpSteps, `${dayReduced}+${monthReduced}+${yearReduced} = ${lpTotal} → ${lifePath}`, '', true);
+
+        if (lpValue) lpValue.innerHTML = `<span class="unified-num-card__number unified-num-pop">${lifePath}</span>`;
+        if (lpCard) lpCard.dataset.state = 'done';
+
+        // ── Animate DESTINY (stagger 2) ──
+        const destCard = document.getElementById('unum-destiny');
+        const destSteps = document.getElementById('unum-dest-steps');
+        const destValue = document.getElementById('unum-dest-value');
+        if (destCard) destCard.dataset.state = 'calculating';
+
+        await MayaUtils.sleep(200);
+        // Show compact name breakdown
+        const breakdown = document.getElementById('unum-breakdown');
+        if (breakdown) {
+            const letterHTML = nameLetters.split('').map(l => {
+                const v = MayaNumerology.getLetterValue(l);
+                return `<span class="unum-letter-chip animate-in"><span class="unum-letter">${l}</span><span class="unum-letter-val">${v}</span></span>`;
+            }).join('');
+            breakdown.innerHTML = `
+                <div class="unum-name-breakdown">
+                    <span class="unum-breakdown-label">${isHindi ? 'नाम विश्लेषण' : 'Name Analysis'}: ${this.userData.name}</span>
+                    <div class="unum-letter-grid">${letterHTML}</div>
+                </div>
+            `;
+        }
+
+        await MayaUtils.sleep(400);
+        this.addCalculationStep(destSteps, `${isHindi ? 'अक्षर योग' : 'Letter sum'} = ${destSum} → ${destiny}`, '', true);
+
+        if (destValue) destValue.innerHTML = `<span class="unified-num-card__number unified-num-pop">${destiny}</span>`;
+        if (destCard) destCard.dataset.state = 'done';
+
+        // ── Animate SOUL URGE (stagger 3) ──
+        const suCard = document.getElementById('unum-soulurge');
+        const suSteps = document.getElementById('unum-su-steps');
+        const suValue = document.getElementById('unum-su-value');
+        if (suCard) suCard.dataset.state = 'calculating';
+
+        await MayaUtils.sleep(200);
+        // Highlight vowels in the letter grid
+        if (breakdown) {
+            breakdown.querySelectorAll('.unum-letter-chip').forEach(chip => {
+                const letter = chip.querySelector('.unum-letter')?.textContent;
+                if (letter && vowels.includes(letter)) {
+                    chip.classList.add('unum-letter-chip--vowel');
+                }
+            });
+        }
+
+        await MayaUtils.sleep(300);
+        this.addCalculationStep(suSteps, `${isHindi ? 'स्वर योग' : 'Vowels'} = ${vowelSum} → ${soulUrge}`, '', true);
+
+        if (suValue) suValue.innerHTML = `<span class="unified-num-card__number unified-num-pop">${soulUrge}</span>`;
+        if (suCard) suCard.dataset.state = 'done';
+
+        // ── Append result cards to the result strip ──
+        this.appendResultCard('life-path', 'Life Path', lifePath, 'life-path');
+        this.appendResultCard('destiny', 'Destiny', destiny, 'destiny');
+        this.appendResultCard('soul-urge', 'Soul Urge', soulUrge, 'soul-urge');
+
+        // ── Wait for AI narration and speak it ──
+        const narrative = await narrativePromise;
+        if (narrative && narrative.length > 20) {
+            console.log('📢 Unified numbers narrative:', narrative.substring(0, 60) + '...');
+            this.spokenNarrations.push({ stage: 'numbersReveal', text: narrative });
+            await this.speak(narrative);
+        }
+
         await MayaUtils.sleep(this.stageTiming.stageSettle);
     },
 

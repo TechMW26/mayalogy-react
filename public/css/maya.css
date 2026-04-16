@@ -1877,6 +1877,24 @@ h1, h2, h3, h4, h5, h6, p {
     color: var(--maya-text-muted);
 }
 
+/* Name fields — first name + last name side by side */
+.onboarding-name-fields {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.onboarding-name-fields .onboarding-name-input {
+    flex: 1;
+    min-width: 0;
+}
+
+@media (max-width: 480px) {
+    .onboarding-name-fields {
+        flex-direction: column;
+    }
+}
+
 /* Onboarding Options (Gender, Language, etc) */
 .onboarding-options {
     display: flex;
@@ -4831,7 +4849,7 @@ h1, h2, h3, h4, h5, h6, p {
     height: 100vh;
     padding: 1.5rem 1rem;
     box-sizing: border-box;
-    background: rgba(0, 0, 0, 0.97);
+    background: #0B0B0B;
     backdrop-filter: blur(20px);
     z-index: 10000;
     display: flex;
@@ -5395,6 +5413,228 @@ h1, h2, h3, h4, h5, h6, p {
     to { 
         opacity: 1; 
         transform: scale(1); 
+    }
+}
+
+/* ═══════════════════════════════════════════════════
+   UNIFIED NUMBERS CALCULATION UI
+   All 3 numbers in one beautifully animated view
+   ═══════════════════════════════════════════════════ */
+
+.unified-numbers {
+    padding: 0.5rem 0;
+}
+
+.unified-numbers__header {
+    text-align: center;
+    margin-bottom: 1.2rem;
+}
+.unified-numbers__header h3 {
+    font-size: 1.15rem;
+    color: var(--maya-primary-light);
+    letter-spacing: 0.08em;
+    margin: 0;
+}
+
+/* 3-card grid */
+.unified-numbers__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+/* Individual number card */
+.unified-num-card {
+    position: relative;
+    background: rgba(99, 102, 241, 0.06);
+    border: 1px solid var(--maya-border);
+    border-radius: 1rem;
+    padding: 1rem 0.5rem 0.75rem;
+    text-align: center;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+.unified-num-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 1rem;
+    opacity: 0;
+    transition: opacity 0.6s;
+    pointer-events: none;
+    background: radial-gradient(circle at 50% 30%, rgba(226, 196, 106, 0.12), transparent 70%);
+}
+.unified-num-card[data-state="calculating"] {
+    border-color: rgba(226, 196, 106, 0.3);
+}
+.unified-num-card[data-state="calculating"]::before {
+    opacity: 1;
+    animation: cardPulse 1.5s ease-in-out infinite;
+}
+.unified-num-card[data-state="done"] {
+    border-color: var(--maya-primary);
+    box-shadow: 0 0 20px rgba(226, 196, 106, 0.15);
+}
+.unified-num-card[data-state="done"]::before {
+    opacity: 1;
+}
+
+@keyframes cardPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+
+.unified-num-card__icon {
+    font-size: 1.1rem;
+    color: var(--maya-primary);
+    margin-bottom: 0.25rem;
+    opacity: 0.7;
+}
+.unified-num-card[data-state="done"] .unified-num-card__icon {
+    opacity: 1;
+}
+
+.unified-num-card__label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--maya-text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.unified-num-card__value {
+    min-height: 3.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Spinner while calculating */
+.unified-num-card__spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(226, 196, 106, 0.2);
+    border-top-color: var(--maya-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* The big reveal number */
+.unified-num-card__number {
+    font-size: 2.4rem;
+    font-weight: 800;
+    color: var(--maya-primary);
+    text-shadow: 0 0 24px rgba(226, 196, 106, 0.35);
+    line-height: 1;
+}
+.unified-num-pop {
+    animation: numRevealPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes numRevealPop {
+    0% {
+        opacity: 0;
+        transform: scale(0) rotate(-8deg);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.25) rotate(2deg);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+/* Steps inside each card */
+.unified-num-card__steps {
+    margin-top: 0.5rem;
+}
+.unified-num-card__steps .calc-step {
+    font-size: 0.7rem;
+    padding: 0.2rem 0;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+.unified-num-card__steps .calc-step .step-text {
+    font-size: 0.7rem;
+}
+
+/* Name breakdown area */
+.unified-numbers__breakdown {
+    margin-top: 0.6rem;
+}
+.unum-name-breakdown {
+    text-align: center;
+}
+.unum-breakdown-label {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--maya-text-secondary);
+    margin-bottom: 0.5rem;
+}
+.unum-letter-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.3rem;
+}
+.unum-letter-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid var(--maya-border);
+    border-radius: 0.4rem;
+    padding: 0.3rem 0.4rem;
+    min-width: 30px;
+    transition: all 0.4s ease;
+}
+.unum-letter-chip.animate-in {
+    animation: popIn 0.35s ease-out forwards;
+}
+.unum-letter-chip--vowel {
+    background: rgba(226, 196, 106, 0.18);
+    border-color: var(--maya-primary);
+    box-shadow: 0 0 8px rgba(226, 196, 106, 0.15);
+}
+.unum-letter {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--maya-text-primary);
+    line-height: 1;
+}
+.unum-letter-val {
+    font-size: 0.65rem;
+    color: var(--maya-primary-light);
+    line-height: 1;
+    margin-top: 1px;
+}
+
+/* ─── Responsive: stack on narrow screens ─── */
+@media (max-width: 380px) {
+    .unified-numbers__grid {
+        grid-template-columns: 1fr;
+        gap: 0.6rem;
+    }
+    .unified-num-card {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        text-align: left;
+    }
+    .unified-num-card__value {
+        min-height: auto;
+    }
+    .unified-num-card__number {
+        font-size: 2rem;
+    }
+    .unified-num-card__steps {
+        display: none;
     }
 }
 
@@ -19087,6 +19327,53 @@ select,
     background: var(--maya-primary-light);
 }
 
+/* "None of the above" button */
+.maya-validation-btn--none {
+    background: transparent;
+    border: 1px dashed rgba(226, 196, 106, 0.35);
+    color: var(--maya-text-secondary, #aaa);
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+.maya-validation-btn--none:hover,
+.maya-validation-btn--none:focus {
+    border-color: var(--maya-primary);
+    color: var(--maya-primary);
+    opacity: 1;
+}
+
+/* Custom input area for "None of the above" */
+.maya-validation-custom {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    width: 100%;
+    max-width: 340px;
+    margin: 0 auto;
+    animation: fadeInUp 0.3s ease;
+}
+.maya-validation-custom-input {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(226, 196, 106, 0.35);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    color: var(--maya-text-primary, #fff);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.maya-validation-custom-input:focus {
+    border-color: var(--maya-primary);
+}
+.maya-validation-custom-input::placeholder {
+    color: var(--maya-text-secondary, #888);
+    opacity: 0.7;
+}
+.maya-custom-submit {
+    align-self: flex-end;
+    min-width: 100px;
+}
+
 /* Deep reveal chapter choice grid */
 .deep-reveal-choice-grid {
     display: flex;
@@ -19198,7 +19485,7 @@ select,
     text-align: center;
 }
 
-.landing-subtext {
+.  {
     font-size: 0.95rem;
     color: var(--maya-text-secondary, #aaa);
     line-height: 1.5;

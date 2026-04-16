@@ -89,9 +89,11 @@ const MayaOnboarding = {
             question: "What name should I use when I read your chart?",
             questionHi: "मैं आपकी chart पढ़ते समय आपको किस नाम से बुलाऊँ?",
             field: 'name',
-            type: 'text',
-            placeholder: 'Enter your name',
-            placeholderHi: 'अपना नाम दर्ज करें',
+            type: 'name',
+            placeholder: 'First name',
+            placeholderHi: 'पहला नाम',
+            placeholder2: 'Last name',
+            placeholder2Hi: 'उपनाम (सरनेम)',
             validation: (value) => value && value.length >= 2
         },
         {
@@ -369,6 +371,24 @@ const MayaOnboarding = {
         const options = this.getStepOptions(step);
         
         switch (step.type) {
+            case 'name':
+                const placeholder2 = this.getStepText(step, 'placeholder2');
+                inputHtml = `
+                    <div class="onboarding-name-fields">
+                        <input type="text" 
+                               class="form-control form-control-lg onboarding-input onboarding-name-input" 
+                               id="onboardingFirstName"
+                               placeholder="${placeholder}"
+                               autocomplete="given-name">
+                        <input type="text" 
+                               class="form-control form-control-lg onboarding-input onboarding-name-input" 
+                               id="onboardingLastName"
+                               placeholder="${placeholder2}"
+                               autocomplete="family-name">
+                    </div>
+                `;
+                break;
+
             case 'text':
                 inputHtml = `
                     <input type="text" 
@@ -452,7 +472,7 @@ const MayaOnboarding = {
                         ${this.t('back')}
                     </button>
                 ` : ''}
-                ${step.type === 'text' || step.type === 'date' || step.type === 'time' || step.type === 'location' ? `
+                ${step.type === 'text' || step.type === 'name' || step.type === 'date' || step.type === 'time' || step.type === 'location' ? `
                     <button type="button" class="btn btn-primary" id="nextStepBtn">
                         ${step.id === 'birthPlace' ? this.t('openMyChart') : this.t('continue')}
                     </button>
@@ -499,6 +519,19 @@ const MayaOnboarding = {
             
             // Focus input
             setTimeout(() => input.focus(), 100);
+        }
+
+        // Name fields — Enter key + focus
+        const firstName = document.getElementById('onboardingFirstName');
+        const lastName = document.getElementById('onboardingLastName');
+        if (firstName && lastName) {
+            firstName.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') lastName.focus();
+            });
+            lastName.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.handleNext(step);
+            });
+            setTimeout(() => firstName.focus(), 100);
         }
 
         // Select options
@@ -813,21 +846,54 @@ const MayaOnboarding = {
      * Handle next button
      */
     async handleNext(step) {
-        const input = document.getElementById('onboardingInput');
-        if (!input) return;
+        let value;
 
-        const value = input.value.trim();
-        
-        if (!step.optional && !step.validation(value)) {
-            MayaUtils.toast.error(this.t('invalidValue'));
-            input.classList.add('is-invalid');
-            return;
-        }
+        // Handle dual-field name input
+        if (step.type === 'name') {
+            const firstInput = document.getElementById('onboardingFirstName');
+            const lastInput = document.getElementById('onboardingLastName');
+            if (!firstInput || !lastInput) return;
 
-        input.classList.remove('is-invalid');
-        
-        if (step.field) {
-            this.userData[step.field] = value;
+            const firstName = firstInput.value.trim();
+            const lastName = lastInput.value.trim();
+
+            if (!firstName || firstName.length < 2) {
+                MayaUtils.toast.error(this.t('invalidValue'));
+                firstInput.classList.add('is-invalid');
+                return;
+            }
+            if (!lastName || lastName.length < 2) {
+                MayaUtils.toast.error(this.t('invalidValue'));
+                lastInput.classList.add('is-invalid');
+                return;
+            }
+
+            firstInput.classList.remove('is-invalid');
+            lastInput.classList.remove('is-invalid');
+            value = `${firstName} ${lastName}`;
+
+            if (step.field) {
+                this.userData[step.field] = value;
+                this.userData.firstName = firstName;
+                this.userData.lastName = lastName;
+            }
+        } else {
+            const input = document.getElementById('onboardingInput');
+            if (!input) return;
+
+            value = input.value.trim();
+
+            if (!step.optional && !step.validation(value)) {
+                MayaUtils.toast.error(this.t('invalidValue'));
+                input.classList.add('is-invalid');
+                return;
+            }
+
+            input.classList.remove('is-invalid');
+
+            if (step.field) {
+                this.userData[step.field] = value;
+            }
         }
         
         console.log('User data after step:', this.userData);
