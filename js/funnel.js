@@ -275,6 +275,24 @@ const MayaFunnel = {
                 "ये हिस्सा किसी अहम चीज से जुड़ा है।"
             ]
         },
+        kundliTransition: {
+            en: [
+                "Based on everything you've shared with me, I now have what I need. Let me plot your kundli and we'll go deep into it together.",
+                "I have your details. Now let me map your birth chart — once the kundli forms, I'll walk you through what it reveals.",
+                "Good. With this information and what I already know, let me trace your kundli now. We'll read it together, step by step.",
+                "Thank you. Now I'm going to form your kundli from this data. Once it's ready, I'll tell you exactly what I see.",
+                "I have everything I need. Let me plot your birth chart now — the real reading begins once the kundli takes shape.",
+                "Now comes the real part. Let me form your kundli — and then I'll show you what your chart actually says about you."
+            ],
+            hi: [
+                "आपने जो जानकारी दी है, उसके आधार पर अब मेरे पास सब कुछ है। चलिए, आपकी कुंडली बनाते हैं और उसे साथ मिलकर पढ़ते हैं।",
+                "अच्छा, अब मेरे पास आपकी details हैं। पहले कुंडली बनती है — फिर मैं बताऊँगी कि उसमें क्या दिख रहा है।",
+                "ठीक है। आपकी जानकारी और MAYA के ज्ञान को मिलाकर, अब मैं आपकी कुंडली trace कर रही हूँ। साथ मिलकर पढ़ेंगे।",
+                "शुक्रिया। अब इस data से आपकी जन्म कुंडली बना रही हूँ। जैसे ही तैयार होगी, मैं बताऊँगी कि क्या दिखता है।",
+                "मेरे पास सब कुछ है जो चाहिए। अब कुंडली बनाती हूँ — असली reading कुंडली बनने के बाद शुरू होगी।",
+                "अब असली हिस्सा आता है। पहले कुंडली बनती है — फिर मैं बताऊँगी कि आपकी chart आपके बारे में क्या कहती है।"
+            ]
+        },
         relationship: {
             en: [
                 "Your emotional world is deeper than most people see.",
@@ -2692,14 +2710,10 @@ RULES:
             this.advanceProgress('chart_opened');
             await MayaUtils.sleep(this.stageTiming.introSettle);
 
-            // STEP 2: EARLY SUSPENSE HIT — one emotional mirror + one curiosity hook right after intro
-            console.log('✨ Early suspense hit...');
-            const mirrorLine = this.getVoiceLine('emotionalMirror');
-            const suspenseLine = this.getVoiceLine('suspense');
-            await this.speak(mirrorLine);
-            this.recordEmotionalAnchor(mirrorLine);
-            await MayaUtils.sleep(300);
-            await this.speak(suspenseLine);
+            // STEP 2: Transition to kundli — tell user we're about to plot their chart
+            console.log('🪐 Kundli transition...');
+            const kundliTransitionLine = this.getVoiceLine('kundliTransition');
+            await this.speak(kundliTransitionLine);
             this.advanceProgress('first_impression');
 
             // STEP 3: Show calculation overlay
