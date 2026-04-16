@@ -484,6 +484,27 @@ const MayaVoice = {
             'saath': 'साथ', 'aur': 'और',
             'bahut': 'बहुत', 'kuch': 'कुछ',
             'abhi': 'अभी', 'yahan': 'यहाँ',
+            'dasha': 'दशा', 'lagna': 'लग्न', 'yoga': 'योग', 'dosha': 'दोष',
+            'mahadasha': 'महादशा', 'antardasha': 'अंतर्दशा',
+            'rahu': 'राहु', 'ketu': 'केतु', 'shani': 'शनि', 'mangal': 'मंगल',
+            'shukra': 'शुक्र', 'guru': 'गुरु', 'budh': 'बुध', 'surya': 'सूर्य', 'chandra': 'चन्द्र',
+            'bhav': 'भाव', 'bhava': 'भाव',
+            'vedic': 'वैदिक', 'jyotish': 'ज्योतिष',
+            'numerology': 'न्यूमेरोलॉजी',
+            'signals': 'संकेत', 'signal': 'संकेत',
+            'pattern': 'पैटर्न', 'patterns': 'पैटर्न',
+            'confirm': 'कन्फर्म', 'analysis': 'विश्लेषण',
+            'exact': 'सटीक', 'positions': 'स्थितियां', 'position': 'स्थिति',
+            'timeline': 'समयरेखा', 'transit': 'गोचर', 'transits': 'गोचर',
+            'planetary': 'ग्रहों की',
+            'houses': 'भाव', 'house': 'भाव',
+            'ascendant': 'लग्न',
+            'chart': 'कुंडली',
+            'reading': 'रीडिंग', 'deep': 'गहरी',
+            'profile': 'प्रोफाइल',
+            'details': 'जानकारी',
+            'guide': 'गाइड',
+            'astrology': 'ज्योतिष',
         };
         let result = text;
         for (const [roman, devanagari] of Object.entries(map)) {
@@ -856,20 +877,20 @@ const MayaVoice = {
                 : (MAYA_CONFIG.API_KEYS.ELEVENLABS_EN_VOICE_ID || MAYA_CONFIG.API_KEYS.ELEVENLABS_VOICE_ID));
         const url = MAYA_CONFIG.ENDPOINTS.ELEVENLABS;
 
-        const modelId = 'eleven_multilingual_v2';
+        const modelId = 'eleven_v3';
 
         const latencyOptimization = 2;
         const voiceSettings = isHindi
             ? {
-                stability: 0.55,
-                similarity_boost: 0.82,
-                style: 0.35,
+                stability: 0.45,
+                similarity_boost: 0.85,
+                style: 0.55,
                 use_speaker_boost: true
             }
             : {
-                stability: 0.50,
-                similarity_boost: 0.80,
-                style: 0.32,
+                stability: 0.42,
+                similarity_boost: 0.82,
+                style: 0.50,
                 use_speaker_boost: true
             };
 

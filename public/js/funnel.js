@@ -2382,11 +2382,27 @@ STRUCTURE (follow this ORDER):
     async _generateMcqAck(question, answerLabel, answerValue, isHindi) {
         const profile = this.personalization || {};
         const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
+        const gender = this.userData?.gender === 'female' ? 'female' : 'male';
         let ack = '';
         try {
             const ackPrompt = isHindi
-                ? `आप MAYA हैं। User ने अभी एक सवाल का जवाब दिया:\nसवाल: ${question}\nजवाब: ${answerLabel}\n${dasha ? `Current दशा: ${dasha}` : ''}\n\nUser के इस SPECIFIC जवाब को acknowledge कीजिए — 1 sentence में। जवाब को directly reference करें और बताएं कि ये chart/दशा में कैसे reflect होता है। Generic "picture clear हो रही है" मत कहिए — user के exact answer को name करके बोलिए। सिर्फ 1 sentence, simple Hindi में।\n${this.getBaseRules(true)}\nReturn only the spoken text.`
-                : `You are MAYA. The user just answered a question:\nQuestion: ${question}\nAnswer: ${answerLabel}\n${dasha ? `Current dasha: ${dasha}` : ''}\n\nAcknowledge this SPECIFIC answer in 1 sentence. Directly reference what they chose and briefly connect it to their chart/dasha. Do NOT say generic things like "the picture is getting clearer" — name their exact answer. Only 1 sentence.\n${this.getBaseRules(false)}\nReturn only the spoken text.`;
+                ? `तुम MAYA हो — female vedic astrologer। User (${gender}) ने ये जवाब दिया:
+सवाल: ${question}
+जवाब: ${answerLabel}
+${dasha ? `दशा: ${dasha}` : ''}
+
+TASK: सिर्फ 1 sentence बोलो जो user के EXACT जवाब "${answerLabel}" को name करे और chart/दशा से जोड़े।
+FORBIDDEN: instructions repeat करना, rules बताना, generic "picture clear", praise, bullet points।
+MAYA feminine verbs: "मैं देख रही हूँ", "मुझे दिख रहा है"।
+ONLY return the single spoken Hindi sentence. Nothing else.`
+                : `You are MAYA — a female vedic astrologer. User (${gender}) answered:
+Question: ${question}
+Answer: ${answerLabel}
+${dasha ? `Dasha: ${dasha}` : ''}
+
+TASK: Return ONLY 1 spoken sentence acknowledging their EXACT answer "${answerLabel}" and connecting it to their chart/dasha.
+FORBIDDEN: repeating instructions, listing rules, generic phrases, praise, bullet points.
+ONLY return the single spoken sentence. Nothing else.`;
 
             if (window.MayaAI?.callGemini) {
                 const result = await MayaAI.callGemini(ackPrompt);
@@ -3142,18 +3158,24 @@ STRUCTURE (follow this ORDER):
 
             // ═══ STEP 1: Proper MAYA Introduction ═══
             console.log('🗣️ MAYA introduction...');
+            const profile = this.personalization || {};
+            const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
+            const moonSign = profile.moonSign || profile.vedic?.name || '';
+            const ascendant = profile.ascendant?.name || '';
+            const sunSign = profile.sunSign || '';
+
             const introLine = isHindi
-                ? `नमस्ते ${this.firstName}, मैं MAYA हूँ — आपकी vedic astrology guide।`
+                ? `नमस्ते ${this.firstName}, मैं MAYA हूँ — आपकी वैदिक ज्योतिष गाइड।`
                 : `Namaste ${this.firstName}, I am MAYA — your vedic astrology guide.`;
             await this.speak(introLine);
             await MayaUtils.sleep(400);
 
-            // Kundli transition line — warm and inviting
-            const kundliTransLine = isHindi
-                ? `चलिए, अब आपकी कुंडली बनाते हैं साथ मिलकर — जैसे-जैसे ग्रह अपनी जगह लेंगे, बहुत कुछ साफ होता जाएगा।`
-                : `Let's build your birth chart together — as the planets settle into place, so much will start to make sense.`;
-            await this.speak(kundliTransLine);
-            this.spokenNarrations.push({ stage: 'opening', text: `${introLine} ${kundliTransLine}` });
+            // ═══ STEP 1b: Knowledge reveal — tell user what MAYA has and knows ═══
+            const knowledgeLine = isHindi
+                ? `आपकी जन्म तिथि, समय और जगह — सब मेरे पास है। मुझे वैदिक ज्योतिष, कुंडली विश्लेषण, ग्रहों की दशा, न्यूमेरोलॉजी — इन सबकी गहरी समझ है। अब हम साथ मिलकर आपकी कुंडली बनाएंगे और उसमें गहराई से उतरेंगे।`
+                : `I have your date of birth, time, and place of birth — everything I need. I have deep knowledge of vedic astrology, kundli analysis, planetary dashas, yogas, doshas, house placements, and numerology. Now, let us plot your kundli together and go deeper into it.`;
+            await this.speak(knowledgeLine);
+            this.spokenNarrations.push({ stage: 'opening', text: `${introLine} ${knowledgeLine}` });
             this.advanceProgress('chart_opened');
             this.advanceProgress('first_impression');
             await MayaUtils.sleep(this.stageTiming.introSettle);
@@ -3167,14 +3189,16 @@ STRUCTURE (follow this ORDER):
             await this.animateKundliFormation();
             this.advanceProgress('kundli');
 
+            // ═══ STEP 2b: Post-kundli — transition into questions ═══
+            const postKundliLine = isHindi
+                ? `कुंडली बन चुकी है। अब कुछ बातें सिर्फ आप बता सकते हैं जो कुंडली नहीं बताती — मुझे कुछ सवाल पूछने दीजिए।`
+                : `Your kundli is ready. Now there are some things only you can tell me that the chart cannot — let me ask you a few things.`;
+            await this.speak(postKundliLine);
+            await MayaUtils.sleep(300);
+
             // ═══ STEP 3: First question — after kundli (recent upheaval) ═══
             if (allQuestions[0]) {
                 console.log('🎯 Q1 after kundli: recent_upheaval...');
-                const transQ1 = isHindi
-                    ? 'कुंडली बन चुकी है। कुछ signals बहुत clear दिख रहे हैं — पर कुछ बातें सिर्फ आप confirm कर सकते हैं।'
-                    : 'Your kundli is formed. Some signals are very clear — but a few things only you can confirm.';
-                await this.speak(transQ1);
-                await MayaUtils.sleep(200);
                 await this.askSingleProfileQuestion(allQuestions[0]);
             }
 
