@@ -1120,7 +1120,7 @@ const MayaKundli = {
         const kendraGaps = [0, 3, 6, 9]; // 1st, 4th, 7th, 10th
         const trikonaGaps = [0, 4, 8]; // 1st, 5th, 9th
 
-        // Gaja Kesari Yoga — Jupiter in kendra (1,4,7,10) from Moon
+        // Gaja Kesari Yoga - Jupiter in kendra (1,4,7,10) from Moon
         if (planetPositions['Jupiter'] && planetPositions['Moon']) {
             const gap = signGap(planetPositions['Jupiter'], planetPositions['Moon']);
             if (kendraGaps.includes(gap)) {
@@ -1133,7 +1133,7 @@ const MayaKundli = {
             }
         }
 
-        // Budha Aditya Yoga — Sun-Mercury same sign
+        // Budha Aditya Yoga - Sun-Mercury same sign
         if (planetPositions['Sun'] && planetPositions['Mercury'] && planetPositions['Sun'] === planetPositions['Mercury']) {
             const sunDeg = planetDegrees['Sun'] || 0;
             const mercDeg = planetDegrees['Mercury'] || 0;
@@ -1148,7 +1148,7 @@ const MayaKundli = {
             });
         }
 
-        // Chandra Mangal Yoga — Moon-Mars same sign
+        // Chandra Mangal Yoga - Moon-Mars same sign
         if (planetPositions['Moon'] && planetPositions['Mars'] && planetPositions['Moon'] === planetPositions['Mars']) {
             yogas.push({
                 name: 'चन्द्र मंगल योग',
@@ -1158,7 +1158,7 @@ const MayaKundli = {
             });
         }
 
-        // Hamsa Yoga — Jupiter in kendra from Ascendant in own/exaltation sign
+        // Hamsa Yoga - Jupiter in kendra from Ascendant in own/exaltation sign
         if (ascendantSign && planetPositions['Jupiter']) {
             const jupSign = planetPositions['Jupiter'];
             const jupKendra = kendraGaps.includes(signGap(jupSign, ascendantSign));
@@ -1173,7 +1173,7 @@ const MayaKundli = {
             }
         }
 
-        // Malavya Yoga — Venus in kendra from Ascendant in own/exaltation sign
+        // Malavya Yoga - Venus in kendra from Ascendant in own/exaltation sign
         if (ascendantSign && planetPositions['Venus']) {
             const venSign = planetPositions['Venus'];
             const venKendra = kendraGaps.includes(signGap(venSign, ascendantSign));
@@ -1188,7 +1188,7 @@ const MayaKundli = {
             }
         }
 
-        // Ruchaka Yoga — Mars in kendra from Ascendant in own/exaltation sign
+        // Ruchaka Yoga - Mars in kendra from Ascendant in own/exaltation sign
         if (ascendantSign && planetPositions['Mars']) {
             const marsSign = planetPositions['Mars'];
             const marsKendra = kendraGaps.includes(signGap(marsSign, ascendantSign));
@@ -1203,7 +1203,7 @@ const MayaKundli = {
             }
         }
 
-        // Bhadra Yoga — Mercury in kendra from Ascendant in own/exaltation sign
+        // Bhadra Yoga - Mercury in kendra from Ascendant in own/exaltation sign
         if (ascendantSign && planetPositions['Mercury']) {
             const mercSign = planetPositions['Mercury'];
             const mercKendra = kendraGaps.includes(signGap(mercSign, ascendantSign));
@@ -1218,7 +1218,7 @@ const MayaKundli = {
             }
         }
 
-        // Shasha Yoga — Saturn in kendra from Ascendant in own/exaltation sign
+        // Shasha Yoga - Saturn in kendra from Ascendant in own/exaltation sign
         if (ascendantSign && planetPositions['Saturn']) {
             const satSign = planetPositions['Saturn'];
             const satKendra = kendraGaps.includes(signGap(satSign, ascendantSign));
@@ -1233,7 +1233,7 @@ const MayaKundli = {
             }
         }
 
-        // Neecha Bhanga Raja Yoga — debilitated planet with cancellation
+        // Neecha Bhanga Raja Yoga - debilitated planet with cancellation
         const debilitationSigns = { Sun: 'Libra', Moon: 'Scorpio', Mars: 'Cancer', Mercury: 'Pisces', Jupiter: 'Capricorn', Venus: 'Virgo', Saturn: 'Aries' };
         const exaltationSigns = { Sun: 'Aries', Moon: 'Taurus', Mars: 'Capricorn', Mercury: 'Virgo', Jupiter: 'Cancer', Venus: 'Pisces', Saturn: 'Libra' };
         const signLords = { Aries: 'Mars', Taurus: 'Venus', Gemini: 'Mercury', Cancer: 'Moon', Leo: 'Sun', Virgo: 'Mercury', Libra: 'Venus', Scorpio: 'Mars', Sagittarius: 'Jupiter', Capricorn: 'Saturn', Aquarius: 'Saturn', Pisces: 'Jupiter' };
@@ -1257,7 +1257,7 @@ const MayaKundli = {
             }
         }
 
-        // Dhana Yoga — lords of 2nd and 11th related
+        // Dhana Yoga - lords of 2nd and 11th related
         if (ascendantSign) {
             const houseSignIndex = (houseNum) => (signIndex(ascendantSign) + houseNum - 1) % 12;
             const secondSign = signs[houseSignIndex(2)];
@@ -1274,7 +1274,7 @@ const MayaKundli = {
             }
         }
 
-        // Viparita Raja Yoga — lords of 6th, 8th, 12th in each other's houses
+        // Viparita Raja Yoga - lords of 6th, 8th, 12th in each other's houses
         if (ascendantSign) {
             const houseSignIndex = (houseNum) => (signIndex(ascendantSign) + houseNum - 1) % 12;
             const lord6 = signLords[signs[houseSignIndex(6)]];
@@ -1295,7 +1295,7 @@ const MayaKundli = {
             }
         }
 
-        // Kemadruma Yoga (negative) — Moon with no planets in 2nd or 12th from it
+        // Kemadruma Yoga (negative) - Moon with no planets in 2nd or 12th from it
         if (planetPositions['Moon']) {
             const moonIdx = signIndex(planetPositions['Moon']);
             const adjSigns = [signs[(moonIdx + 1) % 12], signs[(moonIdx + 11) % 12]];

@@ -1100,7 +1100,7 @@ const MayaApp = {
                 MayaBlob.init('maya-blob-container');
             }
             
-            // Blob at top — chat bubbles fill below
+            // Blob at top - chat bubbles fill below
             if (blobContainer) {
                 blobContainer.classList.remove('blob-centered');
                 blobContainer.classList.add('blob-top');

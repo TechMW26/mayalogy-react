@@ -1,4 +1,4 @@
-# MAYA App — Funnel & AI Guide Documentation
+# MAYA App - Funnel & AI Guide Documentation
 
 ## Table of Contents
 1. [Architecture Overview](#1-architecture-overview)
@@ -6,7 +6,7 @@
 3. [Storytelling Funnel (The Reading Experience)](#3-storytelling-funnel-the-reading-experience)
 4. [Funnel Phases & Gating Strategy](#4-funnel-phases--gating-strategy)
 5. [AI Provider Stack](#5-ai-provider-stack)
-6. [MAYA's AI Personality — System Prompt](#6-mayas-ai-personality--system-prompt)
+6. [MAYA's AI Personality - System Prompt](#6-mayas-ai-personality--system-prompt)
 7. [Narrative Arc Design (7-Act Structure)](#7-narrative-arc-design-7-act-structure)
 8. [All AI Prompts by Funnel Stage](#8-all-ai-prompts-by-funnel-stage)
 9. [Post-Funnel Chat AI Prompts](#9-post-funnel-chat-ai-prompts)
@@ -18,11 +18,11 @@
 ## 1. Architecture Overview
 
 MAYA is a **voice-first astrology & numerology app** that combines:
-- **Vedic Astrology (Jyotish)** — Kundli, Rashis, Nakshatras, Dashas, Yogas, Transits
-- **Pythagorean Numerology** — Life Path, Destiny, Soul Urge, Personality, Personal Year/Month/Day
-- **AI-powered narrative reading** — Gemini (primary), with Perplexity fallback
-- **ElevenLabs TTS** — Voice narration in English and Hindi
-- **Firebase Auth + Realtime DB** — User accounts and data sync
+- **Vedic Astrology (Jyotish)** - Kundli, Rashis, Nakshatras, Dashas, Yogas, Transits
+- **Pythagorean Numerology** - Life Path, Destiny, Soul Urge, Personality, Personal Year/Month/Day
+- **AI-powered narrative reading** - Gemini (primary), with Perplexity fallback
+- **ElevenLabs TTS** - Voice narration in English and Hindi
+- **Firebase Auth + Realtime DB** - User accounts and data sync
 
 ### Key Modules
 | Module | File | Purpose |
@@ -73,7 +73,7 @@ All data is saved to localStorage under:
 
 After onboarding, the funnel delivers an immersive **voice-narrated experience** with animated visuals. The experience is designed like a **7-act story arc**.
 
-### `beginJourney()` — Main Flow
+### `beginJourney()` - Main Flow
 
 ```
 1. Opening Narration (AI-generated warm welcome)
@@ -109,12 +109,12 @@ After onboarding, the funnel delivers an immersive **voice-narrated experience**
 ```
 
 ### UX Features During Funnel
-- **Background music** (funnel.mp3) — auto-ducked during speech
-- **Pause/Resume button** — pauses voice + music
+- **Background music** (funnel.mp3) - auto-ducked during speech
+- **Pause/Resume button** - pauses voice + music
 - **Animated blob** (visual feedback, transitions to "thinking" state during AI calls)
-- **Thinking indicators** — contextual loading panels ("AI ANALYSIS", "LOVE READING", "CAREER READING", etc.)
-- **Voice narration** — All AI output is spoken via ElevenLabs TTS
-- **Filler voice lines** — Spoken while AI generates the next section
+- **Thinking indicators** - contextual loading panels ("AI ANALYSIS", "LOVE READING", "CAREER READING", etc.)
+- **Voice narration** - All AI output is spoken via ElevenLabs TTS
+- **Filler voice lines** - Spoken while AI generates the next section
 
 ---
 
@@ -173,15 +173,15 @@ Gemini (primary) → Perplexity (fallback) → OpenAI (legacy/stub)
 
 ### Resilience Features
 - **Multiple API key rotation** (main + fallbacks) with per-key rate-limit cooldown (60s)
-- **Model fallback chain** — if one model 404s or is overloaded, tries the next
+- **Model fallback chain** - if one model 404s or is overloaded, tries the next
 - **Retry with exponential backoff** (2 retries per model, 1s base, 2x multiplier)
 - **30s timeout** per API call
-- **`retryWithFallbacks`** — tries multiple generator functions sequentially
-- **Content caching** — results cached to avoid regeneration
+- **`retryWithFallbacks`** - tries multiple generator functions sequentially
+- **Content caching** - results cached to avoid regeneration
 
 ---
 
-## 6. MAYA's AI Personality — System Prompt
+## 6. MAYA's AI Personality - System Prompt
 
 The core system prompt is defined in `MAYA_CONFIG.AI_PERSONALITY.SYSTEM_PROMPT` (`js/config.js`). Here is a summary:
 
@@ -198,14 +198,14 @@ The core system prompt is defined in `MAYA_CONFIG.AI_PERSONALITY.SYSTEM_PROMPT` 
 - Predictive Insights: Career, relationships, health, finances based on cycles
 
 ### Communication Style Rules
-1. **Voice-first** — responses will be spoken via TTS; clean punctuation, no markdown/bullets
-2. **Storytelling** — weave insights like a narrative, not a data dump
-3. **Personal** — use name, reference specific numbers, one-on-one feel
-4. **Grounded first** — open with concrete chart data, don't claim to "feel" energy
-5. **Reveal pacing** — greet → build anticipation → name the first hard clue
-6. **Positive sequencing** — strengths first, caution only after trust is established
-7. **Intriguing** — "I'm looking at a repeating pattern here"
-8. **Complete your thoughts** — no mid-sentence cutoffs
+1. **Voice-first** - responses will be spoken via TTS; clean punctuation, no markdown/bullets
+2. **Storytelling** - weave insights like a narrative, not a data dump
+3. **Personal** - use name, reference specific numbers, one-on-one feel
+4. **Grounded first** - open with concrete chart data, don't claim to "feel" energy
+5. **Reveal pacing** - greet → build anticipation → name the first hard clue
+6. **Positive sequencing** - strengths first, caution only after trust is established
+7. **Intriguing** - "I'm looking at a repeating pattern here"
+8. **Complete your thoughts** - no mid-sentence cutoffs
 
 ### Session Context Injection
 When `buildSystemPrompt()` runs, it dynamically appends:
@@ -247,10 +247,10 @@ Each section of the funnel has a **narrative stage guide** (`getNarrativeStageGu
 | **Closing** | `completion` | Closing beat. Let the reading settle softly while leaving the door open for further conversation. |
 
 **Supporting beats:**
-- `authCheck` — "Do not break the atmosphere; keep continuity calm and brief."
-- `welcomeBack` — "It should feel like reopening the same file, not starting from scratch."
-- `newUser` — "Frame the reading like a valuable personal file that deserves to be secured."
-- `calculationRecovery` — "Do not break momentum completely; simply explain alignment is being restored."
+- `authCheck` - "Do not break the atmosphere; keep continuity calm and brief."
+- `welcomeBack` - "It should feel like reopening the same file, not starting from scratch."
+- `newUser` - "Frame the reading like a valuable personal file that deserves to be secured."
+- `calculationRecovery` - "Do not break momentum completely; simply explain alignment is being restored."
 
 ---
 
@@ -259,7 +259,7 @@ Each section of the funnel has a **narrative stage guide** (`getNarrativeStageGu
 ### 8.1 Opening Narration (`opening`)
 
 **Prompt template (English):**
-> Write ONE opening narration for the current user. 5-6 sentences. In the first sentence, greet them by name warmly and briefly introduce yourself as MAYA. Place a `[[pause-500]]` token immediately after this introduction sentence. In the second sentence, create grounded mystic buildup and say that a hidden layer in their kundli, timing, or birth pattern is about to open. Only in the third sentence should you name the first detail that stands out from their birth pattern, western sign, moon sign, numbers, or current timing — do not recite the literal birth date unless truly necessary. In the fourth sentence, hold one real strength and one quiet tension lightly. The final sentence must create curiosity so they naturally want the next layer, while clearly saying the reading will begin through kundli and timing. It must sound fresh, intimate, and unscripted. Do not use generic cosmic filler.
+> Write ONE opening narration for the current user. 5-6 sentences. In the first sentence, greet them by name warmly and briefly introduce yourself as MAYA. Place a `[[pause-500]]` token immediately after this introduction sentence. In the second sentence, create grounded mystic buildup and say that a hidden layer in their kundli, timing, or birth pattern is about to open. Only in the third sentence should you name the first detail that stands out from their birth pattern, western sign, moon sign, numbers, or current timing - do not recite the literal birth date unless truly necessary. In the fourth sentence, hold one real strength and one quiet tension lightly. The final sentence must create curiosity so they naturally want the next layer, while clearly saying the reading will begin through kundli and timing. It must sound fresh, intimate, and unscripted. Do not use generic cosmic filler.
 
 **Also used for direct AI opening (`generateInitialReading`):**
 > Write a completely AI-generated pre-auth opening for {name}. Use 5-6 sentences. The first sentence must greet them by name and briefly introduce MAYA. In the second sentence, create grounded mystic buildup and say that a hidden layer in their kundli, timing, or birth pattern is starting to open. Only in the third sentence should you call out the one detail that stands out immediately from their numbers, western sign, moon sign, or timing markers. Include one real strength and one real tension. Ground it in these exact markers: Life Path: X, Destiny: X, Soul Urge: X, [chart markers...]. The final sentence must create a strong pull toward the next layer of the reading without mentioning payment.
@@ -269,7 +269,7 @@ Each section of the funnel has a **narrative stage guide** (`getNarrativeStageGu
 ### 8.2 Kundli Formation (`kundli`)
 
 **Prompt template (English):**
-> Write ONE kundli formation narration for the current user. Start with a warm, inviting line like "Let's explore your kundli together" — make it feel like a shared journey, not a lecture. Then use 2-3 visible chart markers such as ascendant, moon sign, current dasha, dominant element, or chart highlights. Keep it grounded and end with a natural transition toward the numbers. 5-7 sentences. Use at most one `[[pause-250]]` token.
+> Write ONE kundli formation narration for the current user. Start with a warm, inviting line like "Let's explore your kundli together" - make it feel like a shared journey, not a lecture. Then use 2-3 visible chart markers such as ascendant, moon sign, current dasha, dominant element, or chart highlights. Keep it grounded and end with a natural transition toward the numbers. 5-7 sentences. Use at most one `[[pause-250]]` token.
 
 ---
 
@@ -320,10 +320,10 @@ Each section of the funnel has a **narrative stage guide** (`getNarrativeStageGu
 >
 > RULES:
 > - Write ONLY 2-3 sentences. Keep it short and striking.
-> - DO NOT repeat numbers — they just saw them.
+> - DO NOT repeat numbers - they just saw them.
 > - Use the EXACT planetary positions and dasha transition years to predict a SPECIFIC past event.
-> - The user should think "how does she know this about me?!" — that is the goal.
-> - Do NOT say vague things that could apply to anyone. Be SPECIFIC — name actual planets, signs, degrees, dasha years.
+> - The user should think "how does she know this about me?!" - that is the goal.
+> - Do NOT say vague things that could apply to anyone. Be SPECIFIC - name actual planets, signs, degrees, dasha years.
 > - Do not claim psychic access or energy reading. Base it on chart + numbers.
 
 ---
@@ -331,14 +331,14 @@ Each section of the funnel has a **narrative stage guide** (`getNarrativeStageGu
 ### 8.7 FOMO Hook (`fomoHook`)
 
 **Prompt template (English):**
-> Write ONE fear/FOMO hook for the current user. 2-3 sentences. Based on their kundli and numbers, reveal one concerning or serious pattern — such as an upcoming challenge in the next few months, a hidden relationship tension, a career trap, or a repeating self-sabotage cycle. Say it in a way that makes the user think "I need to know more about this." The prediction must be confident and specific, not vague. Do not fear-monger, but create genuine urgency. End with a hint that full details are in the private reading.
+> Write ONE fear/FOMO hook for the current user. 2-3 sentences. Based on their kundli and numbers, reveal one concerning or serious pattern - such as an upcoming challenge in the next few months, a hidden relationship tension, a career trap, or a repeating self-sabotage cycle. Say it in a way that makes the user think "I need to know more about this." The prediction must be confident and specific, not vague. Do not fear-monger, but create genuine urgency. End with a hint that full details are in the private reading.
 
 ---
 
 ### 8.8 Email Gate Transition (`emailGate`)
 
 **Prompt template (English):**
-> Write ONE email-gate transition for the current user. 2-3 sentences. First create FOMO — say you found something in their chart that needs to be shared now, but the deeper layer is in a private saved file with chart-specific timing windows, do/avoid steps, and warnings. Then CLEARLY instruct the user to type their email in the field that is about to appear on screen. Ask only once, do not push or repeat the ask.
+> Write ONE email-gate transition for the current user. 2-3 sentences. First create FOMO - say you found something in their chart that needs to be shared now, but the deeper layer is in a private saved file with chart-specific timing windows, do/avoid steps, and warnings. Then CLEARLY instruct the user to type their email in the field that is about to appear on screen. Ask only once, do not push or repeat the ask.
 
 ---
 
@@ -357,11 +357,11 @@ Each section of the funnel has a **narrative stage guide** (`getNarrativeStageGu
 ### 8.10 Love Reading (`love`)
 
 **`buildDirectSectionPrompt('love')` (English):**
-> Write ONE unique FILTERLESS love reading for the current user. No sugar-coating — be direct and real. Read the "7TH HOUSE & MARRIAGE ANALYSIS" section carefully — if the user is likely married, discuss actual marriage dynamics, real friction points with the partner, and the relationship's true texture. If likely unmarried, discuss attachment behaviour, dating patterns, and partnership timing with specific months/years. NAME the exact Venus sign, 7th house lord, and relevant dasha periods. Explain EXACTLY what relationship dynamic these planetary positions create. 5-7 sentences — raw, real, and eerily specific.
+> Write ONE unique FILTERLESS love reading for the current user. No sugar-coating - be direct and real. Read the "7TH HOUSE & MARRIAGE ANALYSIS" section carefully - if the user is likely married, discuss actual marriage dynamics, real friction points with the partner, and the relationship's true texture. If likely unmarried, discuss attachment behaviour, dating patterns, and partnership timing with specific months/years. NAME the exact Venus sign, 7th house lord, and relevant dasha periods. Explain EXACTLY what relationship dynamic these planetary positions create. 5-7 sentences - raw, real, and eerily specific.
 
 **`getLoveReadingAI` from statements.js (additional structure):**
 > STRUCTURE:
-> 1. **THE PATTERN** (2 sentences): LP + Soul Urge combo — what partners they unconsciously attract, what role they play
+> 1. **THE PATTERN** (2 sentences): LP + Soul Urge combo - what partners they unconsciously attract, what role they play
 > 2. **THE WOUND** (2 sentences): Specific emotional wound or fear that sabotages love life
 > 3. **THE BLIND SPOT** (1-2 sentences): What truth about themselves in love they've been avoiding
 > 4. **THE SHIFT** (2 sentences): Specific behavioral shifts based on their numbers
@@ -371,7 +371,7 @@ Each section of the funnel has a **narrative stage guide** (`getNarrativeStageGu
 ### 8.11 Career Reading (`career`)
 
 **`buildDirectSectionPrompt('career')` (English):**
-> Write ONE unique FILTERLESS career and money reading for the current user. No fake positivity. Use the chart data — 10th house, dasha period, and planetary positions — to explain EXACTLY which career direction the user is naturally pulled toward and where they are wasting energy on the wrong path. Name one very specific underused strength and one concrete next move with a timeline (specific month/year). 5-7 sentences — practical and actionable, not generic advice.
+> Write ONE unique FILTERLESS career and money reading for the current user. No fake positivity. Use the chart data - 10th house, dasha period, and planetary positions - to explain EXACTLY which career direction the user is naturally pulled toward and where they are wasting energy on the wrong path. Name one very specific underused strength and one concrete next move with a timeline (specific month/year). 5-7 sentences - practical and actionable, not generic advice.
 
 **`getCareerReadingAI` from statements.js:**
 > STRUCTURE:
@@ -385,11 +385,11 @@ Each section of the funnel has a **narrative stage guide** (`getNarrativeStageGu
 ### 8.12 Year/Timing Reading (`year`)
 
 **`buildDirectSectionPrompt('year')` (English):**
-> Write ONE unique FILTERLESS timing reading for the current user. READ the TEMPORAL AWARENESS section carefully — months that have passed must be referenced in past tense, and predictions must ONLY target upcoming months. Combine dasha transitions, planetary transits, and personal year number to map 2-3 NEW specific windows in the next 3-6 months — each window must include exact month + year + what to do or avoid. Include one hidden trap with timing. 5-7 sentences — sharp and specific.
+> Write ONE unique FILTERLESS timing reading for the current user. READ the TEMPORAL AWARENESS section carefully - months that have passed must be referenced in past tense, and predictions must ONLY target upcoming months. Combine dasha transitions, planetary transits, and personal year number to map 2-3 NEW specific windows in the next 3-6 months - each window must include exact month + year + what to do or avoid. Include one hidden trap with timing. 5-7 sentences - sharp and specific.
 
 **`getYearReadingAI` from statements.js:**
 > STRUCTURE:
-> 1. **THE THEME** (2 sentences): What phase of the 9-year cycle — planting, growing, or harvest?
+> 1. **THE THEME** (2 sentences): What phase of the 9-year cycle - planting, growing, or harvest?
 > 2. **THE OPPORTUNITY WINDOWS** (2 sentences): 2-3 specific months and what they're favorable for
 > 3. **THE CHALLENGE** (2 sentences): Main trap of this Personal Year; negative outcome if ignored
 > 4. **THE ADVICE** (2 sentences): Focus word/mantra, what to START and STOP doing
@@ -399,7 +399,7 @@ Each section of the funnel has a **narrative stage guide** (`getNarrativeStageGu
 ### 8.13 Warning Reading (`warning`)
 
 **`buildDirectSectionPrompt('warning')` (English):**
-> Write ONE honest FILTERLESS warning section for the current user. Tell the truth plainly — do not package it. Use chart data to identify one NEW specific self-sabotage pattern — explain from the planetary position EXACTLY why this pattern forms, when it triggers (specific months/situations), and how to practically avoid it. Do NOT say generic "be careful" — provide actual planetary evidence. 5-7 sentences.
+> Write ONE honest FILTERLESS warning section for the current user. Tell the truth plainly - do not package it. Use chart data to identify one NEW specific self-sabotage pattern - explain from the planetary position EXACTLY why this pattern forms, when it triggers (specific months/situations), and how to practically avoid it. Do NOT say generic "be careful" - provide actual planetary evidence. 5-7 sentences.
 
 **`getWarningReadingAI` from statements.js:**
 > STRUCTURE:
@@ -424,7 +424,7 @@ Each section of the funnel has a **narrative stage guide** (`getNarrativeStageGu
 
 | Prompt | Purpose | Length |
 |--------|---------|--------|
-| `authCheck` | "Checking your saved reading" — brief operational line | 1 sentence |
+| `authCheck` | "Checking your saved reading" - brief operational line | 1 sentence |
 | `welcomeBack` | Returning user: warm recognition + saved reading + password ask | 2-3 sentences |
 | `newUser` | New user: explain password protects the reading | 2-3 sentences |
 | `authEmailField` | Voice prompt when email field receives focus | 1-2 sentences |
@@ -442,7 +442,7 @@ After the funnel completes, the user enters a **free chat** mode with MAYA.
 > User Question: "{question}"
 >
 > RULES FOR THIS ANSWER:
-> 1. Be SHORT and DIRECT — 2-4 sentences max, no fluff, no filler.
+> 1. Be SHORT and DIRECT - 2-4 sentences max, no fluff, no filler.
 > 2. Give a REALISTIC, calculated answer based on the user's actual birth chart, numbers, and planetary positions. Never be vague or generic.
 > 3. State the specific astrological/numerological reason behind your answer.
 > 4. If the question has a yes/no nature, lead with a clear yes or no, then give the brief reason.
@@ -478,7 +478,7 @@ Injected into every prompt:
 - Months that have passed MUST use past tense
 - Future predictions MUST include specific month + year
 - Next year references MUST include the year number
-- No remedies for past events — past is only for pattern recognition
+- No remedies for past events - past is only for pattern recognition
 
 ### Language Rules (Hindi/Hinglish)
 - Hindi words → Devanagari script always
@@ -568,8 +568,8 @@ MayaFunnel.speak(text)
 
 ### Prediction Items (Timing Hooks)
 `buildPredictionItems()` generates 1-3 timing predictions from the personal month chart:
-- **Strong months** — Personal Month numbers 8, 1, 6, 3 → opportunity signals
-- **Caution months** — Personal Month numbers 4, 7, 9, 5 → warning signals
+- **Strong months** - Personal Month numbers 8, 1, 6, 3 → opportunity signals
+- **Caution months** - Personal Month numbers 4, 7, 9, 5 → warning signals
 - Each includes: month name, personal month number, theme, summary sentence
 
 ### Narrative Lens Selection

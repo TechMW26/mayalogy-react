@@ -5248,7 +5248,7 @@ const MayaPages = {
     },
 
     /**
-     * Handle loaded palm image data — set preview and store state
+     * Handle loaded palm image data - set preview and store state
      */
     _palmHandleImageLoaded(imageData, isHindi, palmImage, instructionsCard, rightHandInstructions, previewCard, loadingCard, resultsCard) {
         const previewLabel = document.getElementById('palmPreviewLabel');
@@ -10386,7 +10386,7 @@ Rules:
      * Initialize Chat page
      */
     initChatPage() {
-        // Unified chat — open the MAYA overlay (same as funnel-end chat)
+        // Unified chat - open the MAYA overlay (same as funnel-end chat)
         if (window.MayaApp) {
             MayaApp.showMaya();
         }

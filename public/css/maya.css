@@ -1878,7 +1878,7 @@ h1, h2, h3, h4, h5, h6, p {
     color: var(--maya-text-muted);
 }
 
-/* Name fields — first name + last name side by side */
+/* Name fields - first name + last name side by side */
 .onboarding-name-fields {
     display: flex;
     gap: 0.75rem;
@@ -5423,7 +5423,7 @@ h1, h2, h3, h4, h5, h6, p {
     margin: 0;
 }
 
-/* Number cards — stacked vertically */
+/* Number cards - stacked vertically */
 .unified-numbers__grid {
     display: flex;
     flex-direction: column;
@@ -5431,7 +5431,7 @@ h1, h2, h3, h4, h5, h6, p {
     margin-bottom: 1rem;
 }
 
-/* Individual number card — horizontal layout */
+/* Individual number card - horizontal layout */
 .unified-num-card {
     position: relative;
     background: rgba(99, 102, 241, 0.06);
@@ -19136,7 +19136,7 @@ input[type="datetime-local"] {
 }
 
 /* ============================================================
-   VALIDATION LOOP UI — Fixed centered animated card
+   VALIDATION LOOP UI - Fixed centered animated card
    ============================================================ */
 
 .maya-validation-overlay {
@@ -19602,7 +19602,7 @@ input[type="datetime-local"] {
 }
 
 /* ============================================================
-   PROGRESS METER — gamification reading tracker
+   PROGRESS METER - gamification reading tracker
    ============================================================ */
 
 .maya-progress-meter {
@@ -19771,7 +19771,7 @@ input[type="datetime-local"] {
 }
 
 /* ============================================================
-   CHAT MODE — compact blob, proper layout, no progress bar
+   CHAT MODE - compact blob, proper layout, no progress bar
    ============================================================ */
 
 /* Mini blob for chat mode */
@@ -19788,13 +19788,13 @@ input[type="datetime-local"] {
     display: none !important;
 }
 
-/* Chat mode text display — messages take remaining space */
+/* Chat mode text display - messages take remaining space */
 .maya-overlay--chat .maya-text-display.maya-chat-mode {
     top: 100px;
     padding-top: 1rem;
 }
 
-/* Guided chips — horizontal scroll row */
+/* Guided chips - horizontal scroll row */
 .maya-overlay--chat .maya-guided-chips {
     display: flex;
     flex-wrap: wrap;

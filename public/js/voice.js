@@ -418,7 +418,29 @@ const MayaVoice = {
     approximateDevanagari(text) {
         if (!text) return '';
         if (/[\u0900-\u097F]/.test(text)) return text;
-        const w = text.toLowerCase();
+
+        // Common Indian names — exact Devanagari for perfect pronunciation
+        const nameMap = {
+            'aviraj': 'अविराज', 'avinash': 'अविनाश', 'amit': 'अमित', 'amita': 'अमिता',
+            'aarav': 'आरव', 'arjun': 'अर्जुन', 'aditya': 'आदित्य', 'ankit': 'अंकित',
+            'ankita': 'अंकिता', 'akash': 'आकाश', 'alok': 'आलोक', 'ananya': 'अनन्या',
+            'bhavya': 'भाव्या', 'bharat': 'भारत', 'chetan': 'चेतन',
+            'deepak': 'दीपक', 'deepika': 'दीपिका', 'dev': 'देव', 'divya': 'दिव्या', 'diya': 'दिया',
+            'gaurav': 'गौरव', 'geeta': 'गीता', 'harsh': 'हर्ष', 'harshit': 'हर्षित',
+            'isha': 'ईशा', 'ishaan': 'ईशान', 'jay': 'जय', 'jatin': 'जतिन',
+            'karan': 'करन', 'kavya': 'काव्या', 'kishan': 'किशन', 'kriti': 'कृति', 'krishna': 'कृष्णा',
+            'lakshmi': 'लक्ष्मी', 'lalit': 'ललित', 'manish': 'मनीष', 'maya': 'माया', 'meera': 'मीरा', 'mohit': 'मोहित', 'mukesh': 'मुकेश',
+            'naman': 'नमन', 'neha': 'नेहा', 'nikhil': 'निखिल', 'nisha': 'निशा', 'nitin': 'नितिन',
+            'pankaj': 'पंकज', 'pooja': 'पूजा', 'priya': 'प्रिया', 'priyanka': 'प्रियंका',
+            'rahul': 'राहुल', 'raj': 'राज', 'rajesh': 'राजेश', 'ravi': 'रवि', 'ritika': 'रितिका', 'rohit': 'रोहित', 'rohan': 'रोहन',
+            'sachin': 'सचिन', 'sahil': 'साहिल', 'sandeep': 'संदीप', 'sanjay': 'संजय', 'shivam': 'शिवम', 'shreya': 'श्रेया', 'simran': 'सिमरन', 'sneha': 'स्नेहा', 'sunil': 'सुनील', 'swati': 'स्वाति',
+            'tanvi': 'तन्वी', 'tushar': 'तुषार', 'varun': 'वरुण', 'vikram': 'विक्रम', 'vishal': 'विशाल', 'vivek': 'विवेक',
+            'yash': 'यश', 'yogesh': 'योगेश',
+        };
+        const lookup = text.toLowerCase().trim();
+        if (nameMap[lookup]) return nameMap[lookup];
+
+        const w = lookup;
         let result = '';
         let i = 0;
         const C = {
@@ -877,20 +899,20 @@ const MayaVoice = {
                 : (MAYA_CONFIG.API_KEYS.ELEVENLABS_EN_VOICE_ID || MAYA_CONFIG.API_KEYS.ELEVENLABS_VOICE_ID));
         const url = MAYA_CONFIG.ENDPOINTS.ELEVENLABS;
 
-        const modelId = 'eleven_v3';
+        const modelId = 'eleven_multilingual_v2';
 
         const latencyOptimization = 2;
         const voiceSettings = isHindi
             ? {
-                stability: 0.45,
-                similarity_boost: 0.85,
-                style: 0.55,
+                stability: 0.48,
+                similarity_boost: 0.84,
+                style: 0.45,
                 use_speaker_boost: true
             }
             : {
-                stability: 0.42,
+                stability: 0.45,
                 similarity_boost: 0.82,
-                style: 0.50,
+                style: 0.40,
                 use_speaker_boost: true
             };
 

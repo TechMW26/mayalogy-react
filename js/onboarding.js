@@ -285,7 +285,7 @@ const MayaOnboarding = {
                 </div>
 
                 <h2 class="landing-headline">Open Your Personal<br>Astrology Reading</h2>
-                <p class="landing-subtext">Your birth chart holds patterns most people never see.<br>MAYA will read yours — live, in her own voice.</p>
+                <p class="landing-subtext">Your birth chart holds patterns most people never see.<br>MAYA will read yours - live, in her own voice.</p>
 
                 <div class="landing-actions">
                     <button type="button" class="btn btn-primary btn-lg landing-begin-btn" id="landingBeginBtn">
@@ -534,7 +534,7 @@ const MayaOnboarding = {
             setTimeout(() => input.focus(), 100);
         }
 
-        // Name fields — Enter key + focus
+        // Name fields - Enter key + focus
         const firstName = document.getElementById('onboardingFirstName');
         const lastName = document.getElementById('onboardingLastName');
         if (firstName && lastName) {

@@ -538,7 +538,7 @@ IMPORTANT: MALE verb forms - हूँ, रहा हूँ, सकता हू
     - What they get: a life-pattern roadmap, the next 12–18 months of timing windows, kundli timing cues, and clear do/avoid steps.
     - Privacy framing (kept private, saved).
     - One line that makes it feel like this file is specific to THEIR chart.
-    - CLEARLY instruct the user to type their email in the field that is about to appear on screen — e.g. "You'll see an email field on screen now — just type your email there so this reading stays saved and I can unlock the deeper layer for you." Ask only once, do not repeat or push.
+    - CLEARLY instruct the user to type their email in the field that is about to appear on screen - e.g. "You'll see an email field on screen now - just type your email there so this reading stays saved and I can unlock the deeper layer for you." Ask only once, do not repeat or push.
     Include [[pause-250]] once.
     No bullets.
     `,
@@ -555,7 +555,7 @@ IMPORTANT: MALE verb forms - हूँ, रहा हूँ, सकता हू
     - life-pattern roadmap, अगले 12–18 महीनों की timing windows, kundli timing cues, do/avoid steps।
     - privacy: private + saved।
     - एक line जो इसे उनकी personal chart file feel कराए।
-    - CLEARLY कहिए कि screen पर एक email field दिखेगा और उन्हें अपना email address वहाँ type करना है — जैसे "अभी screen पर email field आ रहा है, बस अपना email वहाँ type कर दीजिए ताकि ये reading safe रहे और मैं आगे की deeper layer खोल सकूँ।" सिर्फ एक बार, ज़्यादा push मत करें।
+    - CLEARLY कहिए कि screen पर एक email field दिखेगा और उन्हें अपना email address वहाँ type करना है - जैसे "अभी screen पर email field आ रहा है, बस अपना email वहाँ type कर दीजिए ताकि ये reading safe रहे और मैं आगे की deeper layer खोल सकूँ।" सिर्फ एक बार, ज़्यादा push मत करें।
     [[pause-250]] एक बार। देवनागरी Hinglish, "आप"।
     IMPORTANT: MALE verb forms - हूँ, रहा हूँ, सकता हूँ, देख रहा हूँ
     `
