@@ -2360,10 +2360,24 @@ STRUCTURE (follow this ORDER):
         overlay.className = 'maya-answer-reading';
         overlay.id = 'maya-answer-reading-overlay';
         overlay.innerHTML = `
+            <div class="maya-answer-reading__ring">
+                <svg viewBox="0 0 60 60">
+                    <defs>
+                        <linearGradient id="answerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#e2c46a"/>
+                            <stop offset="50%" stop-color="#f5d98b"/>
+                            <stop offset="100%" stop-color="#c9a84c"/>
+                        </linearGradient>
+                    </defs>
+                    <circle cx="30" cy="30" r="26"/>
+                    <circle cx="30" cy="30" r="26"/>
+                </svg>
+                <div class="maya-answer-reading__icon">✦</div>
+            </div>
+            <p class="maya-answer-reading__label">${isHindi ? 'आपका जवाब पढ़ रही हूँ…' : 'Reading your answer…'}</p>
             <div class="maya-answer-reading__dots">
                 <span></span><span></span><span></span>
             </div>
-            <p class="maya-answer-reading__label">${isHindi ? 'आपका जवाब पढ़ रही हूँ…' : 'Reading your answer…'}</p>
         `;
         document.body.appendChild(overlay);
         return () => {
@@ -2373,61 +2387,86 @@ STRUCTURE (follow this ORDER):
     },
 
     /**
-     * Generate an AI-powered 1-sentence acknowledgment for any MCQ answer.
+     * Generate an AI-powered acknowledgment for any MCQ answer.
+     * Gives a meaningful, warm, forward-looking response tied to the user's chart.
      * Falls back to a static pool if AI fails.
-     * @param {string} question - the question text
-     * @param {string} answerLabel - the display label of the chosen option
-     * @param {string} answerValue - the value of the chosen option
-     * @param {boolean} isHindi
-     * @returns {Promise<string>}
      */
     async _generateMcqAck(question, answerLabel, answerValue, isHindi) {
         const profile = this.personalization || {};
         const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
+        const moonSign = profile.moonSign || profile.vedic?.name || '';
+        const ascendant = profile.ascendant?.name || '';
+        const highlights = (profile.highlights || []).slice(0, 3).join(', ');
+        const yogas = (profile.yogaNames || []).slice(0, 2).join(', ');
         const gender = this.userData?.gender === 'female' ? 'female' : 'male';
+        const genderHi = gender === 'female' ? 'स्त्री' : 'पुरुष';
+
         let ack = '';
         try {
+            const chartContext = [
+                dasha ? `Current dasha: ${dasha}` : '',
+                moonSign ? `Moon sign: ${moonSign}` : '',
+                ascendant ? `Ascendant: ${ascendant}` : '',
+                highlights ? `Chart highlights: ${highlights}` : '',
+                yogas ? `Yogas: ${yogas}` : ''
+            ].filter(Boolean).join('\n');
+
             const ackPrompt = isHindi
-                ? `तुम MAYA हो - female vedic astrologer। User (${gender}) ने ये जवाब दिया:
+                ? `तुम MAYA हो — एक warm, caring female vedic astrologer जो user से personal बात कर रही है।
+
+User (${genderHi}) ने ये जवाब दिया:
 सवाल: ${question}
-जवाब: ${answerLabel}
-${dasha ? `दशा: ${dasha}` : ''}
+जवाब: "${answerLabel}"
 
-TASK: सिर्फ 1 sentence बोलो जो user के EXACT जवाब "${answerLabel}" को name करे और chart/दशा से जोड़े।
-FORBIDDEN: instructions repeat करना, rules बताना, generic "picture clear", praise, bullet points।
-MAYA feminine verbs: "मैं देख रही हूँ", "मुझे दिख रहा है"।
-ONLY return the single spoken Hindi sentence. Nothing else.`
-                : `You are MAYA - a female vedic astrologer. User (${gender}) answered:
+User's chart:
+${chartContext}
+
+TASK — 2-3 छोटे sentences में बोलो (spoken Hindi, 40-60 words max):
+1. पहले user के जवाब "${answerLabel}" को acknowledge करो — empathetically, warmly
+2. फिर बताओ ये क्यों हो रहा है — chart/dasha/graha से connect करो (specific planet या yoga का naam लो)
+3. आगे क्या होगा — positive direction दो। अगर जवाब negative है (struggle, tension, loss) तो बताओ कैसे tackle होगा, क्या बदलाव आएगा, hope दो।
+
+STYLE: जैसे एक caring बड़ी बहन बात कर रही हो। Natural, warm, spoken Hindi। Short sentences।
+FEMININE verbs: "मैं देख रही हूँ", "मुझे दिख रहा है", "मैं बता रही हूँ"
+FORBIDDEN: English words (except planet names), bullet points, generic "picture clear ho rahi hai", repeating instructions, praise like "bahut accha", listing rules.
+ONLY return the spoken Hindi response. Nothing else.`
+
+                : `You are MAYA — a warm, caring female vedic astrologer having a personal conversation with the user.
+
+User (${gender}) answered:
 Question: ${question}
-Answer: ${answerLabel}
-${dasha ? `Dasha: ${dasha}` : ''}
+Answer: "${answerLabel}"
 
-TASK: Return ONLY 1 spoken sentence acknowledging their EXACT answer "${answerLabel}" and connecting it to their chart/dasha.
-FORBIDDEN: repeating instructions, listing rules, generic phrases, praise, bullet points.
-ONLY return the single spoken sentence. Nothing else.`;
+User's chart:
+${chartContext}
+
+TASK — Respond in 2-3 short sentences (40-60 words max):
+1. First warmly acknowledge their specific answer "${answerLabel}" — be empathetic
+2. Then explain WHY this is happening — connect to a specific planet, dasha, or yoga from their chart
+3. Give forward direction — where this leads in life. If the answer is negative (struggle, tension, loss), tell them how it gets better, what shift is coming, give hope.
+
+STYLE: Like a caring older sister. Natural, warm, conversational. Short sentences.
+FORBIDDEN: bullet points, generic phrases like "the picture is getting clear", repeating instructions, excessive praise, listing rules.
+ONLY return the spoken response. Nothing else.`;
 
             if (window.MayaAI?.callGemini) {
-                const result = await MayaAI.callGemini(ackPrompt);
-                if (result && result.length > 5 && result.length < 200) {
-                    ack = this.sanitizeNarrationText(result);
+                // Try up to 2 attempts — no static fallbacks
+                for (let attempt = 0; attempt < 2 && !ack; attempt++) {
+                    try {
+                        const result = await MayaAI.callGemini(ackPrompt);
+                        if (result && result.length > 10 && result.length < 350) {
+                            ack = this.sanitizeNarrationText(result);
+                        }
+                    } catch (retryErr) {
+                        console.warn(`AI ack attempt ${attempt + 1} failed:`, retryErr.message);
+                    }
                 }
             }
         } catch (e) {
-            console.warn('AI ack failed, using fallback:', e.message);
+            console.warn('AI ack failed:', e.message);
         }
 
-        if (!ack) {
-            const fallbacks = isHindi
-                ? [
-                    dasha ? `हम्म… ${dasha} दशा में यही दिख रहा था।` : 'हम्म… chart में यही signal था।',
-                    'समझ आया - ये chart के उस हिस्से से जुड़ता है जो मैं अभी पढ़ रही थी।'
-                ]
-                : [
-                    dasha ? `Hmm… that's exactly what the ${dasha} dasha was showing.` : 'Hmm… that matches the signal in your chart.',
-                    'I see - this connects to the part of the chart I was just reading.'
-                ];
-            ack = fallbacks[Math.floor(Math.random() * fallbacks.length)];
-        }
+        // No static fallbacks — return whatever AI generated (or empty)
         return ack;
     },
 
@@ -2740,21 +2779,23 @@ ONLY return the single spoken sentence. Nothing else.`;
         }
 
         // Speak email gate narration, then go straight to email form - no extra button
-        const predictionItems = this.buildPredictionItems();
-        const emailAiCtx = this.buildBaseAIContext(predictionItems);
-        const emailNarration = await this.withFiller(
-            () => this.generateDirectReadingSection('emailGate', emailAiCtx),
-            'thinking'
-        );
+        // Use pre-generated narration if available, otherwise generate fresh
+        let emailNarration;
+        if (this._emailNarrationPregen) {
+            emailNarration = await this._emailNarrationPregen;
+            this._emailNarrationPregen = null;
+        }
+        if (!emailNarration || emailNarration.length <= 20) {
+            const predictionItems = this.buildPredictionItems();
+            const emailAiCtx = this.buildBaseAIContext(predictionItems);
+            emailNarration = await this.withFiller(
+                () => this.generateDirectReadingSection('emailGate', emailAiCtx),
+                'thinking'
+            );
+        }
         if (emailNarration && emailNarration.length > 20) {
             await this.speak(emailNarration);
             this.spokenNarrations.push({ stage: 'emailGate', text: emailNarration });
-        } else {
-            // Fallback if AI fails
-            const fallback = isHindi
-                ? `आपकी chart में कुछ ऐसा दिखा है जिसे अभी privately बताना जरूरी है। Screen पर email field आ रहा है - बस अपना email type कर दीजिए ताकि ये reading safe रहे और मैं आगे की deeper layer खोल सकूँ।`
-                : `There is something in your chart I need to share privately. You will see an email field on screen - just type your email so this reading stays saved and I can unlock the deeper layer for you.`;
-            await this.speak(fallback);
         }
 
         // Flow into the save-my-file gate
@@ -3136,7 +3177,6 @@ ONLY return the single spoken sentence. Nothing else.`;
         const ack = await this._generateMcqAck(q.question, chosen?.label || answer, answer, isHindi);
         hideAnim();
         await this.speak(ack);
-        await MayaUtils.sleep(200);
 
         return answer;
     },
@@ -3168,7 +3208,7 @@ ONLY return the single spoken sentence. Nothing else.`;
 
             // Single combined intro — no gaps between sentences
             const fullIntro = isHindi
-                ? `नमस्ते ${this.firstName}! मैं माया हूँ, बहुत अच्छा लगा आपसे मिलकर। आपने जो जन्म तिथि, समय और जगह दी है, उससे मुझे बहुत कुछ पता चल गया है। मुझे वैदिक ज्योतिष, कुंडली, ग्रहों की दशा, योग, दोष, और न्यूमेरोलॉजी, इन सबकी गहरी समझ है। तो चलिए, सबसे पहले आपकी कुंडली बनाते हैं और फिर साथ मिलकर उसमें गहराई से उतरते हैं।`
+                ? `नमस्ते ${this.firstName}! मैं माया हूँ, बहुत अच्छा लगा आपसे मिलकर। आपने जो जन्म तिथि, समय और जगह दी है, उससे मुझे बहुत कुछ पता चल गया है। मुझे vedic astrology, कुंडली, ग्रहों की दशा, योग, दोष, और numerology, इन सबकी गहरी समझ है। तो चलिए, सबसे पहले आपकी कुंडली बनाते हैं और फिर साथ मिलकर उसमें गहराई से उतरते हैं।`
                 : `Hello ${this.firstName}! I am Maya, it is really nice to meet you. From the birth date, time, and place you shared, I already know quite a lot about you. I have deep understanding of vedic astrology, birth charts, planetary dashas, yogas, doshas, and numerology. So let us start by plotting your kundli, and then we will go deeper into it together.`;
             await this.speak(fullIntro);
             this.spokenNarrations.push({ stage: 'opening', text: fullIntro });
@@ -3187,11 +3227,35 @@ ONLY return the single spoken sentence. Nothing else.`;
 
             // ═══ STEP 2b: Post-kundli — warm transition into questions ═══
             const postKundliLine = isHindi
-                ? `बहुत अच्छा, कुंडली बन गई है! अब कुछ बातें हैं जो सिर्फ आप ही बता सकते हैं, कुंडली नहीं बताती। तो चलिए, कुछ छोटे सवाल पूछ लेती हूँ।`
-                : `Wonderful, your kundli is ready! Now there are some things only you can tell me, the chart alone cannot reveal everything. So let me ask you a few quick questions.`;
+                ? `बहुत अच्छा, कुंडली बन गई है! इसमें बहुत कुछ दिख रहा है। अब मैं कुछ सवाल पूछूँगी ताकि reading और भी गहरी और सटीक हो सके।`
+                : `Wonderful, your kundli is ready! I can already see a lot in it. Let me ask you a few questions so I can make this reading even deeper and more accurate.`;
             await this.speak(postKundliLine);
 
             // ═══ STEP 3: First question - after kundli (recent upheaval) ═══
+            // Pre-generate teaser content in background while questions happen
+            const predictionItems = this.buildPredictionItems();
+            const aiContext = this.buildBaseAIContext(predictionItems);
+            const teaserPregen = this.getContent('teaserRevealNarration', async () => {
+                const combined = await this.generateDirectReadingSection('combinedTeaser', aiContext);
+                if (combined && combined.length > 40) {
+                    const parts = combined.split(/\[\[pause-250\]\]/i).map(s => s.trim()).filter(Boolean);
+                    if (parts.length >= 3) this.unresolvedThread = parts[parts.length - 1];
+                    return combined;
+                }
+                const segments = [];
+                const identityTruth = await this.generateDirectReadingSection('identityTruth', aiContext);
+                if (identityTruth?.length > 20) segments.push(identityTruth.trim());
+                const emotionalPattern = await this.generateDirectReadingSection('emotionalPattern', aiContext);
+                if (emotionalPattern?.length > 20) segments.push(emotionalPattern.trim());
+                const unresolvedThread = await this.generateDirectReadingSection('unresolvedThread', aiContext);
+                if (unresolvedThread?.length > 20) { segments.push(unresolvedThread.trim()); this.unresolvedThread = unresolvedThread; }
+                return segments.join(' [[pause-250]] ');
+            });
+            // Also pre-generate email gate narration
+            const emailPregen = this.generateDirectReadingSection('emailGate', aiContext);
+            // Store the promise for later use in showSuspenseBridge
+            this._emailNarrationPregen = emailPregen;
+
             if (allQuestions[0]) {
                 console.log('🎯 Q1 after kundli: recent_upheaval...');
                 await this.askSingleProfileQuestion(allQuestions[0]);
@@ -3211,7 +3275,6 @@ ONLY return the single spoken sentence. Nothing else.`;
                     ? 'अच्छा, अब numbers और कुंडली दोनों ने अपनी बात कह दी है। पर एक बात बताइए।'
                     : 'Now both the numbers and the chart have shared what they see. But tell me one thing.';
                 await this.speak(transQ2);
-                await MayaUtils.sleep(150);
                 await this.askSingleProfileQuestion(allQuestions[1]);
             }
 
@@ -3222,7 +3285,6 @@ ONLY return the single spoken sentence. Nothing else.`;
                     ? 'पैसों से जुड़ा एक pattern दिख रहा है कुंडली में। ये बताइए।'
                     : 'I see a pattern around money in your chart. Tell me this.';
                 await this.speak(transQ3);
-                await MayaUtils.sleep(150);
                 await this.askSingleProfileQuestion(allQuestions[2]);
             }
 
@@ -3233,7 +3295,6 @@ ONLY return the single spoken sentence. Nothing else.`;
                     ? 'रिश्तों के बारे में भी कुछ दिख रहा है। एक छोटा सवाल और पूछ लूँ?'
                     : 'I can see something about your relationships too. May I ask one more thing?';
                 await this.speak(transQ4);
-                await MayaUtils.sleep(200);
                 await this.askSingleProfileQuestion(allQuestions[3]);
             }
 
@@ -3260,7 +3321,6 @@ ONLY return the single spoken sentence. Nothing else.`;
                     ? 'अब तक जो दिखा वो बस शुरुआत है। एक और बात है जो मुझे बार-बार दिख रही है।'
                     : 'What I have shared so far is just the beginning. There is one more thing I keep seeing.';
                 await this.speak(transQ5);
-                await MayaUtils.sleep(150);
                 await this.askSingleProfileQuestion(allQuestions[4]);
             }
 

@@ -512,7 +512,6 @@ const MayaVoice = {
             'shukra': 'शुक्र', 'guru': 'गुरु', 'budh': 'बुध', 'surya': 'सूर्य', 'chandra': 'चन्द्र',
             'bhav': 'भाव', 'bhava': 'भाव',
             'vedic': 'वैदिक', 'jyotish': 'ज्योतिष',
-            'numerology': 'न्यूमेरोलॉजी',
             'signals': 'संकेत', 'signal': 'संकेत',
             'pattern': 'पैटर्न', 'patterns': 'पैटर्न',
             'confirm': 'कन्फर्म', 'analysis': 'विश्लेषण',
@@ -531,6 +530,70 @@ const MayaVoice = {
         let result = text;
         for (const [roman, devanagari] of Object.entries(map)) {
             result = result.replace(new RegExp(`\\b${this.escapeRegExp(roman)}\\b`, 'gi'), devanagari);
+        }
+        return result;
+    },
+
+    /**
+     * Replace Urdu/Arabic/Persian words with pure Hindi equivalents.
+     * Acts as a safety net when AI slips past the prompt rules.
+     */
+    replaceUrduWithHindi(text) {
+        if (!text) return '';
+        const map = [
+            [/इश्क|मोहब्बत/g, 'प्रेम'], [/ख्वाब/g, 'सपना'], [/शख्सियत/g, 'व्यक्तित्व'],
+            [/ताल्लुक/g, 'रिश्ता'], [/किस्मत|तक़दीर|तकदीर/g, 'भाग्य'], [/सुकून/g, 'शांति'],
+            [/हौसला/g, 'हिम्मत'], [/वजह/g, 'कारण'], [/खुदा/g, 'भगवान'],
+            [/वक़्त|वक्त/g, 'समय'], [/राज़/g, 'रहस्य'], [/ग़ौर|गौर/g, 'ध्यान'],
+            [/नज़र/g, 'नजर'], [/हक़ीक़त|हकीकत/g, 'सच्चाई'], [/मंज़िल|मंजिल/g, 'लक्ष्य'],
+            [/अल्फ़ाज़|अल्फाज/g, 'शब्द'], [/रूह/g, 'आत्मा'], [/जज़्बात|जज्बात/g, 'भावनाएँ'],
+            [/ख़याल|ख्याल/g, 'विचार'], [/ज़माना|जमाना/g, 'दौर'], [/इज़्ज़त|इज्जत/g, 'सम्मान'],
+            [/गुज़रना|गुजरना/g, 'बीतना'], [/ज़िन्दगी|जिन्दगी|ज़िंदगी/g, 'जिंदगी'],
+            [/फ़ैसला|फैसला/g, 'निर्णय'], [/ख़ुशी|खुशी/g, 'खुशी'], [/दौलत/g, 'धन'],
+            [/तक़रीबन|तकरीबन/g, 'लगभग'], [/शौक/g, 'रुचि'],
+            // Remove nuqta from all letters
+            [/ज़/g, 'ज'], [/क़/g, 'क'], [/ख़/g, 'ख'], [/ग़/g, 'ग'], [/फ़/g, 'फ'],
+        ];
+        let result = text;
+        for (const [pattern, replacement] of map) {
+            result = result.replace(pattern, replacement);
+        }
+        return result;
+    },
+
+    /**
+     * Enforce consistent Devanagari spelling for astro terms.
+     * Ensures the same term is always spelled identically across chunks
+     * so ElevenLabs pronounces it consistently.
+     */
+    enforceConsistentAstroTerms(text) {
+        if (!text) return '';
+        const canonical = [
+            // Planet names — always same Devanagari form
+            [/\bराहू\b/g, 'राहु'], [/\bकेतू\b/g, 'केतु'],
+            [/\bशनी\b/g, 'शनि'], [/\bशनिदेव\b/g, 'शनि'],
+            [/\bमंगळ\b/g, 'मंगल'], [/\bबृहस्पती\b/g, 'बृहस्पति'],
+            [/\bशुक्रा\b/g, 'शुक्र'], [/\bबुद्ध\b/g, 'बुध'],
+            [/\bसुर्य\b/g, 'सूर्य'], [/\bचन्द्रमा\b/g, 'चन्द्र'],
+            // Yoga names — consistent spelling
+            [/गजकेसरी\s*योग|गज\s*केसरी\s*योग/g, 'गजकेसरी योग'],
+            [/बुधादित्य\s*योग|बुध\s*आदित्य\s*योग/g, 'बुधादित्य योग'],
+            [/चन्द्र\s*मंगल\s*योग|चंद्र\s*मंगल\s*योग/g, 'चन्द्र मंगल योग'],
+            [/नीचभंग\s*राजयोग|नीच\s*भंग\s*राज\s*योग/g, 'नीचभंग राजयोग'],
+            [/काल\s*सर्प\s*दोष|कालसर्प\s*दोष/g, 'काल सर्प दोष'],
+            [/मंगल\s*दोष|मांगलिक\s*दोष/g, 'मंगल दोष'],
+            // Dasha — consistent form
+            [/महादशा/g, 'महादशा'], [/अंतरदशा|अन्तर्दशा/g, 'अंतर्दशा'],
+            // Bhav/house — consistent
+            [/भाव\b/g, 'भाव'],
+            // Kundli — always same
+            [/कुण्डली|कुन्डली/g, 'कुंडली'],
+            // Lagna
+            [/लग्ना\b/g, 'लग्न'],
+        ];
+        let result = text;
+        for (const [pattern, replacement] of canonical) {
+            result = result.replace(pattern, replacement);
         }
         return result;
     },
@@ -730,7 +793,12 @@ const MayaVoice = {
         if (number < 100000) {
             const thousands = Math.floor(number / 1000);
             const remainder = number % 1000;
-            return `${this.numberToWordsHi(thousands)} हज़ार${remainder ? ` ${this.numberToWordsHi(remainder)}` : ''}`;
+            return `${this.numberToWordsHi(thousands)} हजार${remainder ? ` ${this.numberToWordsHi(remainder)}` : ''}`;
+        }
+        if (number < 10000000) {
+            const lakhs = Math.floor(number / 100000);
+            const remainder = number % 100000;
+            return `${this.numberToWordsHi(lakhs)} लाख${remainder ? ` ${this.numberToWordsHi(remainder)}` : ''}`;
         }
         return String(number)
             .split('')
@@ -739,14 +807,100 @@ const MayaVoice = {
     },
 
     /**
-     * Convert numbers in text to spoken words for better TTS
+     * Convert a year (1900-2099) to natural spoken Hindi.
+     * 1990 → "उन्नीस सौ नब्बे", 2025 → "दो हजार पच्चीस", 2000 → "दो हजार"
+     */
+    yearToWordsHi(year) {
+        const y = Number(year);
+        if (!Number.isFinite(y) || y < 1900 || y > 2099) return this.numberToWordsHi(y);
+        if (y === 2000) return 'दो हजार';
+        if (y > 2000 && y < 2100) {
+            const remainder = y - 2000;
+            return `दो हजार ${this.numberWordsHindi[String(remainder)] || this.numberToWordsHi(remainder)}`;
+        }
+        // 1900-1999: "उन्नीस सौ <remainder>"
+        if (y >= 1900 && y < 2000) {
+            const remainder = y - 1900;
+            if (remainder === 0) return 'उन्नीस सौ';
+            return `उन्नीस सौ ${this.numberWordsHindi[String(remainder)] || this.numberToWordsHi(remainder)}`;
+        }
+        return this.numberToWordsHi(y);
+    },
+
+    /**
+     * Convert a year to natural spoken English.
+     * 2025 → "twenty twenty five", 1990 → "nineteen ninety", 2000 → "two thousand"
+     */
+    yearToWordsEn(year) {
+        const y = Number(year);
+        if (!Number.isFinite(y) || y < 1900 || y > 2099) return this.numberToWordsEn(y);
+        if (y === 2000) return 'two thousand';
+        if (y > 2000 && y <= 2009) {
+            return `two thousand ${this.numberWords[String(y - 2000)] || this.numberToWordsEn(y - 2000)}`;
+        }
+        if (y >= 2010 && y < 2100) {
+            const remainder = y - 2000;
+            return `twenty ${this.numberWords[String(remainder)] || this.numberToWordsEn(remainder)}`;
+        }
+        // 1900-1999: "nineteen <remainder>"
+        if (y >= 1900 && y < 2000) {
+            const remainder = y % 100;
+            if (remainder === 0) return 'nineteen hundred';
+            return `nineteen ${this.numberWords[String(remainder)] || this.numberToWordsEn(remainder)}`;
+        }
+        return this.numberToWordsEn(y);
+    },
+
+    /**
+     * Convert numbers in text to spoken words for better TTS.
+     * Years (1900-2099) get special natural pronunciation.
+     * Ordinals (7th, 1st, etc.) get natural spoken form.
+     * Regular numbers use standard conversion.
      */
     convertNumbersToWords(text) {
         const isHindi = window.MayaUtils?.storage?.get('maya_language') === 'hi';
-        
-        return String(text || '').replace(/\b(\d{1,5})\b/g, (match) => {
+
+        // Hindi ordinal map for houses/bhav (1-12)
+        const hindiOrdinals = {
+            '1': 'पहला', '2': 'दूसरा', '3': 'तीसरा', '4': 'चौथा',
+            '5': 'पाँचवाँ', '6': 'छठा', '7': 'सातवाँ', '8': 'आठवाँ',
+            '9': 'नौवाँ', '10': 'दसवाँ', '11': 'ग्यारहवाँ', '12': 'बारहवाँ'
+        };
+        const enOrdinals = {
+            '1': 'first', '2': 'second', '3': 'third', '4': 'fourth',
+            '5': 'fifth', '6': 'sixth', '7': 'seventh', '8': 'eighth',
+            '9': 'ninth', '10': 'tenth', '11': 'eleventh', '12': 'twelfth'
+        };
+
+        let result = String(text || '');
+
+        // Handle Hindi ordinals: "7वाँ भाव", "7वें", "7वीं", "1ला"
+        if (isHindi) {
+            result = result.replace(/(\d{1,2})\s*(?:वाँ|वां|वें|वीं|ला|ली|रा|री)\s*(भाव)?/g, (_, num, bhav) => {
+                const ord = hindiOrdinals[num] || `${this.numberWordsHindi[num] || num}वाँ`;
+                return bhav ? `${ord} भाव` : ord;
+            });
+        }
+
+        // Handle English ordinals: "7th house", "1st", "2nd", "3rd"
+        result = result.replace(/(\d{1,2})\s*(?:st|nd|rd|th)\b/gi, (_, num) => {
+            if (isHindi) {
+                return hindiOrdinals[num] || `${this.numberWordsHindi[num] || num}वाँ`;
+            }
+            return enOrdinals[num] || `${this.numberToWordsEn(num)}th`;
+        });
+
+        // Handle years: 4-digit numbers that look like years (1900-2099)
+        result = result.replace(/\b((?:19|20)\d{2})\b/g, (match) => {
+            return isHindi ? this.yearToWordsHi(match) : this.yearToWordsEn(match);
+        });
+
+        // Handle remaining numbers (1-5 digits, not already converted)
+        result = result.replace(/\b(\d{1,5})\b/g, (match) => {
             return isHindi ? this.numberToWordsHi(match) : this.numberToWordsEn(match);
         });
+
+        return result;
     },
 
     /**
@@ -766,7 +920,16 @@ const MayaVoice = {
                 }
             }
             prepared = this.normalizeRomanHindiWords(prepared);
+
+            // Urdu/Arabic/Persian → pure Hindi replacement (safety net for AI slips)
+            prepared = this.replaceUrduWithHindi(prepared);
+
+            // Consistent Devanagari for astro terms across all chunks
+            prepared = this.enforceConsistentAstroTerms(prepared);
         }
+
+        // Remove consecutive duplicate words (e.g. "guru guru" → "guru")
+        prepared = prepared.replace(/\b(\S+)\s+\1\b/gi, '$1');
 
         // Convert authored pause markers into spoken punctuation before number expansion,
         // otherwise markers like [[pause-250]] can leak the number into speech.
