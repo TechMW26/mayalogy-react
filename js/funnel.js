@@ -139,6 +139,7 @@ const MayaFunnel = {
 - 🚫 URDU/ARABIC/PERSIAN BAN: ये HINDI app है। Nuqta (ज़, क़, ख़, ग़, फ़) ABSOLUTELY FORBIDDEN — बिना nuqta लिखिए (ज़→ज, फ़→फ)। Banned → Hindi: इश्क/मोहब्बत→प्यार/प्रेम, ख्वाब→सपना, शख्सियत→personality, ताल्लुक→रिश्ता, किस्मत/तक़दीर→भाग्य/luck, सुकून→शांति, हौसला→हिम्मत, वजह→कारण, गुजरना→बीतना, खुदा→भगवान, वक्त→समय, राज़→रहस्य, ग़ौर→ध्यान, नज़र→नजर/दृष्टि, हक़ीक़त→सच्चाई, मंज़िल→लक्ष्य, अल्फ़ाज़→शब्द, रूह→आत्मा, जज़्बात→भावनाएँ, ख़याल→विचार, ज़माना→दौर, इज़्ज़त→सम्मान। Plain हिन्दी बोलचाल use करें।
 - भाषा SIMPLE, LIGHT spoken Hinglish — दोस्तों से बात करते हैं वैसे। भारी/किताबी Sanskrit बदलें: "सम्भावना"→"मौका", "परिस्थिति"→"हालात", "विशेष"→"खास", "प्रभाव"→"असर"। Vedic terms (राहु, केतु, शनि, दशा, कुंडली) और common Hindi (जिंदगी, दिल, पैसा) हमेशा देवनागरी में।
 - ⚠️ GENDER: MAYA खुद female है (मैं देख रही हूँ, मुझे दिख रहा है)। User को address करते वक्त उनका ACTUAL gender use करें। MALE→"आप जानते हैं, आप समझते हैं, आप कर सकते हैं"। FEMALE→"आप जानती हैं, आप समझती हैं, आप कर सकती हैं"। Male user को feminine forms = FORBIDDEN।
+- ⏰ TENSE DISCIPLINE (STRICT): बीते हुए साल/महीने/events को ALWAYS past tense में बोलें — "उस वक्त", "तब", "हो चुका था", "गुजर चुका"। CURRENT month/year को present tense — "अभी", "इस वक्त", "चल रहा है"। आने वाले months/years को ALWAYS future tense — "आने वाला है", "होगा", "मिलेगा"। Past event को present/future tense में describe करना FORBIDDEN। Future event को past tense में बताना FORBIDDEN।
 - TTS-safe, flowing narrative — बहती कहानी, disconnected टुकड़े नहीं। Bullet points नहीं, एक continuous paragraph।`
             : `Rules:
 - User gender: ${genderLabel}
@@ -154,6 +155,7 @@ const MayaFunnel = {
 - 🔊 YOGA TTS: Always Devanagari for yoga names (गजकेसरी योग NOT Gaja Kesari Yoga). House numbers in Hindi (पहला भाव).
 - 🚫 ROMANIZED HINDI: Never write Hindi in Roman script (aapka, kundli FORBIDDEN → आपका, कुंडली).
 - ⚠️ GENDER: MAYA is female. Address user with THEIR gender. Male→masculine ("आप जानते हैं"), Female→feminine ("आप जानती हैं"). Wrong gender = FORBIDDEN.
+- ⏰ TENSE DISCIPLINE (STRICT): Past years/months/events MUST use past tense — "at that time", "back then", "had happened", "that period passed". CURRENT month/year uses present tense — "right now", "currently", "is happening". Future months/years MUST use future tense — "will", "is coming", "ahead". Describing a past event in present/future tense is FORBIDDEN. Describing a future event in past tense is FORBIDDEN.
 - TTS-safe, flowing narrative. One continuous paragraph, not bullet points.`;
     },
 
@@ -2346,6 +2348,71 @@ STRUCTURE (follow this ORDER):
         await MayaUtils.sleep(this.stageTiming.validationSettle);
     },
 
+    // ── Shared MCQ animation + AI acknowledgment helpers ──────────
+
+    /**
+     * Show the "reading your answer" dots animation in the text display.
+     * Returns a restore function to clear the animation.
+     */
+    _showAnswerReadingAnim(isHindi) {
+        const textDisplay = document.getElementById('maya-speaking-text');
+        const prevHTML = textDisplay?.innerHTML || '';
+        if (textDisplay) {
+            textDisplay.innerHTML = `
+                <div class="maya-answer-reading">
+                    <div class="maya-answer-reading__dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <p class="maya-answer-reading__label">${isHindi ? 'आपका जवाब पढ़ रही हूँ…' : 'Reading your answer…'}</p>
+                </div>
+            `;
+        }
+        return () => { if (textDisplay) textDisplay.innerHTML = prevHTML; };
+    },
+
+    /**
+     * Generate an AI-powered 1-sentence acknowledgment for any MCQ answer.
+     * Falls back to a static pool if AI fails.
+     * @param {string} question - the question text
+     * @param {string} answerLabel - the display label of the chosen option
+     * @param {string} answerValue - the value of the chosen option
+     * @param {boolean} isHindi
+     * @returns {Promise<string>}
+     */
+    async _generateMcqAck(question, answerLabel, answerValue, isHindi) {
+        const profile = this.personalization || {};
+        const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
+        let ack = '';
+        try {
+            const ackPrompt = isHindi
+                ? `आप MAYA हैं। User ने अभी एक सवाल का जवाब दिया:\nसवाल: ${question}\nजवाब: ${answerLabel}\n${dasha ? `Current दशा: ${dasha}` : ''}\n\nUser के इस SPECIFIC जवाब को acknowledge कीजिए — 1 sentence में। जवाब को directly reference करें और बताएं कि ये chart/दशा में कैसे reflect होता है। Generic "picture clear हो रही है" मत कहिए — user के exact answer को name करके बोलिए। सिर्फ 1 sentence, simple Hindi में।\n${this.getBaseRules(true)}\nReturn only the spoken text.`
+                : `You are MAYA. The user just answered a question:\nQuestion: ${question}\nAnswer: ${answerLabel}\n${dasha ? `Current dasha: ${dasha}` : ''}\n\nAcknowledge this SPECIFIC answer in 1 sentence. Directly reference what they chose and briefly connect it to their chart/dasha. Do NOT say generic things like "the picture is getting clearer" — name their exact answer. Only 1 sentence.\n${this.getBaseRules(false)}\nReturn only the spoken text.`;
+
+            if (window.MayaAI?.callGemini) {
+                const result = await MayaAI.callGemini(ackPrompt);
+                if (result && result.length > 5 && result.length < 200) {
+                    ack = this.sanitizeNarrationText(result);
+                }
+            }
+        } catch (e) {
+            console.warn('AI ack failed, using fallback:', e.message);
+        }
+
+        if (!ack) {
+            const fallbacks = isHindi
+                ? [
+                    dasha ? `हम्म… ${dasha} दशा में यही दिख रहा था।` : 'हम्म… chart में यही signal था।',
+                    'समझ आया — ये chart के उस हिस्से से जुड़ता है जो मैं अभी पढ़ रही थी।'
+                ]
+                : [
+                    dasha ? `Hmm… that's exactly what the ${dasha} dasha was showing.` : 'Hmm… that matches the signal in your chart.',
+                    'I see — this connects to the part of the chart I was just reading.'
+                ];
+            ack = fallbacks[Math.floor(Math.random() * fallbacks.length)];
+        }
+        return ack;
+    },
+
     /**
      * Show a lightweight mini-check after a number reveal.
      * @param {string} checkQuestion
@@ -2418,7 +2485,15 @@ STRUCTURE (follow this ORDER):
             ];
 
         const answer = await this.showValidationQuestion(checkQuestion, options);
-        await this.respondToValidation(answer);
+        const chosen = options.find(o => o.value === answer);
+
+        // Show reading animation + AI ack (same as profile questions)
+        const hideAnim = this._showAnswerReadingAnim(isHindi);
+        const ack = await this._generateMcqAck(checkQuestion, chosen?.label || answer, answer, isHindi);
+        hideAnim();
+        await this.speak(ack);
+        await MayaUtils.sleep(200);
+
         return answer;
     },
 
@@ -2567,8 +2642,6 @@ STRUCTURE (follow this ORDER):
     async runProfileQuestions() {
         const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
         const questions = this.getProfileQuestions();
-        const profile = this.personalization || {};
-        const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
 
         // Intro — grounded in the chart
         const introLine = isHindi
@@ -2577,24 +2650,6 @@ STRUCTURE (follow this ORDER):
         await this.speak(introLine);
         await MayaUtils.sleep(300);
 
-        // Chart-aware acknowledgment pools
-        const acks = isHindi
-            ? [
-                dasha ? `हम्म… ${dasha} दशा में यही दिख रहा था।` : 'हम्म… chart में यही signal था।',
-                'बिल्कुल — ये confirm करता है जो मैं देख रही थी।',
-                'ठीक है, अब picture और clear हो रही है।',
-                'समझ आया — ये chart के उस हिस्से से जुड़ता है जो मैं अभी पढ़ रही थी।',
-                'ये जवाब important है। इससे आगे की reading और precise होगी।'
-            ]
-            : [
-                dasha ? `Hmm… that's exactly what the ${dasha} dasha was showing.` : 'Hmm… that matches the signal in your chart.',
-                'That confirms what I was seeing.',
-                'Good — the picture is getting clearer now.',
-                'I see — this connects to the part of the chart I was just reading.',
-                'This answer is important. It makes the rest of the reading much more precise.'
-            ];
-
-        let ackIndex = 0;
         for (const q of questions) {
             const answer = await this.showValidationQuestion(
                 q.question,
@@ -2606,9 +2661,11 @@ STRUCTURE (follow this ORDER):
             const insightText = chosen?.insight || answer;
             this.sessionMemory.profileAnswers[q.key] = `${answer} (${insightText})`;
 
-            // Cycle through chart-aware acks
-            await this.speak(acks[ackIndex % acks.length]);
-            ackIndex++;
+            // Show reading animation + AI ack (same as profile questions)
+            const hideAnim = this._showAnswerReadingAnim(isHindi);
+            const ack = await this._generateMcqAck(q.question, chosen?.label || answer, answer, isHindi);
+            hideAnim();
+            await this.speak(ack);
             await MayaUtils.sleep(200);
         }
 
@@ -2726,23 +2783,42 @@ STRUCTURE (follow this ORDER):
             `;
         }
 
-        return new Promise((resolve) => {
+        const chapter = await new Promise((resolve) => {
             const container = document.getElementById('deep-reveal-choices');
             if (!container) { resolve('default'); return; }
 
             container.querySelectorAll('.deep-chapter-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    const chapter = btn.dataset.chapter;
-                    this.chosenDeepDiveTopic = chapter;
-                    if (textDisplay) textDisplay.style.display = 'none';
-                    if (blobContainer) {
-                        blobContainer.classList.remove('blob-top');
-                        blobContainer.classList.add('blob-centered');
-                    }
-                    resolve(chapter);
+                    const ch = btn.dataset.chapter;
+                    this.chosenDeepDiveTopic = ch;
+                    resolve(ch);
                 });
             });
         });
+
+        // Map chapter key to readable label for the ack prompt
+        const labelMap = isHindi
+            ? { love: 'प्रेम', career: 'करियर', year: 'समय' }
+            : { love: 'Love', career: 'Career', year: 'Timing' };
+        const questionText = isHindi
+            ? 'पहले कौनसा chapter सुनना चाहेंगे?'
+            : 'Which chapter would you like to hear first?';
+
+        // Show reading animation + AI ack
+        const hideAnim = this._showAnswerReadingAnim(isHindi);
+        const ack = await this._generateMcqAck(questionText, labelMap[chapter] || chapter, chapter, isHindi);
+        hideAnim();
+
+        if (textDisplay) textDisplay.style.display = 'none';
+        if (blobContainer) {
+            blobContainer.classList.remove('blob-top');
+            blobContainer.classList.add('blob-centered');
+        }
+
+        await this.speak(ack);
+        await MayaUtils.sleep(200);
+
+        return chapter;
     },
 
     /**
@@ -2790,7 +2866,17 @@ STRUCTURE (follow this ORDER):
         const prompt = prompts[chapterKey];
         if (!prompt) return 'default';
 
-        return await this.showValidationQuestion(prompt.question, prompt.options);
+        const answer = await this.showValidationQuestion(prompt.question, prompt.options);
+        const chosen = prompt.options.find(o => o.value === answer);
+
+        // Show reading animation + AI ack (same as profile questions)
+        const hideAnim = this._showAnswerReadingAnim(isHindi);
+        const ack = await this._generateMcqAck(prompt.question, chosen?.label || answer, answer, isHindi);
+        hideAnim();
+        await this.speak(ack);
+        await MayaUtils.sleep(200);
+
+        return answer;
     },
 
     /**
@@ -3015,8 +3101,6 @@ STRUCTURE (follow this ORDER):
      */
     async askSingleProfileQuestion(q) {
         const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
-        const profile = this.personalization || {};
-        const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
 
         const answer = await this.showValidationQuestion(
             q.question,
@@ -3029,37 +3113,10 @@ STRUCTURE (follow this ORDER):
         const insightText = chosen?.insight || answer;
         this.sessionMemory.profileAnswers[q.key] = `${answer} (${insightText})`;
 
-        // AI-generated contextual acknowledgment that references the actual answer
-        let ack = '';
-        try {
-            const ackPrompt = isHindi
-                ? `आप MAYA हैं। User ने अभी एक सवाल का जवाब दिया:\nसवाल: ${q.question}\nजवाब: ${chosen?.label || answer}\nInsight: ${insightText}\n${dasha ? `Current दशा: ${dasha}` : ''}\n\nUser के इस SPECIFIC जवाब को acknowledge कीजिए — 1 sentence में। जवाब को directly reference करें और बताएं कि ये chart/दशा में कैसे reflect होता है। Generic "picture clear हो रही है" मत कहिए — user के exact answer को name करके बोलिए। उदाहरण: अगर user ने "career shift" चुना तो कहिए "हाँ, career में बदलाव — ${dasha || 'current'} दशा में यही दिख रहा था"। सिर्फ 1 sentence, simple Hindi में।\n${this.getBaseRules(true)}\nReturn only the spoken text.`
-                : `You are MAYA. The user just answered a question:\nQuestion: ${q.question}\nAnswer: ${chosen?.label || answer}\nInsight: ${insightText}\n${dasha ? `Current dasha: ${dasha}` : ''}\n\nAcknowledge this SPECIFIC answer in 1 sentence. Directly reference what they chose and briefly connect it to their chart/dasha. Do NOT say generic things like "the picture is getting clearer" — name their exact answer. Example: if user chose "career shift", say "Yes, a career shift — that's exactly what the ${dasha || 'current'} dasha was pointing to." Only 1 sentence.\n${this.getBaseRules(false)}\nReturn only the spoken text.`;
-
-            if (window.MayaAI?.callGemini) {
-                const result = await MayaAI.callGemini(ackPrompt);
-                if (result && result.length > 5 && result.length < 200) {
-                    ack = this.sanitizeNarrationText(result);
-                }
-            }
-        } catch (e) {
-            console.warn('AI ack failed, using fallback:', e.message);
-        }
-
-        // Fallback if AI fails
-        if (!ack) {
-            const fallbacks = isHindi
-                ? [
-                    dasha ? `हम्म… ${dasha} दशा में यही दिख रहा था।` : 'हम्म… chart में यही signal था।',
-                    'समझ आया — ये chart के उस हिस्से से जुड़ता है जो मैं अभी पढ़ रही थी।'
-                ]
-                : [
-                    dasha ? `Hmm… that's exactly what the ${dasha} dasha was showing.` : 'Hmm… that matches the signal in your chart.',
-                    'I see — this connects to the part of the chart I was just reading.'
-                ];
-            ack = fallbacks[Math.floor(Math.random() * fallbacks.length)];
-        }
-
+        // Show reading animation + AI ack (shared across all MCQs)
+        const hideAnim = this._showAnswerReadingAnim(isHindi);
+        const ack = await this._generateMcqAck(q.question, chosen?.label || answer, answer, isHindi);
+        hideAnim();
         await this.speak(ack);
         await MayaUtils.sleep(200);
 
