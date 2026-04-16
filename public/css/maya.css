@@ -1358,7 +1358,7 @@ h1, h2, h3, h4, h5, h6, p {
     background: #0B0B0B;
     top: 0;
     bottom: 0;
-    padding-top: 1.5rem;
+    padding-top: 15vh;
     padding-bottom: calc(56px + max(env(safe-area-inset-bottom, 0px), 24px) + 32px);
 }
 
@@ -1732,9 +1732,8 @@ h1, h2, h3, h4, h5, h6, p {
 
 /* Onboarding Header */
 .onboarding-header {
-    padding: 1.5rem 2rem;
+    padding: 1.5rem;
     text-align: center;
-    border-bottom: 1px solid var(--maya-border);
     position: absolute;
     top: 0;
     left: 0;
@@ -1925,8 +1924,11 @@ h1, h2, h3, h4, h5, h6, p {
     display: flex;
     gap: 1rem;
     justify-content: center;
-    margin-top: auto;
+    align-items: center;
+    margin-top: 2rem;
     padding-top: 1.5rem;
+    width: 100%;
+    max-width: 400px;
 }
 
 .onboarding-actions .btn {
@@ -2054,16 +2056,6 @@ h1, h2, h3, h4, h5, h6, p {
 .onboarding-form .form-select option {
     background: var(--maya-bg-secondary);
     color: var(--maya-text-primary);
-}
-
-.onboarding-actions {
-    display: flex;
-    gap: 1rem;
-    margin-top: 2rem;
-    width: 100%;
-    max-width: 400px;
-    justify-content: center;
-    align-items: center;
 }
 
 /* Existing user login section - small centered button */
@@ -2306,13 +2298,6 @@ h1, h2, h3, h4, h5, h6, p {
 .maya-card:hover {
     border-color: var(--maya-primary);
     box-shadow: var(--maya-shadow-glow);
-}
-
-.maya-card-header {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1rem;
 }
 
 .maya-card-icon {
@@ -5438,22 +5423,25 @@ h1, h2, h3, h4, h5, h6, p {
     margin: 0;
 }
 
-/* 3-card grid */
+/* Number cards — stacked vertically */
 .unified-numbers__grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    display: flex;
+    flex-direction: column;
     gap: 0.75rem;
     margin-bottom: 1rem;
 }
 
-/* Individual number card */
+/* Individual number card — horizontal layout */
 .unified-num-card {
     position: relative;
     background: rgba(99, 102, 241, 0.06);
     border: 1px solid var(--maya-border);
     border-radius: 1rem;
-    padding: 1rem 0.5rem 0.75rem;
-    text-align: center;
+    padding: 0.85rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-align: left;
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
 }
@@ -5490,26 +5478,28 @@ h1, h2, h3, h4, h5, h6, p {
 .unified-num-card__icon {
     font-size: 1.1rem;
     color: var(--maya-primary);
-    margin-bottom: 0.25rem;
     opacity: 0.7;
+    flex-shrink: 0;
 }
 .unified-num-card[data-state="done"] .unified-num-card__icon {
     opacity: 1;
 }
 
 .unified-num-card__label {
-    font-size: 0.72rem;
+    font-size: 0.78rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--maya-text-secondary);
-    margin-bottom: 0.5rem;
+    flex: 1;
+    min-width: 0;
 }
 
 .unified-num-card__value {
-    min-height: 3.2rem;
+    min-height: 2.4rem;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 /* Spinner while calculating */
@@ -5527,7 +5517,7 @@ h1, h2, h3, h4, h5, h6, p {
 
 /* The big reveal number */
 .unified-num-card__number {
-    font-size: 2.4rem;
+    font-size: 2rem;
     font-weight: 800;
     color: var(--maya-primary);
     text-shadow: 0 0 24px rgba(226, 196, 106, 0.35);
@@ -5553,16 +5543,18 @@ h1, h2, h3, h4, h5, h6, p {
 
 /* Steps inside each card */
 .unified-num-card__steps {
-    margin-top: 0.5rem;
+    margin-left: auto;
+    flex-shrink: 0;
 }
 .unified-num-card__steps .calc-step {
-    font-size: 0.7rem;
-    padding: 0.2rem 0;
-    gap: 0.4rem;
-    flex-wrap: wrap;
+    font-size: 0.68rem;
+    padding: 0.15rem 0;
+    gap: 0.3rem;
+    flex-wrap: nowrap;
+    white-space: nowrap;
 }
 .unified-num-card__steps .calc-step .step-text {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
 }
 
 /* Name breakdown area */
@@ -5616,24 +5608,11 @@ h1, h2, h3, h4, h5, h6, p {
     margin-top: 1px;
 }
 
-/* ─── Responsive: stack on narrow screens ─── */
+/* ─── Responsive: tighten on narrow screens ─── */
 @media (max-width: 380px) {
-    .unified-numbers__grid {
-        grid-template-columns: 1fr;
-        gap: 0.6rem;
-    }
     .unified-num-card {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.75rem 1rem;
-        text-align: left;
-    }
-    .unified-num-card__value {
-        min-height: auto;
-    }
-    .unified-num-card__number {
-        font-size: 2rem;
+        padding: 0.65rem 0.75rem;
+        gap: 0.5rem;
     }
     .unified-num-card__steps {
         display: none;
@@ -6132,12 +6111,13 @@ h1, h2, h3, h4, h5, h6, p {
 }
 
 .gate-benefits {
-    margin-bottom: 1.75rem;
+    margin: 0 auto 1.75rem;
     width: 100%;
     max-width: 340px;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0.5rem;
+    text-align: left;
 }
 
 .benefit-item {
@@ -6169,7 +6149,7 @@ h1, h2, h3, h4, h5, h6, p {
 }
 
 .gate-form {
-    margin-bottom: 0.5rem;
+    margin: 0 auto 0.5rem;
     width: 100%;
     max-width: 340px;
     box-sizing: border-box;
@@ -6327,6 +6307,12 @@ h1, h2, h3, h4, h5, h6, p {
 .deep-reveal-prompt {
     margin-top: 2rem;
     text-align: center;
+    padding: 2rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
 }
 
 .pulse-btn {
@@ -6404,13 +6390,6 @@ h1, h2, h3, h4, h5, h6, p {
 
 .audio-permission-content .btn-link {
     font-size: 0.9rem;
-}
-
-/* =====================================================
-   Deep Reveal & Pulse Animation
-   ===================================================== */
-.deep-reveal-prompt {
-    padding: 2rem 1rem;
 }
 
 .pulse-animation {
@@ -7204,13 +7183,6 @@ h1, h2, h3, h4, h5, h6, p {
 /* =====================================================
    Card Utilities
    ===================================================== */
-.maya-card {
-    background: var(--maya-bg-card);
-    border: 1px solid var(--maya-border-light);
-    border-radius: 1rem;
-    padding: 1.5rem;
-    backdrop-filter: blur(10px);
-}
 
 .maya-card-header {
     display: flex;
@@ -13812,8 +13784,11 @@ button:active,
 .maya-vastu__direction-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 0.5rem;
-    margin-bottom: 1rem;
+    gap: 0.4rem;
+    justify-content: center;
+    max-width: 280px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .maya-vastu__dir-btn {
@@ -13944,17 +13919,15 @@ button:active,
 }
 
 .maya-vastu__direction-deg {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: var(--maya-primary);
     line-height: 1;
 }
 
 .maya-vastu__direction-name {
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.8);
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    font-size: 1rem;
+    color: #fff;
 }
 
 /* Direction Locked Badge */
@@ -14062,8 +14035,14 @@ button:active,
 }
 
 .maya-vastu__analysis-loading {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 2rem;
     text-align: center;
-    padding: 2rem 1rem;
 }
 
 .maya-vastu__analysis-spinner {
@@ -15167,7 +15146,6 @@ button:active,
 }
 
 .maya-vastu__analysis-result{flex:1;overflow-y:auto;padding:0 1rem}
-.maya-vastu__analysis-loading{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;padding:2rem;min-height:300px;text-align:center}
 
 /* Spinner utility */
 .maya-spinner {
@@ -15491,20 +15469,6 @@ button:active,
     border: 1px solid rgba(212, 175, 55, 0.3);
 }
 
-.maya-vastu__direction-deg {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--maya-primary);
-    line-height: 1;
-}
-
-.maya-vastu__direction-name {
-    font-size: 0.7rem;
-    color: rgba(255, 255, 255, 0.8);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
 /* Direction Locked Badge */
 .maya-vastu__direction-locked {
     position: absolute;
@@ -15801,12 +15765,6 @@ button:active,
     text-align: center;
 }
 
-.maya-vastu__direction-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.4rem;
-}
-
 .maya-vastu__dir-btn {
     padding: 0.6rem 0.3rem;
     background: rgba(255, 255, 255, 0.1);
@@ -15946,8 +15904,6 @@ button:active,
 .maya-vastu__compass--large .maya-vastu__compass-needle{position:absolute;top:calc(50% - 60px);left:calc(50% - 3px);width:6px;height:120px;border-radius:3px;z-index:1;background:linear-gradient(to bottom,#f59e0b 0%,#f59e0b 50%,rgba(255,255,255,0.6) 50%,rgba(255,255,255,0.6) 100%);box-shadow:0 0 10px rgba(245,158,11,0.5)}
 .maya-vastu__compass--large .maya-vastu__compass-center{position:absolute;top:calc(50% - 10px);left:calc(50% - 10px);width:20px;height:20px;background:#fff;border-radius:50%;border:3px solid #f59e0b;z-index:2}
 .maya-vastu__direction-display{background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);padding:8px 20px;border-radius:20px;display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,0.2)}
-.maya-vastu__direction-deg{font-size:1.25rem;font-weight:700;color:#f59e0b}
-.maya-vastu__direction-name{font-size:1rem;color:#fff}
 .maya-vastu__camera-bottom{position:absolute;bottom:0;left:0;right:0;padding:20px 20px calc(40px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,rgba(0,0,0,0.8),transparent);z-index:10;display:flex;flex-direction:column;align-items:center;gap:16px}
 .maya-vastu__camera-status{color:rgba(255,255,255,0.8);font-size:0.9rem;margin:0}
 .maya-vastu__shutter-btn{width:80px;height:80px;border-radius:50%;background:transparent;border:none;padding:0;cursor:pointer;position:relative;display:flex;align-items:center;justify-content:center}
@@ -16113,18 +16069,6 @@ button:active,
 .maya-vastu__analysis-meta--compact{padding:12px 16px;display:flex;flex-wrap:wrap;justify-content:center;gap:8px;font-size:0.8rem}
 .maya-vastu__actions--compact{display:flex;gap:10px;padding:12px 16px 24px}
 .maya-vastu__actions--compact .maya-btn{flex:1;padding:12px 16px}
-
-/* Analysis loading - centered in panel via flex */
-.maya-vastu__analysis-loading {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    padding: 2rem;
-    text-align: center;
-}
 
 /* Scrollable results area */
 .maya-vastu__results-scroll-area {
@@ -16482,14 +16426,6 @@ button:active,
 
 .maya-vastu__manual-title {
     text-align: center;
-}
-
-/* Direction grid centered */
-.maya-vastu__direction-grid {
-    justify-content: center;
-    max-width: 280px;
-    margin-left: auto;
-    margin-right: auto;
 }
 
 /* Proceed button padding */
@@ -18367,42 +18303,6 @@ input[type="datetime-local"] {
     }
 }
 
-/* =====================================================
-   GLOBAL INPUT BORDER RADIUS OVERRIDE - 100px Pills
-   ===================================================== */
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="tel"],
-input[type="number"],
-input[type="search"],
-input[type="url"],
-input[type="date"],
-input[type="time"],
-input[type="datetime-local"],
-input[type="month"],
-input[type="week"],
-textarea,
-.form-control,
-.maya-input,
-.onboarding-input {
-    border-radius: 100px !important;
-}
-
-/* Selects/dropdowns: rounded, not pill */
-select,
-.form-select {
-    border-radius: 14px !important;
-}
-
-.maya-select {
-    border-radius: 14px !important;
-}
-.maya-select.open {
-    border-bottom-left-radius: 0 !important;
-    border-bottom-right-radius: 0 !important;
-}
-
 
 /* =====================================================
    SPIRITUAL MUSIC PAGE STYLES - Premium Edition
@@ -19371,6 +19271,23 @@ select,
     opacity: 1;
 }
 
+/* Back button in custom input area */
+.maya-validation-btn--back {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--maya-text-secondary, #aaa);
+    font-size: 0.82rem;
+    padding: 0.5rem 1rem;
+    align-self: flex-start;
+    opacity: 0.8;
+}
+.maya-validation-btn--back:hover,
+.maya-validation-btn--back:focus {
+    border-color: var(--maya-primary);
+    color: var(--maya-primary);
+    opacity: 1;
+}
+
 /* Custom input area for "None of the above" */
 .maya-validation-custom {
     display: flex;
@@ -19475,14 +19392,15 @@ select,
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 70vh;
-    padding: 2rem 1.5rem;
+    min-height: 80vh;
+    padding: 3rem 1.5rem;
     animation: fadeInUp 0.6s ease;
+    text-align: center;
 }
 
 .landing-visual {
     position: relative;
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
 }
 
 .landing-glow {
@@ -19490,45 +19408,77 @@ select,
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 160px;
-    height: 160px;
-    background: radial-gradient(circle, rgba(226, 196, 106, 0.25) 0%, transparent 70%);
+    width: 180px;
+    height: 180px;
+    background: radial-gradient(circle, rgba(226, 196, 106, 0.2) 0%, transparent 70%);
     border-radius: 50%;
     animation: landingPulse 3s ease-in-out infinite;
 }
 
 .landing-logo-img {
-    width: 80px;
-    height: 80px;
+    width: 88px;
+    height: 88px;
     position: relative;
     z-index: 1;
 }
 
 .landing-headline {
     font-family: 'Raleway', sans-serif;
-    font-size: 1.6rem;
+    font-size: 1.65rem;
     font-weight: 700;
     color: var(--maya-text-primary, #fff);
-    margin-bottom: 0.75rem;
-    line-height: 1.3;
+    margin-bottom: 1rem;
+    line-height: 1.35;
     text-align: center;
+    letter-spacing: -0.01em;
 }
 
-.  {
-    font-size: 0.95rem;
+.landing-subtext {
+    font-size: 0.92rem;
     color: var(--maya-text-secondary, #aaa);
-    line-height: 1.5;
-    margin-bottom: 2rem;
-    max-width: 320px;
+    line-height: 1.65;
+    margin-bottom: 0;
+    max-width: 300px;
     text-align: center !important;
 }
 
+.landing-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.85rem;
+    margin-top: 2.5rem;
+    width: 100%;
+    max-width: 300px;
+}
+
 .landing-begin-btn {
-    padding: 0.9rem 2.5rem;
-    font-size: 1.1rem;
+    width: 100%;
+    padding: 0.95rem 2rem;
+    font-size: 1.05rem;
     font-weight: 600;
     border-radius: 999px;
     letter-spacing: 0.02em;
+}
+
+.landing-login-btn {
+    width: 100%;
+    padding: 0.8rem 2rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: 999px;
+    letter-spacing: 0.01em;
+    background: transparent;
+    color: var(--maya-text-secondary, #aaa);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    cursor: pointer;
+    transition: border-color 0.3s, color 0.3s, background 0.3s;
+}
+
+.landing-login-btn:hover {
+    border-color: rgba(226, 196, 106, 0.4);
+    color: var(--maya-primary, #E2C46A);
+    background: rgba(226, 196, 106, 0.05);
 }
 
 @keyframes landingPulse {
@@ -19564,6 +19514,11 @@ select,
    ============================================================ */
 
 .suspense-unlock-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
     animation: fadeInUp 0.5s ease;
 }
 
@@ -19737,38 +19692,6 @@ select,
    UI STREAMLINING & CENTER ALIGNMENT
    ============================================================ */
 
-/* Ensure all funnel text displays are centered */
-.maya-text-display {
-    text-align: center;
-}
-
-/* Center the email gate form */
-.email-gate-container {
-    text-align: center;
-    max-width: 400px;
-    margin: 0 auto;
-    align-items: center;
-}
-
-.gate-header {
-    text-align: center;
-}
-
-.gate-benefits {
-    text-align: left;
-    max-width: 340px;
-    margin: 0 auto 1.75rem;
-}
-
-.gate-form {
-    max-width: 340px;
-    margin: 0 auto;
-}
-
-.gate-note {
-    text-align: center;
-}
-
 /* Center the auth flow */
 .auth-flow-container {
     text-align: center;
@@ -19786,41 +19709,26 @@ select,
     margin: 0 auto;
 }
 
-/* Center deep reveal prompt */
-.deep-reveal-prompt {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 120px;
-}
-
 .deep-chapter-btn {
     min-width: 100px;
     text-align: center;
 }
 
-/* Center suspense unlock */
-.suspense-unlock-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 200px;
-    animation: fadeInUp 0.5s ease;
-}
-
 /* Landing screen responsive */
 @media (max-width: 380px) {
     .landing-headline {
-        font-size: 1.3rem;
+        font-size: 1.35rem;
     }
     .landing-subtext {
         font-size: 0.85rem;
     }
     .landing-begin-btn {
-        padding: 0.8rem 2rem;
-        font-size: 1rem;
+        padding: 0.85rem 1.5rem;
+        font-size: 0.95rem;
+    }
+    .landing-login-btn {
+        padding: 0.7rem 1.5rem;
+        font-size: 0.85rem;
     }
 }
 

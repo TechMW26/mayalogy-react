@@ -278,16 +278,23 @@ const MayaOnboarding = {
         if (progressBar) progressBar.style.display = 'none';
 
         container.innerHTML = `
-            <div class="maya-landing-screen text-center">
+            <div class="maya-landing-screen">
                 <div class="landing-visual">
                     <div class="landing-glow"></div>
                     <img src="/images/maya-logo.png" alt="Mayalogy" class="landing-logo-img">
                 </div>
+
                 <h2 class="landing-headline">Open Your Personal<br>Astrology Reading</h2>
                 <p class="landing-subtext">Your birth chart holds patterns most people never see.<br>MAYA will read yours — live, in her own voice.</p>
-                <button type="button" class="btn btn-primary btn-lg landing-begin-btn" id="landingBeginBtn">
-                    Begin My Reading
-                </button>
+
+                <div class="landing-actions">
+                    <button type="button" class="btn btn-primary btn-lg landing-begin-btn" id="landingBeginBtn">
+                        Begin My Reading
+                    </button>
+                    <button type="button" class="landing-login-btn" id="landingLoginBtn">
+                        I already have an account
+                    </button>
+                </div>
             </div>
         `;
 
@@ -307,6 +314,12 @@ const MayaOnboarding = {
             // Restore progress bar
             if (progressBar) progressBar.style.display = '';
             this.showStep(0);
+        });
+
+        document.getElementById('landingLoginBtn')?.addEventListener('click', () => {
+            if (window.MayaApp?.showAuthModal) {
+                MayaApp.showAuthModal('login');
+            }
         });
     },
 
