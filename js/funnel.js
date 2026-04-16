@@ -85,7 +85,8 @@ const MayaFunnel = {
         strongHits: [],
         userQuestions: [],
         unresolvedTopics: [],
-        progressUnlocks: []
+        progressUnlocks: [],
+        profileAnswers: {}
     },
 
     resetSessionMemory() {
@@ -95,7 +96,8 @@ const MayaFunnel = {
             strongHits: [],
             userQuestions: [],
             unresolvedTopics: [],
-            progressUnlocks: []
+            progressUnlocks: [],
+            profileAnswers: {}
         };
     },
 
@@ -115,6 +117,17 @@ const MayaFunnel = {
     buildMemoryContext(isHindi) {
         const mem = this.sessionMemory;
         const parts = [];
+
+        // Profile MCQ answers — critical for personalization
+        if (mem.profileAnswers && Object.keys(mem.profileAnswers).length) {
+            const profileSummary = Object.entries(mem.profileAnswers)
+                .map(([q, a]) => `Q: ${q} → A: ${a}`)
+                .join('; ');
+            parts.push(isHindi
+                ? `## USER PROFILE (इन सवालों के जवाब user ने खुद दिए हैं — इन्हें reading में deeply use कीजिए):\n${profileSummary}`
+                : `## USER PROFILE (these are the user's OWN answers — use them deeply in the reading):\n${profileSummary}`);
+        }
+
         if (mem.strongHits.length) {
             const hits = mem.strongHits.slice(-3).join('; ');
             parts.push(isHindi
@@ -2301,6 +2314,204 @@ RULES:
         return answer;
     },
 
+    // ============================================================
+    //  AKINATOR-STYLE SMART PROFILE QUESTIONS
+    //  Asked after kundli is formed to deeply personalize readings.
+    //  Life-event & timing questions grounded in the user's actual
+    //  chart data — dasha, transits, planetary positions. Each question
+    //  sounds like MAYA is reading the chart and verifying what she sees.
+    // ============================================================
+
+    /**
+     * Build smart life-event questions using real chart data.
+     * Questions reference dasha periods, planetary signals, and timing
+     * so they feel like MAYA is confirming what the kundli shows.
+     */
+    getProfileQuestions() {
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const profile = this.personalization || {};
+        const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
+        const moonSign = profile.moonSign || profile.vedic?.name || '';
+        const ascendant = profile.ascendant?.name || '';
+        const lp = this.calculations?.lifePath || '';
+        const dominantElement = profile.dominantElement || '';
+        const dashaRef = dasha ? (isHindi ? `${dasha} दशा` : `${dasha} dasha`) : (isHindi ? 'आपकी chart' : 'your chart');
+        const moonRef = moonSign ? (isHindi ? `${moonSign} चन्द्र` : `${moonSign} Moon`) : '';
+
+        return [
+            {
+                key: 'recent_upheaval',
+                spoken: isHindi
+                    ? `${dashaRef} में एक signal दिख रहा है — पिछले 2-3 सालों में कोई बड़ा बदलाव आया था? कुछ ऐसा जिसने ज़िंदगी की direction ही बदल दी?`
+                    : `I see a signal in ${dashaRef} — in the last 2-3 years, did something happen that changed the entire direction of your life?`,
+                question: isHindi
+                    ? `पिछले 2-3 सालों में कोई बड़ा बदलाव आया?`
+                    : `In the last 2-3 years — any major life shift?`,
+                options: isHindi
+                    ? [
+                        { label: 'हाँ — relationship में', value: 'relationship_shift', insight: 'Major relationship event confirmed during current dasha — 7th house activation likely' },
+                        { label: 'हाँ — career/money में', value: 'career_shift', insight: 'Career or financial upheaval during current dasha — 10th/2nd house transit active' },
+                        { label: 'हाँ — health या family में', value: 'health_family', insight: 'Health or family crisis during dasha — 6th/4th house pressure confirmed' },
+                        { label: 'नहीं, सब stable रहा', value: 'stable', insight: 'Current dasha running smoothly — upcoming transit may be the trigger instead' }
+                    ]
+                    : [
+                        { label: 'Yes — in relationships', value: 'relationship_shift', insight: 'Major relationship event confirmed during current dasha — 7th house activation likely' },
+                        { label: 'Yes — career or money', value: 'career_shift', insight: 'Career or financial upheaval during current dasha — 10th/2nd house transit active' },
+                        { label: 'Yes — health or family', value: 'health_family', insight: 'Health or family crisis during dasha — 6th/4th house pressure confirmed' },
+                        { label: 'No, things stayed stable', value: 'stable', insight: 'Current dasha running smoothly — upcoming transit may be the trigger instead' }
+                    ]
+            },
+            {
+                key: 'current_phase',
+                spoken: isHindi
+                    ? `अभी इस वक्त — आपको लगता है ज़िंदगी किस direction में जा रही है? ${moonRef ? moonRef + ' ये बता रहा है कि' : 'Chart में दिख रहा है कि'} एक phase चल रहा है, बताइए कैसा feel हो रहा है।`
+                    : `Right now — where do you feel life is heading? ${moonRef ? moonRef + ' is showing me' : 'Your chart shows'} a specific phase — tell me what it feels like.`,
+                question: isHindi
+                    ? `अभी ज़िंदगी कैसी चल रही है?`
+                    : `How does life feel right now?`,
+                options: isHindi
+                    ? [
+                        { label: 'अटका हुआ — कुछ आगे नहीं बढ़ रहा', value: 'stuck', insight: 'Saturn or Rahu pressure active — stagnation phase, waiting for transit break' },
+                        { label: 'तेज़ बदलाव — सब बदल रहा है', value: 'rapid_change', insight: 'Jupiter or Ketu transit active — transformation phase, multiple life areas shifting' },
+                        { label: 'अकेलापन या disconnect', value: 'isolated', insight: 'Moon or Venus under stress — emotional isolation, inner world disconnected from outer' },
+                        { label: 'ठीक है, पर कुछ missing है', value: 'missing', insight: 'Surface stable but deeper purpose unfulfilled — dasha transition approaching' }
+                    ]
+                    : [
+                        { label: 'Stuck — nothing is moving forward', value: 'stuck', insight: 'Saturn or Rahu pressure active — stagnation phase, waiting for transit break' },
+                        { label: 'Rapid change — everything is shifting', value: 'rapid_change', insight: 'Jupiter or Ketu transit active — transformation phase, multiple life areas shifting' },
+                        { label: 'Lonely or disconnected', value: 'isolated', insight: 'Moon or Venus under stress — emotional isolation, inner world disconnected from outer' },
+                        { label: 'Fine, but something feels missing', value: 'missing', insight: 'Surface stable but deeper purpose unfulfilled — dasha transition approaching' }
+                    ]
+            },
+            {
+                key: 'money_pattern',
+                spoken: isHindi
+                    ? `पैसों के बारे में — chart में एक pattern दिख रहा है। बताइए, पैसा आता तो है, पर रुकता है या हाथ से निकल जाता है?`
+                    : `About money — I see a pattern in your chart. Tell me, does money come to you but struggle to stay?`,
+                question: isHindi
+                    ? `पैसों का हाल कैसा रहता है?`
+                    : `How has your money pattern been?`,
+                options: isHindi
+                    ? [
+                        { label: 'आता है पर टिकता नहीं', value: 'flows_out', insight: '2nd/11th house leak — money comes but exits through unexpected expenses or lending' },
+                        { label: 'मेहनत ज्यादा, return कम', value: 'underpaid', insight: '10th house effort not converting to 2nd house reward — blocked wealth yoga' },
+                        { label: 'अचानक आता है, अचानक जाता है', value: 'volatile', insight: 'Rahu influence on wealth houses — sudden gains and sudden losses pattern' },
+                        { label: 'Stable है, grow नहीं हो रहा', value: 'plateau', insight: 'Saturn stabilizing but Jupiter not activating growth — expansion window approaching' }
+                    ]
+                    : [
+                        { label: 'Comes but never stays', value: 'flows_out', insight: '2nd/11th house leak — money comes but exits through unexpected expenses or lending' },
+                        { label: 'Hard work but poor returns', value: 'underpaid', insight: '10th house effort not converting to 2nd house reward — blocked wealth yoga' },
+                        { label: 'Sudden gains, sudden losses', value: 'volatile', insight: 'Rahu influence on wealth houses — sudden gains and sudden losses pattern' },
+                        { label: 'Stable but not growing', value: 'plateau', insight: 'Saturn stabilizing but Jupiter not activating growth — expansion window approaching' }
+                    ]
+            },
+            {
+                key: 'relationship_status',
+                spoken: isHindi
+                    ? `relationships की बात करें तो — अभी इस वक्त, सबसे बड़ी tension कहाँ है? Chart में 7th house active दिख रहा है।`
+                    : `When it comes to relationships — where is the biggest tension right now? Your 7th house is showing activity.`,
+                question: isHindi
+                    ? `Relationships में अभी सबसे बड़ी tension?`
+                    : `Biggest tension in relationships right now?`,
+                options: isHindi
+                    ? [
+                        { label: 'सही इंसान मिल नहीं रहा', value: 'searching', insight: 'Venus or 7th lord not settled — partner karma still unfolding, timing not yet aligned' },
+                        { label: 'है कोई, पर समझ नहीं आ रहा', value: 'confused', insight: 'Rahu/Ketu axis touching relationship houses — confusion between desire and destiny' },
+                        { label: 'रिश्ता है, पर दूरी बढ़ रही है', value: 'distance', insight: 'Saturn or 12th house influence on 7th — emotional walls building, needs conscious effort' },
+                        { label: 'अभी focus relationships पर नहीं है', value: 'not_priority', insight: '10th house dominating — career phase active, relationships on hold' }
+                    ]
+                    : [
+                        { label: 'Can\'t find the right person', value: 'searching', insight: 'Venus or 7th lord not settled — partner karma still unfolding, timing not yet aligned' },
+                        { label: 'Someone is there, but it\'s confusing', value: 'confused', insight: 'Rahu/Ketu axis touching relationship houses — confusion between desire and destiny' },
+                        { label: 'In a relationship, but growing apart', value: 'distance', insight: 'Saturn or 12th house influence on 7th — emotional walls building, needs conscious effort' },
+                        { label: 'Relationships aren\'t my focus right now', value: 'not_priority', insight: '10th house dominating — career phase active, relationships on hold' }
+                    ]
+            },
+            {
+                key: 'repeating_pattern',
+                spoken: isHindi
+                    ? `आख़िरी सवाल — और ये सबसे ज़रूरी है। क्या ज़िंदगी में कोई एक चीज़ है जो बार-बार repeat होती है? जैसे एक ही तरह की situation बार-बार आ जाती है?`
+                    : `Last question — and this is the most important one. Is there one thing in your life that keeps repeating? The same kind of situation coming back again and again?`,
+                question: isHindi
+                    ? `कौनसी चीज़ बार-बार repeat होती है?`
+                    : `What keeps repeating in your life?`,
+                options: isHindi
+                    ? [
+                        { label: 'लोग छोड़ कर चले जाते हैं', value: 'abandonment', insight: 'Ketu or 12th house karmic pattern — loss cycle, detachment wound from past life or childhood' },
+                        { label: 'शुरुआत अच्छी, ending बुरी', value: 'bad_endings', insight: 'Mars or 8th house pattern — strong starts but self-sabotage or external disruption near completion' },
+                        { label: 'मौके आते हैं पर हाथ से निकल जाते हैं', value: 'missed_chances', insight: 'Rahu pattern — opportunities appear but timing or hesitation causes them to slip away' },
+                        { label: 'एक ही गलती बार-बार', value: 'same_mistake', insight: 'Saturn return pattern — lesson not yet learned, chart will keep forcing the same test until resolved' }
+                    ]
+                    : [
+                        { label: 'People leave', value: 'abandonment', insight: 'Ketu or 12th house karmic pattern — loss cycle, detachment wound from past life or childhood' },
+                        { label: 'Good starts, bad endings', value: 'bad_endings', insight: 'Mars or 8th house pattern — strong starts but self-sabotage or external disruption near completion' },
+                        { label: 'Opportunities slip away', value: 'missed_chances', insight: 'Rahu pattern — opportunities appear but timing or hesitation causes them to slip away' },
+                        { label: 'Same mistake, over and over', value: 'same_mistake', insight: 'Saturn return pattern — lesson not yet learned, chart will keep forcing the same test until resolved' }
+                    ]
+            }
+        ];
+    },
+
+    /**
+     * Run chart-driven profiling MCQs after kundli is formed.
+     * Asks questions one by one with chart-aware acknowledgments.
+     */
+    async runProfileQuestions() {
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const questions = this.getProfileQuestions();
+        const profile = this.personalization || {};
+        const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
+
+        // Intro — grounded in the chart
+        const introLine = isHindi
+            ? 'कुंडली बन चुकी है। कुछ signals बहुत clear दिख रहे हैं — पर कुछ बातें सिर्फ आप confirm कर सकते हैं। मुझे कुछ सवाल पूछने दीजिए।'
+            : 'Your kundli is formed. Some signals are very clear — but a few things only you can confirm. Let me ask you a few questions.';
+        await this.speak(introLine);
+        await MayaUtils.sleep(300);
+
+        // Chart-aware acknowledgment pools
+        const acks = isHindi
+            ? [
+                dasha ? `हम्म… ${dasha} दशा में यही दिख रहा था।` : 'हम्म… chart में यही signal था।',
+                'बिल्कुल — ये confirm करता है जो मैं देख रही थी।',
+                'ठीक है, अब picture और clear हो रही है।',
+                'समझ आया — ये chart के उस हिस्से से जुड़ता है जो मैं अभी पढ़ रही थी।',
+                'ये जवाब important है। इससे आगे की reading और precise होगी।'
+            ]
+            : [
+                dasha ? `Hmm… that's exactly what the ${dasha} dasha was showing.` : 'Hmm… that matches the signal in your chart.',
+                'That confirms what I was seeing.',
+                'Good — the picture is getting clearer now.',
+                'I see — this connects to the part of the chart I was just reading.',
+                'This answer is important. It makes the rest of the reading much more precise.'
+            ];
+
+        let ackIndex = 0;
+        for (const q of questions) {
+            const answer = await this.showValidationQuestion(
+                q.question,
+                q.options.map(o => ({ label: o.label, value: o.value })),
+                q.spoken
+            );
+
+            const chosen = q.options.find(o => o.value === answer);
+            const insightText = chosen?.insight || answer;
+            this.sessionMemory.profileAnswers[q.key] = `${answer} (${insightText})`;
+
+            // Cycle through chart-aware acks
+            await this.speak(acks[ackIndex % acks.length]);
+            ackIndex++;
+            await MayaUtils.sleep(200);
+        }
+
+        // Transition — MAYA now has data to go deeper
+        const outroLine = isHindi
+            ? 'बहुत अच्छा। अब मुझे exactly पता है कहाँ देखना है। चलिए, deep reading शुरू करते हैं।'
+            : 'Good. Now I know exactly where to look. Let me begin the deep reading.';
+        await this.speak(outroLine);
+        await MayaUtils.sleep(300);
+    },
+
     /**
      * Run the "How does she know?" moment — predict a past event.
      */
@@ -2702,31 +2913,32 @@ RULES:
             // Show progress meter
             this.showProgressMeter();
 
-            // STEP 1: Opening hit — personalized, specific, grounded
-            console.log('🗣️ Speaking personalized opening...');
-            const openingNarration = await this.getOpeningNarration();
-            await this.speak(openingNarration);
-            if (openingNarration) this.spokenNarrations.push({ stage: 'opening', text: openingNarration });
+            // STEP 1: Short personal greeting + fixed kundli transition
+            console.log('🗣️ Speaking kundli transition...');
+            const greetLine = isHindi
+                ? `${this.firstName}, मेरे पास सब कुछ है जो चाहिए। अब कुंडली बनाती हूँ — असली reading कुंडली बनने के बाद शुरू होगी।`
+                : `${this.firstName}, I have everything I need. Let me plot your birth chart now — the real reading begins once the kundli takes shape.`;
+            await this.speak(greetLine);
+            this.spokenNarrations.push({ stage: 'opening', text: greetLine });
             this.advanceProgress('chart_opened');
+            this.advanceProgress('first_impression');
             await MayaUtils.sleep(this.stageTiming.introSettle);
 
-            // STEP 2: Transition to kundli — tell user we're about to plot their chart
-            console.log('🪐 Kundli transition...');
-            const kundliTransitionLine = this.getVoiceLine('kundliTransition');
-            await this.speak(kundliTransitionLine);
-            this.advanceProgress('first_impression');
-
-            // STEP 3: Show calculation overlay
+            // STEP 2: Show calculation overlay & form the kundli
             console.log('📊 Showing calculation overlay...');
             this.showCalculationOverlay();
             await MayaUtils.sleep(this.stageTiming.calculationLeadIn);
 
-            // STEP 4: Kundli formation — personalized AI narration plays over chart animation
+            // STEP 3: Kundli formation — personalized AI narration plays over chart animation
             console.log('🪐 Animating Kundli...');
             await this.animateKundliFormation();
             this.advanceProgress('kundli');
 
-            // STEP 5: ONE personalized validation based on actual chart data
+            // STEP 4: Akinator-style smart profiling questions (MCQs)
+            console.log('🎯 Running smart profile questions...');
+            await this.runProfileQuestions();
+
+            // STEP 5: ONE personalized validation based on actual chart data + MCQ answers
             console.log('✅ Personalized validation...');
             this.currentPhase = this.PHASES.VALIDATION;
             const personalQ = this.buildPersonalizedValidation();
