@@ -131,7 +131,8 @@ const MayaFunnel = {
 - "आप powerful हैं", "success आ रहा है" जैसी default praise FORBIDDEN। love, money, marriage, fame के guarantees FORBIDDEN। psychic/energy claims FORBIDDEN।
 - user का नाम हमेशा Devanagari में लिखिए (Aviraj → अविराज)। TTS के लिए जरूरी।
 - 🚫 नाम MAX 1-2 बार पूरे response में। बाकी "आप/आपके/आपकी"। हर sentence में नाम = FORBIDDEN।
-- 🚫 WORD REPETITION BAN: एक ही शब्द लगातार 2 sentences में FORBIDDEN। Synonyms use करें। "energy" → "ऊर्जा/ताकत/vibe", "pattern" → "ढंग/cycle"। Same word back-to-back = BAD।
+- 🚫 WORD REPETITION BAN (STRICT): एक ही शब्द लगातार 2 sentences में FORBIDDEN। Synonyms use करें। "energy" → "ऊर्जा/ताकत/vibe", "pattern" → "ढंग/cycle"। Same word back-to-back = BAD। OUTPUT GENERATE करने के बाद RE-READ करें — अगर कोई भी noun, adjective, या technical term (जैसे लग्न, दशा, राशि, भाव) लगातार 2 बार दिखे तो दूसरी बार synonym या indirect reference से बदलें।
+- 🚫 TECHNICAL TERM REPETITION: कोई भी technical term (लग्न, Mean Lagna, ascendant, दशा, राहु, शनि, etc.) एक response में MAX 2 बार। तीसरी बार = FORBIDDEN। "वही लग्न", "यही ascendant", "उसी ग्रह" जैसे indirect references use करें।
 - 🚫 YOGA/DOSHA/DASHA REPETITION: एक ही yoga/dosha/dasha नाम बार-बार FORBIDDEN। दूसरा angle या indirect reference दीजिए ("वही दशा", "वही pattern")।
 - 🔊 YOGA TTS: योग नाम ONLY देवनागरी: गजकेसरी योग (NOT Gaja Kesari Yoga), बुधादित्य योग, चन्द्र मंगल योग, हंस योग, नीचभंग राजयोग, काल सर्प दोष, मंगल दोष। Numbers Hindi में: पहला भाव, सातवाँ भाव।
 - 🚫 ROMANIZED HINDI BAN: Hindi/Sanskrit words कभी Roman script में नहीं (aapka, kundli, rashi, graha FORBIDDEN → आपका, कुंडली, राशि, ग्रह)।
@@ -147,7 +148,8 @@ const MayaFunnel = {
 - No default praise ("you are powerful", "success is coming"). No promises of love/money/fame. No psychic claims.
 - Write user name in Devanagari for TTS.
 - 🚫 NAME: Max 1-2 times per response. Use "you/your" everywhere else. Every-sentence name = FORBIDDEN.
-- 🚫 WORD REPETITION: Same word in back-to-back sentences FORBIDDEN. Use synonyms.
+- 🚫 WORD REPETITION (STRICT): Same word in back-to-back sentences FORBIDDEN. Use synonyms. After generating output, RE-READ it — if any noun, adjective, or technical term (e.g. lagna, dasha, rashi, bhava) appears in 2 consecutive sentences, replace the second with a synonym or indirect reference.
+- 🚫 TECHNICAL TERM REPETITION: Any technical term (lagna, Mean Lagna, ascendant, dasha, Rahu, Saturn, etc.) MAX 2 times per response. Third use = FORBIDDEN. Use indirect references like "the same ascendant", "that planet", "the cycle mentioned".
 - 🚫 YOGA/DOSHA/DASHA REPETITION: Same term repeated across sections FORBIDDEN. Use different angles or indirect references.
 - 🔊 YOGA TTS: Always Devanagari for yoga names (गजकेसरी योग NOT Gaja Kesari Yoga). House numbers in Hindi (पहला भाव).
 - 🚫 ROMANIZED HINDI: Never write Hindi in Roman script (aapka, kundli FORBIDDEN → आपका, कुंडली).
@@ -3089,10 +3091,10 @@ STRUCTURE (follow this ORDER):
             await this.speak(introLine);
             await MayaUtils.sleep(400);
 
-            // Kundli transition line
+            // Kundli transition line — warm and inviting
             const kundliTransLine = isHindi
-                ? `मेरे पास आपकी सारी details हैं। अब कुंडली बनाती हूँ — असली reading कुंडली बनने के बाद शुरू होगी।`
-                : `I have all your details. Let me plot your birth chart now — the real reading begins once the kundli takes shape.`;
+                ? `चलिए, अब आपकी कुंडली बनाते हैं साथ मिलकर — जैसे-जैसे ग्रह अपनी जगह लेंगे, बहुत कुछ साफ होता जाएगा।`
+                : `Let's build your birth chart together — as the planets settle into place, so much will start to make sense.`;
             await this.speak(kundliTransLine);
             this.spokenNarrations.push({ stage: 'opening', text: `${introLine} ${kundliTransLine}` });
             this.advanceProgress('chart_opened');
@@ -3674,14 +3676,8 @@ STRUCTURE (follow this ORDER):
         const lpValue = document.getElementById('unum-lp-value');
         if (lpCard) lpCard.dataset.state = 'calculating';
 
-        await MayaUtils.sleep(300);
-        this.addCalculationStep(lpSteps, `${day} → ${dayReduced}`, 'Day');
-        await MayaUtils.sleep(250);
-        this.addCalculationStep(lpSteps, `${month} → ${monthReduced}`, 'Month');
-        await MayaUtils.sleep(250);
-        this.addCalculationStep(lpSteps, `${year} → ${yearReduced}`, 'Year');
-        await MayaUtils.sleep(300);
-        this.addCalculationStep(lpSteps, `${dayReduced}+${monthReduced}+${yearReduced} = ${lpTotal} → ${lifePath}`, '', true);
+        await MayaUtils.sleep(600);
+        this.addCalculationStep(lpSteps, `${isHindi ? 'जन्म तिथि' : 'Birth date'} → ${lifePath}`, '', true);
 
         if (lpValue) lpValue.innerHTML = `<span class="unified-num-card__number unified-num-pop">${lifePath}</span>`;
         if (lpCard) lpCard.dataset.state = 'done';
