@@ -2355,19 +2355,21 @@ STRUCTURE (follow this ORDER):
      * Returns a restore function to clear the animation.
      */
     _showAnswerReadingAnim(isHindi) {
-        const textDisplay = document.getElementById('maya-speaking-text');
-        const prevHTML = textDisplay?.innerHTML || '';
-        if (textDisplay) {
-            textDisplay.innerHTML = `
-                <div class="maya-answer-reading">
-                    <div class="maya-answer-reading__dots">
-                        <span></span><span></span><span></span>
-                    </div>
-                    <p class="maya-answer-reading__label">${isHindi ? 'आपका जवाब पढ़ रही हूँ…' : 'Reading your answer…'}</p>
-                </div>
-            `;
-        }
-        return () => { if (textDisplay) textDisplay.innerHTML = prevHTML; };
+        // Append overlay directly to body so it's always on top, centered, visible
+        const overlay = document.createElement('div');
+        overlay.className = 'maya-answer-reading';
+        overlay.id = 'maya-answer-reading-overlay';
+        overlay.innerHTML = `
+            <div class="maya-answer-reading__dots">
+                <span></span><span></span><span></span>
+            </div>
+            <p class="maya-answer-reading__label">${isHindi ? 'आपका जवाब पढ़ रही हूँ…' : 'Reading your answer…'}</p>
+        `;
+        document.body.appendChild(overlay);
+        return () => {
+            const el = document.getElementById('maya-answer-reading-overlay');
+            if (el) el.remove();
+        };
     },
 
     /**
@@ -3164,24 +3166,12 @@ ONLY return the single spoken sentence. Nothing else.`;
             const ascendant = profile.ascendant?.name || '';
             const sunSign = profile.sunSign || '';
 
-            const introLine = isHindi
-                ? `नमस्ते ${this.firstName}! मैं माया हूँ। बहुत अच्छा लगा आपसे मिलकर।`
-                : `Hello ${this.firstName}! I am Maya. It is really nice to meet you.`;
-            await this.speak(introLine);
-            await MayaUtils.sleep(300);
-
-            // ═══ STEP 1b: Knowledge reveal — tell user what MAYA has and knows ═══
-            const knowledgeLine1 = isHindi
-                ? `आपने जो जन्म तिथि, समय और जगह दी है, उससे मुझे बहुत कुछ पता चल गया है।`
-                : `From the birth date, time, and place you shared, I already know quite a lot about you.`;
-            await this.speak(knowledgeLine1);
-            await MayaUtils.sleep(200);
-
-            const knowledgeLine2 = isHindi
-                ? `मुझे वैदिक ज्योतिष, कुंडली, ग्रहों की दशा, योग, दोष, और न्यूमेरोलॉजी, इन सबकी गहरी समझ है। तो चलिए, सबसे पहले आपकी कुंडली बनाते हैं और फिर साथ मिलकर उसमें गहराई से उतरते हैं।`
-                : `I have deep understanding of vedic astrology, birth charts, planetary dashas, yogas, doshas, and numerology. So let us start by plotting your kundli, and then we will go deeper into it together.`;
-            await this.speak(knowledgeLine2);
-            this.spokenNarrations.push({ stage: 'opening', text: `${introLine} ${knowledgeLine1} ${knowledgeLine2}` });
+            // Single combined intro — no gaps between sentences
+            const fullIntro = isHindi
+                ? `नमस्ते ${this.firstName}! मैं माया हूँ, बहुत अच्छा लगा आपसे मिलकर। आपने जो जन्म तिथि, समय और जगह दी है, उससे मुझे बहुत कुछ पता चल गया है। मुझे वैदिक ज्योतिष, कुंडली, ग्रहों की दशा, योग, दोष, और न्यूमेरोलॉजी, इन सबकी गहरी समझ है। तो चलिए, सबसे पहले आपकी कुंडली बनाते हैं और फिर साथ मिलकर उसमें गहराई से उतरते हैं।`
+                : `Hello ${this.firstName}! I am Maya, it is really nice to meet you. From the birth date, time, and place you shared, I already know quite a lot about you. I have deep understanding of vedic astrology, birth charts, planetary dashas, yogas, doshas, and numerology. So let us start by plotting your kundli, and then we will go deeper into it together.`;
+            await this.speak(fullIntro);
+            this.spokenNarrations.push({ stage: 'opening', text: fullIntro });
             this.advanceProgress('chart_opened');
             this.advanceProgress('first_impression');
             await MayaUtils.sleep(this.stageTiming.introSettle);
@@ -3200,7 +3190,6 @@ ONLY return the single spoken sentence. Nothing else.`;
                 ? `बहुत अच्छा, कुंडली बन गई है! अब कुछ बातें हैं जो सिर्फ आप ही बता सकते हैं, कुंडली नहीं बताती। तो चलिए, कुछ छोटे सवाल पूछ लेती हूँ।`
                 : `Wonderful, your kundli is ready! Now there are some things only you can tell me, the chart alone cannot reveal everything. So let me ask you a few quick questions.`;
             await this.speak(postKundliLine);
-            await MayaUtils.sleep(200);
 
             // ═══ STEP 3: First question - after kundli (recent upheaval) ═══
             if (allQuestions[0]) {
