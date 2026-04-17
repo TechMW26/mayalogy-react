@@ -434,7 +434,6 @@ const MayaApp = {
         const hasProfile = profile && profile.birthDate;
         const isAuthenticated = window.MayaAuth ? MayaAuth.isAuthenticated : false;
         const preferredLanguage = profile?.language || MayaUtils.storage.get('maya_language') || 'en';
-    const preferredLanguage = MayaUtils.storage.get('maya_language') || profile?.language || 'en';
 
         await this.applyLanguagePreference(preferredLanguage, { force: true });
         
