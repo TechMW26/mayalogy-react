@@ -505,74 +505,98 @@ const MayaOnboarding = {
 
             case 'agentSelect':
                 inputHtml = `
-                    <svg class="agent-svg-filters" style="position:absolute;width:0;height:0;overflow:hidden">
+                    <svg style="position:absolute;width:0;height:0;overflow:hidden">
                         <defs>
-                            <filter id="electricDisplace" colorInterpolationFilters="sRGB" x="-20%" y="-20%" width="140%" height="140%">
-                                <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="n1" seed="1"/>
-                                <feOffset in="n1" dx="0" dy="0" result="o1"><animate attributeName="dy" values="700;0" dur="6s" repeatCount="indefinite" calcMode="linear"/></feOffset>
-                                <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="n2" seed="1"/>
-                                <feOffset in="n2" dx="0" dy="0" result="o2"><animate attributeName="dy" values="0;-700" dur="6s" repeatCount="indefinite" calcMode="linear"/></feOffset>
-                                <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="n3" seed="2"/>
-                                <feOffset in="n3" dx="0" dy="0" result="o3"><animate attributeName="dx" values="490;0" dur="6s" repeatCount="indefinite" calcMode="linear"/></feOffset>
-                                <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="n4" seed="2"/>
-                                <feOffset in="n4" dx="0" dy="0" result="o4"><animate attributeName="dx" values="0;-490" dur="6s" repeatCount="indefinite" calcMode="linear"/></feOffset>
-                                <feComposite in="o1" in2="o2" result="p1"/>
-                                <feComposite in="o3" in2="o4" result="p2"/>
-                                <feBlend in="p1" in2="p2" mode="color-dodge" result="combined"/>
-                                <feDisplacementMap in="SourceGraphic" in2="combined" scale="20" xChannelSelector="R" yChannelSelector="B"/>
+                            <filter id="agentElectricBorder" colorInterpolationFilters="sRGB" x="-20%" y="-20%" width="140%" height="140%">
+                                <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="noise1" seed="1"/>
+                                <feOffset in="noise1" dx="0" dy="0" result="offsetNoise1">
+                                    <animate attributeName="dy" values="700; 0" dur="6s" repeatCount="indefinite" calcMode="linear"/>
+                                </feOffset>
+                                <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="noise2" seed="1"/>
+                                <feOffset in="noise2" dx="0" dy="0" result="offsetNoise2">
+                                    <animate attributeName="dy" values="0; -700" dur="6s" repeatCount="indefinite" calcMode="linear"/>
+                                </feOffset>
+                                <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="noise1" seed="2"/>
+                                <feOffset in="noise1" dx="0" dy="0" result="offsetNoise3">
+                                    <animate attributeName="dx" values="490; 0" dur="6s" repeatCount="indefinite" calcMode="linear"/>
+                                </feOffset>
+                                <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="noise2" seed="2"/>
+                                <feOffset in="noise2" dx="0" dy="0" result="offsetNoise4">
+                                    <animate attributeName="dx" values="0; -490" dur="6s" repeatCount="indefinite" calcMode="linear"/>
+                                </feOffset>
+                                <feComposite in="offsetNoise1" in2="offsetNoise2" result="part1"/>
+                                <feComposite in="offsetNoise3" in2="offsetNoise4" result="part2"/>
+                                <feBlend in="part1" in2="part2" mode="color-dodge" result="combinedNoise"/>
+                                <feDisplacementMap in="SourceGraphic" in2="combinedNoise" scale="30" xChannelSelector="R" yChannelSelector="B"/>
                             </filter>
                         </defs>
                     </svg>
-                    <div class="agent-cards-row">
-                        <button type="button" class="agent-electric-card" data-value="female">
-                            <div class="agent-ec-inner">
-                                <div class="agent-ec-border-outer">
-                                    <div class="agent-ec-border-main"></div>
-                                </div>
-                                <div class="agent-ec-glow1"></div>
-                                <div class="agent-ec-glow2"></div>
-                            </div>
-                            <div class="agent-ec-overlay1"></div>
-                            <div class="agent-ec-overlay2"></div>
-                            <div class="agent-ec-bg-glow"></div>
-                            <div class="agent-ec-content">
-                                <div class="agent-ec-top">
-                                    <div class="agent-ec-badge">${this.isHindiUI() ? 'महिला Guide' : 'Female Guide'}</div>
-                                    <div class="agent-ec-img-wrap">
-                                        <img src="images/maya-guide.png" alt="Maya" draggable="false"/>
+                    <div class="gc-slider-viewport">
+                        <div class="gc-slider-track" id="gcSliderTrack">
+
+                            <!-- Maya Card -->
+                            <div class="gc-slide" data-value="female">
+                                <div class="gc-card" style="--electric-border-color:#dd8448">
+                                    <div class="gc-card-inner">
+                                        <div class="gc-border-outer">
+                                            <div class="gc-main-card"></div>
+                                        </div>
+                                        <div class="gc-glow-1"></div>
+                                        <div class="gc-glow-2"></div>
                                     </div>
-                                    <p class="agent-ec-name">Maya</p>
-                                </div>
-                                <hr class="agent-ec-divider"/>
-                                <div class="agent-ec-bottom">
-                                    <p class="agent-ec-desc">${this.isHindiUI() ? 'आपकी दिव्य मार्गदर्शक' : 'Your divine guide'}</p>
-                                </div>
-                            </div>
-                        </button>
-                        <button type="button" class="agent-electric-card agent-electric-card--moksh" data-value="male">
-                            <div class="agent-ec-inner">
-                                <div class="agent-ec-border-outer">
-                                    <div class="agent-ec-border-main"></div>
-                                </div>
-                                <div class="agent-ec-glow1"></div>
-                                <div class="agent-ec-glow2"></div>
-                            </div>
-                            <div class="agent-ec-overlay1"></div>
-                            <div class="agent-ec-overlay2"></div>
-                            <div class="agent-ec-bg-glow"></div>
-                            <div class="agent-ec-content">
-                                <div class="agent-ec-top">
-                                    <div class="agent-ec-badge">${this.isHindiUI() ? 'पुरुष Guide' : 'Male Guide'}</div>
-                                    <div class="agent-ec-img-wrap">
-                                        <img src="images/moksh-guide.png" alt="Moksh" draggable="false"/>
+                                    <div class="gc-overlay-1"></div>
+                                    <div class="gc-overlay-2"></div>
+                                    <div class="gc-content">
+                                        <div class="gc-content-top">
+                                            <div class="gc-glass-badge">${this.isHindiUI() ? 'महिला Guide' : 'Female Guide'}</div>
+                                            <div class="gc-avatar">
+                                                <img src="images/maya-guide.png" alt="Maya" draggable="false"/>
+                                            </div>
+                                            <p class="gc-name">Maya</p>
+                                        </div>
+                                        <hr class="gc-divider"/>
+                                        <div class="gc-content-bottom">
+                                            <p class="gc-desc">${this.isHindiUI() ? 'आपकी दिव्य मार्गदर्शक' : 'Your divine guide'}</p>
+                                        </div>
                                     </div>
-                                    <p class="agent-ec-name">Moksh</p>
-                                </div>
-                                <hr class="agent-ec-divider"/>
-                                <div class="agent-ec-bottom">
-                                    <p class="agent-ec-desc">${this.isHindiUI() ? 'आपके वैदिक मार्गदर्शक' : 'Your vedic guide'}</p>
                                 </div>
                             </div>
+
+                            <!-- Moksh Card -->
+                            <div class="gc-slide" data-value="male">
+                                <div class="gc-card" style="--electric-border-color:#6b8cce">
+                                    <div class="gc-card-inner">
+                                        <div class="gc-border-outer">
+                                            <div class="gc-main-card"></div>
+                                        </div>
+                                        <div class="gc-glow-1"></div>
+                                        <div class="gc-glow-2"></div>
+                                    </div>
+                                    <div class="gc-overlay-1"></div>
+                                    <div class="gc-overlay-2"></div>
+                                    <div class="gc-content">
+                                        <div class="gc-content-top">
+                                            <div class="gc-glass-badge">${this.isHindiUI() ? 'पुरुष Guide' : 'Male Guide'}</div>
+                                            <div class="gc-avatar">
+                                                <img src="images/moksh-guide.png" alt="Moksh" draggable="false"/>
+                                            </div>
+                                            <p class="gc-name">Moksh</p>
+                                        </div>
+                                        <hr class="gc-divider"/>
+                                        <div class="gc-content-bottom">
+                                            <p class="gc-desc">${this.isHindiUI() ? 'आपके वैदिक मार्गदर्शक' : 'Your vedic guide'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="gc-slider-dots">
+                            <span class="gc-dot active" data-index="0"></span>
+                            <span class="gc-dot" data-index="1"></span>
+                        </div>
+                        <button type="button" class="gc-choose-btn" id="gcChooseBtn">
+                            ${this.isHindiUI() ? 'इन्हें चुनें' : 'Choose'}
                         </button>
                     </div>
                 `;
@@ -669,16 +693,63 @@ const MayaOnboarding = {
             confirmBtn.addEventListener('click', () => this.completeOnboarding());
         }
 
-        // Agent electric cards — tap to select (no swipe)
-        const agentCards = document.querySelectorAll('.agent-electric-card');
-        agentCards.forEach(card => {
-            card.addEventListener('click', (e) => {
-                const value = e.currentTarget.dataset.value;
-                agentCards.forEach(c => c.classList.remove('selected'));
-                e.currentTarget.classList.add('selected');
-                setTimeout(() => this.handleSelection(step, value), 400);
+        // Guide card slider — swipe to browse, button to select
+        const gcTrack = document.getElementById('gcSliderTrack');
+        if (gcTrack) {
+            const gcSlides = gcTrack.querySelectorAll('.gc-slide');
+            const gcDots = document.querySelectorAll('.gc-dot');
+            const gcBtn = document.getElementById('gcChooseBtn');
+            let gcCurrent = 0;
+            let gcStartX = 0, gcDragX = 0, gcDragging = false;
+
+            const gcGo = (idx) => {
+                gcCurrent = Math.max(0, Math.min(idx, gcSlides.length - 1));
+                gcTrack.style.transform = `translateX(-${gcCurrent * 100}%)`;
+                gcDots.forEach((d, i) => d.classList.toggle('active', i === gcCurrent));
+            };
+
+            // Touch swipe (navigate only — does NOT select)
+            gcTrack.addEventListener('touchstart', (e) => {
+                gcStartX = e.touches[0].clientX;
+                gcDragX = gcStartX;
+                gcDragging = true;
+                gcTrack.style.transition = 'none';
+            }, { passive: true });
+            gcTrack.addEventListener('touchmove', (e) => {
+                if (!gcDragging) return;
+                gcDragX = e.touches[0].clientX;
+                const diff = gcDragX - gcStartX;
+                const base = -gcCurrent * gcTrack.parentElement.offsetWidth;
+                gcTrack.style.transform = `translateX(${base + diff}px)`;
+            }, { passive: true });
+            gcTrack.addEventListener('touchend', () => {
+                if (!gcDragging) return;
+                gcDragging = false;
+                gcTrack.style.transition = 'transform 0.35s cubic-bezier(.4,0,.2,1)';
+                const diff = gcDragX - gcStartX;
+                if (Math.abs(diff) > 50) {
+                    gcGo(gcCurrent + (diff < 0 ? 1 : -1));
+                } else {
+                    gcGo(gcCurrent);
+                }
             });
-        });
+
+            // Dot tap
+            gcDots.forEach((dot, i) => {
+                dot.addEventListener('click', () => gcGo(i));
+            });
+
+            // Choose button — this is the ONLY way to select
+            if (gcBtn) {
+                gcBtn.addEventListener('click', () => {
+                    const value = gcSlides[gcCurrent].dataset.value;
+                    gcBtn.classList.add('gc-choose-btn--pressed');
+                    setTimeout(() => this.handleSelection(step, value), 350);
+                });
+            }
+
+            gcGo(0);
+        }
 
         // Unknown time button
         const unknownBtn = document.getElementById('unknownTimeBtn');
