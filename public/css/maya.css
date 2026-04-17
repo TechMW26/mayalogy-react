@@ -6266,6 +6266,15 @@ h1, h2, h3, h4, h5, h6, p {
     gap: 0;
     position: relative;
     width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.phone-input-wrapper:focus-within {
+    border-color: rgba(212, 168, 75, 0.6);
+    box-shadow: 0 0 0 3px rgba(212, 168, 75, 0.12);
 }
 
 .country-code-selector {
@@ -6273,22 +6282,23 @@ h1, h2, h3, h4, h5, h6, p {
     align-items: center;
     gap: 0.3rem;
     padding: 0 0.75rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-right: none;
-    border-radius: 0.5rem 0 0 0.5rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: none;
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0;
     cursor: pointer;
-    min-width: 82px;
+    min-width: 90px;
     white-space: nowrap;
     transition: background 0.2s;
     position: relative;
     z-index: 1;
     user-select: none;
+    flex-shrink: 0;
 }
 
 .country-code-selector:hover,
 .country-code-selector.selector-open {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.12);
 }
 
 .country-flag {
@@ -6325,9 +6335,14 @@ h1, h2, h3, h4, h5, h6, p {
 }
 
 .phone-number-input {
-    border-radius: 0 0.5rem 0.5rem 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
     flex: 1;
     min-width: 0;
+    padding-left: 0.9rem;
 }
 
 .otp-input-group {
@@ -6396,7 +6411,7 @@ h1, h2, h3, h4, h5, h6, p {
     }
 
     .country-code-selector {
-        min-width: 72px;
+        min-width: 76px;
         padding: 0 0.5rem;
     }
 }
