@@ -134,6 +134,7 @@ const MayaFunnel = {
 - 🚫 WORD REPETITION BAN (STRICT): एक ही शब्द लगातार 2 sentences में FORBIDDEN। Synonyms use करें। "energy" → "ऊर्जा/ताकत/vibe", "pattern" → "ढंग/cycle"। Same word back-to-back = BAD। OUTPUT GENERATE करने के बाद RE-READ करें - अगर कोई भी noun, adjective, या technical term (जैसे लग्न, दशा, राशि, भाव) लगातार 2 बार दिखे तो दूसरी बार synonym या indirect reference से बदलें।
 - 🚫 TECHNICAL TERM REPETITION: कोई भी technical term (लग्न, Mean Lagna, ascendant, दशा, राहु, शनि, etc.) एक response में MAX 2 बार। तीसरी बार = FORBIDDEN। "वही लग्न", "यही ascendant", "उसी ग्रह" जैसे indirect references use करें।
 - 🚫 YOGA/DOSHA/DASHA REPETITION: एक ही yoga/dosha/dasha नाम बार-बार FORBIDDEN। दूसरा angle या indirect reference दीजिए ("वही दशा", "वही pattern")।
+- 🚫 DASHA DOMINANCE BAN: पूरे response का focus सिर्फ एक ही दशा (जैसे राहु दशा) पर मत रखिए। एक बार dasha name बोलकर आगे house, aspect, transit, yogas, remedies या behavior patterns से analysis diversify करें।
 - 🔊 YOGA TTS: योग नाम ONLY देवनागरी: गजकेसरी योग (NOT Gaja Kesari Yoga), बुधादित्य योग, चन्द्र मंगल योग, हंस योग, नीचभंग राजयोग, काल सर्प दोष, मंगल दोष। Numbers Hindi में: पहला भाव, सातवाँ भाव।
 - 🚫 ROMANIZED HINDI BAN: Hindi/Sanskrit words कभी Roman script में नहीं (aapka, kundli, rashi, graha FORBIDDEN → आपका, कुंडली, राशि, ग्रह)।
 - 🚫 URDU/ARABIC/PERSIAN BAN: ये HINDI app है। Nuqta (ज़, क़, ख़, ग़, फ़) ABSOLUTELY FORBIDDEN - बिना nuqta लिखिए (ज़→ज, फ़→फ)। Banned → Hindi: इश्क/मोहब्बत→प्यार/प्रेम, ख्वाब→सपना, शख्सियत→personality, ताल्लुक→रिश्ता, किस्मत/तक़दीर→भाग्य/luck, सुकून→शांति, हौसला→हिम्मत, वजह→कारण, गुजरना→बीतना, खुदा→भगवान, वक्त→समय, राज़→रहस्य, ग़ौर→ध्यान, नज़र→नजर/दृष्टि, हक़ीक़त→सच्चाई, मंज़िल→लक्ष्य, अल्फ़ाज़→शब्द, रूह→आत्मा, जज़्बात→भावनाएँ, ख़याल→विचार, ज़माना→दौर, इज़्ज़त→सम्मान। Plain हिन्दी बोलचाल use करें।
@@ -152,6 +153,7 @@ const MayaFunnel = {
 - 🚫 WORD REPETITION (STRICT): Same word in back-to-back sentences FORBIDDEN. Use synonyms. After generating output, RE-READ it - if any noun, adjective, or technical term (e.g. lagna, dasha, rashi, bhava) appears in 2 consecutive sentences, replace the second with a synonym or indirect reference.
 - 🚫 TECHNICAL TERM REPETITION: Any technical term (lagna, Mean Lagna, ascendant, dasha, Rahu, Saturn, etc.) MAX 2 times per response. Third use = FORBIDDEN. Use indirect references like "the same ascendant", "that planet", "the cycle mentioned".
 - 🚫 YOGA/DOSHA/DASHA REPETITION: Same term repeated across sections FORBIDDEN. Use different angles or indirect references.
+- 🚫 DASHA DOMINANCE BAN: Do NOT let the entire response revolve around one dasha term (like Rahu dasha). Mention it once, then diversify analysis via houses, aspects, transits, yogas, remedies, and behavior patterns.
 - 🔊 YOGA TTS: Always Devanagari for yoga names (गजकेसरी योग NOT Gaja Kesari Yoga). House numbers in Hindi (पहला भाव).
 - 🚫 ROMANIZED HINDI: Never write Hindi in Roman script (aapka, kundli FORBIDDEN → आपका, कुंडली).
 - ⚠️ GENDER: MAYA is female. Address user with THEIR gender. Male→masculine ("आप जानते हैं"), Female→feminine ("आप जानती हैं"). Wrong gender = FORBIDDEN.
@@ -1712,7 +1714,7 @@ STRUCTURE (इसी ORDER में लिखिए):
                 warningIntro: `आप current user के लिए caution section का ONE short transition लिख रही हैं। 1-2 वाक्य। पहले कही गई strengths को acknowledge करें, फिर एक honest pressure point की तरफ move करें। डराइए नहीं। ज्यादा से ज्यादा एक [[pause-250]] token।`,
                 warning: `आप current user के लिए ONE honest DEEP warning section लिख रही हैं। यह FILTERLESS reading है - sach बोलिए, package मत कीजिए। पहले दिए caution hints repeat मत कीजिए। Chart data से एक NEW specific self-sabotage pattern identify कीजिए - planetary position से exact reason बताइए कि ये pattern क्यों बनता है, कब trigger होता है (specific months/situations), और practically कैसे बचना है। Generic "careful रहिए" मत कहिए - actual planetary evidence दीजिए। 5-7 वाक्य। ज्यादा से ज्यादा एक [[pause-250]] token।`,
                 calculationRecovery: `आप current user के लिए ONE short recovery line लिख रही हैं। 1-2 वाक्य। बताइए कि reading data पूरी तरह sync नहीं हुआ है और तुरंत फिर से align करना होगा। इसे operational रखें, mystical sales copy मत बनाइए। ज्यादा से ज्यादा एक [[pause-250]] token।`,
-                emailGate: `आप current user के लिए ONE email gate transition लिख रही हैं। 2-3 वाक्य। पहले FOMO create कीजिए - बताइए कि उनकी कुंडली में कुछ ऐसा दिखा है जो अभी बताना जरूरी है, लेकिन वो deeper layer private saved file में है जिसमें chart-specific timing windows, do/avoid steps, और warnings हैं। फिर CLEARLY कहिए कि screen पर एक email field दिखेगा और उन्हें अपना email address वहाँ type करना है - जैसे "अभी screen पर email field आ रहा है, बस अपना email वहाँ type कर दीजिए ताकि ये reading safe रहे और मैं आगे की deeper layer खोल सकूँ।" सिर्फ एक बार माँगें, ज्यादा insist मत करें। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                emailGate: `आप current user के लिए ONE phone gate transition लिख रही हैं। 2-3 वाक्य। पहले FOMO create कीजिए - बताइए कि उनकी कुंडली में कुछ ऐसा दिखा है जो अभी बताना जरूरी है, लेकिन वो deeper layer private saved file में है जिसमें chart-specific timing windows, do/avoid steps, और warnings हैं। फिर CLEARLY कहिए कि screen पर एक WhatsApp नंबर field दिखेगा और उन्हें अपना WhatsApp नंबर वहाँ type करना है - जैसे "अभी screen पर अपना WhatsApp नंबर type कर दीजिए - OTP आएगा, बस confirm कर दीजिए और मैं आगे की deeper layer खोल दूँगी।" सिर्फ एक बार माँगें, ज्यादा insist मत करें। ज्यादा से ज्यादा एक [[pause-250]] token।`,
                 fomoHook: `आप current user के लिए ONE fear/FOMO hook लिख रही हैं। 2-3 वाक्य। कुंडली और numbers के आधार पर एक concerning या serious pattern बताइए - जैसे आने वाले महीनों में कोई challenge, relationship में hidden tension, career में कोई trap, या कोई repeating self-sabotage pattern। इसे ऐसे बोलिए कि user को लगे "मुझे इसके बारे में और जानना होगा।" यह prediction confident और specific होनी चाहिए, vague नहीं। डराइए नहीं, लेकिन urgency जरूर बनाइए। End में hint दीजिए कि full details private reading में हैं। ज्यादा से ज्यादा एक [[pause-250]] token।`,
                 combinedTeaser: `आप current user के लिए एक COMBINED teaser reading लिख रही हैं जिसमें तीन हिस्से एक flowing paragraph में हों। पूरी reading 8-10 वाक्य। तीनों हिस्सों को [[pause-250]] token से अलग कीजिए।\n\nहिस्सा 1 - IDENTITY TRUTH: "आप ऐसे इंसान हैं जो..." format। Chart data और numbers से एक core pattern-based observation जो flattery-free हो - सिर्फ accurate self-description जो user खुद पहचान ले। 2-3 वाक्य।\n\n[[pause-250]]\n\nहिस्सा 2 - EMOTIONAL PATTERN: कोई ऐसा daily emotional pattern जो user actually जीता है - inner conflict, recurring feeling, या relationship dynamic जो chart data confirm करती है। यह "inside-out" description हो। 2-3 वाक्य।\n\n[[pause-250]]\n\nहिस्सा 3 - UNRESOLVED THREAD: Chart data से एक ऐसा open loop जो naturally resolution माँगे - कोई timing shift, relationship question, या career crossroad जो अभी unresolved है। User को लगे "मुझे इस बारे में और जानना है।" 2-3 वाक्य।\n\nतीनों हिस्से एक दूसरे से connected होने चाहिए - एक कहानी की तरह, अलग-अलग टुकड़े नहीं। हर हिस्से में SPECIFIC chart evidence use कीजिए (planetary positions, dasha periods, house activations)। Generic observations FORBIDDEN हैं।`,
                 identityTruth: `आप current user के लिए ONE grounded identity truth लिख रही हैं। 2-3 वाक्य। "आप ऐसे इंसान हैं जो..." format use कीजिए। Chart data और numbers से एक core pattern-based observation दीजिए जो flattery-free हो - कोई praise नहीं, सिर्फ accurate self-description जो user खुद पहचान ले। ज्यादा से ज्यादा एक [[pause-250]] token।`,
@@ -1750,7 +1752,7 @@ STRUCTURE (follow this ORDER):
                 warningIntro: `Write ONE short transition into the caution section for the current user. 1-2 sentences. Acknowledge the strengths already covered, then move honestly toward one pressure point without fear-mongering. Use at most one [[pause-250]] token.`,
                 warning: `Write ONE honest FILTERLESS warning section for the current user. Tell the truth plainly - do not package it. Do NOT repeat any caution hints already given. Use chart data to identify one NEW specific self-sabotage pattern - explain from the planetary position EXACTLY why this pattern forms, when it triggers (specific months/situations), and how to practically avoid it. Do NOT say generic "be careful" - provide actual planetary evidence. 5-7 sentences. Use at most one [[pause-250]] token.`,
                 calculationRecovery: `Write ONE short recovery line for the current user. 1-2 sentences. Explain that the reading data did not fully sync and needs to be aligned again right away. Keep it operational rather than mystical or salesy. Use at most one [[pause-250]] token.`,
-                emailGate: `Write ONE email-gate transition for the current user. 2-3 sentences. First create FOMO - say you found something in their chart that needs to be shared now, but the deeper layer is in a private saved file with chart-specific timing windows, do/avoid steps, and warnings. Then CLEARLY instruct the user to type their email in the field that is about to appear on screen - something like "You'll see an email field on screen now - just type your email there so this reading stays saved and I can unlock the deeper layer for you." Ask only once, do not push or repeat the ask. Use at most one [[pause-250]] token.`,
+                emailGate: `Write ONE phone-gate transition for the current user. 2-3 sentences. First create FOMO - say you found something in their chart that needs to be shared now, but the deeper layer is in a private saved file with chart-specific timing windows, do/avoid steps, and warnings. Then CLEARLY instruct the user to type their WhatsApp number in the field that is about to appear on screen - something like "You'll see a WhatsApp number field on screen now - just type your number there, you'll receive a quick OTP, and once you confirm it I can unlock the deeper layer for you." Ask only once, do not push or repeat the ask. Use at most one [[pause-250]] token.`,
                 fomoHook: `Write ONE fear/FOMO hook for the current user. 2-3 sentences. Based on their kundli and numbers, reveal one concerning or serious pattern - such as an upcoming challenge in the next few months, a hidden relationship tension, a career trap, or a repeating self-sabotage cycle. Say it in a way that makes the user think "I need to know more about this." The prediction must be confident and specific, not vague. Do not fear-monger, but create genuine urgency. End with a hint that full details are in the private reading. Use at most one [[pause-250]] token.`,
                 combinedTeaser: `Write a COMBINED teaser reading for the current user containing three connected segments in one flowing narrative. Total 8-10 sentences. Separate the three segments with [[pause-250]] tokens.\n\nSegment 1 - IDENTITY TRUTH: Use "You are someone who..." format. A core pattern-based observation from chart data and numbers that is flattery-free - just an accurate self-description the user would immediately recognize. 2-3 sentences.\n\n[[pause-250]]\n\nSegment 2 - EMOTIONAL PATTERN: Name a daily emotional pattern the user actually lives with - an inner conflict, recurring feeling, or relationship dynamic that chart data confirms. An "inside-out" description of what the user feels privately. 2-3 sentences.\n\n[[pause-250]]\n\nSegment 3 - UNRESOLVED THREAD: Create an open loop from chart data that naturally demands resolution - a timing shift, relationship question, or career crossroad currently unresolved. The user must feel "I need to know more." 2-3 sentences.\n\nAll three segments must connect as one flowing story, not isolated observations. Every segment must cite SPECIFIC chart evidence (planetary positions, dasha periods, house activations). Generic observations are FORBIDDEN.`,
                 identityTruth: `Write ONE grounded identity truth for the current user. 2-3 sentences. Use "You are someone who..." format. Give a core pattern-based observation from chart data and numbers that is flattery-free - no praise, just an accurate self-description the user would immediately recognize in themselves. Use at most one [[pause-250]] token.`,
@@ -4236,12 +4238,10 @@ ONLY return the spoken response. Nothing else.`;
         const isHindi = lang === 'hi';
         const textDisplay = document.getElementById('maya-text-display');
         const blobContainer = document.getElementById('maya-blob-container');
-        const existingInput = document.getElementById('gate-email');
+        const existingInput = document.getElementById('gate-phone');
 
         if (this.currentPhase === this.PHASES.EMAIL_GATE && existingInput) {
-            if (!deferFocus) {
-                this.focusAuthField(existingInput);
-            }
+            if (!deferFocus) this.focusAuthField(existingInput);
             return;
         }
 
@@ -4249,82 +4249,117 @@ ONLY return the spoken response. Nothing else.`;
         this.emailGateShown = true;
         this.emailSubmissionInProgress = false;
         this.authPromptedFields = new Set();
-        
+
         if (blobContainer) {
             blobContainer.classList.remove('blob-centered');
             blobContainer.classList.add('blob-top');
         }
-        
+
         if (textDisplay) {
             textDisplay.style.display = 'flex';
             textDisplay.classList.add('email-gate-active');
         }
-        
+
+        const countries = [
+            { code: '+91', iso: 'in', name: 'India' },
+            { code: '+1', iso: 'us', name: 'USA' },
+            { code: '+44', iso: 'gb', name: 'UK' },
+            { code: '+971', iso: 'ae', name: 'UAE' },
+            { code: '+61', iso: 'au', name: 'Australia' },
+            { code: '+65', iso: 'sg', name: 'Singapore' },
+            { code: '+60', iso: 'my', name: 'Malaysia' },
+            { code: '+1', iso: 'ca', name: 'Canada' },
+            { code: '+64', iso: 'nz', name: 'New Zealand' },
+            { code: '+27', iso: 'za', name: 'South Africa' },
+            { code: '+49', iso: 'de', name: 'Germany' },
+            { code: '+33', iso: 'fr', name: 'France' },
+            { code: '+81', iso: 'jp', name: 'Japan' },
+            { code: '+92', iso: 'pk', name: 'Pakistan' },
+            { code: '+880', iso: 'bd', name: 'Bangladesh' },
+            { code: '+94', iso: 'lk', name: 'Sri Lanka' },
+            { code: '+977', iso: 'np', name: 'Nepal' }
+        ];
+        const countryOptions = countries.map((country) =>
+            `<option value="${country.code}" data-iso="${country.iso}" ${country.iso === 'in' ? 'selected' : ''}>${country.code} ${country.name}</option>`
+        ).join('');
+
         textDisplay.innerHTML = `
-            <div class="email-gate-container">
+            <div class="email-gate-container phone-gate-container">
                 <div class="gate-header">
                     <h3>${isHindi ? 'अपनी निजी रीडिंग सेव करें' : 'Save Your Private Reading'}</h3>
-                    <p class="gate-subtitle">${isHindi ? 'आपकी पूरी फाइल तैयार है - इसे अपने पास रखें' : `${this.firstName}, your full file is ready - keep it safe`}</p>
+                    <p class="gate-subtitle">${isHindi ? `${this.firstName}, आपकी पूरी फाइल तैयार है, OTP से सुरक्षित कर दीजिए` : `${this.firstName}, your full file is ready, verify once by OTP to keep it safe`}</p>
                 </div>
                 <div class="gate-benefits">
-                    <div class="benefit-item">
-                        <i class="bi bi-heart-fill"></i>
-                        <span>${isHindi ? 'प्रेम और रिश्तों का समय-संकेत' : 'Love and relationship timing'}</span>
-                    </div>
-                    <div class="benefit-item">
-                        <i class="bi bi-briefcase-fill"></i>
-                        <span>${isHindi ? 'करियर और धन का अनुमान' : 'Career and wealth forecast'}</span>
-                    </div>
-                    <div class="benefit-item">
-                        <i class="bi bi-exclamation-triangle-fill"></i>
-                        <span>${isHindi ? 'सावधानी वाले बिंदु' : 'Pressure points and cautions'}</span>
-                    </div>
-                    <div class="benefit-item">
-                        <i class="bi bi-calendar-event-fill"></i>
-                        <span>${isHindi ? 'आने वाले चरणों की समय-रेखा' : 'Your next chapters timing map'}</span>
-                    </div>
+                    <div class="benefit-item"><i class="bi bi-heart-fill"></i><span>${isHindi ? 'प्रेम और रिश्तों का समय-संकेत' : 'Love and relationship timing'}</span></div>
+                    <div class="benefit-item"><i class="bi bi-briefcase-fill"></i><span>${isHindi ? 'करियर और धन का अनुमान' : 'Career and wealth forecast'}</span></div>
+                    <div class="benefit-item"><i class="bi bi-exclamation-triangle-fill"></i><span>${isHindi ? 'सावधानी वाले बिंदु' : 'Pressure points and cautions'}</span></div>
+                    <div class="benefit-item"><i class="bi bi-calendar-event-fill"></i><span>${isHindi ? 'आने वाले चरणों की समय-रेखा' : 'Your next chapters timing map'}</span></div>
                 </div>
-                <form id="email-gate-form" class="gate-form">
-                    <div class="form-group">
-                        <input type="email" id="gate-email" class="form-control form-control-lg" 
-                               placeholder="${isHindi ? 'अपनी ईमेल आईडी भरिए' : 'Enter your email address'}" required autocomplete="email">
+                <form id="phone-gate-form" class="gate-form" autocomplete="off">
+                    <div class="phone-input-wrapper">
+                        <div class="country-code-selector" id="country-code-selector">
+                            <span class="fi fi-in country-flag" id="selected-flag"></span>
+                            <span class="selected-code" id="selected-code">+91</span>
+                            <i class="bi bi-chevron-down country-chevron"></i>
+                        </div>
+                        <input type="tel" id="gate-phone" class="form-control form-control-lg phone-number-input"
+                            placeholder="${isHindi ? 'WhatsApp नंबर' : 'WhatsApp number'}" inputmode="numeric" maxlength="15" autocomplete="tel-national">
+                        <select id="country-code-select" class="country-code-hidden-select" aria-label="Country code">
+                            ${countryOptions}
+                        </select>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-lg w-100 mt-3">
-                        <i class="bi bi-unlock-fill me-2"></i>${isHindi ? 'पूरी रीडिंग अनलॉक करें' : 'Unlock Full Reading'}
+                    <button type="submit" id="phone-gate-submit" class="btn btn-primary btn-lg w-100 mt-3">
+                        <i class="bi bi-whatsapp me-2"></i>${isHindi ? 'OTP भेजें WhatsApp पर' : 'Send OTP on WhatsApp'}
                     </button>
                     <p class="gate-note mt-3">
-                        <i class="bi bi-shield-check"></i> ${isHindi ? 'आपकी रीडिंग निजी और सुरक्षित रहेगी' : 'Your reading stays private and secure'}
+                        <i class="bi bi-shield-check"></i> ${isHindi ? 'आपका नंबर निजी और सुरक्षित रहेगा' : 'Your number stays private and secure'}
                     </p>
                 </form>
             </div>
         `;
 
-        document.getElementById('email-gate-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
+        this._bindCountrySelector();
+
+        document.getElementById('phone-gate-form')?.addEventListener('submit', async (event) => {
+            event.preventDefault();
             if (this.emailSubmissionInProgress) return;
 
-            const email = document.getElementById('gate-email').value.trim();
-            
-            if (this.isValidEmail(email)) {
-                await this.handleEmailSubmission(email);
-            } else {
-                MayaUtils.toast.error(isHindi ? 'कृपया सही ईमेल पता भरिए' : 'Please enter a valid email address');
+            const phone = document.getElementById('gate-phone')?.value?.replace(/\D/g, '').trim();
+            const countryCode = document.getElementById('selected-code')?.textContent?.trim() || '+91';
+
+            if (!this.isValidPhone(phone)) {
+                MayaUtils.toast.error(isHindi ? 'कृपया सही WhatsApp नंबर भरिए' : 'Please enter a valid WhatsApp number');
+                return;
             }
+
+            await this.handlePhoneSubmission(phone, countryCode);
         });
 
-        const emailInput = document.getElementById('gate-email');
-        // No voice prompt on email focus - the spoken teaser already conveyed value.
-        // The form + privacy note is enough. Avoid nagging for email.
+        this.bindVoicePromptOnFocus(document.getElementById('gate-phone'), 'phone');
         if (!deferFocus) {
-            this.focusAuthField(emailInput);
+            this.focusAuthField(document.getElementById('gate-phone'));
         }
     },
 
-    /**
-     * Validate email
-     */
-    isValidEmail(email) {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    _bindCountrySelector() {
+        const selector = document.getElementById('country-code-selector');
+        const hiddenSelect = document.getElementById('country-code-select');
+        const selectedFlag = document.getElementById('selected-flag');
+        const selectedCode = document.getElementById('selected-code');
+        if (!selector || !hiddenSelect || !selectedFlag || !selectedCode) return;
+
+        selector.addEventListener('click', () => hiddenSelect.focus());
+        hiddenSelect.addEventListener('change', () => {
+            const option = hiddenSelect.options[hiddenSelect.selectedIndex];
+            selectedCode.textContent = option.value;
+            selectedFlag.className = `fi fi-${option.dataset.iso || 'in'} country-flag`;
+        });
+        hiddenSelect.addEventListener('focus', () => selector.classList.add('selector-open'));
+        hiddenSelect.addEventListener('blur', () => selector.classList.remove('selector-open'));
+    },
+
+    isValidPhone(phone) {
+        return /^\d{6,15}$/.test(phone || '');
     },
 
     /**
@@ -4399,23 +4434,13 @@ ONLY return the spoken response. Nothing else.`;
         }
 
         try {
-            if (fieldType === 'email' && window.MayaStatements?.getEmailFieldPrompt) {
+            if ((fieldType === 'phone' || fieldType === 'email') && window.MayaStatements?.getEmailFieldPrompt) {
                 const text = await MayaStatements.getEmailFieldPrompt(this.firstName, aiContext);
                 if (text && text.length > 20) return text;
             }
 
-            if (fieldType === 'password' && window.MayaStatements?.getPasswordFieldPrompt) {
+            if (fieldType === 'otp' && window.MayaStatements?.getPasswordFieldPrompt) {
                 const text = await MayaStatements.getPasswordFieldPrompt(this.firstName, aiContext);
-                if (text && text.length > 20) return text;
-            }
-
-            if (fieldType === 'new-password' && window.MayaStatements?.getNewPasswordFieldPrompt) {
-                const text = await MayaStatements.getNewPasswordFieldPrompt(this.firstName, aiContext);
-                if (text && text.length > 20) return text;
-            }
-
-            if (fieldType === 'confirm-password' && window.MayaStatements?.getConfirmPasswordFieldPrompt) {
-                const text = await MayaStatements.getConfirmPasswordFieldPrompt(this.firstName, aiContext);
                 if (text && text.length > 20) return text;
             }
         } catch (error) {
@@ -4464,355 +4489,212 @@ ONLY return the spoken response. Nothing else.`;
         });
     },
 
-    /**
-     * Handle email submission
-     */
-    async handleEmailSubmission(email) {
+    async handlePhoneSubmission(phone, countryCode) {
         if (this.emailSubmissionInProgress) {
-            console.warn('⚠️ Ignoring duplicate email submission');
             return;
         }
 
-        const form = document.getElementById('email-gate-form');
-        const emailInput = document.getElementById('gate-email');
-        const submitButton = form?.querySelector('button[type="submit"]');
         const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
-        const checkingText = lang === 'hi' 
-            ? 'आपकी सुरक्षित रीडिंग जाँची जा रही है...'
-            : 'Checking your saved reading...';
+        const isHindi = lang === 'hi';
+        const submitBtn = document.getElementById('phone-gate-submit');
 
         this.emailSubmissionInProgress = true;
         this.currentPhase = this.PHASES.LOGIN_OR_REGISTER;
-        const requestId = ++this.authRequestId;
 
-        if (emailInput) emailInput.disabled = true;
-        if (submitButton) submitButton.disabled = true;
-
-        if (form) {
-            form.innerHTML = `
-                <div class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status"></div>
-                    <p class="mt-3 text-muted">${checkingText}</p>
-                </div>
-            `;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${isHindi ? 'OTP भेजा जा रहा है...' : 'Sending OTP...'}`;
         }
 
-        try {
-            // Use Firebase through MayaAuth
-            const exists = await MayaAuth.checkEmail(email);
-            if (requestId !== this.authRequestId) return;
-            
-            if (exists) {
-                await this.showLoginFlow(email);
-            } else {
-                await this.showRegistrationFlow(email);
+        MayaAuth.capturePhone?.(phone, countryCode, 'gate').catch(() => {});
+
+        const result = await MayaAuth.sendOTP(phone, countryCode);
+        if (!result.success) {
+            this.emailSubmissionInProgress = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i class="bi bi-whatsapp me-2"></i>${isHindi ? 'OTP भेजें WhatsApp पर' : 'Send OTP on WhatsApp'}`;
             }
-        } catch (error) {
-            console.error('Email check failed:', error);
-            if (requestId !== this.authRequestId) return;
-            await this.showRegistrationFlow(email);
-        } finally {
-            if (!this.isUserLoggedIn) {
-                this.emailSubmissionInProgress = false;
-            }
+            MayaUtils.toast.error(result.error || (isHindi ? 'OTP नहीं भेजा जा सका। दोबारा कोशिश करें।' : 'Could not send OTP. Please try again.'));
+            return;
         }
+
+        this.emailSubmissionInProgress = false;
+        await this.showOTPVerificationFlow(phone, countryCode);
     },
 
-    /**
-     * Show login flow for existing users
-     */
-    async showLoginFlow(email) {
+    async showOTPVerificationFlow(phone, countryCode) {
         const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
         const isHindi = lang === 'hi';
-        this.currentPhase = this.PHASES.LOGIN_OR_REGISTER;
-        this.emailSubmissionInProgress = false;
-        this.authPromptedFields = new Set();
-        
         const textDisplay = document.getElementById('maya-text-display');
-        textDisplay.style.display = 'flex';
-        textDisplay.classList.add('email-gate-active');
+
+        this.currentPhase = this.PHASES.LOGIN_OR_REGISTER;
+        this.authPromptedFields = new Set();
+
         textDisplay.innerHTML = `
-            <div class="auth-flow-container">
+            <div class="auth-flow-container otp-flow-container">
                 <div class="auth-header">
-                    <div class="auth-icon">👋</div>
-                    <h3>${isHindi ? `फिर से स्वागत है, ${this.firstName}` : `Welcome Back, ${this.firstName}!`}</h3>
-                    <p class="auth-email">${email}</p>
+                    <i class="bi bi-whatsapp otp-whatsapp-icon"></i>
+                    <h3>${isHindi ? 'OTP दर्ज करें' : 'Enter OTP'}</h3>
+                    <p class="auth-phone-hint">${isHindi ? `${countryCode} ${phone} पर OTP भेजा गया है` : `OTP sent to ${countryCode} ${phone}`}</p>
                 </div>
-                <form id="login-flow-form" class="auth-form">
-                    <div class="form-group">
-                        <input type="password" id="flow-password" class="form-control form-control-lg" 
-                               placeholder="${isHindi ? 'अपना पासवर्ड भरिए' : 'Enter your password'}" required autocomplete="current-password">
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-lg w-100 mt-3">
-                        ${isHindi ? 'आगे बढ़िए' : 'Continue My Journey'}
-                    </button>
-                    <p class="auth-link mt-3">
-                        <a href="#" id="forgot-password-link" class="text-muted">${isHindi ? 'पासवर्ड भूल गए?' : 'Forgot password?'}</a>
-                    </p>
-                </form>
+                <div class="otp-input-group" id="otp-input-group">
+                    <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                    <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                    <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                    <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                    <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                    <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                </div>
+                <button class="btn btn-primary btn-lg w-100 mt-3" id="otp-verify-btn" disabled>
+                    <i class="bi bi-unlock-fill me-2"></i>${isHindi ? 'पुष्टि करें और आगे बढ़ें' : 'Verify and Continue'}
+                </button>
+                <p class="auth-link mt-3 text-center">
+                    <a href="#" id="otp-resend-link" class="text-muted small"><i class="bi bi-arrow-clockwise me-1"></i>${isHindi ? 'OTP फिर से भेजें' : 'Resend OTP'}</a>
+                    &nbsp;·&nbsp;
+                    <a href="#" id="otp-change-number" class="text-muted small">${isHindi ? 'नंबर बदलें' : 'Change number'}</a>
+                </p>
             </div>
         `;
 
-        document.getElementById('login-flow-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const password = document.getElementById('flow-password').value;
-            await this.processLogin(email, password);
-        });
-
-        const passwordInput = document.getElementById('flow-password');
-        this.bindVoicePromptOnFocus(passwordInput, 'password');
-        this.focusAuthField(passwordInput);
+        this._bindOTPInputs(phone, countryCode);
+        this.bindVoicePromptOnFocus(document.querySelector('.otp-digit'), 'otp');
     },
 
-    /**
-     * Show registration flow for new users
-     */
-    async showRegistrationFlow(email) {
+    _bindOTPInputs(phone, countryCode) {
         const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
         const isHindi = lang === 'hi';
-        this.currentPhase = this.PHASES.LOGIN_OR_REGISTER;
-        this.emailSubmissionInProgress = false;
-        this.authPromptedFields = new Set();
-        
-        const textDisplay = document.getElementById('maya-text-display');
-        textDisplay.style.display = 'flex';
-        textDisplay.classList.add('email-gate-active');
-        textDisplay.innerHTML = `
-            <div class="auth-flow-container">
-                <div class="auth-header">
-                    <div class="auth-icon"><i class="bi bi-stars"></i></div>
-                    <h3>${isHindi ? 'अपनी रीडिंग सुरक्षित कीजिए' : 'Secure Your Reading'}</h3>
-                    <p class="auth-email">${email}</p>
-                </div>
-                <form id="register-flow-form" class="auth-form">
-                    <div class="form-group mb-3">
-                        <input type="password" id="flow-new-password" class="form-control form-control-lg" 
-                               placeholder="${isHindi ? 'नया पासवर्ड बनाइए' : 'Create a password'}" required minlength="6" autocomplete="new-password">
-                    </div>
-                    <div class="form-group">
-                        <input type="password" id="flow-confirm-password" class="form-control form-control-lg" 
-                               placeholder="${isHindi ? 'पासवर्ड की पुष्टि कीजिए' : 'Confirm password'}" required autocomplete="new-password">
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-lg w-100 mt-3">
-                        ${isHindi ? 'खाता बनाइए और आगे बढ़िए' : 'Create Account and Continue'}
-                    </button>
-                    <p class="auth-terms mt-3 text-muted small">
-                        ${isHindi ? 'आगे बढ़कर आप सेवा की शर्तों से सहमत होते हैं' : 'By continuing, you agree to our Terms of Service'}
-                    </p>
-                </form>
-            </div>
-        `;
-
-        document.getElementById('register-flow-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const password = document.getElementById('flow-new-password').value;
-            const confirm = document.getElementById('flow-confirm-password').value;
-            
-            if (password !== confirm) {
-                MayaUtils.toast.error(isHindi ? 'दोनों पासवर्ड एक जैसे नहीं हैं' : 'Passwords do not match');
-                return;
-            }
-            
-            await this.processRegistration(email, password);
-        });
-
-        const newPasswordInput = document.getElementById('flow-new-password');
-        const confirmPasswordInput = document.getElementById('flow-confirm-password');
-        this.bindVoicePromptOnFocus(newPasswordInput, 'new-password');
-        this.bindVoicePromptOnFocus(confirmPasswordInput, 'confirm-password');
-        this.focusAuthField(newPasswordInput);
-    },
-
-    /**
-     * Process login
-     */
-    async processLogin(email, password) {
-        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
-        const isHindi = lang === 'hi';
-        const btn = document.querySelector('#login-flow-form button[type="submit"]');
-        btn.disabled = true;
-        btn.innerHTML = isHindi
-            ? '<span class="spinner-border spinner-border-sm me-2"></span>जुड़ रहा है...'
-            : '<span class="spinner-border spinner-border-sm me-2"></span>Connecting...';
-
-        const result = await MayaAuth.login(email, password);
-        
-        if (result.success) {
-            this.isUserLoggedIn = true;
-            
-            // Show full app UI now that user is authenticated
-            if (window.MayaApp?.onUserAuthenticated) {
-                MayaApp.onUserAuthenticated();
-            }
-            
-            // Preserve language preference - CRITICAL: restore from storage
-            const language = MayaUtils.storage.get('maya_language') || this.userData.language || 'en';
-            
-            // IMPORTANT: Set language on MayaStatements after login
-            if (window.MayaStatements) {
-                MayaStatements.setLanguage(language);
-                console.log('🌐 Language restored after login:', language);
-            }
-            
-            // Get existing funnel data from localStorage to ensure nothing is lost
-            const funnelData = MayaUtils.storage.get('funnel_data') || {};
-            
-            // Merge ALL funnel data with any existing profile - prioritize server data for returning users
-            const existingProfile = MayaUtils.storage.get('maya_profile') || {};
-            const serverUserData = result.user || {};
-            
-            const updatedProfile = {
-                ...existingProfile,
-                name: serverUserData.name || this.userData.name || funnelData.name || existingProfile.name,
-                email: email,
-                birthDate: serverUserData.birthDate || this.userData.birthDate || funnelData.birthDate || existingProfile.birthDate,
-                birthTime: serverUserData.birthTime || this.userData.birthTime || funnelData.birthTime || existingProfile.birthTime,
-                birthPlace: serverUserData.birthPlace || this.userData.birthPlace || funnelData.birthPlace || existingProfile.birthPlace,
-                birthLat: serverUserData.birthLat || this.userData.birthLat || funnelData.birthLat || existingProfile.birthLat,
-                birthLon: serverUserData.birthLon || this.userData.birthLon || funnelData.birthLon || existingProfile.birthLon,
-                gender: serverUserData.gender || this.userData.gender || funnelData.gender || existingProfile.gender,
-                language: language
-            };
-            
-            MayaUtils.storage.set('maya_profile', updatedProfile);
-            MayaUtils.storage.set('maya_language', language);
-            MayaUtils.storage.set('funnel_complete', false);
-
-            await window.MayaApp?.applyLanguagePreference?.(language, { force: true });
-            
-            console.log('✅ Profile synced on login:', updatedProfile);
-            
-            // Check if this is a returning user with complete profile
-            // Returning users should go directly to homepage, not through funnel again
-            const hasCompleteBirthData = updatedProfile.birthDate && updatedProfile.name;
-            const isReturningUser = serverUserData.birthDate || serverUserData.name;
-            
-            console.log('🔍 Login check:', { hasCompleteBirthData, isReturningUser, serverUserData });
-            
-            // Save ALL birth details to API (only if we have birth data)
-            if (MayaAuth.isAuthenticated && updatedProfile.birthDate) {
-                try {
-                    await MayaAuth.saveBirthDetails({
-                        name: updatedProfile.name,
-                        birthDate: updatedProfile.birthDate,
-                        birthTime: updatedProfile.birthTime || null,
-                        birthPlace: updatedProfile.birthPlace || null,
-                        birthLat: updatedProfile.birthLat || null,
-                        birthLon: updatedProfile.birthLon || null,
-                        gender: updatedProfile.gender || null,
-                        language: language
-                    });
-                    console.log('✅ Birth details saved to cloud');
-                } catch (e) {
-                    console.error('Failed to save birth details to API:', e);
-                }
-            }
-            
-            MayaUtils.toast.success(isHindi ? 'फिर से स्वागत है!' : 'Welcome back!');
-
-            console.log('📊 Login complete - continuing funnel flow into deep reveal', { hasCompleteBirthData, isReturningUser });
-            await this.showDeepReveal();
-        } else {
-            btn.disabled = false;
-            btn.innerHTML = isHindi ? 'आगे बढ़िए' : 'Continue My Journey';
-            MayaUtils.toast.error(result.error || (isHindi ? 'गलत password' : 'Invalid password'));
+        const digits = Array.from(document.querySelectorAll('.otp-digit'));
+        const verifyBtn = document.getElementById('otp-verify-btn');
+        if (!digits.length || !verifyBtn) {
+            return;
         }
-    },
 
-    /**
-     * Process registration
-     */
-    async processRegistration(email, password) {
-        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
-        const isHindi = lang === 'hi';
-        const btn = document.querySelector('#register-flow-form button[type="submit"]');
-        btn.disabled = true;
-        btn.innerHTML = isHindi
-            ? '<span class="spinner-border spinner-border-sm me-2"></span>बनाया जा रहा है...'
-            : '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
-
-        // Get existing funnel data from localStorage to ensure nothing is lost
-        const funnelData = MayaUtils.storage.get('funnel_data') || {};
-        
-        // Merge all data sources for registration
-        const userData = {
-            name: this.userData.name || funnelData.name,
-            email: email,
-            password: password,
-            birthDate: this.userData.birthDate || funnelData.birthDate,
-            birthTime: this.userData.birthTime || funnelData.birthTime || null,
-            birthPlace: this.userData.birthPlace || funnelData.birthPlace || null,
-            birthLat: this.userData.birthLat || funnelData.birthLat || null,
-            birthLon: this.userData.birthLon || funnelData.birthLon || null,
-            gender: this.userData.gender || funnelData.gender || null
+        const getOtp = () => digits.map((digit) => digit.value).join('');
+        const updateButton = () => {
+            verifyBtn.disabled = getOtp().length < 6;
         };
 
-        const result = await MayaAuth.register(userData);
-        
-        if (result.success) {
-            this.isUserLoggedIn = true;
-            
-            // Show full app UI now that user is authenticated
-            if (window.MayaApp?.onUserAuthenticated) {
-                MayaApp.onUserAuthenticated();
-            }
-            
-            // Preserve language preference - CRITICAL: restore from storage
-            const language = MayaUtils.storage.get('maya_language') || this.userData.language || 'en';
-            
-            // IMPORTANT: Set language on MayaStatements after registration
-            if (window.MayaStatements) {
-                MayaStatements.setLanguage(language);
-                console.log('🌐 Language restored after registration:', language);
-            }
-            
-            // Save COMPLETE profile including ALL birth details
-            const fullProfile = {
-                name: userData.name,
-                email: email,
-                birthDate: userData.birthDate,
-                birthTime: userData.birthTime,
-                birthPlace: userData.birthPlace,
-                birthLat: userData.birthLat,
-                birthLon: userData.birthLon,
-                gender: userData.gender,
-                language: language
-            };
-            
-            MayaUtils.storage.set('maya_profile', fullProfile);
-            MayaUtils.storage.set('maya_language', language);
-            MayaUtils.storage.set('funnel_complete', false);
+        digits.forEach((input, index) => {
+            input.addEventListener('input', () => {
+                input.value = input.value.replace(/\D/g, '').slice(-1);
+                if (input.value && index < digits.length - 1) digits[index + 1].focus();
+                updateButton();
+                if (getOtp().length === 6) verifyBtn.click();
+            });
 
-            await window.MayaApp?.applyLanguagePreference?.(language, { force: true });
-            
-            console.log('✅ Profile saved on registration:', fullProfile);
-            
-            // Save ALL birth details to API
-            if (MayaAuth.isAuthenticated) {
-                try {
-                    await MayaAuth.saveBirthDetails({
-                        name: userData.name,
-                        birthDate: userData.birthDate,
-                        birthTime: userData.birthTime,
-                        birthPlace: userData.birthPlace,
-                        birthLat: userData.birthLat,
-                        birthLon: userData.birthLon,
-                        gender: userData.gender,
-                        language: language
-                    });
-                    console.log('✅ Birth details saved to cloud');
-                } catch (e) {
-                    console.error('Failed to save birth details to API:', e);
+            input.addEventListener('keydown', (event) => {
+                if (event.key === 'Backspace' && !input.value && index > 0) {
+                    digits[index - 1].focus();
                 }
+            });
+
+            input.addEventListener('paste', (event) => {
+                event.preventDefault();
+                const pasted = (event.clipboardData?.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+                pasted.split('').forEach((char, charIndex) => {
+                    if (digits[charIndex]) digits[charIndex].value = char;
+                });
+                updateButton();
+                if (getOtp().length === 6) verifyBtn.click();
+            });
+        });
+
+        digits[0]?.focus();
+
+        verifyBtn.addEventListener('click', async () => {
+            const otp = getOtp();
+            if (otp.length < 6) return;
+
+            verifyBtn.disabled = true;
+            verifyBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${isHindi ? 'जाँचा जा रहा है...' : 'Verifying...'}`;
+            digits.forEach((digit) => { digit.disabled = true; });
+            await this._processOTPVerification(phone, countryCode, otp);
+        });
+
+        document.getElementById('otp-resend-link')?.addEventListener('click', async (event) => {
+            event.preventDefault();
+            const resend = await MayaAuth.sendOTP(phone, countryCode);
+            if (resend.success) {
+                MayaUtils.toast.success(isHindi ? 'नया OTP भेज दिया गया है' : 'New OTP sent!');
+                digits.forEach((digit) => {
+                    digit.value = '';
+                    digit.disabled = false;
+                });
+                digits[0]?.focus();
+                updateButton();
+            } else {
+                MayaUtils.toast.error(resend.error || (isHindi ? 'OTP दोबारा नहीं भेजा जा सका' : 'Could not resend OTP'));
             }
-            
-            MayaUtils.toast.success(isHindi ? 'Account बन गया!' : 'Account created!');
-            await this.showDeepReveal();
-        } else {
-            btn.disabled = false;
-            btn.innerHTML = isHindi ? 'Account बनाइए और आगे बढ़िए' : 'Create Account and Continue';
-            MayaUtils.toast.error(result.error || (isHindi ? 'Registration पूरा नहीं हो सका' : 'Registration failed'));
+        });
+
+        document.getElementById('otp-change-number')?.addEventListener('click', (event) => {
+            event.preventDefault();
+            this.showEmailGate();
+        });
+    },
+
+    async _processOTPVerification(phone, countryCode, otp) {
+        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const isHindi = lang === 'hi';
+        const result = await MayaAuth.verifyOTP(phone, countryCode, otp);
+
+        if (!result.success) {
+            const digits = Array.from(document.querySelectorAll('.otp-digit'));
+            const verifyBtn = document.getElementById('otp-verify-btn');
+            digits.forEach((digit) => {
+                digit.value = '';
+                digit.disabled = false;
+            });
+            digits[0]?.focus();
+            if (verifyBtn) {
+                verifyBtn.disabled = true;
+                verifyBtn.innerHTML = `<i class="bi bi-unlock-fill me-2"></i>${isHindi ? 'पुष्टि करें और आगे बढ़ें' : 'Verify and Continue'}`;
+            }
+            MayaUtils.toast.error(result.error || (isHindi ? 'OTP गलत है। दोबारा कोशिश करें।' : 'Incorrect OTP. Please try again.'));
+            return;
         }
+
+        this.isUserLoggedIn = true;
+        if (window.MayaApp?.onUserAuthenticated) {
+            MayaApp.onUserAuthenticated();
+        }
+
+        const language = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        if (window.MayaStatements) {
+            MayaStatements.setLanguage(language);
+        }
+
+        const funnelData = MayaUtils.storage.get('funnel_data') || {};
+        const existingProfile = MayaUtils.storage.get('maya_profile') || {};
+        const fullProfile = {
+            ...existingProfile,
+            name: this.userData?.name || funnelData.name || existingProfile.name,
+            phone: result.user.phone,
+            countryCode: result.user.countryCode,
+            phoneNumber: result.user.phoneNumber,
+            birthDate: this.userData?.birthDate || funnelData.birthDate || existingProfile.birthDate,
+            birthTime: this.userData?.birthTime || funnelData.birthTime || existingProfile.birthTime,
+            birthPlace: this.userData?.birthPlace || funnelData.birthPlace || existingProfile.birthPlace,
+            birthLat: this.userData?.birthLat || funnelData.birthLat || existingProfile.birthLat,
+            birthLon: this.userData?.birthLon || funnelData.birthLon || existingProfile.birthLon,
+            gender: this.userData?.gender || funnelData.gender || existingProfile.gender,
+            maritalStatus: this.userData?.maritalStatus || funnelData.maritalStatus || existingProfile.maritalStatus,
+            language
+        };
+
+        MayaUtils.storage.set('maya_profile', fullProfile);
+        MayaUtils.storage.set('maya_language', language);
+        MayaUtils.storage.set('funnel_complete', false);
+
+        await window.MayaApp?.applyLanguagePreference?.(language, { force: true });
+
+        if (MayaAuth.isAuthenticated && fullProfile.birthDate) {
+            MayaAuth.saveBirthDetails(fullProfile).catch(() => {});
+        }
+
+        MayaUtils.toast.success(isHindi ? 'WhatsApp से verify हो गया!' : 'Verified via WhatsApp!');
+        await this.showDeepReveal();
     },
 
     /**

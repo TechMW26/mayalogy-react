@@ -83,7 +83,7 @@ const MayaStatements = {
 
     t = t.replace(/\[\[pause-(\d+)\]\]/g, ", ");
     t = t.replace(/\s+/g, " ").trim();
-    t = t.replace(/-/g, ", ").replace(/…/g, ", ");
+    t = t.replace(/\s[\-–—]\s/g, ", ").replace(/…/g, ", ");
     t = t.replace(/\s*,\s*/g, ", ");
     t = t.replace(/\s*\.\s*/g, ". ");
     t = t.replace(/\s*!\s*/g, "! ");
@@ -259,6 +259,37 @@ const MayaStatements = {
     return unique.join(" ").trim();
   },
 
+  _collapsePhraseStutter(text = "") {
+    let cleaned = String(text || "");
+
+    cleaned = cleaned.replace(/\b([A-Za-z\u0900-\u097F]+)\b(?:\s*[,;:]\s*|\s+)\1\b/gi, "$1");
+
+    for (let pass = 0; pass < 3; pass++) {
+      cleaned = cleaned.replace(
+        /\b((?:[A-Za-z\u0900-\u097F]+\s+){1,3}[A-Za-z\u0900-\u097F]+)\b(?:\s*[,;:]\s*|\s+)\1\b/gi,
+        "$1"
+      );
+    }
+
+    return cleaned;
+  },
+
+  _limitRahuDashaRepetition(text = "", lang = this.currentLanguage) {
+    let limited = String(text || "");
+    let rahuDashaCount = 0;
+    let rahuCount = 0;
+
+    if (lang === "hi" || /[\u0900-\u097f]/.test(limited)) {
+      limited = limited.replace(/राहु\s*दशा/gi, (m) => (++rahuDashaCount > 2 ? "यह दशा" : m));
+      limited = limited.replace(/राहु/gi, (m) => (++rahuCount > 3 ? "यह ग्रह" : m));
+    } else {
+      limited = limited.replace(/rahu\s*dasha/gi, (m) => (++rahuDashaCount > 2 ? "this dasha period" : m));
+      limited = limited.replace(/rahu/gi, (m) => (++rahuCount > 3 ? "this planet" : m));
+    }
+
+    return limited;
+  },
+
   _sanitizeOptionText(text, lang = this.currentLanguage) {
     if (!text) return "";
 
@@ -285,6 +316,9 @@ const MayaStatements = {
       .replace(/\*+/g, "")
       .replace(/\s+/g, " ")
       .trim();
+
+    cleaned = this._collapsePhraseStutter(cleaned);
+    cleaned = this._limitRahuDashaRepetition(cleaned, lang);
 
     if (lang === "hi" || /[\u0900-\u097f]/.test(cleaned)) {
       cleaned = this._localizeHindiTerms(cleaned)

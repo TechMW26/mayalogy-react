@@ -61,15 +61,15 @@ const MayaOnboarding = {
         existingAccount: { en: 'Already have an account?', hi: 'क्या आपका पहले से अकाउंट है?' },
         login: { en: 'Login', hi: 'लॉगिन' },
         welcomeBack: { en: 'Welcome Back!', hi: 'फिर से स्वागत है!' },
-        loginPrompt: { en: 'Login with your email and password', hi: 'अपना email और password डालकर लॉगिन करें' },
-        email: { en: 'Email', hi: 'ईमेल' },
-        password: { en: 'Password', hi: 'पासवर्ड' },
-        enterEmail: { en: 'Enter your email', hi: 'अपना ईमेल दर्ज करें' },
-        enterPassword: { en: 'Enter your password', hi: 'अपना पासवर्ड दर्ज करें' },
+        loginPrompt: { en: 'Login with your WhatsApp number', hi: 'अपने WhatsApp नंबर से लॉगिन करें' },
+        email: { en: 'WhatsApp Number', hi: 'WhatsApp नंबर' },
+        password: { en: 'OTP', hi: 'OTP' },
+        enterEmail: { en: 'Enter your WhatsApp number', hi: 'अपना WhatsApp नंबर दर्ज करें' },
+        enterPassword: { en: 'Enter OTP', hi: 'OTP दर्ज करें' },
         backToReading: { en: 'Back to Reading!', hi: 'रीडिंग पर वापस जाएँ!' },
         loggingIn: { en: 'Logging in...', hi: 'लॉगिन हो रहा है...' },
-        enterEmailPassword: { en: 'Please enter both email and password', hi: 'कृपया email और password दोनों भरें' },
-        invalidLogin: { en: 'Invalid email or password', hi: 'ईमेल या पासवर्ड सही नहीं है' },
+        enterEmailPassword: { en: 'Please enter a valid WhatsApp number', hi: 'कृपया सही WhatsApp नंबर भरें' },
+        invalidLogin: { en: 'Invalid OTP or phone number', hi: 'OTP या नंबर सही नहीं है' },
         welcomeBackToast: { en: 'Welcome back!', hi: 'फिर से स्वागत है!' },
         invalidValue: { en: 'Please enter a valid value', hi: 'कृपया सही जानकारी भरें' },
         missingRequired: { en: 'Please provide your name and birth date', hi: 'कृपया अपना नाम और जन्म तिथि भरें' }
@@ -607,38 +607,56 @@ const MayaOnboarding = {
         if (!container) return;
 
         const isHindi = this.isHindiUI();
+        const countries = [
+            { code: '+91', iso: 'in', name: 'India' },
+            { code: '+1', iso: 'us', name: 'USA' },
+            { code: '+44', iso: 'gb', name: 'UK' },
+            { code: '+971', iso: 'ae', name: 'UAE' },
+            { code: '+61', iso: 'au', name: 'Australia' },
+            { code: '+65', iso: 'sg', name: 'Singapore' },
+            { code: '+60', iso: 'my', name: 'Malaysia' },
+            { code: '+1', iso: 'ca', name: 'Canada' },
+            { code: '+49', iso: 'de', name: 'Germany' },
+            { code: '+33', iso: 'fr', name: 'France' },
+            { code: '+55', iso: 'br', name: 'Brazil' },
+            { code: '+92', iso: 'pk', name: 'Pakistan' },
+            { code: '+880', iso: 'bd', name: 'Bangladesh' },
+            { code: '+94', iso: 'lk', name: 'Sri Lanka' },
+            { code: '+977', iso: 'np', name: 'Nepal' }
+        ];
+        const countryOptions = countries.map((country) =>
+            `<option value="${country.code}" data-iso="${country.iso}" ${country.iso === 'in' ? 'selected' : ''}>${country.code} ${country.name}</option>`
+        ).join('');
 
         container.innerHTML = `
             <div class="direct-login-container">
                 <div class="onboarding-question mb-4">
-                    <h4 class="mb-3"><i class="bi bi-person-check me-2"></i>${this.t('welcomeBack')}</h4>
-                    <p class="text-muted">${this.t('loginPrompt')}</p>
+                    <h4 class="mb-3"><i class="bi bi-whatsapp me-2"></i>${isHindi ? 'WhatsApp से लॉगिन करें' : 'Log in with WhatsApp'}</h4>
+                    <p class="text-muted">${isHindi ? 'अपना WhatsApp नंबर डालें, OTP तुरंत भेजा जाएगा' : 'Enter your WhatsApp number and we will send an OTP instantly'}</p>
                 </div>
-                
+
                 <div class="login-form">
                     <div class="mb-3">
-                        <label class="form-label">${this.t('email')}</label>
-                        <input type="email" 
-                               class="form-control form-control-lg" 
-                               id="loginEmail"
-                               placeholder="${this.t('enterEmail')}"
-                               autocomplete="email">
+                        <div class="phone-input-wrapper">
+                            <div class="country-code-selector" id="ob-country-selector">
+                                <span class="fi fi-in country-flag" id="ob-selected-flag"></span>
+                                <span class="selected-code" id="ob-selected-code">+91</span>
+                                <i class="bi bi-chevron-down country-chevron"></i>
+                            </div>
+                            <input type="tel" id="loginPhone" class="form-control form-control-lg phone-number-input"
+                                placeholder="${this.t('enterEmail')}" inputmode="numeric" maxlength="15" autocomplete="tel-national">
+                            <select id="ob-country-select" class="country-code-hidden-select" aria-label="Country code">
+                                ${countryOptions}
+                            </select>
+                        </div>
                     </div>
-                    <div class="mb-4">
-                        <label class="form-label">${this.t('password')}</label>
-                        <input type="password" 
-                               class="form-control form-control-lg" 
-                               id="loginPassword"
-                               placeholder="${this.t('enterPassword')}"
-                               autocomplete="current-password">
-                    </div>
-                    
+
                     <div id="loginError" class="alert alert-danger d-none mb-3"></div>
-                    
+
                     <button type="button" class="btn btn-primary btn-lg w-100 mb-3" id="loginSubmitBtn">
-                        ${this.t('login')}
+                        <i class="bi bi-whatsapp me-2"></i>${isHindi ? 'OTP भेजें' : 'Send OTP'}
                     </button>
-                    
+
                     <button type="button" class="btn btn-link text-muted" id="backToOnboardingBtn">
                         ${this.t('backToReading')}
                     </button>
@@ -646,44 +664,38 @@ const MayaOnboarding = {
             </div>
         `;
 
-        // Add login event listeners
-        const loginBtn = document.getElementById('loginSubmitBtn');
-        const backBtn = document.getElementById('backToOnboardingBtn');
-        const emailInput = document.getElementById('loginEmail');
-        const passwordInput = document.getElementById('loginPassword');
+        const selector = document.getElementById('ob-country-selector');
+        const hiddenSelect = document.getElementById('ob-country-select');
+        const selectedFlag = document.getElementById('ob-selected-flag');
+        const selectedCode = document.getElementById('ob-selected-code');
 
-        if (loginBtn) {
-            loginBtn.addEventListener('click', () => this.handleDirectLogin());
-        }
+        selector?.addEventListener('click', () => hiddenSelect?.focus());
+        hiddenSelect?.addEventListener('change', () => {
+            const option = hiddenSelect.options[hiddenSelect.selectedIndex];
+            selectedCode.textContent = option.value;
+            selectedFlag.className = `fi fi-${option.dataset.iso || 'in'} country-flag`;
+        });
 
-        if (backBtn) {
-            backBtn.addEventListener('click', () => this.showStep(0));
-        }
+        document.getElementById('loginSubmitBtn')?.addEventListener('click', () => this.handleDirectLogin());
+        document.getElementById('backToOnboardingBtn')?.addEventListener('click', () => this.showStep(0));
+        document.getElementById('loginPhone')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.handleDirectLogin();
+        });
 
-        // Enter key to login
-        if (passwordInput) {
-            passwordInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') this.handleDirectLogin();
-            });
-        }
-
-        // Focus email input
-        if (emailInput) {
-            setTimeout(() => emailInput.focus(), 100);
-        }
+        setTimeout(() => document.getElementById('loginPhone')?.focus(), 100);
     },
 
     /**
      * Handle direct login submission
      */
     async handleDirectLogin() {
-        const email = document.getElementById('loginEmail')?.value?.trim();
-        const password = document.getElementById('loginPassword')?.value;
+        const phone = document.getElementById('loginPhone')?.value?.replace(/\D/g, '').trim();
+        const countryCode = document.getElementById('ob-selected-code')?.textContent?.trim() || '+91';
         const errorDiv = document.getElementById('loginError');
         const loginBtn = document.getElementById('loginSubmitBtn');
+        const isHindi = this.isHindiUI();
 
-        // Validate
-        if (!email || !password) {
+        if (!phone || phone.length < 6) {
             if (errorDiv) {
                 errorDiv.textContent = this.t('enterEmailPassword');
                 errorDiv.classList.remove('d-none');
@@ -691,54 +703,149 @@ const MayaOnboarding = {
             return;
         }
 
-        // Show loading
         if (loginBtn) {
             loginBtn.disabled = true;
-            loginBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${this.t('loggingIn')}`;
+            loginBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${isHindi ? 'OTP भेजा जा रहा है...' : 'Sending OTP...'}`;
         }
 
         try {
-            // Use Firebase Auth
-            if (window.MayaAuth && MayaAuth.login) {
-                const result = await MayaAuth.login(email, password);
-                
-                if (result.success) {
-                    console.log('✅ Direct login successful');
-                    
-                    // Load user data
-                    if (result.userData) {
-                        this.userData = result.userData;
-                        MayaUtils.storage.set('maya_user_data', result.userData);
-                    }
-                    
-                    // Mark funnel as complete
-                    MayaUtils.storage.set(this.STORAGE_KEYS.FUNNEL_COMPLETE, true);
-                    
-                    // Show success message
-                    MayaUtils.toast.success(this.t('welcomeBackToast'));
-                    
-                    // Always reload page after successful login to refresh session
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 500);
-                } else {
-                    throw new Error(result.error || 'Login failed');
-                }
-            } else {
-                throw new Error('Authentication system not available');
-            }
+            if (!window.MayaAuth?.sendOTP) throw new Error('Authentication system not available');
+            const result = await MayaAuth.sendOTP(phone, countryCode);
+            if (!result.success) throw new Error(result.error || 'OTP send failed');
+            this._showOBOTPVerification(phone, countryCode);
         } catch (error) {
-            console.error('Login error:', error);
             if (errorDiv) {
-                errorDiv.textContent = error.message || this.t('invalidLogin');
+                errorDiv.textContent = error.message || (isHindi ? 'OTP नहीं भेजा जा सका' : 'Could not send OTP');
                 errorDiv.classList.remove('d-none');
             }
-            
+
             if (loginBtn) {
                 loginBtn.disabled = false;
-                loginBtn.innerHTML = this.t('login');
+                loginBtn.innerHTML = `<i class="bi bi-whatsapp me-2"></i>${isHindi ? 'OTP भेजें' : 'Send OTP'}`;
             }
         }
+    },
+
+    /**
+     * Show OTP verification for direct login
+     */
+    _showOBOTPVerification(phone, countryCode) {
+        const container = document.getElementById('onboardingContent');
+        if (!container) return;
+
+        const isHindi = this.isHindiUI();
+        container.innerHTML = `
+            <div class="direct-login-container">
+                <div class="onboarding-question mb-4">
+                    <i class="bi bi-whatsapp otp-whatsapp-icon d-block mb-2"></i>
+                    <h4 class="mb-2">${isHindi ? 'OTP दर्ज करें' : 'Enter OTP'}</h4>
+                    <p class="text-muted small">${isHindi ? `${countryCode} ${phone} पर OTP भेजा गया` : `OTP sent to ${countryCode} ${phone}`}</p>
+                </div>
+
+                <div class="otp-input-group mb-3">
+                    <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                    <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                    <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                    <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                    <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                    <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                </div>
+
+                <div id="loginError" class="alert alert-danger d-none mb-3"></div>
+
+                <button type="button" class="btn btn-primary btn-lg w-100 mb-3" id="ob-otp-verify-btn" disabled>
+                    <i class="bi bi-unlock-fill me-2"></i>${isHindi ? 'पुष्टि करें' : 'Verify'}
+                </button>
+
+                <p class="text-center">
+                    <a href="#" id="ob-resend-link" class="text-muted small me-3">${isHindi ? 'फिर से भेजें' : 'Resend OTP'}</a>
+                    <a href="#" id="ob-change-num" class="text-muted small">${isHindi ? 'नंबर बदलें' : 'Change number'}</a>
+                </p>
+            </div>
+        `;
+
+        const digits = Array.from(document.querySelectorAll('.otp-digit'));
+        const verifyBtn = document.getElementById('ob-otp-verify-btn');
+        const errorDiv = document.getElementById('loginError');
+        const getOTP = () => digits.map((digit) => digit.value).join('');
+        const updateButton = () => {
+            verifyBtn.disabled = getOTP().length < 6;
+        };
+
+        digits.forEach((input, index) => {
+            input.addEventListener('input', () => {
+                input.value = input.value.replace(/\D/g, '').slice(-1);
+                if (input.value && index < digits.length - 1) digits[index + 1].focus();
+                updateButton();
+                if (getOTP().length === 6) verifyBtn.click();
+            });
+
+            input.addEventListener('keydown', (event) => {
+                if (event.key === 'Backspace' && !input.value && index > 0) {
+                    digits[index - 1].focus();
+                }
+            });
+
+            input.addEventListener('paste', (event) => {
+                event.preventDefault();
+                const pasted = (event.clipboardData?.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+                pasted.split('').forEach((char, charIndex) => {
+                    if (digits[charIndex]) digits[charIndex].value = char;
+                });
+                updateButton();
+                if (getOTP().length === 6) verifyBtn.click();
+            });
+        });
+
+        digits[0]?.focus();
+
+        verifyBtn.addEventListener('click', async () => {
+            const otp = getOTP();
+            if (otp.length < 6) return;
+
+            verifyBtn.disabled = true;
+            verifyBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${isHindi ? 'जाँचा जा रहा है...' : 'Verifying...'}`;
+            digits.forEach((digit) => { digit.disabled = true; });
+
+            const result = await MayaAuth.verifyOTP(phone, countryCode, otp);
+            if (!result.success) {
+                digits.forEach((digit) => {
+                    digit.value = '';
+                    digit.disabled = false;
+                });
+                digits[0]?.focus();
+                verifyBtn.disabled = true;
+                verifyBtn.innerHTML = `<i class="bi bi-unlock-fill me-2"></i>${isHindi ? 'पुष्टि करें' : 'Verify'}`;
+                errorDiv.textContent = result.error || this.t('invalidLogin');
+                errorDiv.classList.remove('d-none');
+                return;
+            }
+
+            MayaUtils.storage.set(this.STORAGE_KEYS.FUNNEL_COMPLETE, true);
+            MayaUtils.toast.success(this.t('welcomeBackToast'));
+            setTimeout(() => window.location.reload(), 500);
+        });
+
+        document.getElementById('ob-resend-link')?.addEventListener('click', async (event) => {
+            event.preventDefault();
+            const result = await MayaAuth.sendOTP(phone, countryCode);
+            if (result.success) {
+                MayaUtils.toast.success(isHindi ? 'नया OTP भेजा गया' : 'New OTP sent');
+                digits.forEach((digit) => {
+                    digit.value = '';
+                    digit.disabled = false;
+                });
+                digits[0]?.focus();
+                updateButton();
+            } else {
+                MayaUtils.toast.error(result.error || (isHindi ? 'OTP नहीं भेजा जा सका' : 'Could not resend OTP'));
+            }
+        });
+
+        document.getElementById('ob-change-num')?.addEventListener('click', (event) => {
+            event.preventDefault();
+            this.showDirectLogin();
+        });
     },
 
     /**
@@ -747,24 +854,235 @@ const MayaOnboarding = {
     setupLocationAutocomplete() {
         const input = document.getElementById('onboardingInput');
         const suggestions = document.getElementById('locationSuggestions');
+                showDirectLogin() {
+                    const container = document.getElementById('onboardingContent');
+                    if (!container) return;
+                    const isHindi = this.isHindiUI();
         const wrapper = input?.closest('.onboarding-location-wrapper');
+                    // Country codes (same list as funnel.js phone gate)
+                    const countries = [
+                        { code: '+91', iso: 'in', name: 'India' },
+                        { code: '+1',  iso: 'us', name: 'USA' },
+                        { code: '+44', iso: 'gb', name: 'UK' },
+                        { code: '+971',iso: 'ae', name: 'UAE' },
+                        { code: '+61', iso: 'au', name: 'Australia' },
+                        { code: '+65', iso: 'sg', name: 'Singapore' },
+                        { code: '+60', iso: 'my', name: 'Malaysia' },
+                        { code: '+1',  iso: 'ca', name: 'Canada' },
+                        { code: '+49', iso: 'de', name: 'Germany' },
+                        { code: '+33', iso: 'fr', name: 'France' },
+                        { code: '+55', iso: 'br', name: 'Brazil' },
+                        { code: '+92', iso: 'pk', name: 'Pakistan' },
+                        { code: '+880',iso: 'bd', name: 'Bangladesh' },
+                        { code: '+94', iso: 'lk', name: 'Sri Lanka' },
+                        { code: '+977',iso: 'np', name: 'Nepal' },
+                    ];
+                    const countryOptions = countries.map(c =>
+                        `<option value="${c.code}" data-iso="${c.iso}" ${c.iso === 'in' ? 'selected' : ''}>${c.code} ${c.name}</option>`
+                    ).join('');
         
+                    container.innerHTML = `
+                        <div class="direct-login-container">
+                            <div class="onboarding-question mb-4">
+                                <h4 class="mb-3"><i class="bi bi-whatsapp me-2"></i>${isHindi ? 'WhatsApp से लॉगिन करें' : 'Log in with WhatsApp'}</h4>
+                                <p class="text-muted">${isHindi ? 'अपना WhatsApp नंबर डालें — OTP आएगा' : 'Enter your WhatsApp number — we\'ll send an OTP'}</p>
+                            </div>
+                            <div class="login-form">
+                                <div class="mb-3">
+                                    <div class="phone-input-wrapper">
+                                        <div class="country-code-selector" id="ob-country-selector">
+                                            <span class="fi fi-in country-flag" id="ob-selected-flag"></span>
+                                            <span class="selected-code" id="ob-selected-code">+91</span>
+                                            <i class="bi bi-chevron-down country-chevron"></i>
+                                        </div>
+                                        <input type="tel" id="loginPhone"
+                                            class="form-control form-control-lg phone-number-input"
+                                            placeholder="${isHindi ? 'WhatsApp नंबर' : 'WhatsApp number'}"
+                                            inputmode="numeric" maxlength="15" autocomplete="tel-national">
+                                        <select id="ob-country-select" class="country-code-hidden-select" aria-label="Country code">
+                                            ${countryOptions}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div id="loginError" class="alert alert-danger d-none mb-3"></div>
+                                <button type="button" class="btn btn-primary btn-lg w-100 mb-3" id="loginSubmitBtn">
+                                    <i class="bi bi-whatsapp me-2"></i>${isHindi ? 'OTP भेजें' : 'Send OTP'}
+                                </button>
+                                <button type="button" class="btn btn-link text-muted" id="backToOnboardingBtn">
+                                    ${this.t('backToReading')}
+                                </button>
+                            </div>
+                        </div>
+                    `;
         if (!input || !suggestions || !wrapper) return;
+                    // Bind country selector
+                    const selector = document.getElementById('ob-country-selector');
+                    const hiddenSelect = document.getElementById('ob-country-select');
+                    const selFlag = document.getElementById('ob-selected-flag');
+                    const selCode = document.getElementById('ob-selected-code');
+                    if (selector && hiddenSelect) {
+                        selector.addEventListener('click', () => hiddenSelect.focus());
+                        hiddenSelect.addEventListener('change', () => {
+                            const opt = hiddenSelect.options[hiddenSelect.selectedIndex];
+                            selCode.textContent = opt.value;
+                            selFlag.className = `fi fi-${opt.dataset.iso || 'in'} country-flag`;
+                        });
+                    }
 
+                    document.getElementById('loginSubmitBtn')?.addEventListener('click', () => this.handleDirectLogin());
+                    document.getElementById('backToOnboardingBtn')?.addEventListener('click', () => this.showStep(0));
+                    document.getElementById('loginPhone')?.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') this.handleDirectLogin();
+                    });
         let debounceTimer;
+                    setTimeout(() => document.getElementById('loginPhone')?.focus(), 100);
+                },
         const hideSuggestions = () => {
+                /**
+                 * Handle OTP login — send OTP first, then show verification
+                 */
+                async handleDirectLogin() {
+                    const phone = document.getElementById('loginPhone')?.value?.replace(/\D/g, '').trim();
+                    const countryCode = document.getElementById('ob-selected-code')?.textContent?.trim() || '+91';
+                    const errorDiv = document.getElementById('loginError');
+                    const loginBtn = document.getElementById('loginSubmitBtn');
+                    const isHindi = this.isHindiUI();
             suggestions.style.display = 'none';
+                    if (!phone || phone.length < 6) {
+                        if (errorDiv) {
+                            errorDiv.textContent = isHindi ? 'कृपया सही WhatsApp नंबर डालें' : 'Please enter a valid WhatsApp number';
+                            errorDiv.classList.remove('d-none');
+                        }
+                        return;
+                    }
         };
+                    if (loginBtn) {
+                        loginBtn.disabled = true;
+                        loginBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${isHindi ? 'OTP भेजा जा रहा है...' : 'Sending OTP...'}`;
+                    }
 
+                    try {
+                        if (!window.MayaAuth?.sendOTP) throw new Error('Auth system unavailable');
+                        const result = await MayaAuth.sendOTP(phone, countryCode);
+                        if (!result.success) throw new Error(result.error || 'OTP send failed');
+                        this._showOBOTPVerification(phone, countryCode);
+                    } catch (err) {
+                        if (errorDiv) {
+                            errorDiv.textContent = err.message || (isHindi ? 'OTP नहीं भेजा जा सका' : 'Could not send OTP');
+                            errorDiv.classList.remove('d-none');
+                        }
+                        if (loginBtn) {
+                            loginBtn.disabled = false;
+                            loginBtn.innerHTML = `<i class="bi bi-whatsapp me-2"></i>${isHindi ? 'OTP भेजें' : 'Send OTP'}`;
+                        }
+                    }
+                },
         const queueSearch = (query, delay = 300) => {
+                /**
+                 * Show OTP digit entry inside onboarding container
+                 */
+                _showOBOTPVerification(phone, countryCode) {
+                    const container = document.getElementById('onboardingContent');
+                    if (!container) return;
+                    const isHindi = this.isHindiUI();
             clearTimeout(debounceTimer);
+                    container.innerHTML = `
+                        <div class="direct-login-container">
+                            <div class="onboarding-question mb-4">
+                                <i class="bi bi-whatsapp otp-whatsapp-icon d-block mb-2" style="font-size:2rem;color:#25D366"></i>
+                                <h4 class="mb-2">${isHindi ? 'OTP दर्ज करें' : 'Enter OTP'}</h4>
+                                <p class="text-muted small">${isHindi ? `${countryCode} ${phone} पर भेजा गया` : `Sent to ${countryCode} ${phone}`}</p>
+                            </div>
+                            <div class="otp-input-group mb-3" id="ob-otp-group">
+                                <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="0">
+                                <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="1">
+                                <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="2">
+                                <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="3">
+                                <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="4">
+                                <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="5">
+                            </div>
+                            <div id="loginError" class="alert alert-danger d-none mb-3"></div>
+                            <button type="button" class="btn btn-primary btn-lg w-100 mb-3" id="ob-otp-verify-btn" disabled>
+                                <i class="bi bi-unlock-fill me-2"></i>${isHindi ? 'पुष्टि करें' : 'Verify'}
+                            </button>
+                            <p class="text-center">
+                                <a href="#" id="ob-resend-link" class="text-muted small me-3"><i class="bi bi-arrow-clockwise me-1"></i>${isHindi ? 'फिर से भेजें' : 'Resend OTP'}</a>
+                                <a href="#" id="ob-change-num" class="text-muted small">${isHindi ? 'नंबर बदलें' : 'Change number'}</a>
+                            </p>
+                        </div>
+                    `;
             debounceTimer = setTimeout(async () => {
+                    const digits = Array.from(document.querySelectorAll('.otp-digit'));
+                    const verifyBtn = document.getElementById('ob-otp-verify-btn');
+                    const errorDiv = document.getElementById('loginError');
+                    const getOTP = () => digits.map(d => d.value).join('');
+                    const updateBtn = () => { verifyBtn.disabled = getOTP().length < 6; };
                 const results = await this.searchLocation(query);
+                    digits.forEach((inp, idx) => {
+                        inp.addEventListener('input', () => {
+                            inp.value = inp.value.replace(/\D/g, '').slice(-1);
+                            if (inp.value && idx < 5) digits[idx + 1].focus();
+                            updateBtn();
+                            if (getOTP().length === 6) verifyBtn.click();
+                        });
+                        inp.addEventListener('keydown', (e) => {
+                            if (e.key === 'Backspace' && !inp.value && idx > 0) digits[idx - 1].focus();
+                        });
+                        inp.addEventListener('paste', (e) => {
+                            e.preventDefault();
+                            const p = (e.clipboardData?.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+                            p.split('').forEach((ch, i) => { if (digits[i]) digits[i].value = ch; });
+                            const ne = digits.findIndex(d => !d.value);
+                            (ne >= 0 ? digits[ne] : digits[5]).focus();
+                            updateBtn();
+                            if (getOTP().length === 6) verifyBtn.click();
+                        });
+                    });
+                    digits[0].focus();
 
+                    verifyBtn.addEventListener('click', async () => {
+                        const otp = getOTP();
+                        if (otp.length < 6) return;
+                        verifyBtn.disabled = true;
+                        verifyBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${isHindi ? 'जाँचा जा रहा है...' : 'Verifying...'}`;
+                        digits.forEach(d => d.disabled = true);
                 if (document.getElementById('onboardingInput') !== input) {
+                        const result = await MayaAuth.verifyOTP(phone, countryCode, otp);
+                        if (!result.success) {
+                            digits.forEach(d => { d.value = ''; d.disabled = false; });
+                            digits[0].focus();
+                            verifyBtn.disabled = true;
+                            verifyBtn.innerHTML = `<i class="bi bi-unlock-fill me-2"></i>${isHindi ? 'पुष्टि करें' : 'Verify'}`;
+                            if (errorDiv) {
+                                errorDiv.textContent = result.error || (isHindi ? 'OTP गलत है' : 'Invalid OTP');
+                                errorDiv.classList.remove('d-none');
+                            }
+                            return;
+                        }
                     return;
+                        MayaUtils.storage.set(this.STORAGE_KEYS.FUNNEL_COMPLETE, true);
+                        MayaUtils.toast.success(isHindi ? 'WhatsApp से verify हो गया!' : 'Verified via WhatsApp!');
+                        setTimeout(() => window.location.reload(), 500);
+                    });
                 }
+                    document.getElementById('ob-resend-link')?.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        const r = await MayaAuth.sendOTP(phone, countryCode);
+                        if (r.success) {
+                            MayaUtils.toast.success(isHindi ? 'नया OTP भेजा गया' : 'New OTP sent!');
+                            digits.forEach(d => { d.value = ''; d.disabled = false; });
+                            digits[0].focus();
+                            updateBtn();
+                        } else {
+                            MayaUtils.toast.error(r.error || 'Resend failed');
+                        }
+                    });
 
+                    document.getElementById('ob-change-num')?.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.showDirectLogin();
+                    });
+                },
                 this.showLocationSuggestions(results);
             }, delay);
         };

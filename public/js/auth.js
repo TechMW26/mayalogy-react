@@ -31,12 +31,14 @@ const MayaAuth = {
             this.currentUser = storedUser;
             this.token = storedToken;
             this.isAuthenticated = true;
+            const sessionIdentifier = storedUser.email || storedUser.phone;
             MayaUtils.storage.set('maya_session', {
                 email: storedUser.email,
+                phone: storedUser.phone,
                 token: storedToken
             }, { skipSync: true });
 
-            if (window.MayaDBSync) {
+            if (window.MayaDBSync && storedUser.email) {
                 MayaDBSync.init(storedUser.email);
                 try {
                     await MayaDBSync.loadFromFirebase();
@@ -45,7 +47,7 @@ const MayaAuth = {
                 }
             }
 
-            console.log('✅ Auth restored from storage:', storedUser.email);
+            console.log('✅ Auth restored from storage:', sessionIdentifier);
         } else {
             console.log('👤 No stored auth found');
         }
@@ -54,139 +56,83 @@ const MayaAuth = {
     },
 
     /**
-     * Check if email exists
+     * Send WhatsApp OTP via Interakt
      */
-    async checkEmail(email) {
-        if (!window.MayaFirebase) {
-            return false;
-        }
-        const result = await MayaFirebase.checkEmail(email);
-        return result.exists || false;
-    },
-
-    /**
-     * Register a new user
-     */
-    async register(userData) {
-        console.log('📝 Registering user:', userData.email);
-        
-        if (!window.MayaFirebase) {
-            console.error('❌ Firebase not initialized');
-            return { success: false, error: 'Firebase not initialized' };
-        }
-        
-        // Ensure Firebase is initialized
-        if (!MayaFirebase.isInitialized) {
-            MayaFirebase.init();
-        }
-
+    async sendOTP(phone, countryCode) {
         try {
-            const result = await MayaFirebase.register(userData);
-            console.log('📝 Registration result:', result.success ? 'Success' : result.error);
-            
-            if (result.success) {
-                const previousUser = MayaUtils.storage.get('maya_user');
-                if (window.MayaDBSync && previousUser?.email && previousUser.email !== result.user.email) {
-                    MayaDBSync.clearLocalCache();
-                }
-
-                this.currentUser = result.user;
-                this.token = result.token;
-                this.isAuthenticated = true;
-                
-                MayaUtils.storage.set('maya_user', this.currentUser);
-                MayaUtils.storage.set('maya_token', this.token);
-                MayaUtils.storage.set('maya_session', {
-                    email: this.currentUser.email,
-                    token: this.token
-                }, { skipSync: true });
-                
-                // Initialize DB sync for new user
-                if (window.MayaDBSync) {
-                    console.log('🔄 Initializing sync for new user...');
-                    MayaDBSync.init(result.user.email);
-                    // Sync any existing local data to cloud
-                    await MayaDBSync.syncAllToFirebase();
-                }
-                
-                console.log('✅ User registered and logged in:', this.currentUser.email);
-                return { success: true, user: this.currentUser };
-            } else {
-                return { success: false, error: result.error || 'Registration failed' };
-            }
-        } catch (error) {
-            console.error('❌ Registration error:', error);
+            const resp = await fetch('/api/send-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone, countryCode })
+            });
+            const data = await resp.json();
+            if (!resp.ok) return { success: false, error: data.error || 'Failed to send OTP' };
+            return { success: true };
+        } catch (err) {
+            console.error('sendOTP error:', err);
             return { success: false, error: 'Network error. Please try again.' };
         }
     },
 
     /**
-     * Login user
+     * Verify WhatsApp OTP and log in / register the user
      */
-    async login(email, password) {
-        console.log('🔑 Logging in user:', email);
-        
-        if (!window.MayaFirebase) {
-            console.error('❌ Firebase not initialized');
-            return { success: false, error: 'Firebase not initialized' };
-        }
-        
-        // Ensure Firebase is initialized
-        if (!MayaFirebase.isInitialized) {
-            MayaFirebase.init();
-        }
-
+    async verifyOTP(phone, countryCode, otp) {
         try {
-            const result = await MayaFirebase.login(email, password);
-            console.log('🔑 Login result:', result.success ? 'Success' : result.error);
-            
-            if (result.success) {
-                const previousUser = MayaUtils.storage.get('maya_user');
-                if (window.MayaDBSync && previousUser?.email && previousUser.email !== result.user.email) {
-                    MayaDBSync.clearLocalCache();
-                }
+            const resp = await fetch('/api/verify-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone, countryCode, otp })
+            });
+            const data = await resp.json();
+            if (!resp.ok) return { success: false, error: data.error || 'OTP verification failed' };
 
-                this.currentUser = result.user;
-                this.token = result.token;
-                this.isAuthenticated = true;
-                
-                MayaUtils.storage.set('maya_user', this.currentUser);
-                MayaUtils.storage.set('maya_token', this.token);
-                MayaUtils.storage.set('maya_session', {
-                    email: this.currentUser.email,
-                    token: this.token
-                }, { skipSync: true });
-                
-                // Also update local profile with user data from Firebase
-                const profile = MayaUtils.storage.get('maya_profile') || {};
-                MayaUtils.storage.set('maya_profile', {
-                    ...profile,
-                    name: result.user.name,
-                    email: result.user.email,
-                    birthDate: result.user.birthDate || profile.birthDate,
-                    birthTime: result.user.birthTime || profile.birthTime,
-                    birthPlace: result.user.birthPlace || profile.birthPlace,
-                    birthLat: Number.isFinite(Number(result.user.birthLat)) ? Number(result.user.birthLat) : (profile.birthLat ?? null),
-                    birthLon: Number.isFinite(Number(result.user.birthLon)) ? Number(result.user.birthLon) : (profile.birthLon ?? null),
-                    gender: result.user.gender || profile.gender,
-                    language: result.user.language || profile.language || MayaUtils.storage.get('maya_language') || 'en'
-                });
-                
-                // Sync user data from Firebase (load settings, chat history, etc.)
-                if (window.MayaDBSync) {
-                    console.log('🔄 Syncing user data from cloud...');
-                    await MayaDBSync.onUserLogin(email);
-                }
-                
-                console.log('✅ User logged in:', this.currentUser.email);
-                return { success: true, user: this.currentUser };
-            } else {
-                return { success: false, error: result.error || 'Invalid credentials' };
-            }
-        } catch (error) {
-            console.error('❌ Login error:', error);
+            const { user, token, isNewUser } = data;
+            this.currentUser = user;
+            this.token = token;
+            this.isAuthenticated = true;
+
+            MayaUtils.storage.set('maya_user', user);
+            MayaUtils.storage.set('maya_token', token);
+            MayaUtils.storage.set('maya_session', { phone: user.phone, token }, { skipSync: true });
+
+            // Merge phone into profile
+            const profile = MayaUtils.storage.get('maya_profile') || {};
+            MayaUtils.storage.set('maya_profile', {
+                ...profile,
+                phone: user.phone,
+                countryCode: user.countryCode,
+                phoneNumber: user.phoneNumber
+            });
+
+            console.log('✅ Phone OTP auth success:', user.phone);
+            return { success: true, user, isNewUser };
+        } catch (err) {
+            console.error('verifyOTP error:', err);
             return { success: false, error: 'Network error. Please try again.' };
         }
+    },
+
+    getCurrentUserStorageInfo() {
+        if (this.currentUser?.email) {
+            return {
+                type: 'email',
+                identifier: this.currentUser.email,
+                profilePath: `users/${MayaFirebase.emailToKey(this.currentUser.email)}`,
+                progressPath: `funnel_progress/${MayaFirebase.emailToKey(this.currentUser.email)}`
+            };
+        }
+
+        if (this.currentUser?.id && this.currentUser?.phone) {
+            return {
+                type: 'phone',
+                identifier: this.currentUser.phone,
+                profilePath: `maya_phone_users/${this.currentUser.id}`,
+                progressPath: `maya_phone_progress/${this.currentUser.id}`
+            };
+        }
+
+        return null;
     },
 
     /**
@@ -220,7 +166,8 @@ const MayaAuth = {
      * Update user profile
      */
     async updateProfile(profileData) {
-        if (!this.isAuthenticated || !this.currentUser?.email) {
+        const storageInfo = this.getCurrentUserStorageInfo();
+        if (!this.isAuthenticated || !storageInfo) {
             return { success: false, error: 'Not authenticated' };
         }
 
@@ -229,7 +176,13 @@ const MayaAuth = {
         }
 
         try {
-            const result = await MayaFirebase.updateProfile(this.currentUser.email, profileData);
+            const updates = {
+                ...profileData,
+                updatedAt: new Date().toISOString()
+            };
+            const result = storageInfo.type === 'email'
+                ? await MayaFirebase.updateProfile(storageInfo.identifier, profileData)
+                : await MayaFirebase.request(storageInfo.profilePath, 'PATCH', updates).then(() => ({ success: true }));
             
             if (result.success) {
                 this.currentUser = { ...this.currentUser, ...profileData };
@@ -252,7 +205,8 @@ const MayaAuth = {
         const profile = MayaUtils.storage.get('maya_profile') || {};
         MayaUtils.storage.set('maya_profile', { ...profile, ...birthData });
 
-        if (!this.isAuthenticated || !this.currentUser?.email) {
+        const storageInfo = this.getCurrentUserStorageInfo();
+        if (!this.isAuthenticated || !storageInfo) {
             return { success: true, local: true };
         }
 
@@ -261,7 +215,20 @@ const MayaAuth = {
         }
 
         try {
-            const result = await MayaFirebase.saveBirthDetails(this.currentUser.email, birthData);
+            const result = storageInfo.type === 'email'
+                ? await MayaFirebase.saveBirthDetails(storageInfo.identifier, birthData)
+                : await MayaFirebase.request(storageInfo.profilePath, 'PATCH', {
+                    name: birthData.name || null,
+                    birthDate: birthData.birthDate || null,
+                    birthTime: birthData.birthTime || null,
+                    birthPlace: birthData.birthPlace || null,
+                    birthLat: birthData.birthLat || null,
+                    birthLon: birthData.birthLon || null,
+                    gender: birthData.gender || null,
+                    maritalStatus: birthData.maritalStatus || null,
+                    language: typeof birthData.language === 'string' ? birthData.language : undefined,
+                    updatedAt: new Date().toISOString()
+                }).then(() => ({ success: true }));
             return result;
         } catch (error) {
             console.error('Save birth details error:', error);
@@ -275,8 +242,9 @@ const MayaAuth = {
     async getBirthDetails() {
         // First check local storage
         const localData = MayaUtils.storage.get('maya_profile');
+        const storageInfo = this.getCurrentUserStorageInfo();
         
-        if (!this.isAuthenticated || !this.currentUser?.email) {
+        if (!this.isAuthenticated || !storageInfo) {
             return localData || null;
         }
 
@@ -285,7 +253,9 @@ const MayaAuth = {
         }
 
         try {
-            const result = await MayaFirebase.getProfile(this.currentUser.email);
+            const result = storageInfo.type === 'email'
+                ? await MayaFirebase.getProfile(storageInfo.identifier)
+                : await MayaFirebase.request(storageInfo.profilePath, 'GET').then((user) => ({ success: !!user, user }));
             
             if (result.success && result.user) {
                 // Merge ALL fields from cloud with local data
@@ -297,8 +267,12 @@ const MayaAuth = {
                     birthLat: result.user.birthLat,
                     birthLon: result.user.birthLon,
                     gender: result.user.gender,
+                    maritalStatus: result.user.maritalStatus,
                     language: result.user.language,
-                    email: result.user.email
+                    email: result.user.email,
+                    phone: result.user.phone,
+                    countryCode: result.user.countryCode,
+                    phoneNumber: result.user.phoneNumber
                 };
                 // Merge: local data as base, cloud data overwrites
                 const mergedProfile = { ...localData, ...profileData };
@@ -323,7 +297,8 @@ const MayaAuth = {
      * Get user profile from Firebase
      */
     async getProfile() {
-        if (!this.isAuthenticated || !this.currentUser?.email) {
+        const storageInfo = this.getCurrentUserStorageInfo();
+        if (!this.isAuthenticated || !storageInfo) {
             return { success: false, error: 'Not authenticated' };
         }
 
@@ -332,7 +307,9 @@ const MayaAuth = {
         }
 
         try {
-            const result = await MayaFirebase.getProfile(this.currentUser.email);
+            const result = storageInfo.type === 'email'
+                ? await MayaFirebase.getProfile(storageInfo.identifier)
+                : await MayaFirebase.request(storageInfo.profilePath, 'GET').then((user) => ({ success: !!user, user }));
             
             if (result.success) {
                 this.currentUser = { ...this.currentUser, ...result.user };
@@ -350,7 +327,8 @@ const MayaAuth = {
      * Save funnel progress
      */
     async saveFunnelProgress(progressData) {
-        if (!this.isAuthenticated || !this.currentUser?.email) {
+        const storageInfo = this.getCurrentUserStorageInfo();
+        if (!this.isAuthenticated || !storageInfo) {
             return { success: true, local: true };
         }
 
@@ -359,22 +337,16 @@ const MayaAuth = {
         }
 
         try {
-            return await MayaFirebase.saveFunnelProgress(this.currentUser.email, progressData);
+            return storageInfo.type === 'email'
+                ? await MayaFirebase.saveFunnelProgress(storageInfo.identifier, progressData)
+                : await MayaFirebase.request(storageInfo.progressPath, 'PUT', {
+                    ...progressData,
+                    updatedAt: new Date().toISOString()
+                }).then(() => ({ success: true }));
         } catch (error) {
             console.error('Save funnel progress error:', error);
             return { success: true, local: true };
         }
-    },
-
-    /**
-     * Request password reset (placeholder)
-     */
-    async forgotPassword(email) {
-        console.log('Password reset requested for:', email);
-        return { 
-            success: true, 
-            message: 'If an account exists with this email, you will receive reset instructions.' 
-        };
     },
 
     /**
@@ -400,25 +372,29 @@ const MayaAuth = {
     },
 
     /**
-     * Capture email for funnel (pre-auth)
+     * Capture phone (pre-auth, for lead tracking)
      */
-    async captureEmail(email, source = 'teaser') {
+    async capturePhone(phone, countryCode, source = 'gate') {
         if (!window.MayaFirebase) {
             return false;
         }
 
         try {
-            await MayaFirebase.request(`email_captures/${MayaFirebase.emailToKey(email)}`, 'PUT', {
-                email: email,
-                source: source,
+            const phoneKey = `${countryCode}_${phone}`.replace(/[^a-zA-Z0-9_]/g, '_');
+            await MayaFirebase.request(`phone_captures/${phoneKey}`, 'PUT', {
+                phone: `${countryCode}${phone}`,
+                countryCode,
+                phoneNumber: phone,
+                source,
                 capturedAt: new Date().toISOString()
             });
             return true;
         } catch (error) {
-            console.error('Email capture error:', error);
+            console.error('Phone capture error:', error);
             return false;
         }
-    }
+    },
+
 };
 
 // Make globally available

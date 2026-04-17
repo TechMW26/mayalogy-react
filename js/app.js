@@ -626,61 +626,19 @@ const MayaApp = {
      * Setup auth listeners
      */
     setupAuthListeners() {
-        // Show login modal
         document.getElementById('showLogin')?.addEventListener('click', (e) => {
             e.preventDefault();
             this.showAuthModal('login');
         });
 
-        // Show register modal
         document.getElementById('showRegister')?.addEventListener('click', (e) => {
             e.preventDefault();
             this.showAuthModal('register');
         });
 
-        // Login form submit
-        document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            
-            const result = await MayaAuth.login(email, password);
-            if (result.success) {
-                MayaUtils.toast.success('Welcome back!');
-                // Always reload page after successful login to refresh session
-                setTimeout(() => {
-                    window.location.reload();
-                }, 500);
-            } else {
-                MayaUtils.toast.error(result.error);
-            }
-        });
-
-        // Register form submit
-        document.getElementById('registerForm')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const userData = {
-                name: document.getElementById('registerName').value,
-                email: document.getElementById('registerEmail').value,
-                password: document.getElementById('registerPassword').value
-            };
-            
-            const result = await MayaAuth.register(userData);
-            if (result.success) {
-                MayaUtils.toast.success('Account created successfully!');
-                // Always reload page after successful registration to refresh session
-                setTimeout(() => {
-                    window.location.reload();
-                }, 500);
-            } else {
-                MayaUtils.toast.error(result.error);
-            }
-        });
-
         // Google login
         document.getElementById('googleLoginBtn')?.addEventListener('click', () => {
-            // Implement Google OAuth
-            MayaUtils.toast.info('Google login coming soon!');
+            MayaUtils.toast.info('WhatsApp OTP login is active. Use the login button to continue.');
         });
     },
 
@@ -692,18 +650,8 @@ const MayaApp = {
         if (emailForm) {
             emailForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const email = document.getElementById('captureEmail').value;
-                
-                if (!MayaUtils.isValidEmail(email)) {
-                    MayaUtils.toast.error('Please enter a valid email');
-                    return;
-                }
-
-                await MayaAuth.captureEmail(email, 'teaser');
-                MayaUtils.storage.set('maya_captured_email', email);
                 MayaUtils.storage.set('maya_funnel_progress', MAYA_CONFIG.FUNNEL.EMAIL_GATE_STEP);
-                
-                MayaUtils.toast.success('Thank you! Unlocking your full reading...');
+                MayaUtils.toast.success('Continuing to your reading...');
                 this.hideTeaser();
                 this.showFullReading();
             });
@@ -1660,18 +1608,12 @@ const MayaApp = {
      * Show auth modal
      */
     showAuthModal(type = 'login') {
-        const modal = new bootstrap.Modal(document.getElementById('authModal'));
-        
-        // Show appropriate form
-        if (type === 'login') {
-            document.getElementById('loginFormContainer')?.classList.remove('d-none');
-            document.getElementById('registerFormContainer')?.classList.add('d-none');
-        } else {
-            document.getElementById('loginFormContainer')?.classList.add('d-none');
-            document.getElementById('registerFormContainer')?.classList.remove('d-none');
-        }
-        
-        modal.show();
+        this.showOnboarding();
+        setTimeout(() => {
+            if (window.MayaOnboarding?.showDirectLogin) {
+                MayaOnboarding.showDirectLogin();
+            }
+        }, type === 'register' ? 700 : 550);
     },
 
     /**

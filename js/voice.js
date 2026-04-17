@@ -658,6 +658,65 @@ const MayaVoice = {
             .trim();
     },
 
+    removeAdjacentPhraseRepetition(text) {
+        let cleaned = String(text || '');
+
+        // Collapse repeated single tokens: "लग्न लग्न" -> "लग्न"
+        cleaned = cleaned.replace(/\b([A-Za-z\u0900-\u097F]+)\b(?:\s*[,;:]\s*|\s+)\1\b/gi, '$1');
+
+        // Collapse repeated 2-4 word phrases: "mean lagna mean lagna" -> "mean lagna"
+        for (let pass = 0; pass < 3; pass++) {
+            cleaned = cleaned.replace(
+                /\b((?:[A-Za-z\u0900-\u097F]+\s+){1,3}[A-Za-z\u0900-\u097F]+)\b(?:\s*[,;:]\s*|\s+)\1\b/gi,
+                '$1'
+            );
+        }
+
+        return cleaned;
+    },
+
+    capRepeatedTerm(text, pattern, replacement, maxMentions = 2) {
+        let count = 0;
+        return String(text || '').replace(pattern, (match) => {
+            count += 1;
+            return count > maxMentions ? replacement : match;
+        });
+    },
+
+    limitDashaOverfocus(text) {
+        const isHindi = window.MayaUtils?.storage?.get('maya_language') === 'hi';
+        let limited = String(text || '');
+
+        if (isHindi) {
+            limited = this.capRepeatedTerm(limited, /राहु\s*दशा/gi, 'यह दशा');
+            limited = this.capRepeatedTerm(limited, /राहु/gi, 'यह ग्रह');
+            limited = this.capRepeatedTerm(limited, /दशा/gi, 'यह अवधि', 3);
+        } else {
+            limited = this.capRepeatedTerm(limited, /rahu\s*dasha/gi, 'this dasha period');
+            limited = this.capRepeatedTerm(limited, /rahu/gi, 'this planet');
+            limited = this.capRepeatedTerm(limited, /dasha/gi, 'this period', 3);
+        }
+
+        return limited;
+    },
+
+    normalizeHyphenatedExpressions(text) {
+        let normalized = String(text || '');
+
+        // Keep common expressive compounds tight for TTS rhythm.
+        normalized = normalized
+            .replace(/कभी\s*-\s*कभी/gi, 'कभी कभी')
+            .replace(/थोड़ा\s*-\s*बहुत/gi, 'थोड़ा बहुत')
+            .replace(/थोडा\s*-\s*बहुत/gi, 'थोडा बहुत')
+            .replace(/kabhi\s*-\s*kabhi/gi, 'kabhi kabhi')
+            .replace(/thoda\s*-\s*bahut/gi, 'thoda bahut');
+
+        // For letter-letter hyphen compounds, remove the dash so TTS doesn't pause.
+        normalized = normalized.replace(/([A-Za-z\u0900-\u097F])\s*-\s*([A-Za-z\u0900-\u097F])/g, '$1$2');
+
+        return normalized;
+    },
+
     splitIntoSpeechChunks(text) {
         const rawChunks = String(text || '').match(/[^.!?।]+(?:[.!?।]+|$)/g) || [String(text || '')];
         const sentences = [];
@@ -928,8 +987,9 @@ const MayaVoice = {
             prepared = this.enforceConsistentAstroTerms(prepared);
         }
 
-        // Remove consecutive duplicate words (e.g. "guru guru" → "guru")
-        prepared = prepared.replace(/\b(\S+)\s+\1\b/gi, '$1');
+        prepared = this.normalizeHyphenatedExpressions(prepared);
+        prepared = this.removeAdjacentPhraseRepetition(prepared);
+        prepared = this.limitDashaOverfocus(prepared);
 
         // Convert authored pause markers into spoken punctuation before number expansion,
         // otherwise markers like [[pause-250]] can leak the number into speech.
@@ -949,7 +1009,8 @@ const MayaVoice = {
         prepared = prepared.replace(/;/g, '. ');
         prepared = prepared.replace(/:/g, ', ');
         prepared = prepared.replace(/[()]/g, ', ');
-        prepared = prepared.replace(/-/g, ', ');
+        // Treat only punctuation dashes as pauses. In-word hyphens are normalized earlier.
+        prepared = prepared.replace(/\s[\-–—]\s/g, ', ');
         prepared = prepared.replace(/\.\.\./g, '... ');
         
         // Remove emoji and special characters that TTS struggles with
