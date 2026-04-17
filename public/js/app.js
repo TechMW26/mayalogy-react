@@ -1476,8 +1476,6 @@ const MayaApp = {
             MayaListener.stop();
         }
 
-        // If funnel completed, reload page to show the home dashboard
-        if (window.MayaFunnel?.isActive || MayaUtils?.storage?.get('funnel_complete')) {
         // Keep app state intact for normal chat closes. Only reset when closing an active funnel flow.
         if (overlay?.classList.contains('funnel-mode') || window.MayaFunnel?.isActive) {
             window.location.reload();
