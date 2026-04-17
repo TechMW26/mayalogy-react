@@ -150,10 +150,7 @@ const MayaBlob = {
             float glow = fresnel * 0.6;
             finalColor += glowColor * glow * 0.3;
             
-            // Add alpha for outer glow effect
-            float alpha = 0.9 + fresnel * 0.1;
-            
-            gl_FragColor = vec4(finalColor, alpha);
+            gl_FragColor = vec4(finalColor, 1.0);
         }
     `,
 
@@ -241,25 +238,14 @@ const MayaBlob = {
             vertexShader: this.vertexShader,
             fragmentShader: this.fragmentShader,
             uniforms: this.uniforms,
-            transparent: true,
+            transparent: false,
             side: THREE.FrontSide,
-            depthWrite: false
+            depthWrite: true
         });
 
         // Mesh
         this.blob = new THREE.Mesh(geometry, material);
         this.scene.add(this.blob);
-
-        // Add inner glow sphere (white inner light)
-        const innerGeometry = new THREE.SphereGeometry(1.3, 32, 32);
-        const innerMaterial = new THREE.MeshBasicMaterial({
-            color: 0xfffef5,
-            transparent: true,
-            opacity: 0.22,
-            depthWrite: false
-        });
-        const innerSphere = new THREE.Mesh(innerGeometry, innerMaterial);
-        this.blob.add(innerSphere);
     },
 
     /**
@@ -285,9 +271,8 @@ const MayaBlob = {
         const material = new THREE.PointsMaterial({
             color: 0xffdf64,
             size: 0.05,
-            transparent: true,
-            opacity: 0.6,
-            blending: THREE.AdditiveBlending
+            transparent: false,
+            opacity: 1.0
         });
 
         this.particles = new THREE.Points(geometry, material);
