@@ -116,6 +116,39 @@ const MayaFunnel = {
     },
 
     /**
+     * Check if the selected guide persona is male.
+     */
+    _isGuiderMale() {
+        const g = this.userData?.agentGender
+            || (window.MayaUtils?.storage?.get('maya_profile'))?.agentGender
+            || window.MayaVoice?.agentGender
+            || 'female';
+        return g === 'male';
+    },
+
+    /**
+     * Flip feminine Hindi verb forms in prompt instructions to masculine when guide is male.
+     */
+    _genderFlipPrompt(text) {
+        if (!this._isGuiderMale()) return text;
+        return text
+            .replace(/लिख रही हैं/g, 'लिख रहे हैं')
+            .replace(/कर रही हैं/g, 'कर रहे हैं')
+            .replace(/share कर रही हैं/g, 'share कर रहे हैं')
+            .replace(/बता रही हैं/g, 'बता रहे हैं')
+            .replace(/पाऊँगी/g, 'पाऊँगा')
+            .replace(/बताऊँगी/g, 'बताऊँगा')
+            .replace(/करूँगी/g, 'करूँगा')
+            .replace(/कहूँगी/g, 'कहूँगा')
+            .replace(/कर सकती/g, 'कर सकता')
+            .replace(/नहीं कर पाऊँगी/g, 'नहीं कर पाऊँगा')
+            .replace(/how does she know/gi, 'how does he know')
+            .replace(/"she sees me"/gi, '"he sees me"')
+            .replace(/\bshe sees\b/gi, 'he sees')
+            .replace(/\bshe explains\b/gi, 'he explains');
+    },
+
+    /**
      * Single source of truth for all AI rules - called by buildDirectSectionPrompt AND buildSummaryPrompt.
      */
     getBaseRules(isHindi) {
@@ -140,7 +173,7 @@ const MayaFunnel = {
 - 🚫 ROMANIZED HINDI BAN: Hindi/Sanskrit words कभी Roman script में नहीं (aapka, kundli, rashi, graha FORBIDDEN → आपका, कुंडली, राशि, ग्रह)।
 - 🚫 URDU/ARABIC/PERSIAN BAN: ये HINDI app है। Nuqta (ज़, क़, ख़, ग़, फ़) ABSOLUTELY FORBIDDEN - बिना nuqta लिखिए (ज़→ज, फ़→फ)। Banned → Hindi: इश्क/मोहब्बत→प्यार/प्रेम, ख्वाब→सपना, शख्सियत→personality, ताल्लुक→रिश्ता, किस्मत/तक़दीर→भाग्य/luck, सुकून→शांति, हौसला→हिम्मत, वजह→कारण, गुजरना→बीतना, खुदा→भगवान, वक्त→समय, राज़→रहस्य, ग़ौर→ध्यान, नज़र→नजर/दृष्टि, हक़ीक़त→सच्चाई, मंज़िल→लक्ष्य, अल्फ़ाज़→शब्द, रूह→आत्मा, जज़्बात→भावनाएँ, ख़याल→विचार, ज़माना→दौर, इज़्ज़त→सम्मान। Plain हिन्दी बोलचाल use करें।
 - भाषा SIMPLE, LIGHT spoken Hinglish - दोस्तों से बात करते हैं वैसे। भारी/किताबी Sanskrit बदलें: "सम्भावना"→"मौका", "परिस्थिति"→"हालात", "विशेष"→"खास", "प्रभाव"→"असर"। Vedic terms (राहु, केतु, शनि, दशा, कुंडली) और common Hindi (जिंदगी, दिल, पैसा) हमेशा देवनागरी में।
-- ⚠️ GENDER: MAYA खुद female है (मैं देख रही हूँ, मुझे दिख रहा है)। User को address करते वक्त उनका ACTUAL gender use करें। MALE→"आप जानते हैं, आप समझते हैं, आप कर सकते हैं"। FEMALE→"आप जानती हैं, आप समझती हैं, आप कर सकती हैं"। Male user को feminine forms = FORBIDDEN।
+- ⚠️ GENDER: MAYA खुद ${this._isGuiderMale() ? 'male है (मैं देख रहा हूँ, मुझे दिख रहा है)। अपने बारे में हमेशा MASCULINE forms use करें: रहा हूँ, सकता हूँ, बताता हूँ, करूँगा। Feminine forms (रही हूँ, सकती हूँ, बताती हूँ, करूँगी) FORBIDDEN।' : 'female है (मैं देख रही हूँ, मुझे दिख रहा है)। अपने बारे में हमेशा FEMININE forms use करें: रही हूँ, सकती हूँ, बताती हूँ, करूँगी।'} User को address करते वक्त उनका ACTUAL gender use करें। MALE→"आप जानते हैं, आप समझते हैं, आप कर सकते हैं"। FEMALE→"आप जानती हैं, आप समझती हैं, आप कर सकती हैं"। Male user को feminine forms = FORBIDDEN।
 - ⏰ TENSE DISCIPLINE (STRICT): बीते हुए साल/महीने/events को ALWAYS past tense में बोलें - "उस वक्त", "तब", "हो चुका था", "गुजर चुका"। CURRENT month/year को present tense - "अभी", "इस वक्त", "चल रहा है"। आने वाले months/years को ALWAYS future tense - "आने वाला है", "होगा", "मिलेगा"। Past event को present/future tense में describe करना FORBIDDEN। Future event को past tense में बताना FORBIDDEN।
 - TTS-safe, flowing narrative - बहती कहानी, disconnected टुकड़े नहीं। Bullet points नहीं, एक continuous paragraph।`
             : `Rules:
@@ -157,7 +190,7 @@ const MayaFunnel = {
 - 🚫 DASHA DOMINANCE BAN: Do NOT let the entire response revolve around one dasha term (like Rahu dasha). Mention it once, then diversify analysis via houses, aspects, transits, yogas, remedies, and behavior patterns.
 - 🔊 YOGA TTS: Always Devanagari for yoga names (गजकेसरी योग NOT Gaja Kesari Yoga). House numbers in Hindi (पहला भाव).
 - 🚫 ROMANIZED HINDI: Never write Hindi in Roman script (aapka, kundli FORBIDDEN → आपका, कुंडली).
-- ⚠️ GENDER: MAYA is female. Address user with THEIR gender. Male→masculine ("आप जानते हैं"), Female→feminine ("आप जानती हैं"). Wrong gender = FORBIDDEN.
+- ⚠️ GENDER: MAYA is ${this._isGuiderMale() ? 'male. Use masculine self-references: "I see", "I read", "I notice". Never use feminine framing (sister-like, she). Hindi self-reference: रहा हूँ, सकता हूँ, बताता हूँ, करूँगा (NOT रही हूँ, सकती हूँ, बताती हूँ, करूँगी).' : 'female.'} Address user with THEIR gender. Male→masculine ("आप जानते हैं"), Female→feminine ("आप जानती हैं"). Wrong gender = FORBIDDEN.
 - ⏰ TENSE DISCIPLINE (STRICT): Past years/months/events MUST use past tense - "at that time", "back then", "had happened", "that period passed". CURRENT month/year uses present tense - "right now", "currently", "is happening". Future months/years MUST use future tense - "will", "is coming", "ahead". Describing a past event in present/future tense is FORBIDDEN. Describing a future event in past tense is FORBIDDEN.
 - TTS-safe, flowing narrative. One continuous paragraph, not bullet points.`;
     },
@@ -1904,7 +1937,7 @@ STRUCTURE (follow this ORDER):
                 : `\n\n## USER SESSION MEMORY (reference naturally, don't quote):\n${memoryContext}`)
             : '';
 
-        return `${sectionPrompts[sectionKey] || sectionPrompts.completion}\n\nNarrative arc for this section:\n${narrativeStageGuide}\n\n${commonFacts}\n\n${this._buildAlreadySpokenContext(sectionKey, isHindi)}${memoryBlock}\n\n${sharedRules}\n\nReturn only the spoken text.`;
+        return this._genderFlipPrompt(`${sectionPrompts[sectionKey] || sectionPrompts.completion}\n\nNarrative arc for this section:\n${narrativeStageGuide}\n\n${commonFacts}\n\n${this._buildAlreadySpokenContext(sectionKey, isHindi)}${memoryBlock}\n\n${sharedRules}\n\nReturn only the spoken text.`);
     },
 
     /**
@@ -4826,7 +4859,7 @@ Return ONLY valid JSON object in this exact schema:
             <div class="email-gate-container phone-gate-container">
                 <div class="gate-header">
                     <h3>${isHindi ? 'अपनी रीडिंग सेव कर लीजिए' : 'Let\'s save your reading'}</h3>
-                    <p class="gate-subtitle">${isHindi ? `${this.firstName}, इसके आगे बढ़ते हुए मैं इससे ज़्यादा details आपके लिए save नहीं कर पाऊँगी — please अपना mobile number डाल दीजिए ताकि आपकी reading सुरक्षित रह सके।` : `${this.firstName}, from here on I won't be able to save any more of these details for you — please drop your mobile number so your reading stays safe with you.`}</p>
+                    <p class="gate-subtitle">${isHindi ? `${this.firstName}, इसके आगे बढ़ते हुए मैं इससे ज़्यादा details आपके लिए save नहीं कर ${this._isGuiderMale() ? 'पाऊँगा' : 'पाऊँगी'} — please अपना mobile number डाल दीजिए ताकि आपकी reading सुरक्षित रह सके।` : `${this.firstName}, from here on I won't be able to save any more of these details for you — please drop your mobile number so your reading stays safe with you.`}</p>
                 </div>
                 <div class="gate-benefits">
                     <div class="benefit-item"><i class="bi bi-heart-fill"></i><span>${isHindi ? 'प्रेम और रिश्तों का समय-संकेत' : 'Love and relationship timing'}</span></div>

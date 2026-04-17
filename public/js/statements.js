@@ -110,10 +110,45 @@ const MayaStatements = {
     return this._makeSpeechFriendly(this._sanitizeOptionText(this.format(text, r), lang));
   },
 
+  _getAgentGender() {
+    try {
+      const profile = window.MayaUtils?.storage?.get('maya_profile') || {};
+      const funnelData = window.MayaUtils?.storage?.get('funnel_data') || {};
+      const g = profile.agentGender || funnelData.agentGender
+          || window.MayaFunnel?.userData?.agentGender
+          || window.MayaVoice?.agentGender
+          || 'female';
+      return g === 'male' ? 'male' : 'female';
+    } catch (_e) {
+      return 'female';
+    }
+  },
+
   _normalizePersonaPrompt(prompt, lang = this.currentLanguage) {
     if (!prompt) return "";
+    const agentGender = this._getAgentGender();
 
+    // ─── Hinglish normalization (shared for both genders) ───
     let normalized = String(prompt)
+      .replace(/देवनागरी Hinglish/gi, "simple spoken Hinglish: Hindi words mostly in Devanagari, common English terms in English script")
+      .replace(/Hinglish देवनागरी/gi, "simple spoken Hinglish: Hindi words mostly in Devanagari, common English terms in English script")
+      .replace(/simple Hinglish देवनागरी में/gi, "simple spoken Hinglish: Hindi words mostly in Devanagari, common English terms in English script")
+      .replace(/Natural Hinglish style/gi, "simple spoken Hinglish with light everyday Indian flavour")
+      .replace(/Natural Hinglish/gi, "simple spoken Hinglish")
+      .replace(/simple Hinglish/gi, "simple spoken Hinglish")
+      .replace(/हिंदी पूरी तरह देवनागरी में लिखिए/gi, "Hindi words को mostly Devanagari में रखें, common English terms को English script में रखें, और tone simple spoken Hinglish रखें")
+      .replace(/रोमन हिंदी या अंग्रेज़ी वर्तनी न लिखें/gi, "Hindi words को mostly Devanagari में रखें, common English terms को English script में रखें, लेकिन बहुत शुद्ध Hindi मत लिखें");
+
+    if (agentGender === 'male') {
+      // Male guide: just append male persona guard, leave prompt intact
+      const personaGuardMale = lang === "hi"
+        ? "\nPERSONA OVERRIDE: MAYA एक पुरुष guide है। अपने लिए हमेशा पुल्लिंग first-person forms use करें: हूँ, रहा हूँ, सकता हूँ, देख रहा हूँ, बताता हूँ, कह रहा हूँ, वाला हूँ। कभी भी feminine forms जैसे रही हूँ, सकती हूँ, बताती हूँ, वाली हूँ use न करें। आवाज़ expressive और conversational रखिए।"
+        : "\nPERSONA OVERRIDE: MAYA is strictly male. Speak as an expressive, conversational male guide with grounded authority. Never describe MAYA as female, sister-like, or feminine.";
+      return `${normalized}${personaGuardMale}`;
+    }
+
+    // Female guide: full feminizing pass
+    normalized = normalized
       // Protect user gender lines from being clobbered by MAYA persona replacements
       .replace(/User gender: Male \(पुरुष\)/g, '%%USER_GENDER_MALE%%')
       .replace(/User gender: Female \(महिला\)/g, '%%USER_GENDER_FEMALE%%')
@@ -141,14 +176,6 @@ const MayaStatements = {
       .replace(/brother energy/gi, "sister energy")
       .replace(/बड़े भाई/g, "बड़ी बहन")
       .replace(/भाई जैसा/g, "बहन जैसा")
-      .replace(/देवनागरी Hinglish/gi, "simple spoken Hinglish: Hindi words mostly in Devanagari, common English terms in English script")
-      .replace(/Hinglish देवनागरी/gi, "simple spoken Hinglish: Hindi words mostly in Devanagari, common English terms in English script")
-      .replace(/simple Hinglish देवनागरी में/gi, "simple spoken Hinglish: Hindi words mostly in Devanagari, common English terms in English script")
-      .replace(/Natural Hinglish style/gi, "simple spoken Hinglish with light everyday Indian flavour")
-      .replace(/Natural Hinglish/gi, "simple spoken Hinglish")
-      .replace(/simple Hinglish/gi, "simple spoken Hinglish")
-      .replace(/हिंदी पूरी तरह देवनागरी में लिखिए/gi, "Hindi words को mostly Devanagari में रखें, common English terms को English script में रखें, और tone simple spoken Hinglish रखें")
-      .replace(/रोमन हिंदी या अंग्रेज़ी वर्तनी न लिखें/gi, "Hindi words को mostly Devanagari में रखें, common English terms को English script में रखें, लेकिन बहुत शुद्ध Hindi मत लिखें")
       .replace(/MALE verb forms use करें - हूँ, रहा हूँ, सकता हूँ, देख रहा हूँ/g, "FEMALE verb forms use करें - हूँ, रही हूँ, सकती हूँ, देख रही हूँ")
       .replace(/IMPORTANT: MALE verb forms - हूँ, रहा हूँ, सकता हूँ, देख रहा हूँ/g, "IMPORTANT: FEMALE verb forms - हूँ, रही हूँ, सकती हूँ, देख रही हूँ")
       .replace(/- Male forms: हूँ, रहा हूँ, सकता हूँ, देख रहा हूँ, etc\./g, "- Feminine forms: हूँ, रही हूँ, सकती हूँ, देख रही हूँ, etc.")
@@ -166,8 +193,10 @@ const MayaStatements = {
 
   _normalizeGeneratedText(text, lang = this.currentLanguage) {
     if (!text) return "";
+    const agentGender = this._getAgentGender();
 
-    return String(text)
+    // Common cleanup (both genders)
+    let cleaned = String(text)
       .replace(/```(?:json|text)?/gi, "")
       .replace(/`+/g, "")
       .replace(/^\s*(?:json|script|response)\s*[:\-]?\s*/i, "")
@@ -179,6 +208,35 @@ const MayaStatements = {
       .replace(/today'?s cosmic alignment shows that\s*/gi, "")
       .replace(/आज का cosmic alignment दिखाता है कि\s*/gi, "")
       .replace(/([A-Za-z\u0900-\u097F]+)\s*जी(?=[\s,.!?।]|$)/g, "$1")
+      .replace(/\bjson\b/gi, "");
+
+    if (agentGender === 'male') {
+      // Male guide: flip any feminine self-references to masculine
+      return cleaned
+        .replace(/elder sister/gi, "elder brother")
+        .replace(/sister-like/gi, "brother-like")
+        .replace(/sister energy/gi, "brother energy")
+        .replace(/female guide/gi, "male guide")
+        .replace(/female numerology guide/gi, "male numerology guide")
+        .replace(/wise female/gi, "wise male")
+        .replace(/\bI am female\b/gi, "I am male")
+        .replace(/\bI am a woman\b/gi, "I am a man")
+        .replace(/बड़ी बहन/g, "बड़े भाई")
+        .replace(/बहन जैसा/g, "भाई जैसा")
+        .replace(/मैं([^.!?\n]{0,80}?)रही हूँ/g, "मैं$1रहा हूँ")
+        .replace(/मैं([^.!?\n]{0,80}?)सकती हूँ/g, "मैं$1सकता हूँ")
+        .replace(/मैं([^.!?\n]{0,80}?)बताती हूँ/g, "मैं$1बताता हूँ")
+        .replace(/मैं([^.!?\n]{0,80}?)कहती हूँ/g, "मैं$1कहता हूँ")
+        .replace(/मैं([^.!?\n]{0,80}?)वाली हूँ/g, "मैं$1वाला हूँ")
+        .replace(/मैं([^.!?\n]{0,80}?)गई हूँ/g, "मैं$1गया हूँ")
+        .replace(/मैं([^.!?\n]{0,80}?)आई हूँ/g, "मैं$1आया हूँ")
+        .replace(/\bबताऊँगी\b/g, "बताऊँगा")
+        .replace(/\bकहूँगी\b/g, "कहूँगा")
+        .replace(/\bकरूँगी\b/g, "करूँगा");
+    }
+
+    // Female guide: flip any masculine self-references to feminine
+    return cleaned
       .replace(/elder brother/gi, "elder sister")
       .replace(/brother-like/gi, "sister-like")
       .replace(/brother energy/gi, "sister energy")
@@ -198,8 +256,7 @@ const MayaStatements = {
       .replace(/मैं([^.!?\n]{0,80}?)आया हूँ/g, "मैं$1आई हूँ")
       .replace(/\bबताऊँगा\b/g, "बताऊँगी")
       .replace(/\bकहूँगा\b/g, "कहूँगी")
-      .replace(/\bकरूँगा\b/g, "करूँगी")
-      .replace(/\bjson\b/gi, "");
+      .replace(/\bकरूँगा\b/g, "करूँगी");
   },
 
   _localizeHindiTerms(text) {

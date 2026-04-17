@@ -159,11 +159,14 @@ const MayaAI = {
             systemPrompt = systemPrompt
                 .replace(/मैं अंदाज़ा नहीं लगा रही/g, 'मैं अंदाज़ा नहीं लगा रहा')
                 .replace(/मैं पढ़ रही हूँ/g, 'मैं पढ़ रहा हूँ')
-                .replace(/chart साफ़ बोल रही है/g, 'chart साफ़ बोल रही है')
+                .replace(/chart साफ़ बोल रही है/g, 'chart साफ़ बोल रहा है')
                 .replace(/MAYA notices before she explains/g, 'MAYA notices before he explains')
                 .replace(/"she sees me"/g, '"he sees me"')
                 .replace(/\bshe sees\b/g, 'he sees')
-                .replace(/\bshe explains\b/g, 'he explains');
+                .replace(/\bshe explains\b/g, 'he explains')
+                .replace(/How did she know that/g, 'How did he know that')
+                .replace(/\bshe noticed\b/g, 'he noticed')
+                .replace(/\bshe sees me\b/g, 'he sees me');
         }
 
         return systemPrompt;
@@ -192,9 +195,16 @@ const MayaAI = {
             role: 'user',
             parts: [{ text: `System Instructions: ${systemPrompt}` }]
         });
+        const _agGender = this.userContext?.agentGender
+            || (window.MayaUtils?.storage?.get('maya_profile'))?.agentGender
+            || window.MayaFunnel?.userData?.agentGender
+            || 'female';
+        const _modelAck = _agGender === 'male'
+            ? 'I understand. I am MAYA, a male vedic astrology and numerology guide. I will follow these instructions, use masculine Hindi verb forms (रहा हूँ, सकता हूँ, बताता हूँ), and personalize my responses for the user.'
+            : 'I understand. I am MAYA, a female vedic astrology and numerology guide. I will follow these instructions and personalize my responses for the user.';
         contents.push({
             role: 'model',
-            parts: [{ text: 'I understand. I am MAYA, a female vedic astrology and numerology guide. I will follow these instructions and personalize my responses for the user.' }]
+            parts: [{ text: _modelAck }]
         });
         
         if (includeHistory) {

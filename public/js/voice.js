@@ -362,23 +362,36 @@ const MayaVoice = {
 
     /**
      * Wrapper for AI generation that speaks fillers naturally while waiting.
-     * Speaks at most 1 filler while waiting. Kept to 1 to avoid random mid-flow speech.
+     * Loops through fillers with a pause between each, stopping when the async work finishes.
+     * Options: type (filler category), startDelay (ms before first filler), interval (ms between fillers), maxFillers.
      */
     async withFillers(asyncFn, options = {}) {
         const type = options.type || 'thinking';
+        const startDelay = options.startDelay ?? 800;
+        const interval = options.interval ?? 3500;
+        const maxFillers = options.maxFillers ?? 4;
 
-        // Start the async work immediately
         let done = false;
         const resultPromise = asyncFn().finally(() => { done = true; });
 
-        // Speak at most ONE filler to avoid sounding random
+        // Filler loop: speaks up to maxFillers with interval gaps, stops when AI finishes
         const fillerLoop = async () => {
-            if (done) return;
-            const phrase = this.getRandomFiller(type);
-            if (!phrase) return;
-            try {
-                await this.speak(phrase);
-            } catch (e) { /* non-critical */ }
+            // Initial delay before first filler
+            if (startDelay > 0) {
+                await new Promise(r => setTimeout(r, startDelay));
+            }
+            let count = 0;
+            while (!done && count < maxFillers) {
+                const phrase = this.getRandomFiller(type);
+                if (!phrase) break;
+                try {
+                    await this.speak(phrase);
+                } catch (e) { /* non-critical */ }
+                count++;
+                if (done || count >= maxFillers) break;
+                // Pause between fillers
+                await new Promise(r => setTimeout(r, interval));
+            }
         };
         fillerLoop(); // fire-and-forget
 
