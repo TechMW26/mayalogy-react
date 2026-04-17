@@ -19,6 +19,7 @@ const MayaFunnel = {
     emailSubmissionInProgress: false,
     teaserGateNarrated: false,
     spokenNarrations: [],
+    stepContextLog: [],
     authRequestId: 0,
     authPromptedFields: new Set(),
     backgroundMusic: null,
@@ -175,6 +176,43 @@ const MayaFunnel = {
                 : `## USER PROFILE (these are the user's OWN answers - use them deeply in the reading):\n${profileSummary}`);
         }
 
+        if (Array.isArray(this.validationResponses) && this.validationResponses.length) {
+            const responseHistory = this.validationResponses
+                .map((entry) => {
+                    const q = String(entry?.question || '').replace(/\s+/g, ' ').trim();
+                    const a = String(entry?.answer || '').replace(/\s+/g, ' ').trim();
+                    if (!q || !a) return '';
+                    return `${q} => ${a}`;
+                })
+                .filter(Boolean)
+                .join(' | ');
+
+            if (responseHistory) {
+                parts.push(isHindi
+                    ? `## USER ANSWER HISTORY (अब तक के सभी जवाब):\n${responseHistory}`
+                    : `## USER ANSWER HISTORY (all answers so far):\n${responseHistory}`);
+            }
+        }
+
+        if (Array.isArray(this.stepContextLog) && this.stepContextLog.length) {
+            const stageTrail = this.stepContextLog
+                .slice(-20)
+                .map((entry) => {
+                    const stage = String(entry?.stage || '').trim();
+                    const summary = String(entry?.summary || '').trim();
+                    if (!stage || !summary) return '';
+                    return `[${stage}] ${summary}`;
+                })
+                .filter(Boolean)
+                .join(' || ');
+
+            if (stageTrail) {
+                parts.push(isHindi
+                    ? `## STEP CONTINUITY TRAIL (recent flow):\n${stageTrail}`
+                    : `## STEP CONTINUITY TRAIL (recent flow):\n${stageTrail}`);
+            }
+        }
+
         if (mem.strongHits.length) {
             const hits = mem.strongHits.slice(-3).join('; ');
             parts.push(isHindi
@@ -199,6 +237,22 @@ const MayaFunnel = {
             }
         }
         return parts.length ? parts.join('\n') : '';
+    },
+
+    recordStepContext(stage, summary = '') {
+        const stageLabel = String(stage || '').trim();
+        const text = String(summary || '').replace(/\s+/g, ' ').trim();
+        if (!stageLabel || !text) return;
+
+        this.stepContextLog.push({
+            stage: stageLabel,
+            summary: text,
+            timestamp: Date.now()
+        });
+
+        if (this.stepContextLog.length > 120) {
+            this.stepContextLog = this.stepContextLog.slice(-120);
+        }
     },
 
     // ============================================================
@@ -965,6 +1019,24 @@ const MayaFunnel = {
                 .trim();
         }
 
+        // Guard continuity: after the opening has been spoken, do not allow
+        // fresh-start greetings like "Namaste <name>" to reappear mid-funnel.
+        if ((this.spokenNarrations?.length || 0) > 0) {
+            const escapedName = this.escapeRegExp(this.firstName || '').trim();
+            const namedGreeting = escapedName
+                ? new RegExp(`^(?:नमस्ते|hello|hi|hey|greetings)\\s+${escapedName}\\b[,.!?।-]*\\s*`, 'i')
+                : /^(?:नमस्ते|hello|hi|hey|greetings)\b[,.!?।-]*\s*/i;
+
+            const genericGreeting = /^(?:नमस्ते|hello|hi|hey|greetings)(?:\s+(?:i am maya|i'm maya|mai(?:n)?\s+maya\s+hoon|main\s+maya\s+hoon))?\b[,.!?।-]*\s*/i;
+
+            cleaned = cleaned
+                .replace(namedGreeting, '')
+                .replace(genericGreeting, '')
+                .replace(/^\s+/, '');
+        }
+
+        cleaned = cleaned.replace(/\s+/g, ' ').trim();
+
         return cleaned;
     },
 
@@ -1110,6 +1182,7 @@ const MayaFunnel = {
         this.emailSubmissionInProgress = false;
         this.teaserGateNarrated = false;
         this.spokenNarrations = [];
+        this.stepContextLog = [];
         this.authRequestId = 0;
         this.authPromptedFields = new Set();
         
@@ -2556,12 +2629,17 @@ ONLY return the spoken response. Nothing else.`;
 
         const answer = await this.showValidationQuestion(checkQuestion, options);
         const chosen = options.find(o => o.value === answer);
+        this.recordStepContext('mini_check_answer', `Q: ${checkQuestion} | A: ${chosen?.label || answer}`);
 
         // Show reading animation + AI ack (same as profile questions)
         const hideAnim = this._showAnswerReadingAnim(isHindi);
         const ack = await this._generateMcqAck(checkQuestion, chosen?.label || answer, answer, isHindi);
         hideAnim();
         await this.speak(ack);
+        if (ack && ack.length > 8) {
+            this.spokenNarrations.push({ stage: 'mini_check_ack', text: ack });
+            this.recordStepContext('mini_check_ack', ack);
+        }
         await MayaUtils.sleep(200);
 
         return answer;
@@ -3253,6 +3331,10 @@ Return ONLY valid JSON object in this exact schema:
         }
 
         await this.speak(ack);
+        if (ack && ack.length > 8) {
+            this.spokenNarrations.push({ stage: 'chapter_choice_ack', text: ack });
+            this.recordStepContext('chapter_choice_ack', ack);
+        }
         await MayaUtils.sleep(200);
 
         return chapter;
@@ -3305,12 +3387,17 @@ Return ONLY valid JSON object in this exact schema:
 
         const answer = await this.showValidationQuestion(prompt.question, prompt.options);
         const chosen = prompt.options.find(o => o.value === answer);
+        this.recordStepContext(`micro_${chapterKey}`, `Q: ${prompt.question} | A: ${chosen?.label || answer}`);
 
         // Show reading animation + AI ack (same as profile questions)
         const hideAnim = this._showAnswerReadingAnim(isHindi);
         const ack = await this._generateMcqAck(prompt.question, chosen?.label || answer, answer, isHindi);
         hideAnim();
         await this.speak(ack);
+        if (ack && ack.length > 8) {
+            this.spokenNarrations.push({ stage: `micro_${chapterKey}_ack`, text: ack });
+            this.recordStepContext(`micro_${chapterKey}_ack`, ack);
+        }
         await MayaUtils.sleep(200);
 
         return answer;
@@ -3330,9 +3417,12 @@ Return ONLY valid JSON object in this exact schema:
     /**
      * Show the return hook at the end of the session.
      */
-    async showReturnHook() {
+    async showReturnHook(extraContext = null) {
         const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
-        const aiContext = this.buildBaseAIContext();
+        const aiContext = {
+            ...this.buildBaseAIContext(),
+            ...(extraContext || {})
+        };
 
         const hookNarration = await this.withFiller(
             () => this.generateDirectReadingSection('returnHook', aiContext),
@@ -3341,6 +3431,8 @@ Return ONLY valid JSON object in this exact schema:
 
         if (hookNarration && hookNarration.length > 20) {
             await this.speak(hookNarration);
+            this.spokenNarrations.push({ stage: 'returnHook', text: hookNarration });
+            this.recordStepContext('returnHook', hookNarration);
             this.returnHookType = 'timing_shift';
         }
     },
@@ -3549,12 +3641,17 @@ Return ONLY valid JSON object in this exact schema:
         const chosen = q.options.find(o => o.value === answer);
         const insightText = chosen?.insight || answer;
         this.sessionMemory.profileAnswers[q.key] = `${answer} (${insightText})`;
+        this.recordStepContext(`profile_${q.key}`, `Q: ${q.question} | A: ${chosen?.label || answer}`);
 
         // Show reading animation + AI ack (shared across all MCQs)
         const hideAnim = this._showAnswerReadingAnim(isHindi);
         const ack = await this._generateMcqAck(q.question, chosen?.label || answer, answer, isHindi);
         hideAnim();
         await this.speak(ack);
+        if (ack && ack.length > 8) {
+            this.spokenNarrations.push({ stage: `ack_${q.key}`, text: ack });
+            this.recordStepContext(`ack_${q.key}`, ack);
+        }
 
         return answer;
     },
@@ -3590,6 +3687,7 @@ Return ONLY valid JSON object in this exact schema:
                 : `Hello ${this.firstName}! I am Maya, it is really nice to meet you. From the birth date, time, and place you shared, I already know quite a lot about you. I have deep understanding of vedic astrology, birth charts, planetary dashas, yogas, doshas, and numerology. So let us start by plotting your kundli, and then we will go deeper into it together.`;
             await this.speak(fullIntro);
             this.spokenNarrations.push({ stage: 'opening', text: fullIntro });
+            this.recordStepContext('opening', fullIntro);
             this.advanceProgress('chart_opened');
             this.advanceProgress('first_impression');
             await MayaUtils.sleep(this.stageTiming.introSettle);
@@ -3608,6 +3706,8 @@ Return ONLY valid JSON object in this exact schema:
                 ? `बहुत अच्छा, कुंडली बन गई है! इसमें बहुत कुछ दिख रहा है। अब मैं कुछ सवाल पूछूँगी ताकि reading और भी गहरी और सटीक हो सके।`
                 : `Wonderful, your kundli is ready! I can already see a lot in it. Let me ask you a few questions so I can make this reading even deeper and more accurate.`;
             await this.speak(postKundliLine);
+            this.spokenNarrations.push({ stage: 'postKundliTransition', text: postKundliLine });
+            this.recordStepContext('postKundliTransition', postKundliLine);
 
             // ═══ STEP 3: First question - after kundli (recent upheaval) ═══
             // Pre-generate teaser content in background while questions happen
@@ -3656,6 +3756,8 @@ Return ONLY valid JSON object in this exact schema:
                     ? 'अच्छा, अब numbers और कुंडली दोनों ने अपनी बात कह दी है। पर एक बात बताइए।'
                     : 'Now both the numbers and the chart have shared what they see. But tell me one thing.';
                 await this.speak(transQ2);
+                this.spokenNarrations.push({ stage: 'transition_q2', text: transQ2 });
+                this.recordStepContext('transition_q2', transQ2);
                 await this.askSingleProfileQuestion(q2);
                 if (q2.key) askedProfileKeys.add(q2.key);
             }
@@ -3668,6 +3770,8 @@ Return ONLY valid JSON object in this exact schema:
                     ? 'पैसों से जुड़ा एक pattern दिख रहा है कुंडली में। ये बताइए।'
                     : 'I see a pattern around money in your chart. Tell me this.';
                 await this.speak(transQ3);
+                this.spokenNarrations.push({ stage: 'transition_q3', text: transQ3 });
+                this.recordStepContext('transition_q3', transQ3);
                 await this.askSingleProfileQuestion(q3);
                 if (q3.key) askedProfileKeys.add(q3.key);
             }
@@ -3680,6 +3784,8 @@ Return ONLY valid JSON object in this exact schema:
                     ? 'रिश्तों के बारे में भी कुछ दिख रहा है। एक छोटा सवाल और पूछ लूँ?'
                     : 'I can see something about your relationships too. May I ask one more thing?';
                 await this.speak(transQ4);
+                this.spokenNarrations.push({ stage: 'transition_q4', text: transQ4 });
+                this.recordStepContext('transition_q4', transQ4);
                 await this.askSingleProfileQuestion(q4);
                 if (q4.key) askedProfileKeys.add(q4.key);
             }
@@ -3708,6 +3814,8 @@ Return ONLY valid JSON object in this exact schema:
                     ? 'अब तक जो दिखा वो बस शुरुआत है। एक और बात है जो मुझे बार-बार दिख रही है।'
                     : 'What I have shared so far is just the beginning. There is one more thing I keep seeing.';
                 await this.speak(transQ5);
+                this.spokenNarrations.push({ stage: 'transition_q5', text: transQ5 });
+                this.recordStepContext('transition_q5', transQ5);
                 await this.askSingleProfileQuestion(q5);
                 if (q5.key) askedProfileKeys.add(q5.key);
             }
@@ -5116,11 +5224,14 @@ Return ONLY valid JSON object in this exact schema:
         
         if (prepMsg) {
             await this.speak(prepMsg);
+            this.spokenNarrations.push({ stage: 'deepRevealPrep', text: prepMsg });
+            this.recordStepContext('deepRevealPrep', prepMsg);
         }
 
         // Chapter choice - let user pick starting direction
         const choice = await this.showDeepRevealWithChoice();
         this.chapterOrder = this.getChapterOrder(choice);
+        this.recordStepContext('chapter_choice', `${choice} => ${this.chapterOrder.join(' > ')}`);
 
         // Deliver reading with chosen order
         await this.deliverDeepReading();
@@ -5162,6 +5273,7 @@ Return ONLY valid JSON object in this exact schema:
 
         // Deliver chapters in user-chosen order with micro-prompts
         const chapters = this.chapterOrder || ['love', 'career', 'year', 'warning'];
+        this.recordStepContext('chapter_order', chapters.join(' > '));
 
         for (const chapter of chapters) {
             await this._deliverChapter(chapter, numbers, aiContext);
@@ -5189,6 +5301,8 @@ Return ONLY valid JSON object in this exact schema:
 
         if (completionText) {
             await this.speak(completionText);
+            this.spokenNarrations.push({ stage: 'completion', text: completionText });
+            this.recordStepContext('completion', completionText);
         }
         
         // Mark complete
@@ -5198,7 +5312,7 @@ Return ONLY valid JSON object in this exact schema:
         this.fadeOutMusic();
 
         // Return hook - leave an open thread for next session
-        await this.showReturnHook();
+        await this.showReturnHook(aiContext);
         
         // Show chat interface with guided prompts
         this.showChatInterface();
@@ -5212,6 +5326,8 @@ Return ONLY valid JSON object in this exact schema:
         const intro = await this.withFiller(() => this.generateDirectReadingSection(introSection, aiContext), chapter === 'warning' ? 'thinking' : chapter);
         if (intro) {
             await this.speak(intro);
+            this.spokenNarrations.push({ stage: `${chapter}_intro`, text: intro });
+            this.recordStepContext(`${chapter}_intro`, intro);
             await MayaUtils.sleep(300);
         }
 
@@ -5237,6 +5353,7 @@ Return ONLY valid JSON object in this exact schema:
         if (reading) {
             await this.speak(reading);
             this.spokenNarrations.push({ stage: chapter, text: reading });
+            this.recordStepContext(chapter, reading);
             await MayaUtils.sleep(800);
         }
     },
