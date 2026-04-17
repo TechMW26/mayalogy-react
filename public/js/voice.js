@@ -389,6 +389,28 @@ const MayaVoice = {
     audioCache: new Map(),
     pendingAudio: new Map(),
     preferredVoiceId: null,
+    // Selected guide gender: 'female' (default MAYA) or 'male'. Drives voice + persona.
+    agentGender: null,
+
+    /**
+     * Switch the guide's voice based on gender selection from onboarding.
+     * Clears any manually-overridden voice id so the gender-specific default kicks in.
+     */
+    setAgentGender(gender) {
+        const next = gender === 'male' ? 'male' : 'female';
+        this.agentGender = next;
+        this.preferredVoiceId = null;
+        try {
+            const profile = (window.MayaUtils?.storage?.get('maya_profile')) || {};
+            profile.agentGender = next;
+            window.MayaUtils?.storage?.set('maya_profile', profile);
+        } catch (_e) { /* non-fatal */ }
+        // Invalidate any cached pre-generated audio so new voice takes effect immediately.
+        try { this.audioCache?.clear?.(); } catch (_e) {}
+        try { this.pendingAudio?.clear?.(); } catch (_e) {}
+        console.log(`🎙️ Guide voice set to ${next}`);
+        return next;
+    },
     
     // Rate limiting for ElevenLabs API
     rateLimitQueue: [],
@@ -1121,10 +1143,21 @@ const MayaVoice = {
         const isHindi = window.MayaUtils?.storage?.get('maya_language') === 'hi';
         const previousText = String(options.previousText || '').trim();
         const nextText = String(options.nextText || '').trim();
+        // Resolve the guide gender (male / female). Male uses the dedicated male voice id.
+        const profile = window.MayaUtils?.storage?.get('maya_profile') || {};
+        const funnelData = window.MayaUtils?.storage?.get('funnel_data') || {};
+        const agentGender = this.agentGender
+            || profile.agentGender
+            || funnelData.agentGender
+            || (window.MayaFunnel?.userData?.agentGender)
+            || 'female';
+        const isMaleGuide = agentGender === 'male';
         const voiceId = this.preferredVoiceId
-            || (isHindi
-                ? (MAYA_CONFIG.API_KEYS.ELEVENLABS_HI_VOICE_ID || MAYA_CONFIG.API_KEYS.ELEVENLABS_VOICE_ID)
-                : (MAYA_CONFIG.API_KEYS.ELEVENLABS_EN_VOICE_ID || MAYA_CONFIG.API_KEYS.ELEVENLABS_VOICE_ID));
+            || (isMaleGuide
+                ? (MAYA_CONFIG.API_KEYS.ELEVENLABS_MALE_VOICE_ID || MAYA_CONFIG.API_KEYS.ELEVENLABS_VOICE_ID)
+                : (isHindi
+                    ? (MAYA_CONFIG.API_KEYS.ELEVENLABS_HI_VOICE_ID || MAYA_CONFIG.API_KEYS.ELEVENLABS_VOICE_ID)
+                    : (MAYA_CONFIG.API_KEYS.ELEVENLABS_EN_VOICE_ID || MAYA_CONFIG.API_KEYS.ELEVENLABS_VOICE_ID)));
         const url = MAYA_CONFIG.ENDPOINTS.ELEVENLABS;
 
         const modelId = 'eleven_multilingual_v2';

@@ -1040,6 +1040,119 @@ const MayaKundli = {
     },
 
     /**
+     * Compute the 7 Chara Karakas (Jaimini) by sorting the 7 non-nodal planets
+     * (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn) by their degree within
+     * their sign in DESCENDING order. The planet with the highest degree becomes
+     * the Atmakaraka (soul indicator), next is Amatyakaraka, and so on.
+     *
+     * Karaka signification (what each karaka indicates about life/relatives):
+     *   AK  Atmakaraka      - Self, soul purpose, core life direction
+     *   AmK Amatyakaraka    - Career, profession, mind, minister-like role
+     *   BK  Bhratrukaraka   - Siblings (esp. younger), courage, short journeys
+     *   MK  Matrukaraka     - Mother, emotional base, home, property
+     *   PK  Putrakaraka     - Children, creativity, intelligence, progeny
+     *   GK  Gnatikaraka     - Paternal relatives, obstacles, hidden adversaries, health
+     *   DK  Darakaraka      - Spouse / life partner, marriage dynamics
+     */
+    calculateCharaKarakas(planets) {
+        if (!Array.isArray(planets) || !planets.length) return null;
+
+        const eligibleNames = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'];
+        const contenders = planets
+            .filter(p => eligibleNames.includes(p.name) && Number.isFinite(p.degree))
+            .map(p => ({
+                name: p.name,
+                sign: p.sign?.name || '',
+                degree: Number(p.degree) || 0,
+                element: p.sign?.element || ''
+            }));
+
+        if (contenders.length < 7) return null;
+
+        // Highest degree within a sign wins the top karaka slot.
+        contenders.sort((a, b) => b.degree - a.degree);
+
+        const roles = [
+            { key: 'atmakaraka',    code: 'AK',  signifies: 'self, soul purpose, core life direction',        hindi: 'आत्मकारक (स्वयं)' },
+            { key: 'amatyakaraka',  code: 'AmK', signifies: 'career, profession, mind',                      hindi: 'अमात्यकारक (करियर)' },
+            { key: 'bhratrukaraka', code: 'BK',  signifies: 'siblings (esp. younger), courage, initiative',  hindi: 'भ्रातृकारक (भाई-बहन)' },
+            { key: 'matrukaraka',   code: 'MK',  signifies: 'mother, emotional base, home, property',        hindi: 'मातृकारक (माँ)' },
+            { key: 'putrakaraka',   code: 'PK',  signifies: 'children, creativity, intelligence',            hindi: 'पुत्रकारक (संतान)' },
+            { key: 'gnatikaraka',   code: 'GK',  signifies: 'paternal relatives, obstacles, hidden enemies, health', hindi: 'ज्ञातिकारक (रिश्तेदार/अवरोध)' },
+            { key: 'darakaraka',    code: 'DK',  signifies: 'spouse, life partner, marriage dynamics',       hindi: 'दाराकारक (जीवनसाथी)' }
+        ];
+
+        const result = {};
+        roles.forEach((role, idx) => {
+            const c = contenders[idx];
+            result[role.key] = {
+                code: role.code,
+                planet: c.name,
+                sign: c.sign,
+                degree: Number(c.degree.toFixed(2)),
+                element: c.element,
+                signifies: role.signifies,
+                hindi: role.hindi
+            };
+        });
+
+        return result;
+    },
+
+    /**
+     * Determine the user's age (from birthDate) and a normalized life stage
+     * bucket so predictions stay age-appropriate (don't discuss retirement
+     * with a 22-year-old, don't discuss college with a 55-year-old).
+     */
+    calculateLifeStage(birthDate) {
+        const parsed = window.MayaAstrology ? MayaAstrology.parseDate(birthDate) : new Date(birthDate);
+        if (!parsed || isNaN(parsed.getTime())) {
+            return { age: null, stage: 'unknown', label: '', focusEn: '', focusHi: '' };
+        }
+        const age = Math.floor((Date.now() - parsed.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+
+        let stage, label, focusEn, focusHi;
+        if (age < 18) {
+            stage = 'minor';
+            label = 'Minor / formative years';
+            focusEn = 'studies, parents (especially mother — Matrukaraka), siblings, early identity. Do NOT discuss marriage, career decisions, children, or money responsibilities.';
+            focusHi = 'पढ़ाई, माता-पिता (खासकर माँ — मातृकारक), भाई-बहन, शुरुआती पहचान। शादी, career decisions, संतान, पैसे की जिम्मेदारी पर बात मत कीजिए।';
+        } else if (age <= 25) {
+            stage = 'young_adult';
+            label = 'Young adult / identity formation';
+            focusEn = 'education finishing, first job / direction finding, friendships, early romantic attachments, relationship with parents & siblings (BK/MK), identity questions (AK). Marriage only as a future window. No retirement, no talk of grown children.';
+            focusHi = 'पढ़ाई पूरी होना, पहली job / दिशा खोजना, दोस्ती, शुरुआती relationship, माता-पिता & भाई-बहन से रिश्ता (BK/MK), खुद की पहचान (AK)। शादी सिर्फ future window के रूप में। Retirement, बड़े बच्चों की बात मत कीजिए।';
+        } else if (age <= 32) {
+            stage = 'early_career';
+            label = 'Early career / marriage threshold';
+            focusEn = 'career direction & first serious professional pivots (AmK), marriage decisions / partner (DK), sibling dynamics (BK), parents aging (MK, 9th/4th), money stabilisation, possible first child. Avoid retirement and empty-nest themes.';
+            focusHi = 'career की दिशा और पहले serious professional बदलाव (AmK), शादी का फैसला / partner (DK), भाई-बहन की dynamics (BK), माता-पिता का उम्र बढ़ना (MK, 9th/4th), पैसे की stability, पहला बच्चा संभव। Retirement और empty-nest topics मत छेड़िए।';
+        } else if (age <= 40) {
+            stage = 'establishment';
+            label = 'Establishment / family consolidation';
+            focusEn = 'career peak-building, marriage texture (DK), children & creativity (PK), responsibilities toward aging parents (MK), property / home (4th), siblings\' shifting lives (BK), mid-life identity questions emerging (AK).';
+            focusHi = 'career का पीक बनाना, शादी का texture (DK), बच्चे और creativity (PK), बूढ़े माता-पिता की जिम्मेदारी (MK), प्रॉपर्टी / घर (4th), भाई-बहन की बदलती ज़िंदगी (BK), mid-life identity के सवाल (AK)।';
+        } else if (age <= 50) {
+            stage = 'peak_responsibility';
+            label = 'Peak responsibility / mid-life pivot';
+            focusEn = 'career reinvention / plateau, marriage renegotiation (DK), teenage or young-adult children (PK), health of self & parents (GK, MK), legacy thoughts beginning, sibling support systems (BK), identity recalibration (AK).';
+            focusHi = 'career reinvention / plateau, शादी की renegotiation (DK), teenage या young-adult बच्चे (PK), खुद और माता-पिता की health (GK, MK), legacy सोचने की शुरुआत, भाई-बहन का support (BK), पहचान की recalibration (AK)।';
+        } else if (age <= 60) {
+            stage = 'legacy';
+            label = 'Legacy / reflection';
+            focusEn = 'children\'s own lives (PK), spouse companionship (DK), possibly loss / distance from parents (MK), health watch (GK), semi-retirement direction, wisdom sharing, property & succession. Avoid framing them as starting fresh careers unless chart strongly supports.';
+            focusHi = 'बच्चों की अपनी ज़िंदगी (PK), जीवनसाथी का साथ (DK), माता-पिता का दूर होना / न रहना (MK), health (GK), semi-retirement direction, अनुभव बाँटना, property & उत्तराधिकार। नए career की शुरुआत की बात तब तक मत कीजिए जब तक chart strongly support न करे।';
+        } else {
+            stage = 'wisdom';
+            label = 'Wisdom / detachment';
+            focusEn = 'health (GK), spouse (DK), grandchildren & descendants (PK), spiritual / moksha themes, peace of mind, passing on legacy. Do NOT give early-career, marriage-search, or child-birth predictions.';
+            focusHi = 'health (GK), जीवनसाथी (DK), पोते-पोतियाँ / वंशज (PK), आध्यात्मिक / मोक्ष विषय, मन की शांति, विरासत सौंपना। शुरुआती career, शादी की खोज, या बच्चे होने की predictions मत दीजिए।';
+        }
+
+        return { age, stage, label, focusEn, focusHi };
+    },
+
+    /**
      * Build detailed kundli fact sheet for AI - includes exact planetary positions,
      * dasha timeline, 7th house analysis, and marriage inference.
      */
@@ -1089,6 +1202,39 @@ const MayaKundli = {
         lines.push(`Likely married: ${marriage.likelyMarried ? 'YES' : 'NO'} (confidence: ${marriage.confidence})`);
         lines.push(`Age: ${marriage.age}`);
         lines.push(`Marriage reasoning: ${marriage.reasoning}`);
+
+        // Chara Karakas (Jaimini) - personal significators for self & key relatives
+        const karakas = this.calculateCharaKarakas(birthChart.planets);
+        if (karakas) {
+            // House lookup (ascendant = house 1)
+            const signs = MAYA_CONFIG?.ZODIAC?.SIGNS || [];
+            const ascIndex = birthChart.ascendant ? signs.findIndex(s => s.name === birthChart.ascendant.name) : -1;
+            const houseOf = (signName) => {
+                if (ascIndex < 0) return null;
+                const sIdx = signs.findIndex(s => s.name === signName);
+                if (sIdx < 0) return null;
+                return ((sIdx - ascIndex + 12) % 12) + 1;
+            };
+
+            lines.push('\n=== CHARA KARAKAS (Jaimini — who/what each planet signifies for THIS user) ===');
+            lines.push('Use these to talk about the user and their key relatives with specificity.');
+            Object.values(karakas).forEach(k => {
+                const h = houseOf(k.sign);
+                const houseStr = h ? ` (in house ${h} from lagna)` : '';
+                lines.push(`${k.code} ${k.hindi}: ${k.planet} in ${k.sign} ${k.degree}°${houseStr} — signifies ${k.signifies}`);
+            });
+            lines.push('Correlation rule: the sign + house placement of each karaka describes the NATURE of that person/area in the user\'s life. Example: a Darakaraka in a fiery sign = spouse is assertive/independent; Matrukaraka afflicted by Saturn/Rahu = mother faces hardship or emotional distance; Putrakaraka in a strong house = creative/child-related fulfilment.');
+        }
+
+        // Life stage guidance (age-appropriate prediction framing)
+        const lifeStage = this.calculateLifeStage(birthDate);
+        if (lifeStage.age != null) {
+            lines.push('\n=== LIFE STAGE (age-appropriate framing — CRITICAL) ===');
+            lines.push(`Age: ${lifeStage.age} — Stage: ${lifeStage.label}`);
+            lines.push(`Topic focus (EN): ${lifeStage.focusEn}`);
+            lines.push(`विषय-फोकस (HI): ${lifeStage.focusHi}`);
+            lines.push('RULE: Every prediction, remedy, and timing statement MUST match this life stage. Do NOT predict events that are biologically/socially implausible for this age (e.g., school admission for a 45-year-old, retirement for a 24-year-old, first child for a 68-year-old).');
+        }
 
         // Yogas
         const yogas = this.calculateYogas(birthChart.planets, birthChart.ascendant?.name);

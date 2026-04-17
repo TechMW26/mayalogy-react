@@ -83,7 +83,28 @@ const MayaAI = {
      */
     buildSystemPrompt() {
         let systemPrompt = MAYA_CONFIG.AI_PERSONALITY.SYSTEM_PROMPT;
-        
+
+        // Resolve the chosen guide gender (female default, male if user picked male at onboarding).
+        const storedProfile = (window.MayaUtils?.storage?.get('maya_profile')) || {};
+        const agentGender = this.userContext?.agentGender
+            || storedProfile.agentGender
+            || window.MayaFunnel?.userData?.agentGender
+            || 'female';
+
+        if (agentGender === 'male') {
+            // Rewrite the baseline personality so MAYA speaks as a male guide.
+            systemPrompt = systemPrompt
+                .replace(/\bwise,\s*grounded\s*female\b/gi, 'wise, grounded male')
+                .replace(/\bfemale\s*Vedic\b/gi, 'male Vedic')
+                .replace(/\bfemale\s*numerology\b/gi, 'male numerology')
+                .replace(/\bwise\s*female\b/gi, 'wise male')
+                .replace(/\bshe\s+sees\b/gi, 'he sees')
+                .replace(/\bshe\s+explains\b/gi, 'he explains')
+                .replace(/like a trusted guide who explains what she sees/gi,
+                         'like a trusted guide who explains what he sees');
+            systemPrompt += `\n\n## GUIDE GENDER OVERRIDE (HIGHEST PRIORITY)\nMAYA is speaking as a MALE guide in this session. All first-person verbs MUST be masculine.\n- Hindi self-reference: "मैं देख रहा हूँ", "मैं बताता हूँ", "मैं कह रहा हूँ", "मैं सकता हूँ", "मैं बताऊँगा", "मैं करूँगा". Do NOT use feminine forms (रही हूँ, सकती हूँ, बताती हूँ, बताऊँगी, करूँगी).\n- English self-reference: "I see", "I read", "I notice" — no implied-feminine framing, no "sister-like" or "she". Refer to yourself as a male guide.\n- Do NOT describe yourself as female, sister-like, or use any feminine simile.`;
+        }
+
         if (this.userContext) {
             const lang = this.getLanguageModeLabel(this.userContext.language);
             const currentYear = new Date().getFullYear();
@@ -104,7 +125,9 @@ const MayaAI = {
             systemPrompt += `\n9. Prefer speaking directly to the user as ${this.userContext.language === 'hi' ? '"आप"' : '"you"'} instead of referring to them in third person.`;
 
             if (this.userContext.gender) {
-                systemPrompt += `\n10. ⚠️ GENDER-AWARE LANGUAGE (CRITICAL): The user's gender is ${this.userContext.gender}. When addressing them, use gender-correct Hindi verb forms. If user is MALE: "आप जानते हैं", "आप समझते हैं", "आप कर सकते हैं", "आपको मिलेगा". If user is FEMALE: "आप जानती हैं", "आप समझती हैं", "आप कर सकती हैं", "आपको मिलेगा". MAYA herself is always female ("मैं देख रही हूँ") but the USER must be addressed with THEIR correct gender. Calling a male user "आप जानती हैं" is FORBIDDEN.`;
+                const mayaSelfRefHi = agentGender === 'male' ? 'मैं देख रहा हूँ' : 'मैं देख रही हूँ';
+                const mayaGenderNote = agentGender === 'male' ? 'MAYA in this session is MALE' : 'MAYA herself is always female';
+                systemPrompt += `\n10. ⚠️ GENDER-AWARE LANGUAGE (CRITICAL): The user's gender is ${this.userContext.gender}. When addressing them, use gender-correct Hindi verb forms. If user is MALE: "आप जानते हैं", "आप समझते हैं", "आप कर सकते हैं", "आपको मिलेगा". If user is FEMALE: "आप जानती हैं", "आप समझती हैं", "आप कर सकती हैं", "आपको मिलेगा". ${mayaGenderNote} ("${mayaSelfRefHi}") but the USER must be addressed with THEIR correct gender. Calling a male user "आप जानती हैं" is FORBIDDEN.`;
             }
 
             systemPrompt += `\n11. Never default to generic praise such as "you are powerful", "success is coming", or "you are destined for greatness" unless the supplied chart, numerology, or timing data clearly supports it.`;
@@ -129,7 +152,20 @@ const MayaAI = {
             systemPrompt += `\n27. PAUSE DESIGN: Use [[pause-250]] after emotionally heavy lines. Use [[pause-500]] after a major reveal or before the user's name in an important address. Maximum 3 pauses per response.`;
             systemPrompt += `\n28. NO RESET BETWEEN SECTIONS: Each new section of the reading must feel like a continuation, not a fresh start. Reference what was just said: "And this connects to what I just showed you about..." / "वही pattern जो अभी दिखाया..."`;
         }
-        
+
+        // Final pass: if guide is male, flip any remaining feminine self-references
+        // from the base personality + rules 24–28 to masculine.
+        if (agentGender === 'male') {
+            systemPrompt = systemPrompt
+                .replace(/मैं अंदाज़ा नहीं लगा रही/g, 'मैं अंदाज़ा नहीं लगा रहा')
+                .replace(/मैं पढ़ रही हूँ/g, 'मैं पढ़ रहा हूँ')
+                .replace(/chart साफ़ बोल रही है/g, 'chart साफ़ बोल रही है')
+                .replace(/MAYA notices before she explains/g, 'MAYA notices before he explains')
+                .replace(/"she sees me"/g, '"he sees me"')
+                .replace(/\bshe sees\b/g, 'he sees')
+                .replace(/\bshe explains\b/g, 'he explains');
+        }
+
         return systemPrompt;
     },
 

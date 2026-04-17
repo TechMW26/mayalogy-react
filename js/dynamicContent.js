@@ -23,10 +23,39 @@ const MayaDynamicContent = {
     },
 
     /**
-     * Normalize persona instructions so MAYA always speaks as female.
+     * Resolve the current guide gender ('female' default, or 'male' if user
+     * selected the male guide during onboarding).
+     */
+    _getAgentGender() {
+        try {
+            const profile = window.MayaUtils?.storage?.get('maya_profile') || {};
+            const funnelData = window.MayaUtils?.storage?.get('funnel_data') || {};
+            const g = profile.agentGender || funnelData.agentGender
+                || window.MayaFunnel?.userData?.agentGender
+                || window.MayaVoice?.agentGender
+                || 'female';
+            return g === 'male' ? 'male' : 'female';
+        } catch (_e) {
+            return 'female';
+        }
+    },
+
+    /**
+     * Normalize persona instructions so the guide speaks with the correct gender.
+     * Female = default MAYA. Male = rewritten to a masculine guide voice.
      */
     _normalizePersonaPrompt(prompt, lang = this.language) {
         if (!prompt) return '';
+        const agentGender = this._getAgentGender();
+
+        if (agentGender === 'male') {
+            // For male guide, just append the male persona guard and leave the
+            // underlying prompt structurally intact (no feminizing rewrites).
+            const personaGuardMale = lang === 'hi'
+                ? '\nPERSONA OVERRIDE: MAYA एक पुरुष guide है। अपने लिए हमेशा पुल्लिंग first-person forms use करें: हूँ, रहा हूँ, सकता हूँ, देख रहा हूँ, बताता हूँ, कह रहा हूँ। कभी भी feminine forms जैसे रही हूँ, सकती हूँ, बताती हूँ use न करें। Tone simple spoken Hinglish रखें, बहुत भारी या literary Hindi नहीं।'
+                : '\nPERSONA OVERRIDE: MAYA is strictly male. Speak as an expressive, conversational male guide with grounded authority. Never describe MAYA as female, sister-like, or feminine.';
+            return `${String(prompt)}${personaGuardMale}`;
+        }
 
         let normalized = String(prompt)
             .replace(/\bMALE\b/g, 'FEMALE')
@@ -57,6 +86,37 @@ const MayaDynamicContent = {
 
     _normalizeGeneratedText(text) {
         if (!text) return '';
+        const agentGender = this._getAgentGender();
+
+        if (agentGender === 'male') {
+            // Male guide: convert any feminine self-references to masculine.
+            return String(text)
+                .replace(/```(?:json|text)?/gi, '')
+                .replace(/`+/g, '')
+                .replace(/^\s*(?:json|script|response)\s*[:\-]?\s*/i, '')
+                .replace(/([A-Za-z\u0900-\u097F]+)\s*जी(?=[\s,.!?।]|$)/g, '$1')
+                .replace(/elder sister/gi, 'elder brother')
+                .replace(/sister-like/gi, 'brother-like')
+                .replace(/sister energy/gi, 'brother energy')
+                .replace(/female guide/gi, 'male guide')
+                .replace(/female numerology guide/gi, 'male numerology guide')
+                .replace(/wise female/gi, 'wise male')
+                .replace(/\bI am female\b/gi, 'I am male')
+                .replace(/\bI am a woman\b/gi, 'I am a man')
+                .replace(/बड़ी बहन/g, 'बड़े भाई')
+                .replace(/बहन जैसा/g, 'भाई जैसा')
+                .replace(/मैं([^.!?\n]{0,80}?)रही हूँ/g, 'मैं$1रहा हूँ')
+                .replace(/मैं([^.!?\n]{0,80}?)सकती हूँ/g, 'मैं$1सकता हूँ')
+                .replace(/मैं([^.!?\n]{0,80}?)बताती हूँ/g, 'मैं$1बताता हूँ')
+                .replace(/मैं([^.!?\n]{0,80}?)कहती हूँ/g, 'मैं$1कहता हूँ')
+                .replace(/मैं([^.!?\n]{0,80}?)वाली हूँ/g, 'मैं$1वाला हूँ')
+                .replace(/मैं([^.!?\n]{0,80}?)गई हूँ/g, 'मैं$1गया हूँ')
+                .replace(/मैं([^.!?\n]{0,80}?)आई हूँ/g, 'मैं$1आया हूँ')
+                .replace(/\bबताऊँगी\b/g, 'बताऊँगा')
+                .replace(/\bकहूँगी\b/g, 'कहूँगा')
+                .replace(/\bकरूँगी\b/g, 'करूँगा')
+                .replace(/\bjson\b/gi, '');
+        }
 
         return String(text)
             .replace(/```(?:json|text)?/gi, '')

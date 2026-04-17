@@ -18,6 +18,7 @@ const MAYA_CONFIG = {
         ELEVENLABS_VOICE_ID: _secrets.ELEVENLABS_VOICE || 'P3JECz9WQeXyyodBL3ZD',
         ELEVENLABS_HI_VOICE_ID: _secrets.ELEVENLABS_HI_VOICE || '',
         ELEVENLABS_EN_VOICE_ID: _secrets.ELEVENLABS_EN_VOICE || '',
+        ELEVENLABS_MALE_VOICE_ID: _secrets.ELEVENLABS_MALE_VOICE || '8TMmdpPgqHKvDOGYP2lN',
         GOOGLE_MAPS: _secrets.GOOGLE_MAPS_KEY || '',
         YOUTUBE: _secrets.YOUTUBE_API_KEY || '',
         GOOGLE_CLIENT_ID: _secrets.GOOGLE_CLIENT_ID || ''

@@ -857,12 +857,22 @@ const MayaFunnel = {
     buildScriptUserData(predictionItems = null) {
         const profile = this.personalization || {};
         const items = Array.isArray(predictionItems) ? predictionItems : this.buildPredictionItems();
+        const lifeStage = (window.MayaKundli?.calculateLifeStage)
+            ? MayaKundli.calculateLifeStage(this.userData?.birthDate)
+            : null;
+        const charaKarakas = (this.kundliChart?.planets?.length && window.MayaKundli?.calculateCharaKarakas)
+            ? MayaKundli.calculateCharaKarakas(this.kundliChart.planets)
+            : null;
         return {
             name: this.firstName,
             fullName: this.userData?.name || this.firstName,
             gender: this.userData?.gender || '',
             dob: this.formatDateSpoken(this.userData.birthDate),
             rawBirthDate: this.userData.birthDate,
+            age: lifeStage?.age ?? null,
+            lifeStage: lifeStage?.stage || '',
+            lifeStageLabel: lifeStage?.label || '',
+            charaKarakas,
             birthTime: this.hasExactBirthTime() ? this.userData.birthTime : 'unknown',
             birthPlace: this.userData.birthPlace || '',
             birthPlaceShort: profile.birthPlaceShort || '',
@@ -906,10 +916,24 @@ const MayaFunnel = {
         // MCQ answers context so AI can personalize based on user selections
         const memoryContext = this.buildMemoryContext(isHindi);
 
+        // Age / life stage + Chara Karakas so prompts can target relatives + age-appropriate themes
+        const lifeStage = (window.MayaKundli?.calculateLifeStage)
+            ? MayaKundli.calculateLifeStage(this.userData?.birthDate)
+            : null;
+        const charaKarakas = (this.kundliChart?.planets?.length && window.MayaKundli?.calculateCharaKarakas)
+            ? MayaKundli.calculateCharaKarakas(this.kundliChart.planets)
+            : null;
+
         return {
             ...this.calculations,
             gender: this.userData?.gender || '',
             maritalStatus: this.userData?.maritalStatus || '',
+            age: lifeStage?.age ?? null,
+            lifeStage: lifeStage?.stage || '',
+            lifeStageLabel: lifeStage?.label || '',
+            lifeStageFocusEn: lifeStage?.focusEn || '',
+            lifeStageFocusHi: lifeStage?.focusHi || '',
+            charaKarakas,
             westernZodiac: profile.western?.name,
             vedicZodiac: profile.vedic?.name,
             ascendant: profile.hasReliableAscendant ? profile.ascendant?.name : '',
@@ -1196,6 +1220,7 @@ const MayaFunnel = {
         const profileData = {
             name: userData.name,
             gender: userData.gender || null,
+            agentGender: userData.agentGender || 'female',
             birthDate: userData.birthDate,
             birthTime: userData.birthTime || null,
             birthPlace: userData.birthPlace || null,
@@ -1210,6 +1235,11 @@ const MayaFunnel = {
         
         // Also save to funnel_data for backup/recovery
         MayaUtils.storage.set('funnel_data', userData);
+
+        // Make sure the voice module picks up the chosen guide gender on fresh loads too.
+        if (window.MayaVoice?.setAgentGender) {
+            MayaVoice.setAgentGender(profileData.agentGender);
+        }
         
         console.log('🎭 Storytelling Funnel initialized with:', userData);
         console.log('💾 Profile saved to localStorage:', profileData);
@@ -1757,9 +1787,35 @@ ${this.getBaseRules(false)}`;
         const userMaritalStatus = this.userData?.maritalStatus || '';
         const maritalLabel = userMaritalStatus === 'married' ? 'Married (विवाहित)' : userMaritalStatus === 'unmarried' ? 'Unmarried (अविवाहित)' : userMaritalStatus === 'divorced' ? 'Divorced (विवाह विच्छेद)' : 'Not specified';
 
+        // Life stage + Chara Karaka directive — ensures predictions stay age-appropriate
+        // and can specifically speak about self + key relatives (mother, spouse, children, siblings…)
+        const lifeStage = (window.MayaKundli?.calculateLifeStage)
+            ? MayaKundli.calculateLifeStage(this.userData?.birthDate)
+            : null;
+        const charaKarakas = (this.kundliChart?.planets?.length && window.MayaKundli?.calculateCharaKarakas)
+            ? MayaKundli.calculateCharaKarakas(this.kundliChart.planets)
+            : null;
+
+        let lifeStageBlock = '';
+        if (lifeStage && lifeStage.age != null) {
+            lifeStageBlock = isHindi
+                ? `\n\n## LIFE STAGE (उम्र-अनुरूप predictions के लिए CRITICAL)\nUser की उम्र: ${lifeStage.age} साल — Stage: ${lifeStage.label}\nइस stage पर focus: ${lifeStage.focusHi}\nREGEL: हर prediction, remedy, और timing इसी life-stage के हिसाब से दीजिए। ऐसे events predict मत कीजिए जो इस उम्र के लिए biologically/socially impossible हैं (जैसे 24 साल के user को retirement, 55 साल के user को school admission, 68 साल के user को पहला बच्चा)।`
+                : `\n\n## LIFE STAGE (age-appropriate predictions — CRITICAL)\nUser age: ${lifeStage.age} years — Stage: ${lifeStage.label}\nFocus at this stage: ${lifeStage.focusEn}\nRULE: Every prediction, remedy, and timing window MUST fit this life stage. Do NOT predict events that are biologically/socially implausible for this age (e.g., retirement for a 24-year-old, first child for a 68-year-old, school admission for a 55-year-old).`;
+        }
+
+        let karakaBlock = '';
+        if (charaKarakas) {
+            const lines = Object.values(charaKarakas).map(k =>
+                `- ${k.code} (${k.hindi}): ${k.planet} in ${k.sign} ${k.degree}° — signifies ${k.signifies}`
+            ).join('\n');
+            karakaBlock = isHindi
+                ? `\n\n## CHARA KARAKAS — User और उनके रिश्तेदारों के personal significators\n${lines}\nREGEL: जब भी किसी रिश्तेदार (माँ, जीवनसाथी, भाई-बहन, बच्चे, पिता-पक्ष के रिश्तेदार) या खुद user के बारे में बोलें, उस karaka ग्रह की राशि, degree, और house से correlate कीजिए। उदाहरण: Darakaraka अगर fiery sign में है → जीवनसाथी assertive/independent; Matrukaraka Saturn/Rahu से afflicted → माँ की zindagi में कठिनाई या भावनात्मक दूरी; Putrakaraka strong house में → बच्चों/creativity से संतुष्टि। Generic बातें मत कहिए — हमेशा karaka ग्रह name करके effect बताइए।`
+                : `\n\n## CHARA KARAKAS — personal significators for the user AND their key relatives\n${lines}\nRULE: Whenever you speak about a relative (mother, spouse, siblings, children, paternal relatives) or the user's own self/career, correlate it to that karaka planet's sign, degree, and house. Example: Darakaraka in a fiery sign → spouse is assertive/independent; Matrukaraka afflicted by Saturn/Rahu → mother faces hardship or emotional distance; Putrakaraka in a strong house → fulfilment through children/creativity. Do NOT give generic statements — always name the karaka planet and its effect.`;
+        }
+
         const commonFacts = isHindi
-            ? `${temporalRules}\n\nUser gender: ${genderLabel}\nMarital Status: ${maritalLabel}\n\nNumerology:\n- Life Path: ${numbers.lifePath || 'unknown'}\n- Destiny: ${numbers.destiny || 'unknown'}\n- Soul Urge: ${numbers.soulUrge || 'unknown'}\n- Personal Year: ${numbers.personalYear || 'unknown'}\n\n${chartFacts}${timingHints ? `\nTiming hints: ${timingHints}` : ''}${userSelections ? `\n\n## USER RESPONSES (use these to PERSONALISE)\n${userSelections}\nIMPORTANT: User ने ऊपर दिए सवालों के जवाब दिए हैं। इन जवाबों से user की real life situation पता चलती है। Reading इन answers से DIRECTLY influenced होनी चाहिए - अगर user ने कहा "सीधी बात बोलो" तो filterless बोलिए, अगर "not_fully" कहा career में तो career dissatisfaction address कीजिए, अगर "हाँ" कहा repeating mistake पर तो उस pattern को name और explain कीजिए।` : ''}\n\nIMPORTANT: Use the EXACT planetary positions, dasha periods, and house analysis given above to make SPECIFIC predictions. Reference the actual planet names, signs, degrees, and dasha years. For example: "शनि मीन राशि में 14.2° पर है और आपकी राहु दशा 2019 में शुरू हुई - इसका मतलब है कि 2020-2021 में..." This makes predictions feel personally calculated. Do NOT give vague generic predictions. Every claim must trace back to a specific chart fact above.\nIf planet-in-house analysis data is provided above, weave those effects naturally into your reading - reference the remedies (उपाय), benefic/malefic effects, and specific rules for the user's planetary placements. Do NOT mention the source name or any book title - just present these insights as part of your own Vedic reading seamlessly.`
-            : `${temporalRules}\n\nUser gender: ${genderLabel}\nMarital Status: ${maritalLabel}\n\nNumerology:\n- Life Path: ${numbers.lifePath || 'unknown'}\n- Destiny: ${numbers.destiny || 'unknown'}\n- Soul Urge: ${numbers.soulUrge || 'unknown'}\n- Personal Year: ${numbers.personalYear || 'unknown'}\n\n${chartFacts}${timingHints ? `\nTiming hints: ${timingHints}` : ''}${userSelections ? `\n\n## USER RESPONSES (use these to PERSONALISE)\n${userSelections}\nIMPORTANT: The user answered the questions above. These reveal their real life situation. Your reading MUST be directly shaped by these answers - if user chose "harder truth", be filterless; if they said "not_fully" about career, address career dissatisfaction; if they confirmed a repeating mistake, name and explain that pattern.` : ''}\n\nIMPORTANT: Use the EXACT planetary positions, dasha periods, and house analysis given above to make SPECIFIC predictions. Reference the actual planet names, signs, degrees, and dasha transition years. For example: "Saturn in Pisces at 14.2° combined with your Rahu dasha starting 2019 means that in 2020-2021..." This makes predictions feel personally calculated. Do NOT give vague generic predictions. Every claim must trace back to a specific chart fact above.\nIf planet-in-house analysis data is provided above, weave those effects naturally into your reading - reference the remedies, benefic/malefic effects, and specific rules for the user's planetary placements. Do NOT mention the source name or any book title - just present these insights as part of your own Vedic reading seamlessly.`;
+            ? `${temporalRules}\n\nUser gender: ${genderLabel}\nMarital Status: ${maritalLabel}${lifeStageBlock}${karakaBlock}\n\nNumerology:\n- Life Path: ${numbers.lifePath || 'unknown'}\n- Destiny: ${numbers.destiny || 'unknown'}\n- Soul Urge: ${numbers.soulUrge || 'unknown'}\n- Personal Year: ${numbers.personalYear || 'unknown'}\n\n${chartFacts}${timingHints ? `\nTiming hints: ${timingHints}` : ''}${userSelections ? `\n\n## USER RESPONSES (use these to PERSONALISE)\n${userSelections}\nIMPORTANT: User ने ऊपर दिए सवालों के जवाब दिए हैं। इन जवाबों से user की real life situation पता चलती है। Reading इन answers से DIRECTLY influenced होनी चाहिए - अगर user ने कहा "सीधी बात बोलो" तो filterless बोलिए, अगर "not_fully" कहा career में तो career dissatisfaction address कीजिए, अगर "हाँ" कहा repeating mistake पर तो उस pattern को name और explain कीजिए।` : ''}\n\nIMPORTANT: Use the EXACT planetary positions, dasha periods, and house analysis given above to make SPECIFIC predictions. Reference the actual planet names, signs, degrees, and dasha years. For example: "शनि मीन राशि में 14.2° पर है और आपकी राहु दशा 2019 में शुरू हुई - इसका मतलब है कि 2020-2021 में..." This makes predictions feel personally calculated. Do NOT give vague generic predictions. Every claim must trace back to a specific chart fact above.\nIf planet-in-house analysis data is provided above, weave those effects naturally into your reading - reference the remedies (उपाय), benefic/malefic effects, and specific rules for the user's planetary placements. Do NOT mention the source name or any book title - just present these insights as part of your own Vedic reading seamlessly.`
+            : `${temporalRules}\n\nUser gender: ${genderLabel}\nMarital Status: ${maritalLabel}${lifeStageBlock}${karakaBlock}\n\nNumerology:\n- Life Path: ${numbers.lifePath || 'unknown'}\n- Destiny: ${numbers.destiny || 'unknown'}\n- Soul Urge: ${numbers.soulUrge || 'unknown'}\n- Personal Year: ${numbers.personalYear || 'unknown'}\n\n${chartFacts}${timingHints ? `\nTiming hints: ${timingHints}` : ''}${userSelections ? `\n\n## USER RESPONSES (use these to PERSONALISE)\n${userSelections}\nIMPORTANT: The user answered the questions above. These reveal their real life situation. Your reading MUST be directly shaped by these answers - if user chose "harder truth", be filterless; if they said "not_fully" about career, address career dissatisfaction; if they confirmed a repeating mistake, name and explain that pattern.` : ''}\n\nIMPORTANT: Use the EXACT planetary positions, dasha periods, and house analysis given above to make SPECIFIC predictions. Reference the actual planet names, signs, degrees, and dasha transition years. For example: "Saturn in Pisces at 14.2° combined with your Rahu dasha starting 2019 means that in 2020-2021..." This makes predictions feel personally calculated. Do NOT give vague generic predictions. Every claim must trace back to a specific chart fact above.\nIf planet-in-house analysis data is provided above, weave those effects naturally into your reading - reference the remedies, benefic/malefic effects, and specific rules for the user's planetary placements. Do NOT mention the source name or any book title - just present these insights as part of your own Vedic reading seamlessly.`;
 
         const sharedRules = this.getBaseRules(isHindi);
 
@@ -1787,7 +1843,7 @@ STRUCTURE (इसी ORDER में लिखिए):
                 warningIntro: `आप current user के लिए caution section का ONE short transition लिख रही हैं। 1-2 वाक्य। पहले कही गई strengths को acknowledge करें, फिर एक honest pressure point की तरफ move करें। डराइए नहीं। ज्यादा से ज्यादा एक [[pause-250]] token।`,
                 warning: `आप current user के लिए ONE honest DEEP warning section लिख रही हैं। यह FILTERLESS reading है - sach बोलिए, package मत कीजिए। पहले दिए caution hints repeat मत कीजिए। Chart data से एक NEW specific self-sabotage pattern identify कीजिए - planetary position से exact reason बताइए कि ये pattern क्यों बनता है, कब trigger होता है (specific months/situations), और practically कैसे बचना है। Generic "careful रहिए" मत कहिए - actual planetary evidence दीजिए। 5-7 वाक्य। ज्यादा से ज्यादा एक [[pause-250]] token।`,
                 calculationRecovery: `आप current user के लिए ONE short recovery line लिख रही हैं। 1-2 वाक्य। बताइए कि reading data पूरी तरह sync नहीं हुआ है और तुरंत फिर से align करना होगा। इसे operational रखें, mystical sales copy मत बनाइए। ज्यादा से ज्यादा एक [[pause-250]] token।`,
-                emailGate: `आप current user के लिए ONE phone gate transition लिख रही हैं। 2-3 वाक्य। पहले FOMO create कीजिए - बताइए कि उनकी कुंडली में कुछ ऐसा दिखा है जो अभी बताना जरूरी है, लेकिन वो deeper layer private saved file में है जिसमें chart-specific timing windows, do/avoid steps, और warnings हैं। फिर CLEARLY कहिए कि screen पर एक WhatsApp नंबर field दिखेगा और उन्हें अपना WhatsApp नंबर वहाँ type करना है - जैसे "अभी screen पर अपना WhatsApp नंबर type कर दीजिए - OTP आएगा, बस confirm कर दीजिए और मैं आगे की deeper layer खोल दूँगी।" सिर्फ एक बार माँगें, ज्यादा insist मत करें। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                emailGate: `आप current user के लिए ONE soft, non-intimidating phone gate transition लिख रही हैं। EXACTLY 2-3 वाक्य। FOMO या डर मत पैदा कीजिए। Framing यह हो कि आप एक genuine limitation share कर रही हैं, pressure नहीं। Sentence 1: warm continuation — कहिए कि reading का अगला layer तैयार है। Sentence 2 (CORE LINE, must include this meaning): "${this.firstName || 'जी'}, इसके आगे बढ़ते हुए मैं इससे ज़्यादा details आपके लिए save नहीं कर पाऊँगी — please save करने के लिए आप अपना mobile number डाल दीजिए।" Sentence 3 (optional): gentle reassurance कि number सिर्फ उनकी reading save रखने के लिए है, कोई spam नहीं। यह दोस्त जैसी tone हो, sales pitch नहीं। ज्यादा से ज्यादा एक [[pause-250]] token।`,
                 fomoHook: `आप current user के लिए ONE fear/FOMO hook लिख रही हैं। 2-3 वाक्य। कुंडली और numbers के आधार पर एक concerning या serious pattern बताइए - जैसे आने वाले महीनों में कोई challenge, relationship में hidden tension, career में कोई trap, या कोई repeating self-sabotage pattern। इसे ऐसे बोलिए कि user को लगे "मुझे इसके बारे में और जानना होगा।" यह prediction confident और specific होनी चाहिए, vague नहीं। डराइए नहीं, लेकिन urgency जरूर बनाइए। End में hint दीजिए कि full details private reading में हैं। ज्यादा से ज्यादा एक [[pause-250]] token।`,
                 combinedTeaser: `आप current user के लिए एक COMBINED teaser reading लिख रही हैं जिसमें तीन हिस्से एक flowing paragraph में हों। पूरी reading 8-10 वाक्य। तीनों हिस्सों को [[pause-250]] token से अलग कीजिए।\n\nहिस्सा 1 - IDENTITY TRUTH: "आप ऐसे इंसान हैं जो..." format। Chart data और numbers से एक core pattern-based observation जो flattery-free हो - सिर्फ accurate self-description जो user खुद पहचान ले। 2-3 वाक्य।\n\n[[pause-250]]\n\nहिस्सा 2 - EMOTIONAL PATTERN: कोई ऐसा daily emotional pattern जो user actually जीता है - inner conflict, recurring feeling, या relationship dynamic जो chart data confirm करती है। यह "inside-out" description हो। 2-3 वाक्य।\n\n[[pause-250]]\n\nहिस्सा 3 - UNRESOLVED THREAD: Chart data से एक ऐसा open loop जो naturally resolution माँगे - कोई timing shift, relationship question, या career crossroad जो अभी unresolved है। User को लगे "मुझे इस बारे में और जानना है।" 2-3 वाक्य।\n\nतीनों हिस्से एक दूसरे से connected होने चाहिए - एक कहानी की तरह, अलग-अलग टुकड़े नहीं। हर हिस्से में SPECIFIC chart evidence use कीजिए (planetary positions, dasha periods, house activations)। Generic observations FORBIDDEN हैं।`,
                 identityTruth: `आप current user के लिए ONE grounded identity truth लिख रही हैं। 2-3 वाक्य। "आप ऐसे इंसान हैं जो..." format use कीजिए। Chart data और numbers से एक core pattern-based observation दीजिए जो flattery-free हो - कोई praise नहीं, सिर्फ accurate self-description जो user खुद पहचान ले। ज्यादा से ज्यादा एक [[pause-250]] token।`,
@@ -1825,7 +1881,7 @@ STRUCTURE (follow this ORDER):
                 warningIntro: `Write ONE short transition into the caution section for the current user. 1-2 sentences. Acknowledge the strengths already covered, then move honestly toward one pressure point without fear-mongering. Use at most one [[pause-250]] token.`,
                 warning: `Write ONE honest FILTERLESS warning section for the current user. Tell the truth plainly - do not package it. Do NOT repeat any caution hints already given. Use chart data to identify one NEW specific self-sabotage pattern - explain from the planetary position EXACTLY why this pattern forms, when it triggers (specific months/situations), and how to practically avoid it. Do NOT say generic "be careful" - provide actual planetary evidence. 5-7 sentences. Use at most one [[pause-250]] token.`,
                 calculationRecovery: `Write ONE short recovery line for the current user. 1-2 sentences. Explain that the reading data did not fully sync and needs to be aligned again right away. Keep it operational rather than mystical or salesy. Use at most one [[pause-250]] token.`,
-                emailGate: `Write ONE phone-gate transition for the current user. 2-3 sentences. First create FOMO - say you found something in their chart that needs to be shared now, but the deeper layer is in a private saved file with chart-specific timing windows, do/avoid steps, and warnings. Then CLEARLY instruct the user to type their WhatsApp number in the field that is about to appear on screen - something like "You'll see a WhatsApp number field on screen now - just type your number there, you'll receive a quick OTP, and once you confirm it I can unlock the deeper layer for you." Ask only once, do not push or repeat the ask. Use at most one [[pause-250]] token.`,
+                emailGate: `Write ONE soft, non-intimidating phone-gate transition for the current user. EXACTLY 2-3 sentences. Do NOT create FOMO or fear. Frame it as sharing a genuine limitation, not pressure. Sentence 1: warm continuation — say the next layer of the reading is ready. Sentence 2 (CORE LINE, must carry this meaning): "${this.firstName || 'friend'}, from here on I won't be able to save any more of these details for you — please drop your mobile number so I can save them." Sentence 3 (optional): gentle reassurance that the number is only to keep their reading safe, not for any spam. Tone is that of a friend, not a salesperson. Use at most one [[pause-250]] token.`,
                 fomoHook: `Write ONE fear/FOMO hook for the current user. 2-3 sentences. Based on their kundli and numbers, reveal one concerning or serious pattern - such as an upcoming challenge in the next few months, a hidden relationship tension, a career trap, or a repeating self-sabotage cycle. Say it in a way that makes the user think "I need to know more about this." The prediction must be confident and specific, not vague. Do not fear-monger, but create genuine urgency. End with a hint that full details are in the private reading. Use at most one [[pause-250]] token.`,
                 combinedTeaser: `Write a COMBINED teaser reading for the current user containing three connected segments in one flowing narrative. Total 8-10 sentences. Separate the three segments with [[pause-250]] tokens.\n\nSegment 1 - IDENTITY TRUTH: Use "You are someone who..." format. A core pattern-based observation from chart data and numbers that is flattery-free - just an accurate self-description the user would immediately recognize. 2-3 sentences.\n\n[[pause-250]]\n\nSegment 2 - EMOTIONAL PATTERN: Name a daily emotional pattern the user actually lives with - an inner conflict, recurring feeling, or relationship dynamic that chart data confirms. An "inside-out" description of what the user feels privately. 2-3 sentences.\n\n[[pause-250]]\n\nSegment 3 - UNRESOLVED THREAD: Create an open loop from chart data that naturally demands resolution - a timing shift, relationship question, or career crossroad currently unresolved. The user must feel "I need to know more." 2-3 sentences.\n\nAll three segments must connect as one flowing story, not isolated observations. Every segment must cite SPECIFIC chart evidence (planetary positions, dasha periods, house activations). Generic observations are FORBIDDEN.`,
                 identityTruth: `Write ONE grounded identity truth for the current user. 2-3 sentences. Use "You are someone who..." format. Give a core pattern-based observation from chart data and numbers that is flattery-free - no praise, just an accurate self-description the user would immediately recognize in themselves. Use at most one [[pause-250]] token.`,
@@ -4769,8 +4825,8 @@ Return ONLY valid JSON object in this exact schema:
         textDisplay.innerHTML = `
             <div class="email-gate-container phone-gate-container">
                 <div class="gate-header">
-                    <h3>${isHindi ? 'अपनी निजी रीडिंग सेव करें' : 'Save Your Private Reading'}</h3>
-                    <p class="gate-subtitle">${isHindi ? `${this.firstName}, आपकी पूरी फाइल तैयार है, OTP से सुरक्षित कर दीजिए` : `${this.firstName}, your full file is ready, verify once by OTP to keep it safe`}</p>
+                    <h3>${isHindi ? 'अपनी रीडिंग सेव कर लीजिए' : 'Let\'s save your reading'}</h3>
+                    <p class="gate-subtitle">${isHindi ? `${this.firstName}, इसके आगे बढ़ते हुए मैं इससे ज़्यादा details आपके लिए save नहीं कर पाऊँगी — please अपना mobile number डाल दीजिए ताकि आपकी reading सुरक्षित रह सके।` : `${this.firstName}, from here on I won't be able to save any more of these details for you — please drop your mobile number so your reading stays safe with you.`}</p>
                 </div>
                 <div class="gate-benefits">
                     <div class="benefit-item"><i class="bi bi-heart-fill"></i><span>${isHindi ? 'प्रेम और रिश्तों का समय-संकेत' : 'Love and relationship timing'}</span></div>

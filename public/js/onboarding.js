@@ -153,6 +153,18 @@ const MayaOnboarding = {
                 { value: 'divorced', label: 'Divorced', labelHi: 'विवाह विच्छेद' }
             ],
             validation: (value) => ['married', 'unmarried', 'divorced'].includes(value)
+        },
+        {
+            id: 'agentGender',
+            question: "One last thing — who would you like to guide your reading?",
+            questionHi: "आख़िरी बात — आप चाहते हैं कि आपकी reading कौन करे?",
+            field: 'agentGender',
+            type: 'select',
+            options: [
+                { value: 'female', label: 'MAYA — female guide', labelHi: 'MAYA — महिला guide' },
+                { value: 'male', label: 'MAYA — male guide', labelHi: 'MAYA — पुरुष guide' }
+            ],
+            validation: (value) => ['male', 'female'].includes(value)
         }
     ],
 
@@ -1084,6 +1096,18 @@ const MayaOnboarding = {
                 }
                 console.log('Language set to:', value);
             }
+
+            // If the guide gender was selected, swap the voice immediately so the
+            // very next ritual line (and the funnel) use the chosen voice.
+            if (step.field === 'agentGender') {
+                if (window.MayaVoice?.setAgentGender) {
+                    MayaVoice.setAgentGender(value);
+                }
+                const existingProfile = MayaUtils.storage.get('maya_profile') || {};
+                existingProfile.agentGender = value;
+                MayaUtils.storage.set('maya_profile', existingProfile);
+                console.log('Guide gender set to:', value);
+            }
         }
         
         console.log('User data after selection:', this.userData);
@@ -1170,6 +1194,7 @@ const MayaOnboarding = {
         const profileData = {
             name: this.userData.name,
             gender: this.userData.gender,
+            agentGender: this.userData.agentGender || 'female',
             birthDate: this.userData.birthDate,
             birthTime: this.userData.birthTime || 'unknown',
             birthPlace: resolvedBirthPlace.birthPlace || this.userData.birthPlace,
