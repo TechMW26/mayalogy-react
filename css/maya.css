@@ -1936,6 +1936,176 @@ h1, h2, h3, h4, h5, h6, p {
     box-shadow: 0 4px 15px rgba(0, 102, 255, 0.3);
 }
 
+/* Agent Selection — Card Slider */
+.agent-slider-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 380px;
+    margin: 0 auto;
+    overflow: hidden;
+    padding: 1rem 0 0.5rem;
+    touch-action: pan-y;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.agent-slider-track {
+    display: flex;
+    transition: transform 0.4s cubic-bezier(.4,0,.2,1);
+    will-change: transform;
+    cursor: grab;
+}
+
+.agent-slider-track:active {
+    cursor: grabbing;
+}
+
+.agent-slide {
+    flex: 0 0 100%;
+    display: flex;
+    justify-content: center;
+    padding: 0 1rem;
+    box-sizing: border-box;
+}
+
+.agent-slide-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem 2rem 2rem;
+    border-radius: 1.5rem;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    transition: all 0.4s ease;
+    width: 100%;
+    max-width: 320px;
+}
+
+.agent-slide.active .agent-slide-card {
+    border-color: var(--maya-primary, #c79a3a);
+    background: rgba(199, 154, 58, 0.08);
+    box-shadow: 0 8px 40px rgba(199, 154, 58, 0.2), 0 0 60px rgba(199, 154, 58, 0.06);
+}
+
+.agent-slide-img-wrap {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+    transition: all 0.4s ease;
+}
+
+.agent-slide.active .agent-slide-img-wrap {
+    border-color: var(--maya-primary, #c79a3a);
+    box-shadow: 0 0 30px rgba(199, 154, 58, 0.3), 0 8px 40px rgba(0, 0, 0, 0.4);
+}
+
+.agent-slide-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+}
+
+.agent-slide-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.agent-slide-name {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--maya-text-primary, #fff);
+    letter-spacing: 0.03em;
+}
+
+.agent-slide-desc {
+    font-size: 0.9rem;
+    color: var(--maya-text-secondary, #aaa);
+    opacity: 0.85;
+}
+
+.agent-slider-dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-top: 1.25rem;
+}
+
+.agent-slider-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.agent-slider-dot.active {
+    background: var(--maya-primary, #c79a3a);
+    transform: scale(1.3);
+    box-shadow: 0 0 8px rgba(199, 154, 58, 0.5);
+}
+
+.agent-slider-hint {
+    text-align: center;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.35);
+    margin-top: 0.75rem;
+    letter-spacing: 0.04em;
+}
+
+/* Desktop: show both cards side by side */
+@media (min-width: 600px) {
+    .agent-slider-wrapper {
+        max-width: 700px;
+        overflow: visible;
+    }
+
+    .agent-slider-track {
+        transform: none !important;
+        gap: 1.5rem;
+        justify-content: center;
+        cursor: default;
+    }
+
+    .agent-slide {
+        flex: 0 0 auto;
+        width: 300px;
+        padding: 0;
+    }
+
+    .agent-slide-card {
+        cursor: pointer;
+        padding: 2rem 2.5rem 2.5rem;
+    }
+
+    .agent-slide-card:hover {
+        border-color: var(--maya-primary, #c79a3a);
+        background: rgba(199, 154, 58, 0.06);
+        transform: translateY(-4px);
+        box-shadow: 0 12px 40px rgba(199, 154, 58, 0.15);
+    }
+
+    .agent-slide-img-wrap {
+        width: 220px;
+        height: 220px;
+    }
+
+    .agent-slider-dots,
+    .agent-slider-hint {
+        display: none;
+    }
+}
+
+/* Keep backward compat for old classes (no-op if unused) */
+.agent-select-container { display: none; }
+
 /* Onboarding Actions */
 .onboarding-actions {
     display: flex;

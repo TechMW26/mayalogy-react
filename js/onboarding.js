@@ -18,7 +18,8 @@ const MayaOnboarding = {
         },
         welcome: {
             en: "Good. Let me note that down.",
-            hi: "अच्छा। लिख लेती हूँ।"
+            hi: "अच्छा। लिख लेता हूँ।",
+            hi_f: "अच्छा। लिख लेती हूँ।"
         },
         gender: {
             en: "Noted.",
@@ -34,11 +35,13 @@ const MayaOnboarding = {
         },
         birthPlace: {
             en: "Got it. One more thing.",
-            hi: "समझ गई। एक बात और।"
+            hi: "समझ गया। एक बात और।",
+            hi_f: "समझ गई। एक बात और।"
         },
         maritalStatus: {
             en: "I have what I need. Let me begin.",
-            hi: "जो चाहिए था, मिल गया। शुरू करती हूँ।"
+            hi: "जो चाहिए था, मिल गया। शुरू करता हूँ।",
+            hi_f: "जो चाहिए था, मिल गया। शुरू करती हूँ।"
         }
     },
     
@@ -156,13 +159,13 @@ const MayaOnboarding = {
         },
         {
             id: 'agentGender',
-            question: "One last thing — who would you like to guide your reading?",
-            questionHi: "आख़िरी बात — आप चाहते हैं कि आपकी reading कौन करे?",
+            question: "One last thing — choose your guide",
+            questionHi: "आख़िरी बात — अपना guide चुनिए",
             field: 'agentGender',
-            type: 'select',
+            type: 'agentSelect',
             options: [
-                { value: 'female', label: 'MAYA — female guide', labelHi: 'MAYA — महिला guide' },
-                { value: 'male', label: 'MAYA — male guide', labelHi: 'MAYA — पुरुष guide' }
+                { value: 'female', label: 'Maya', labelHi: 'Maya' },
+                { value: 'male', label: 'Moksh', labelHi: 'Moksh' }
             ],
             validation: (value) => ['male', 'female'].includes(value)
         }
@@ -314,7 +317,7 @@ const MayaOnboarding = {
                 </div>
 
                 <h2 class="landing-headline">Open Your Personal<br>Astrology Reading</h2>
-                <p class="landing-subtext">Your birth chart holds patterns most people never see.<br>MAYA will read yours - live, in her own voice.</p>
+                <p class="landing-subtext">Your birth chart holds patterns most people never see.<br>Your guide will read yours — live, in their own voice.</p>
 
                 <div class="landing-actions">
                     <button type="button" class="btn btn-primary btn-lg landing-begin-btn" id="landingBeginBtn">
@@ -499,6 +502,42 @@ const MayaOnboarding = {
                     </div>
                 `;
                 break;
+
+            case 'agentSelect':
+                inputHtml = `
+                    <div class="agent-slider-wrapper">
+                        <div class="agent-slider-track" id="agentSliderTrack">
+                            <div class="agent-slide" data-value="female">
+                                <div class="agent-slide-card">
+                                    <div class="agent-slide-img-wrap">
+                                        <img src="images/maya-guide.png" alt="Maya" class="agent-slide-img" draggable="false" />
+                                    </div>
+                                    <div class="agent-slide-info">
+                                        <span class="agent-slide-name">Maya</span>
+                                        <span class="agent-slide-desc">${this.isHindiUI() ? 'आपकी महिला guide' : 'Your Female Guide'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="agent-slide" data-value="male">
+                                <div class="agent-slide-card">
+                                    <div class="agent-slide-img-wrap">
+                                        <img src="images/moksh-guide.png" alt="Moksh" class="agent-slide-img" draggable="false" />
+                                    </div>
+                                    <div class="agent-slide-info">
+                                        <span class="agent-slide-name">Moksh</span>
+                                        <span class="agent-slide-desc">${this.isHindiUI() ? 'आपके पुरुष guide' : 'Your Male Guide'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="agent-slider-dots">
+                            <span class="agent-slider-dot active" data-index="0"></span>
+                            <span class="agent-slider-dot" data-index="1"></span>
+                        </div>
+                        <p class="agent-slider-hint">${this.isHindiUI() ? '← स्वाइप करें या टैप करें →' : '← Swipe or tap to choose →'}</p>
+                    </div>
+                `;
+                break;
         }
 
         container.innerHTML = `
@@ -589,6 +628,98 @@ const MayaOnboarding = {
         const confirmBtn = document.querySelector('.onboarding-confirm');
         if (confirmBtn) {
             confirmBtn.addEventListener('click', () => this.completeOnboarding());
+        }
+
+        // Agent slider (swipe + tap)
+        const sliderTrack = document.getElementById('agentSliderTrack');
+        if (sliderTrack) {
+            const slides = sliderTrack.querySelectorAll('.agent-slide');
+            const dots = document.querySelectorAll('.agent-slider-dot');
+            let currentSlide = 0;
+            let startX = 0, currentX = 0, isDragging = false;
+
+            const goToSlide = (index) => {
+                currentSlide = Math.max(0, Math.min(index, slides.length - 1));
+                sliderTrack.style.transform = `translateX(-${currentSlide * 100}%)`;
+                slides.forEach((s, i) => s.classList.toggle('active', i === currentSlide));
+                dots.forEach((d, i) => d.classList.toggle('active', i === currentSlide));
+            };
+
+            const selectCurrent = () => {
+                const value = slides[currentSlide].dataset.value;
+                setTimeout(() => this.handleSelection(step, value), 400);
+            };
+
+            // Touch events
+            sliderTrack.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+                isDragging = true;
+                sliderTrack.style.transition = 'none';
+            }, { passive: true });
+            sliderTrack.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                currentX = e.touches[0].clientX;
+                const diff = currentX - startX;
+                const base = -currentSlide * sliderTrack.parentElement.offsetWidth;
+                sliderTrack.style.transform = `translateX(${base + diff}px)`;
+            }, { passive: true });
+            sliderTrack.addEventListener('touchend', () => {
+                isDragging = false;
+                sliderTrack.style.transition = 'transform 0.4s cubic-bezier(.4,0,.2,1)';
+                const diff = currentX - startX;
+                if (Math.abs(diff) > 50) {
+                    goToSlide(currentSlide + (diff < 0 ? 1 : -1));
+                } else {
+                    goToSlide(currentSlide);
+                }
+                selectCurrent();
+            });
+
+            // Mouse drag (desktop)
+            sliderTrack.addEventListener('mousedown', (e) => {
+                startX = e.clientX;
+                isDragging = true;
+                sliderTrack.style.transition = 'none';
+                e.preventDefault();
+            });
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                currentX = e.clientX;
+                const diff = currentX - startX;
+                const base = -currentSlide * sliderTrack.parentElement.offsetWidth;
+                sliderTrack.style.transform = `translateX(${base + diff}px)`;
+            });
+            window.addEventListener('mouseup', () => {
+                if (!isDragging) return;
+                isDragging = false;
+                sliderTrack.style.transition = 'transform 0.4s cubic-bezier(.4,0,.2,1)';
+                const diff = currentX - startX;
+                if (Math.abs(diff) > 50) {
+                    goToSlide(currentSlide + (diff < 0 ? 1 : -1));
+                } else {
+                    goToSlide(currentSlide);
+                }
+                selectCurrent();
+            });
+
+            // Click/tap on individual slide
+            slides.forEach((slide, i) => {
+                slide.addEventListener('click', () => {
+                    goToSlide(i);
+                    selectCurrent();
+                });
+            });
+
+            // Dot navigation
+            dots.forEach((dot, i) => {
+                dot.addEventListener('click', () => {
+                    goToSlide(i);
+                    selectCurrent();
+                });
+            });
+
+            // Initialize first slide
+            goToSlide(0);
         }
 
         // Unknown time button
@@ -1065,7 +1196,14 @@ const MayaOnboarding = {
         const isHindi = this.isHindiUI();
         const lines = this.ritualVoiceLines[stepId];
         if (!lines) return;
-        const line = isHindi ? lines.hi : lines.en;
+        let line;
+        if (isHindi) {
+            // Use gender-specific Hindi variant if available
+            const isMale = this._isGuideMale();
+            line = (!isMale && lines.hi_f) ? lines.hi_f : lines.hi;
+        } else {
+            line = lines.en;
+        }
         if (!line) return;
         try {
             if (window.MayaVoice?.speak) {
@@ -1076,6 +1214,16 @@ const MayaOnboarding = {
         } catch (e) {
             console.warn('Ritual voice line failed:', e.message);
         }
+    },
+
+    /**
+     * Check if guide is male
+     */
+    _isGuideMale() {
+        const profile = window.MayaUtils?.storage?.get('maya_profile') || {};
+        const funnelData = window.MayaUtils?.storage?.get('funnel_data') || {};
+        const g = this.userData?.agentGender || profile.agentGender || funnelData.agentGender || 'female';
+        return g === 'male';
     },
 
     /**

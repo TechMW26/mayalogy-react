@@ -127,9 +127,38 @@ const MayaStatements = {
   _normalizePersonaPrompt(prompt, lang = this.currentLanguage) {
     if (!prompt) return "";
     const agentGender = this._getAgentGender();
+    const isMale = agentGender === 'male';
+    const guideName = isMale ? 'Moksh' : 'MAYA';
+    const genderEn = isMale ? 'male' : 'female';
+    const genderHi = isMale ? 'पुरुष' : 'महिला';
+    const relEn = isMale ? 'elder brother' : 'elder sister';
+    const relHi = isMale ? 'बड़े भाई' : 'बड़ी बहन';
+
+    // ─── Dynamic name + gender replacement (before any other normalization) ───
+    let normalized = String(prompt)
+      // Replace guide name
+      .replace(/\bMAYA\b/g, guideName)
+      // Replace hardcoded gender labels with actual gender
+      .replace(/\ba MALE\b/g, `a ${genderEn}`)
+      .replace(/\ba FEMALE\b/g, `a ${genderEn}`)
+      .replace(/\ban MALE\b/gi, `a ${genderEn}`)
+      .replace(/\ban FEMALE\b/gi, `a ${genderEn}`)
+      .replace(/\bMALE Vedic\b/g, `${genderEn} Vedic`)
+      .replace(/\bFEMALE Vedic\b/g, `${genderEn} Vedic`)
+      .replace(/\bMALE numerology\b/g, `${genderEn} numerology`)
+      .replace(/\bFEMALE numerology\b/g, `${genderEn} numerology`)
+      .replace(/\bMALE grounded\b/g, `${genderEn} grounded`)
+      .replace(/\bFEMALE grounded\b/g, `${genderEn} grounded`)
+      .replace(/\bMALE verb forms\b/g, `${genderEn} verb forms`)
+      .replace(/\bFEMALE verb forms\b/g, `${genderEn} verb forms`)
+      // Hindi elder relation
+      .replace(/बड़े भाई/g, relHi)
+      .replace(/बड़ी बहन/g, relHi)
+      .replace(/elder brother/gi, relEn)
+      .replace(/elder sister/gi, relEn);
 
     // ─── Hinglish normalization (shared for both genders) ───
-    let normalized = String(prompt)
+    normalized = normalized
       .replace(/देवनागरी Hinglish/gi, "simple spoken Hinglish: Hindi words mostly in Devanagari, common English terms in English script")
       .replace(/Hinglish देवनागरी/gi, "simple spoken Hinglish: Hindi words mostly in Devanagari, common English terms in English script")
       .replace(/simple Hinglish देवनागरी में/gi, "simple spoken Hinglish: Hindi words mostly in Devanagari, common English terms in English script")
@@ -139,11 +168,11 @@ const MayaStatements = {
       .replace(/हिंदी पूरी तरह देवनागरी में लिखिए/gi, "Hindi words को mostly Devanagari में रखें, common English terms को English script में रखें, और tone simple spoken Hinglish रखें")
       .replace(/रोमन हिंदी या अंग्रेज़ी वर्तनी न लिखें/gi, "Hindi words को mostly Devanagari में रखें, common English terms को English script में रखें, लेकिन बहुत शुद्ध Hindi मत लिखें");
 
-    if (agentGender === 'male') {
-      // Male guide: just append male persona guard, leave prompt intact
+    if (isMale) {
+      // Male guide: append male persona guard
       const personaGuardMale = lang === "hi"
-        ? "\nPERSONA OVERRIDE: MAYA एक पुरुष guide है। अपने लिए हमेशा पुल्लिंग first-person forms use करें: हूँ, रहा हूँ, सकता हूँ, देख रहा हूँ, बताता हूँ, कह रहा हूँ, वाला हूँ। कभी भी feminine forms जैसे रही हूँ, सकती हूँ, बताती हूँ, वाली हूँ use न करें। आवाज़ expressive और conversational रखिए।"
-        : "\nPERSONA OVERRIDE: MAYA is strictly male. Speak as an expressive, conversational male guide with grounded authority. Never describe MAYA as female, sister-like, or feminine.";
+        ? `\nPERSONA OVERRIDE: ${guideName} एक पुरुष guide है। अपने लिए हमेशा पुल्लिंग first-person forms use करें: हूँ, रहा हूँ, सकता हूँ, देख रहा हूँ, बताता हूँ, कह रहा हूँ, वाला हूँ। कभी भी feminine forms जैसे रही हूँ, सकती हूँ, बताती हूँ, वाली हूँ use न करें। आवाज़ expressive और conversational रखिए।`
+        : `\nPERSONA OVERRIDE: ${guideName} is strictly male. Speak as an expressive, conversational male guide with grounded authority. Never describe ${guideName} as female, sister-like, or feminine.`;
       return `${normalized}${personaGuardMale}`;
     }
 
@@ -185,8 +214,8 @@ const MayaStatements = {
       .replace(/- MALE voice/g, "- FEMALE voice");
 
     const personaGuard = lang === "hi"
-      ? "\nPERSONA OVERRIDE: MAYA एक महिला guide है। अपने लिए हमेशा स्त्रीलिंग first-person forms use करें: हूँ, रही हूँ, सकती हूँ, देख रही हूँ, बताती हूँ, कह रही हूँ, वाली हूँ। कभी भी masculine forms जैसे रहा हूँ, सकता हूँ, बताता हूँ, वाला हूँ use न करें। आवाज़ expressive और conversational रखिए।"
-      : "\nPERSONA OVERRIDE: MAYA is strictly female. Speak as an expressive, conversational female guide with warmth and grounded authority. Never describe MAYA as male, brother-like, or masculine.";
+      ? `\nPERSONA OVERRIDE: ${guideName} एक महिला guide है। अपने लिए हमेशा स्त्रीलिंग first-person forms use करें: हूँ, रही हूँ, सकती हूँ, देख रही हूँ, बताती हूँ, कह रही हूँ, वाली हूँ। कभी भी masculine forms जैसे रहा हूँ, सकता हूँ, बताता हूँ, वाला हूँ use न करें। आवाज़ expressive और conversational रखिए।`
+      : `\nPERSONA OVERRIDE: ${guideName} is strictly female. Speak as an expressive, conversational female guide with warmth and grounded authority. Never describe ${guideName} as male, brother-like, or masculine.`;
 
     return `${normalized}${personaGuard}`;
   },
@@ -194,9 +223,12 @@ const MayaStatements = {
   _normalizeGeneratedText(text, lang = this.currentLanguage) {
     if (!text) return "";
     const agentGender = this._getAgentGender();
+    const isMale = agentGender === 'male';
+    const guideName = isMale ? 'Moksh' : 'MAYA';
 
     // Common cleanup (both genders)
     let cleaned = String(text)
+      .replace(/\bMAYA\b/g, guideName)  // Dynamic guide name
       .replace(/```(?:json|text)?/gi, "")
       .replace(/`+/g, "")
       .replace(/^\s*(?:json|script|response)\s*[:\-]?\s*/i, "")

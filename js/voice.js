@@ -111,187 +111,187 @@ const MayaVoice = {
         en: {
             thinking: [
                 "Hmm, let me look deeper into your chart.",
-                "One moment, reading the planetary alignment.",
-                "Just tracing the pattern here.",
                 "Hold on, something interesting is showing up.",
+                "Okay wait, this part of your chart caught my eye.",
                 "Let me connect these dots for you.",
-                "Your chart is quite layered, give me a second.",
-                "I'm cross-referencing your dasha timeline.",
+                "Give me a second, your chart is quite layered.",
                 "Okay, this is getting interesting.",
-                "Let me check this particular angle.",
-                "Almost there, just verifying one detail.",
+                "Hmm, I wasn't expecting this. Let me check again.",
                 "There's a lot going on in your chart today.",
-                "Bear with me, I want to get this right.",
-                "Hmm, your planets are telling quite a story.",
-                "I see multiple things lining up here.",
-                "Let me read this more carefully."
+                "Bear with me, I want to get this right for you.",
+                "Your planets are telling quite a story.",
+                "Wait, I see multiple things lining up here.",
+                "One moment, I want to double-check this before I say it.",
+                "This is interesting, hold on.",
+                "Let me trace this pattern more carefully.",
+                "Hmm, something about your chart stands out to me."
             ],
             calculating: [
-                "Calculating your planetary positions now.",
-                "Running the numbers through your birth chart.",
-                "Mapping out the house placements.",
-                "Aligning the sidereal coordinates.",
-                "Processing your ascendant calculations.",
-                "Working through the dasha periods.",
-                "Charting the planetary degrees.",
-                "Computing the transit overlaps.",
+                "Mapping out your birth chart positions now.",
+                "Running these through your exact coordinates.",
+                "One moment, aligning the sidereal calculations.",
+                "Processing your ascendant and house placements.",
+                "Working through your dasha periods.",
                 "Let me finalize these calculations.",
-                "Cross-checking the birth time alignment.",
-                "Factoring in your birth location now.",
-                "One more step in the calculation.",
-                "Almost done with the number crunching.",
+                "Almost done, cross-checking the birth time.",
+                "Factoring in your birth location as well.",
                 "These numbers are very specific to you.",
-                "Every digit matters here."
+                "Every detail matters when the chart is this deep.",
+                "Hold on, the math is nearly done.",
+                "Charting the planetary degrees now.",
+                "Your chart requires extra precision here.",
+                "One more step before I can read this.",
+                "The calculations are revealing something."
             ],
             revealing: [
-                "Now this part is important, listen carefully.",
+                "Now this is important, listen carefully.",
                 "Here's what your chart is really saying.",
-                "I want you to pay close attention to this.",
+                "I want you to pay close attention to this part.",
                 "This is where it gets personal.",
-                "Let me share what I found in the deeper layer.",
                 "Okay, this next part matters a lot.",
-                "Here is the real picture forming.",
-                "This is the part most people miss.",
-                "I'm about to tell you something specific.",
+                "This is the part most people miss about themselves.",
                 "Listen, this is directly from your chart.",
-                "Not everyone gets to hear this level of detail.",
-                "This part might surprise you.",
-                "I don't say this to everyone.",
+                "I don't say this to everyone, but your chart is clear.",
                 "Pay attention, this is uniquely yours.",
-                "Here comes the important part."
+                "Here comes the part that might surprise you.",
+                "Okay I need to tell you this carefully.",
+                "This is something very specific to your birth chart.",
+                "Not many charts show this so clearly.",
+                "I noticed something and I want to share it with you.",
+                "This part is going to hit close to home."
             ],
             love: [
-                "Your Venus placement is revealing something.",
+                "Your Venus placement is telling me something.",
                 "Let me look at your seventh house closely.",
-                "Your relationship karma has a clear pattern.",
-                "The heart line in your chart is quite strong.",
-                "I can see how you love, and why.",
-                "Your emotional blueprint is very specific.",
-                "There's something about your romantic timing.",
-                "I'm reading the partnership angle now."
+                "Your relationship pattern is very clear here.",
+                "I can see how you love, and honestly, why.",
+                "There's something specific about your romantic timing.",
+                "The partnership angle is interesting in your chart.",
+                "Hold on, your emotional blueprint is very unique.",
+                "I'm seeing something about your love life."
             ],
             career: [
                 "Your tenth house is showing a clear direction.",
                 "Let me check your Saturn placement for career.",
-                "Your professional timeline has some key markers.",
+                "Your professional timeline has some key moments.",
                 "The wealth houses are active in your chart.",
-                "I see your work pattern very clearly.",
-                "Your career path has a unique signature.",
-                "The money planets are aligned in an interesting way.",
-                "Let me look at your professional destiny."
+                "I see your career pattern very clearly now.",
+                "Your professional path has a unique signature.",
+                "The money planets are aligned interestingly here.",
+                "Hold on, let me read your professional destiny."
             ],
             year: [
-                "This year's transit picture is forming.",
-                "Let me read what the coming months hold.",
-                "Your personal year number changes everything.",
-                "The yearly forecast depends on several factors.",
-                "I can see the major shifts ahead.",
-                "This period carries a very specific energy.",
-                "Some important dates are jumping out at me.",
-                "The next few months have a clear theme."
+                "This year's picture is forming in your chart.",
+                "Let me read what the coming months are holding for you.",
+                "Your personal year number changes things significantly.",
+                "I can see some major shifts ahead for you.",
+                "This period has a very specific energy.",
+                "Some important dates are standing out to me.",
+                "The next few months have a clear theme.",
+                "Hold on, I'm seeing something about the near future."
             ],
             kundli: [
-                "Your birth chart houses are taking shape.",
+                "Your birth chart is taking shape now.",
                 "The ascendant sets the foundation for everything.",
                 "Each house tells a different chapter of your life.",
-                "I'm mapping out where each planet sits.",
-                "Your kundli has a distinctive pattern.",
-                "The lagna chart reveals so much about you.",
+                "Your kundli has a very distinctive pattern.",
+                "The lagna chart reveals a lot about you.",
                 "Let me align the whole picture first.",
-                "Your planetary map is quite telling."
+                "Your planetary positions are quite telling.",
+                "Hold on, I'm mapping out the full chart."
             ]
         },
         hi: {
             thinking: [
-                "एक सेकंड, आपकी कुंडली में कुछ और देख रही हूँ।",
-                "रुकिए, ग्रहों की position check कर रही हूँ।",
-                "बस, इस pattern को trace कर रही हूँ।",
-                "अभी, कुछ interesting दिख रहा है।",
-                "ये dots connect करने दीजिए मुझे।",
-                "आपकी कुंडली काफी गहरी है, एक पल।",
-                "दशा timeline cross-check कर रही हूँ।",
-                "अच्छा, ये तो काफी दिलचस्प है।",
-                "एक और angle देख लेती हूँ।",
-                "बस एक detail verify हो जाए।",
-                "आज आपकी कुंडली में बहुत कुछ चल रहा है।",
-                "मैं ठीक से देखना चाहती हूँ।",
-                "आपके ग्रह काफी कुछ बता रहे हैं।",
-                "कई चीजें एक साथ align हो रही हैं।",
-                "इसे ध्यान से पढ़ती हूँ।"
+                "अच्छा रुकिए, मैं आपकी कुंडली में कुछ देख रही हूँ।",
+                "एक मिनट, मुझे कुछ interesting दिखा!",
+                "अच्छा, मैं थोड़ा deep dive करती हूँ अब।",
+                "रुकिए, ये pattern अच्छे से trace करना है।",
+                "हम्म, ये तो काफ़ी दिलचस्प है आपकी chart में।",
+                "एक सेकंड, मुझे ये angle ठीक से देखने दीजिए।",
+                "अच्छा, ये वाला हिस्सा ध्यान से देखना पड़ेगा।",
+                "बस, एक चीज़ verify कर लूँ फिर बताती हूँ।",
+                "आपके ग्रह काफ़ी कुछ बोल रहे हैं, सुनिए।",
+                "अरे, ये तो मैंने expect नहीं किया था। देखती हूँ।",
+                "कई चीज़ें एक साथ align हो रही हैं आपकी chart में।",
+                "रुकिए, मैं ये confirm करके बताती हूँ।",
+                "अच्छा, ये काफ़ी clear दिख रहा है अब।",
+                "एक पल, आपकी कुंडली काफ़ी गहरी है।",
+                "हम्म, मुझे ये बात ठीक से समझ कर बतानी है।"
             ],
             calculating: [
-                "ग्रहों की positions calculate हो रही हैं।",
-                "आपकी birth chart के numbers process कर रही हूँ।",
-                "भावों की mapping चल रही है।",
-                "सिडेरियल coordinates align हो रहे हैं।",
+                "ग्रहों की positions align हो रही हैं, एक पल।",
+                "आपकी exact birth chart का math चल रहा है।",
+                "भावों की mapping हो रही है, बस थोड़ा और।",
                 "लग्न calculations finalize हो रही हैं।",
-                "दशा periods work out कर रही हूँ।",
-                "ग्रहों के degrees chart हो रहे हैं।",
-                "Transit overlaps compute हो रहे हैं।",
+                "दशा periods निकाल रही हूँ, ये important है।",
                 "बस ये calculations पूरी होने वाली हैं।",
-                "जन्म समय की alignment check हो रही है।",
-                "जन्म स्थान भी factor कर रही हूँ।",
-                "बस एक और step बाकी है।",
-                "numbers almost ready हैं।",
-                "ये numbers सिर्फ़ आपके हैं।",
-                "हर अंक यहाँ मायने रखता है।"
+                "जन्म समय और स्थान दोनों factor हो रहे हैं।",
+                "numbers almost ready हैं, बस एक step और।",
+                "ये numbers सिर्फ़ आपके हैं, किसी और के नहीं।",
+                "हर degree यहाँ मायने रखती है।",
+                "transit overlaps देख रही हूँ, थोड़ा सब्र।",
+                "सिडेरियल coordinates set हो रहे हैं।",
+                "ग्रहों के degrees chart हो रहे हैं।",
+                "बस, final step चल रही है।",
+                "ये calculations बहुत precise हैं, एक पल और।"
             ],
             revealing: [
-                "ये हिस्सा जरूरी है, ध्यान से सुनिए।",
-                "अब सुनिए, आपकी कुंडली असल में क्या कह रही है।",
-                "इस बात पर ध्यान दीजिए।",
-                "अब बात personal होने वाली है।",
-                "जो deeper layer में मिला, वो share करती हूँ।",
-                "ये अगला हिस्सा बहुत matter करता है।",
-                "असली picture अब बन रही है।",
-                "ये वो बात है जो ज्यादातर लोग miss करते हैं।",
+                "अब ध्यान से सुनिए, ये जरूरी है।",
+                "अच्छा, अब मैं वो बात बोलती हूँ जो असल में दिख रही है।",
+                "ये हिस्सा बहुत personal होने वाला है।",
+                "सुनिए, ये सीधा आपकी कुंडली से आ रहा है।",
                 "अभी कुछ बहुत specific बताने वाली हूँ।",
-                "सुनिए, ये सीधा आपकी कुंडली से बोल रही हूँ।",
-                "ये detail सबको नहीं मिलती।",
-                "ये हिस्सा शायद आपको surprise करे।",
-                "ये बात मैं हर किसी को नहीं कहती।",
+                "ये बात मैं हर किसी को नहीं कहती, सुनिए।",
                 "ध्यान दीजिए, ये सिर्फ आपके लिए है।",
-                "अब important part आ रहा है।"
+                "ये वो part है जो ज़्यादातर लोग ख़ुद के बारे में नहीं जानते।",
+                "अच्छा, अब important part आ रहा है।",
+                "ये शायद आपको surprise करे, पर chart clear है।",
+                "मुझे ये ध्यान से कहना है, सुनिए।",
+                "ये detail सबकी chart में नहीं होती।",
+                "अब बताती हूँ वो बात जो मुझे सबसे ज़्यादा दिखी।",
+                "रुकिए, ये carefully बोलना है।",
+                "ये आपकी chart का सबसे important signal है।"
             ],
             love: [
-                "आपका शुक्र कुछ बता रहा है।",
-                "सातवें भाव को ध्यान से देखती हूँ।",
-                "आपका relationship karma काफी clear है।",
-                "आपकी heart line काफी strong है।",
-                "मैं देख सकती हूँ आप कैसे प्यार करते हैं।",
-                "आपका emotional blueprint बहुत specific है।",
-                "romantic timing में कुछ खास दिख रहा है।",
-                "partnership का angle पढ़ रही हूँ।"
+                "अच्छा, आपका शुक्र कुछ बता रहा है मुझे।",
+                "सातवें भाव में कुछ दिखा, रुकिए।",
+                "आपका relationship pattern काफ़ी clear आ रहा है।",
+                "मुझे दिख रहा है आप कैसे प्यार करते हैं, और क्यों।",
+                "romantic timing में कुछ ख़ास है, बताती हूँ।",
+                "partnership का angle interesting है आपकी chart में।",
+                "आपकी emotional blueprint बहुत unique है।",
+                "love life में कुछ specific दिख रहा है।"
             ],
             career: [
-                "आपका दसवां भाव clear direction दे रहा है।",
-                "शनि की placement career के लिए check करती हूँ।",
-                "professional timeline में कुछ key markers हैं।",
-                "wealth houses आपकी कुंडली में active हैं।",
-                "आपका work pattern मुझे clear दिख रहा है।",
-                "career path में एक unique signature है।",
-                "पैसों के ग्रह interesting तरीके से बैठे हैं।",
-                "professional destiny को देखती हूँ।"
+                "दसवां भाव clear direction दे रहा है।",
+                "शनि की placement से career पढ़ रही हूँ।",
+                "professional timeline में key moments दिख रहे हैं।",
+                "wealth houses active हैं आपकी chart में।",
+                "आपका work pattern अब clear हो रहा है मुझे।",
+                "career path में unique signature है, देखिए।",
+                "पैसों के ग्रह interesting तरीक़े से बैठे हैं।",
+                "professional destiny पढ़ रही हूँ, एक पल।"
             ],
             year: [
                 "इस साल की transit picture बन रही है।",
-                "आने वाले महीने क्या लाएंगे, देखती हूँ।",
-                "personal year number सब बदल देता है।",
-                "yearly forecast कई चीज़ों पर depend करता है।",
+                "आने वाले महीने क्या लाएंगे, बताती हूँ।",
+                "personal year number ने सब बदल दिया है।",
                 "आगे major shifts दिख रहे हैं।",
                 "इस time period की energy बहुत specific है।",
-                "कुछ important dates सामने आ रही हैं।",
-                "अगले कुछ महीनों का clear theme है।"
+                "कुछ important dates निकल रही हैं।",
+                "अगले कुछ महीनों का clear theme है, सुनिए।",
+                "near future में कुछ ख़ास दिख रहा है।"
             ],
             kundli: [
-                "आपकी birth chart के भाव shape ले रहे हैं।",
-                "लग्न सब कुछ की foundation set करता है।",
-                "हर भाव आपकी जिंदगी का अलग chapter है।",
-                "हर ग्रह कहाँ बैठा है, map कर रही हूँ।",
+                "आपकी birth chart shape ले रही है अब।",
+                "लग्न सब कुछ की foundation है, देखिए।",
+                "हर भाव आपकी ज़िन्दगी का अलग chapter खोलता है।",
+                "ग्रह कहाँ बैठे हैं, वो map हो रहा है।",
                 "आपकी कुंडली का pattern काफ़ी distinctive है।",
-                "लग्न कुंडली बहुत कुछ reveal करती है।",
-                "पहले पूरी picture align करने दीजिए।",
-                "आपका planetary map काफ़ी कुछ कह रहा है।"
+                "लग्न कुंडली बहुत कुछ reveal कर रही है।",
+                "पहले पूरी picture align होने दीजिए।",
+                "planetary map काफ़ी कुछ कह रहा है आपका।"
             ]
         }
     },
@@ -327,7 +327,38 @@ const MayaVoice = {
             this._recentFillers.shift();
         }
         
-        return phrases[index];
+        let phrase = phrases[index];
+        // Flip Hindi filler lines to masculine if guide is male
+        if (isHindi && this._isGuideMale()) {
+            phrase = phrase
+                .replace(/रही हूँ/g, 'रहा हूँ')
+                .replace(/सकती हूँ/g, 'सकता हूँ')
+                .replace(/बताती हूँ/g, 'बताता हूँ')
+                .replace(/कहती हूँ/g, 'कहता हूँ')
+                .replace(/वाली हूँ/g, 'वाला हूँ')
+                .replace(/\bबताऊँगी\b/g, 'बताऊँगा')
+                .replace(/\bकरूँगी\b/g, 'करूँगा')
+                .replace(/\bपाऊँगी\b/g, 'पाऊँगा')
+                .replace(/\bचाहती\b/g, 'चाहता')
+                .replace(/\bदेखती\b/g, 'देखता')
+                .replace(/\bकरती\b/g, 'करता')
+                .replace(/\bलेती\b/g, 'लेता')
+                .replace(/\bबनाती\b/g, 'बनाता')
+                .replace(/\bपढ़ती\b/g, 'पढ़ता');
+        }
+        return phrase;
+    },
+
+    /**
+     * Check if guide is male
+     */
+    _isGuideMale() {
+        const profile = window.MayaUtils?.storage?.get('maya_profile') || {};
+        const funnelData = window.MayaUtils?.storage?.get('funnel_data') || {};
+        const g = profile.agentGender || funnelData.agentGender
+            || window.MayaFunnel?.userData?.agentGender
+            || this.agentGender || 'female';
+        return g === 'male';
     },
 
     /**
@@ -1175,19 +1206,21 @@ const MayaVoice = {
 
         const modelId = 'eleven_multilingual_v2';
 
-        const latencyOptimization = 2;
+        const latencyOptimization = isMaleGuide ? 3 : 2;
         const voiceSettings = isHindi
             ? {
-                stability: 0.48,
+                stability: isMaleGuide ? 0.42 : 0.48,
                 similarity_boost: 0.84,
-                style: 0.45,
-                use_speaker_boost: true
+                style: isMaleGuide ? 0.50 : 0.45,
+                use_speaker_boost: true,
+                speed: isMaleGuide ? 1.15 : 1.0
             }
             : {
-                stability: 0.45,
+                stability: isMaleGuide ? 0.40 : 0.45,
                 similarity_boost: 0.82,
-                style: 0.40,
-                use_speaker_boost: true
+                style: isMaleGuide ? 0.45 : 0.40,
+                use_speaker_boost: true,
+                speed: isMaleGuide ? 1.15 : 1.0
             };
 
         const requestBody = {

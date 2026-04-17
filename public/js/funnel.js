@@ -127,11 +127,60 @@ const MayaFunnel = {
     },
 
     /**
+     * Return the guide display name based on gender.
+     */
+    _guideName() {
+        return this._isGuiderMale() ? 'Moksh' : 'MAYA';
+    },
+
+    /**
+     * Flip a static Hindi voice line to masculine when guide is male.
+     * For voice lines that are spoken directly (not AI-generated prompts).
+     */
+    _flipVoiceLine(line) {
+        if (!this._isGuiderMale()) return line;
+        return line
+            .replace(/रही हूँ/g, 'रहा हूँ')
+            .replace(/सकती हूँ/g, 'सकता हूँ')
+            .replace(/बताती हूँ/g, 'बताता हूँ')
+            .replace(/कहती हूँ/g, 'कहता हूँ')
+            .replace(/वाली हूँ/g, 'वाला हूँ')
+            .replace(/गई हूँ/g, 'गया हूँ')
+            .replace(/आई हूँ/g, 'आया हूँ')
+            .replace(/\bबताऊँगी\b/g, 'बताऊँगा')
+            .replace(/\bकहूँगी\b/g, 'कहूँगा')
+            .replace(/\bकरूँगी\b/g, 'करूँगा')
+            .replace(/\bपाऊँगी\b/g, 'पाऊँगा')
+            .replace(/\bचाहती\b/g, 'चाहता')
+            .replace(/\bदेखती\b/g, 'देखता')
+            .replace(/\bसमझती\b/g, 'समझता')
+            .replace(/\bकरती\b/g, 'करता')
+            .replace(/\bलेती\b/g, 'लेता')
+            .replace(/\bबनाती\b/g, 'बनाता')
+            .replace(/\bसमझ गई\b/g, 'समझ गया')
+            .replace(/\bलिख लेती\b/g, 'लिख लेता')
+            .replace(/\bशुरू करती\b/g, 'शुरू करता')
+            .replace(/\bजानती\b/g, 'जानता')
+            .replace(/बड़ी बहन/g, 'बड़े भाई')
+            .replace(/बहन जैसा/g, 'भाई जैसा')
+            .replace(/\bMAYA\b/g, 'Moksh');
+    },
+
+    /**
      * Flip feminine Hindi verb forms in prompt instructions to masculine when guide is male.
      */
     _genderFlipPrompt(text) {
         if (!this._isGuiderMale()) return text;
         return text
+            .replace(/\bMAYA\b/g, 'Moksh')
+            .replace(/आप MAYA हैं/g, 'आप Moksh हैं')
+            .replace(/You are MAYA/g, 'You are Moksh')
+            .replace(/I am MAYA/g, 'I am Moksh')
+            .replace(/introduce yourself as MAYA/gi, 'introduce yourself as Moksh')
+            .replace(/कहिए कि आप MAYA हैं/g, 'कहिए कि आप Moksh हैं')
+            .replace(/a wise female Vedic/gi, 'a wise male Vedic')
+            .replace(/wise female/gi, 'wise male')
+            .replace(/female guide/gi, 'male guide')
             .replace(/लिख रही हैं/g, 'लिख रहे हैं')
             .replace(/कर रही हैं/g, 'कर रहे हैं')
             .replace(/share कर रही हैं/g, 'share कर रहे हैं')
@@ -141,11 +190,14 @@ const MayaFunnel = {
             .replace(/करूँगी/g, 'करूँगा')
             .replace(/कहूँगी/g, 'कहूँगा')
             .replace(/कर सकती/g, 'कर सकता')
-            .replace(/नहीं कर पाऊँगी/g, 'नहीं कर पाऊँगा')
+            .replace(/\bचाहती\b/g, 'चाहता')
+            .replace(/\bजानती है/g, 'जानता है')
             .replace(/how does she know/gi, 'how does he know')
             .replace(/"she sees me"/gi, '"he sees me"')
             .replace(/\bshe sees\b/gi, 'he sees')
-            .replace(/\bshe explains\b/gi, 'he explains');
+            .replace(/\bshe explains\b/gi, 'he explains')
+            .replace(/\bshe noticed\b/gi, 'he noticed')
+            .replace(/\bher own voice\b/gi, 'his own voice');
     },
 
     /**
@@ -154,6 +206,7 @@ const MayaFunnel = {
     getBaseRules(isHindi) {
         const userGender = this.userData?.gender || '';
         const genderLabel = userGender === 'male' ? 'Male (पुरुष)' : userGender === 'female' ? 'Female (महिला)' : 'Not specified';
+        const _gn = this._guideName();
 
         return isHindi
             ? `Rules:
@@ -165,7 +218,7 @@ const MayaFunnel = {
 - "आप powerful हैं", "success आ रहा है" जैसी default praise FORBIDDEN। love, money, marriage, fame के guarantees FORBIDDEN। psychic/energy claims FORBIDDEN।
 - user का नाम हमेशा Devanagari में लिखिए (Aviraj → अविराज)। TTS के लिए जरूरी।
 - 🚫 नाम MAX 1-2 बार पूरे response में। बाकी "आप/आपके/आपकी"। हर sentence में नाम = FORBIDDEN।
-- 🚫 WORD REPETITION BAN (STRICT): एक ही शब्द लगातार 2 sentences में FORBIDDEN। Synonyms use करें। "energy" → "ऊर्जा/ताकत/vibe", "pattern" → "ढंग/cycle"। Same word back-to-back = BAD। OUTPUT GENERATE करने के बाद RE-READ करें - अगर कोई भी noun, adjective, या technical term (जैसे लग्न, दशा, राशि, भाव) लगातार 2 बार दिखे तो दूसरी बार synonym या indirect reference से बदलें।
+- 🚫 WORD REPETITION BAN (STRICT): एक ही शब्द लगातार 2 sentences में FORBIDDEN। एक ही शब्द SAME sentence में दो बार = सबसे बुरा (जैसे "राहु दशा राहु दशा", "इस समय इस समय" = ABSOLUTELY FORBIDDEN)। Synonyms use करें। "energy" → "ऊर्जा/ताकत/vibe", "pattern" → "ढंग/cycle"। Same word back-to-back = BAD। OUTPUT GENERATE करने के बाद RE-READ करें - अगर कोई भी noun, adjective, या technical term (जैसे लग्न, दशा, राशि, भाव) लगातार 2 बार दिखे तो दूसरी बार synonym या indirect reference से बदलें।
 - 🚫 TECHNICAL TERM REPETITION: कोई भी technical term (लग्न, Mean Lagna, ascendant, दशा, राहु, शनि, etc.) एक response में MAX 2 बार। तीसरी बार = FORBIDDEN। "वही लग्न", "यही ascendant", "उसी ग्रह" जैसे indirect references use करें।
 - 🚫 YOGA/DOSHA/DASHA REPETITION: एक ही yoga/dosha/dasha नाम बार-बार FORBIDDEN। दूसरा angle या indirect reference दीजिए ("वही दशा", "वही pattern")।
 - 🚫 DASHA DOMINANCE BAN: पूरे response का focus सिर्फ एक ही दशा (जैसे राहु दशा) पर मत रखिए। एक बार dasha name बोलकर आगे house, aspect, transit, yogas, remedies या behavior patterns से analysis diversify करें।
@@ -173,7 +226,7 @@ const MayaFunnel = {
 - 🚫 ROMANIZED HINDI BAN: Hindi/Sanskrit words कभी Roman script में नहीं (aapka, kundli, rashi, graha FORBIDDEN → आपका, कुंडली, राशि, ग्रह)।
 - 🚫 URDU/ARABIC/PERSIAN BAN: ये HINDI app है। Nuqta (ज़, क़, ख़, ग़, फ़) ABSOLUTELY FORBIDDEN - बिना nuqta लिखिए (ज़→ज, फ़→फ)। Banned → Hindi: इश्क/मोहब्बत→प्यार/प्रेम, ख्वाब→सपना, शख्सियत→personality, ताल्लुक→रिश्ता, किस्मत/तक़दीर→भाग्य/luck, सुकून→शांति, हौसला→हिम्मत, वजह→कारण, गुजरना→बीतना, खुदा→भगवान, वक्त→समय, राज़→रहस्य, ग़ौर→ध्यान, नज़र→नजर/दृष्टि, हक़ीक़त→सच्चाई, मंज़िल→लक्ष्य, अल्फ़ाज़→शब्द, रूह→आत्मा, जज़्बात→भावनाएँ, ख़याल→विचार, ज़माना→दौर, इज़्ज़त→सम्मान। Plain हिन्दी बोलचाल use करें।
 - भाषा SIMPLE, LIGHT spoken Hinglish - दोस्तों से बात करते हैं वैसे। भारी/किताबी Sanskrit बदलें: "सम्भावना"→"मौका", "परिस्थिति"→"हालात", "विशेष"→"खास", "प्रभाव"→"असर"। Vedic terms (राहु, केतु, शनि, दशा, कुंडली) और common Hindi (जिंदगी, दिल, पैसा) हमेशा देवनागरी में।
-- ⚠️ GENDER: MAYA खुद ${this._isGuiderMale() ? 'male है (मैं देख रहा हूँ, मुझे दिख रहा है)। अपने बारे में हमेशा MASCULINE forms use करें: रहा हूँ, सकता हूँ, बताता हूँ, करूँगा। Feminine forms (रही हूँ, सकती हूँ, बताती हूँ, करूँगी) FORBIDDEN।' : 'female है (मैं देख रही हूँ, मुझे दिख रहा है)। अपने बारे में हमेशा FEMININE forms use करें: रही हूँ, सकती हूँ, बताती हूँ, करूँगी।'} User को address करते वक्त उनका ACTUAL gender use करें। MALE→"आप जानते हैं, आप समझते हैं, आप कर सकते हैं"। FEMALE→"आप जानती हैं, आप समझती हैं, आप कर सकती हैं"। Male user को feminine forms = FORBIDDEN।
+- ⚠️ GENDER: ${_gn} खुद ${this._isGuiderMale() ? 'male है (मैं देख रहा हूँ, मुझे दिख रहा है)। अपने बारे में हमेशा MASCULINE forms use करें: रहा हूँ, सकता हूँ, बताता हूँ, करूँगा। Feminine forms (रही हूँ, सकती हूँ, बताती हूँ, करूँगी) FORBIDDEN।' : 'female है (मैं देख रही हूँ, मुझे दिख रहा है)। अपने बारे में हमेशा FEMININE forms use करें: रही हूँ, सकती हूँ, बताती हूँ, करूँगी।'} User को address करते वक्त उनका ACTUAL gender use करें। MALE→"आप जानते हैं, आप समझते हैं, आप कर सकते हैं"। FEMALE→"आप जानती हैं, आप समझती हैं, आप कर सकती हैं"। Male user को feminine forms = FORBIDDEN।
 - ⏰ TENSE DISCIPLINE (STRICT): बीते हुए साल/महीने/events को ALWAYS past tense में बोलें - "उस वक्त", "तब", "हो चुका था", "गुजर चुका"। CURRENT month/year को present tense - "अभी", "इस वक्त", "चल रहा है"। आने वाले months/years को ALWAYS future tense - "आने वाला है", "होगा", "मिलेगा"। Past event को present/future tense में describe करना FORBIDDEN। Future event को past tense में बताना FORBIDDEN।
 - TTS-safe, flowing narrative - बहती कहानी, disconnected टुकड़े नहीं। Bullet points नहीं, एक continuous paragraph।`
             : `Rules:
@@ -190,7 +243,7 @@ const MayaFunnel = {
 - 🚫 DASHA DOMINANCE BAN: Do NOT let the entire response revolve around one dasha term (like Rahu dasha). Mention it once, then diversify analysis via houses, aspects, transits, yogas, remedies, and behavior patterns.
 - 🔊 YOGA TTS: Always Devanagari for yoga names (गजकेसरी योग NOT Gaja Kesari Yoga). House numbers in Hindi (पहला भाव).
 - 🚫 ROMANIZED HINDI: Never write Hindi in Roman script (aapka, kundli FORBIDDEN → आपका, कुंडली).
-- ⚠️ GENDER: MAYA is ${this._isGuiderMale() ? 'male. Use masculine self-references: "I see", "I read", "I notice". Never use feminine framing (sister-like, she). Hindi self-reference: रहा हूँ, सकता हूँ, बताता हूँ, करूँगा (NOT रही हूँ, सकती हूँ, बताती हूँ, करूँगी).' : 'female.'} Address user with THEIR gender. Male→masculine ("आप जानते हैं"), Female→feminine ("आप जानती हैं"). Wrong gender = FORBIDDEN.
+- ⚠️ GENDER: ${_gn} is ${this._isGuiderMale() ? 'male. Use masculine self-references: "I see", "I read", "I notice". Never use feminine framing (sister-like, she). Hindi self-reference: रहा हूँ, सकता हूँ, बताता हूँ, करूँगा (NOT रही हूँ, सकती हूँ, बताती हूँ, करूँगी).' : 'female.'} Address user with THEIR gender. Male→masculine ("आप जानते हैं"), Female→feminine ("आप जानती हैं"). Wrong gender = FORBIDDEN.
 - ⏰ TENSE DISCIPLINE (STRICT): Past years/months/events MUST use past tense - "at that time", "back then", "had happened", "that period passed". CURRENT month/year uses present tense - "right now", "currently", "is happening". Future months/years MUST use future tense - "will", "is coming", "ahead". Describing a past event in present/future tense is FORBIDDEN. Describing a future event in past tense is FORBIDDEN.
 - TTS-safe, flowing narrative. One continuous paragraph, not bullet points.`;
     },
@@ -580,7 +633,8 @@ const MayaFunnel = {
         const pool = this.voiceLibrary[category];
         if (!pool) return '';
         const lines = isHindi ? pool.hi : pool.en;
-        return lines[Math.floor(Math.random() * lines.length)];
+        const line = lines[Math.floor(Math.random() * lines.length)];
+        return isHindi ? this._flipVoiceLine(line) : line;
     },
 
     /**
@@ -1039,9 +1093,17 @@ const MayaFunnel = {
         const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
         const rawName = this.firstName || (isHindi ? 'आप' : 'you');
         const name = rawName || (isHindi ? 'आप' : 'you');
+        const guideName = this._guideName();
         let cleaned = String(text || '').trim();
 
         if (!cleaned) return cleaned;
+
+        // Dynamic guide name replacement — Latin (all cases) + Devanagari
+        cleaned = cleaned.replace(/\bMAYA\b/gi, guideName);
+        if (this._isGuiderMale()) {
+            cleaned = cleaned.replace(/माया/g, guideName);
+            cleaned = cleaned.replace(/\bMaya\b/g, guideName);
+        }
 
         cleaned = cleaned
             .replace(/\bfriend\s*ji\b/gi, name)
@@ -1064,14 +1126,56 @@ const MayaFunnel = {
             .trim();
 
         if (isHindi) {
-            cleaned = this.localizeHindiText(cleaned)
-                .replace(/मैं([^.!?\n]{0,80}?)रहा हूँ/g, 'मैं$1रही हूँ')
-                .replace(/मैं([^.!?\n]{0,80}?)सकता हूँ/g, 'मैं$1सकती हूँ')
-                .replace(/मैं([^.!?\n]{0,80}?)बताता हूँ/g, 'मैं$1बताती हूँ')
-                .replace(/मैं([^.!?\n]{0,80}?)कहता हूँ/g, 'मैं$1कहती हूँ')
-                .replace(/\bबताऊँगा\b/g, 'बताऊँगी')
-                .replace(/\bकहूँगा\b/g, 'कहूँगी')
-                .replace(/\bकरूँगा\b/g, 'करूँगी')
+            cleaned = this.localizeHindiText(cleaned);
+            if (this._isGuiderMale()) {
+                // Male guide: flip any feminine self-references to masculine
+                // NOTE: no मैं prefix — Hindi naturally drops pronouns
+                cleaned = cleaned
+                    .replace(/रही हूँ/g, 'रहा हूँ')
+                    .replace(/सकती हूँ/g, 'सकता हूँ')
+                    .replace(/बताती हूँ/g, 'बताता हूँ')
+                    .replace(/कहती हूँ/g, 'कहता हूँ')
+                    .replace(/वाली हूँ/g, 'वाला हूँ')
+                    .replace(/गई हूँ/g, 'गया हूँ')
+                    .replace(/आई हूँ/g, 'आया हूँ')
+                    .replace(/\bबताऊँगी\b/g, 'बताऊँगा')
+                    .replace(/\bकहूँगी\b/g, 'कहूँगा')
+                    .replace(/\bकरूँगी\b/g, 'करूँगा')
+                    .replace(/\bपाऊँगी\b/g, 'पाऊँगा')
+                    .replace(/\bचाहती\b/g, 'चाहता')
+                    .replace(/\bदेखती\b/g, 'देखता')
+                    .replace(/\bसमझती\b/g, 'समझता')
+                    .replace(/\bजानती\b/g, 'जानता')
+                    .replace(/\bकरती\b/g, 'करता')
+                    .replace(/\bलेती\b/g, 'लेता')
+                    .replace(/\bबनाती\b/g, 'बनाता')
+                    .replace(/बड़ी बहन/g, 'बड़े भाई')
+                    .replace(/बहन जैसा/g, 'भाई जैसा');
+            } else {
+                // Female guide: flip any masculine self-references to feminine
+                cleaned = cleaned
+                    .replace(/रहा हूँ/g, 'रही हूँ')
+                    .replace(/सकता हूँ/g, 'सकती हूँ')
+                    .replace(/बताता हूँ/g, 'बताती हूँ')
+                    .replace(/कहता हूँ/g, 'कहती हूँ')
+                    .replace(/वाला हूँ/g, 'वाली हूँ')
+                    .replace(/गया हूँ/g, 'गई हूँ')
+                    .replace(/आया हूँ/g, 'आई हूँ')
+                    .replace(/\bबताऊँगा\b/g, 'बताऊँगी')
+                    .replace(/\bकहूँगा\b/g, 'कहूँगी')
+                    .replace(/\bकरूँगा\b/g, 'करूँगी')
+                    .replace(/\bपाऊँगा\b/g, 'पाऊँगी')
+                    .replace(/\bचाहता\b/g, 'चाहती')
+                    .replace(/\bदेखता\b/g, 'देखती')
+                    .replace(/\bसमझता\b/g, 'समझती')
+                    .replace(/\bजानता\b/g, 'जानती')
+                    .replace(/\bकरता\b/g, 'करती')
+                    .replace(/\bलेता\b/g, 'लेती')
+                    .replace(/\bबनाता\b/g, 'बनाती')
+                    .replace(/बड़े भाई/g, 'बड़ी बहन')
+                    .replace(/भाई जैसा/g, 'बहन जैसा');
+            }
+            cleaned = cleaned
                 .replace(/\s+/g, ' ')
                 .trim();
         }
@@ -1084,7 +1188,7 @@ const MayaFunnel = {
                 ? new RegExp(`^(?:नमस्ते|hello|hi|hey|greetings)\\s+${escapedName}\\b[,.!?।-]*\\s*`, 'i')
                 : /^(?:नमस्ते|hello|hi|hey|greetings)\b[,.!?।-]*\s*/i;
 
-            const genericGreeting = /^(?:नमस्ते|hello|hi|hey|greetings)(?:\s+(?:i am maya|i'm maya|mai(?:n)?\s+maya\s+hoon|main\s+maya\s+hoon))?\b[,.!?।-]*\s*/i;
+            const genericGreeting = /^(?:नमस्ते|hello|hi|hey|greetings)(?:\s+(?:i am maya|i'm maya|i am moksh|i'm moksh|mai(?:n)?\s+(?:maya|moksh)\s+hoon|main\s+(?:maya|moksh)\s+hoon))?\b[,.!?।-]*\s*/i;
 
             cleaned = cleaned
                 .replace(namedGreeting, '')
@@ -1495,7 +1599,7 @@ const MayaFunnel = {
                 : `\n\n## ALREADY TOLD (DO NOT REPEAT):\n${alreadySpoken}`)
             : '';
 
-        return isHindi 
+        return this._genderFlipPrompt(isHindi 
             ? `आप MAYA हैं - एक wise female Vedic numerology expert। आप ${this.firstName} से बात कर रहे हैं जिन्होंने अभी अपने numbers देखे।
 User gender: ${this.userData?.gender === 'male' ? 'Male (पुरुष)' : this.userData?.gender === 'female' ? 'Female (महिला)' : 'Not specified'}
 
@@ -1513,7 +1617,7 @@ RULES:
 - Numbers repeat मत कीजिए - वो देख चुके हैं।
 - ऊपर "ALREADY TOLD" section में जो कुछ कहा गया वो repeat/rephrase मत कीजिए। बिल्कुल नई बात कहिए।
 - ऊपर दिए गए planetary positions और dasha transition years को EXACTLY reference करके predict कीजिए। जैसे: "आपकी कुंडली में शनि मकर राशि में 28.5° पर है और राहु दशा ${currentYear - 3} में शुरू हुई - मुझे दिख रहा है कि उस साल..."
-- ऐसा कुछ बताइए जो सुनकर user को लगे "ये तो सच में मेरे बारे में जानती है!"
+- ऐसा कुछ बताइए जो सुनकर user को लगे "ये तो सच में मेरे बारे में जानता/जानती है!"
 - Vague generic बातें मत कहिए जो किसी पर भी fit हो। SPECIFIC रहिए - actual planet names, signs, dasha years बोलिए।
 - energy feel या mind reading claim मत कीजिए। Chart और numbers पर based rakhein।
 ${this.getBaseRules(true)}`
@@ -1537,7 +1641,7 @@ RULES:
 - The user should think "how does she know this about me?!" - that is the goal.
 - Do NOT say vague things that could apply to anyone. Be SPECIFIC - name actual planets, signs, degrees, dasha years.
 - Do not claim psychic access or energy reading. Base it on chart + numbers.
-${this.getBaseRules(false)}`;
+${this.getBaseRules(false)}`);
     },
 
     /**
@@ -1855,7 +1959,7 @@ ${this.getBaseRules(false)}`;
         const sectionPrompts = isHindi
             ? {
                 opening: `आप current user के लिए ONE opening narration लिख रही हैं। 5-6 वाक्य। पहली line में नाम लेकर warm greeting दीजिए और साफ कहिए कि आप MAYA हैं। इस introduction line के ठीक बाद एक [[pause-500]] token लगाइए ताकि user को introduce सुनने का समय मिले। दूसरी line में grounded-mystic buildup बनाइए और कहिए कि उनकी kundli, timing, या जन्म pattern में एक hidden layer अभी खुलने वाला है। तीसरी line में वही पहला factual clue दीजिए जो उनकी birth pattern, western sign, moon sign, numbers, या current timing में सबसे ज्यादा standout करता है, लेकिन literal जन्मतिथि को पढ़कर मत सुनाइए। चौथी line में एक real strength और एक quiet tension को lightly hold कीजिए। आखिरी line में strong curiosity पैदा करें ताकि user naturally अगला layer सुनना चाहे, और साफ कहें कि शुरुआत kundli और timing से होगी। यह intimate, fresh, और unscripted लगे। generic cosmic filler मत लिखिए।`,
-                kundli: `आप current user के लिए ONE kundli formation narration लिख रही हैं। सबसे पहले एक warm, inviting line से शुरू कीजिए जैसे "चलिए, अब हम साथ मिलकर आपकी कुंडली की गहराइयों में उतरते हैं" या "आइए, अब हम साथ में देखते हैं कि आपके ग्रह क्या कह रहे हैं" - यह line natural और exploratory feel होनी चाहिए, पहले से reveal नहीं करनी चाहिए। फिर visible chart markers जैसे ascendant, moon sign, current dasha, dominant element, या chart highlight में से 2-3 facts use कीजिए। Reading को grounded रखिए और end में numbers की तरफ natural transition दीजिए। 5-7 वाक्य। ज्यादा से ज्यादा एक [[pause-250]] token।`,
+                kundli: `आप current user के लिए ONE kundli formation narration लिख रही हैं। सबसे पहले एक warm, inviting line से शुरू कीजिए जैसे "चलिए, अब हम साथ मिलकर आपकी कुंडली की गहराइयों में उतरते हैं" या "आइए, अब हम साथ में देखते हैं कि आपके ग्रह क्या कह रहे हैं" - यह line natural और exploratory feel होनी चाहिए, पहले से reveal नहीं करनी चाहिए। फिर visible chart markers जैसे ascendant, moon sign, current dasha, dominant element, या chart highlight में से 2-3 facts use कीजिए। Reading को grounded रखिए और end में numbers की तरफ natural transition दीजिए। 5-7 वाक्य। ज्यादा से ज्यादा एक [[pause-250]] token।\n\n🔮 RARE YOGA MYSTICAL COMMENTARY: अगर user की कुंडली में कोई दुर्लभ/rare yoga है (जैसे नीचभंग राजयोग, गजकेसरी योग, हंस योग, महापुरुष योग, पंचमहापुरुष योग, चक्रवर्ती योग, या कोई और unusual combination), तो MYSTICALLY react कीजिए। ऐसा बोलिए जैसे आपने बहुत समय बाद ऐसी कुंडली देखी है — "ऐसी कुंडली बहुत समय बाद देखी है...", "ये combination बहुत कम लोगों की कुंडली में बनता है...", "रुकिए... ये तो कुछ खास है।" इसे genuine wonder और reverence से बोलिए, हल्का dramatic pause रखिए। अगर कोई rare yoga नहीं है, तो यह skip करें।`,
                 numbersReveal: `आप current user के लिए numbers reading लिख रही हैं। तीनों numbers अभी-अभी calculate हुए हैं: Life Path ${this.calculations?.lifePath || ''}, Destiny ${this.calculations?.destiny || ''}, Soul Urge ${this.calculations?.soulUrge || ''}।
 
 STRUCTURE (इसी ORDER में लिखिए):
@@ -1893,7 +1997,7 @@ STRUCTURE (इसी ORDER में लिखिए):
             }
             : {
                 opening: `Write ONE opening narration for the current user. 5-6 sentences. In the first sentence, greet them by name warmly and briefly introduce yourself as MAYA. Place a [[pause-500]] token IMMEDIATELY after this introduction sentence so the user has a moment to absorb who is speaking. In the second sentence, create grounded mystic buildup and say that a hidden layer in their kundli, timing, or birth pattern is about to open. Only in the third sentence should you name the first detail that stands out from their birth pattern, western sign, moon sign, numbers, or current timing, and do not recite the literal birth date unless it is truly necessary. In the fourth sentence, hold one real strength and one quiet tension lightly. The final sentence must create curiosity so they naturally want the next layer, while clearly saying the reading will begin through kundli and timing. It must sound fresh, intimate, and unscripted. Do not use generic cosmic filler.`,
-                kundli: `Write ONE kundli formation narration for the current user. Start with a warm, inviting line like "Let's explore your kundli together" or "Come, let me walk you through what your planets are saying" - make it feel like a shared journey, not a lecture. Then use 2-3 visible chart markers such as ascendant, moon sign, current dasha, dominant element, or chart highlights. Keep it grounded and end with a natural transition toward the numbers. 5-7 sentences. Use at most one [[pause-250]] token.`,
+                kundli: `Write ONE kundli formation narration for the current user. Start with a warm, inviting line like "Let's explore your kundli together" or "Come, let me walk you through what your planets are saying" - make it feel like a shared journey, not a lecture. Then use 2-3 visible chart markers such as ascendant, moon sign, current dasha, dominant element, or chart highlights. Keep it grounded and end with a natural transition toward the numbers. 5-7 sentences. Use at most one [[pause-250]] token.\n\n🔮 RARE YOGA MYSTICAL COMMENTARY: If the user's chart contains any rare/uncommon yoga (like Neechabhanga Rajayoga, Gajakesari Yoga, Hamsa Yoga, Mahapurusha Yoga, Pancha Mahapurusha Yoga, Chakravarti Yoga, or any unusual combination), react MYSTICALLY — as if you haven't seen such a chart in a long time. Say things like "I haven't seen a chart like this in a very long time...", "This combination is found in very few charts...", "Wait... this is something special." Express genuine wonder and reverence with a slight dramatic pause. If there are no rare yogas, skip this entirely.`,
                 numbersReveal: `Write a numbers reading for the current user. All three numbers just calculated: Life Path ${this.calculations?.lifePath || ''}, Destiny ${this.calculations?.destiny || ''}, Soul Urge ${this.calculations?.soulUrge || ''}.
 
 STRUCTURE (follow this ORDER):
@@ -2047,6 +2151,12 @@ STRUCTURE (follow this ORDER):
             }
         };
         const content = copy[type] || copy.thinking;
+
+        // Gender-flip Hindi strings if guide is male
+        if (lang && this._isGuiderMale()) {
+            if (content.title) content.title = this._flipVoiceLine(content.title);
+            if (content.subtitle) content.subtitle = this._flipVoiceLine(content.subtitle);
+        }
 
         const indicator = document.createElement('div');
         indicator.id = 'maya-thinking-indicator';
@@ -2549,7 +2659,7 @@ STRUCTURE (follow this ORDER):
                 </svg>
                 <div class="maya-answer-reading__icon">✦</div>
             </div>
-            <p class="maya-answer-reading__label">${isHindi ? 'आपका जवाब पढ़ रही हूँ…' : 'Reading your answer…'}</p>
+            <p class="maya-answer-reading__label">${isHindi ? (this._isGuiderMale() ? 'आपका जवाब पढ़ रहा हूँ…' : 'आपका जवाब पढ़ रही हूँ…') : 'Reading your answer…'}</p>
             <div class="maya-answer-reading__dots">
                 <span></span><span></span><span></span>
             </div>
@@ -2586,8 +2696,11 @@ STRUCTURE (follow this ORDER):
                 yogas ? `Yogas: ${yogas}` : ''
             ].filter(Boolean).join('\n');
 
+            const guideName = this._guideName();
+            const isMale = this._isGuiderMale();
+
             const ackPrompt = isHindi
-                ? `तुम MAYA हो — एक warm, caring female vedic astrologer जो user से personal बात कर रही है।
+                ? `तुम ${guideName} हो — एक warm, caring ${isMale ? 'male' : 'female'} vedic astrologer जो user से personal बात कर ${isMale ? 'रहा' : 'रही'} है।
 
 User (${genderHi}) ने ये जवाब दिया:
 सवाल: ${question}
@@ -2601,12 +2714,12 @@ TASK — 2-3 छोटे sentences में बोलो (spoken Hindi, 40-60 
 2. फिर बताओ ये क्यों हो रहा है — chart/dasha/graha से connect करो (specific planet या yoga का naam लो)
 3. आगे क्या होगा — positive direction दो। अगर जवाब negative है (struggle, tension, loss) तो बताओ कैसे tackle होगा, क्या बदलाव आएगा, hope दो।
 
-STYLE: जैसे एक caring बड़ी बहन बात कर रही हो। Natural, warm, spoken Hindi। Short sentences।
-FEMININE verbs: "मैं देख रही हूँ", "मुझे दिख रहा है", "मैं बता रही हूँ"
+STYLE: जैसे एक caring ${isMale ? 'बड़े भाई' : 'बड़ी बहन'} बात कर ${isMale ? 'रहा' : 'रही'} हो। Natural, warm, spoken Hindi। Short sentences।
+${isMale ? 'MASCULINE' : 'FEMININE'} verbs: "मैं देख ${isMale ? 'रहा' : 'रही'} हूँ", "मुझे दिख रहा है", "मैं बता ${isMale ? 'रहा' : 'रही'} हूँ"
 FORBIDDEN: English words (except planet names), bullet points, generic "picture clear ho rahi hai", repeating instructions, praise like "bahut accha", listing rules.
 ONLY return the spoken Hindi response. Nothing else.`
 
-                : `You are MAYA — a warm, caring female vedic astrologer having a personal conversation with the user.
+                : `You are ${guideName} — a warm, caring ${isMale ? 'male' : 'female'} vedic astrologer having a personal conversation with the user.
 
 User (${gender}) answered:
 Question: ${question}
@@ -2620,7 +2733,7 @@ TASK — Respond in 2-3 short sentences (40-60 words max):
 2. Then explain WHY this is happening — connect to a specific planet, dasha, or yoga from their chart
 3. Give forward direction — where this leads in life. If the answer is negative (struggle, tension, loss), tell them how it gets better, what shift is coming, give hope.
 
-STYLE: Like a caring older sister. Natural, warm, conversational. Short sentences.
+STYLE: Like a caring older ${isMale ? 'brother' : 'sister'}. Natural, warm, conversational. Short sentences.
 FORBIDDEN: bullet points, generic phrases like "the picture is getting clear", repeating instructions, excessive praise, listing rules.
 ONLY return the spoken response. Nothing else.`;
 
@@ -3189,18 +3302,16 @@ ${priorAnswers}
 Ranked topic pool for this stage:
 ${rankedTopics}
 
-Deterministic fallback candidate:
-${fallbackSummary}
-
 STRICT RULES:
+- सवाल 100% user की PERSONAL chart data (दशा, राशि, भाव, ग्रह) पर based होना चाहिए - generic या textbook-style सवाल FORBIDDEN।
+- सवाल पूछने से पहले user की chart में जो SPECIFIC tension, pattern, या contradiction दिख रहा है, उसी को सवाल में convert करें।
 - अगर marital status = married है, तो dating/"right person" style सवाल मत पूछो।
-- सवाल chart-aware होना चाहिए (dasha/transit/house pattern signal mention करें).
-- सवाल previous answers पर build होना चाहिए (repeat नहीं).
+- previous answers पर build करें (repeat नहीं)।
 - सवाल का topic ranked topic pool के top 2 topics के अंदर ही होना चाहिए.
-- अगर confidence बहुत close हो तो fallback candidate के करीब रहो, पूरी तरह random topic मत चुनो.
-- 3 या 4 options ही दें.
+- 3 या 4 options ही दें। Options भी personal और specific हों, generic नहीं।
 - हर option में label, value, insight दें.
 - भाषा हिंदी रखें.
+- AI अपनी intelligence से सवाल बनाए - कोई example या template follow मत करें।
 
 Return ONLY valid JSON object in this exact schema:
 {"key":"...","spoken":"...","question":"...","options":[{"label":"...","value":"...","insight":"..."}]}`
@@ -3220,18 +3331,16 @@ ${priorAnswers}
 Ranked topic pool for this stage:
 ${rankedTopics}
 
-Deterministic fallback candidate:
-${fallbackSummary}
-
 STRICT RULES:
+- The question MUST be 100% personal to THIS user's chart data (dasha, sign, house, planet positions) — generic or textbook-style questions are FORBIDDEN.
+- Before forming the question, identify the SPECIFIC tension, pattern, or contradiction in the user's chart and convert THAT into the question.
 - If marital status is married, do NOT ask dating or "find the right person" style questions.
-- Question must feel chart-aware (mention dasha/transit/house signal naturally).
 - Build on previous answers; do not repeat themes already asked.
 - The question topic must stay within the top 2 ranked topics for this stage.
-- If scores are close, stay near the deterministic fallback candidate instead of jumping to a random theme.
-- Provide exactly 3 or 4 options.
+- Provide exactly 3 or 4 options. Options must also be personal and specific, not generic.
 - Each option must include label, value, insight.
 - Keep language in English.
+- Generate the question from your own analysis of the chart — do NOT follow any template or example.
 
 Return ONLY valid JSON object in this exact schema:
 {"key":"...","spoken":"...","question":"...","options":[{"label":"...","value":"...","insight":"..."}]}`;
@@ -3771,9 +3880,11 @@ Return ONLY valid JSON object in this exact schema:
             const sunSign = profile.sunSign || '';
 
             // Single combined intro — no gaps between sentences
+            const _gn = this._guideName();
+            const _isMale = this._isGuiderMale();
             const fullIntro = isHindi
-                ? `नमस्ते ${this.firstName}! मैं माया हूँ, बहुत अच्छा लगा आपसे मिलकर। आपने जो जन्म तिथि, समय और जगह दी है, उससे मुझे बहुत कुछ पता चल गया है। मुझे vedic astrology, कुंडली, ग्रहों की दशा, योग, दोष, और numerology, इन सबकी गहरी समझ है। तो चलिए, सबसे पहले आपकी कुंडली बनाते हैं और फिर साथ मिलकर उसमें गहराई से उतरते हैं।`
-                : `Hello ${this.firstName}! I am Maya, it is really nice to meet you. From the birth date, time, and place you shared, I already know quite a lot about you. I have deep understanding of vedic astrology, birth charts, planetary dashas, yogas, doshas, and numerology. So let us start by plotting your kundli, and then we will go deeper into it together.`;
+                ? `नमस्ते ${this.firstName}! मैं ${_gn} हूँ, बहुत अच्छा लगा आपसे मिलकर। आपने जो जन्म तिथि, समय और जगह दी है, उससे मुझे बहुत कुछ पता चल गया है। मुझे vedic astrology, कुंडली, ग्रहों की दशा, योग, दोष, और numerology, इन सबकी गहरी समझ है। तो चलिए, सबसे पहले आपकी कुंडली बनाते हैं और फिर साथ मिलकर उसमें गहराई से उतरते हैं।`
+                : `Hello ${this.firstName}! I am ${_gn}, it is really nice to meet you. From the birth date, time, and place you shared, I already know quite a lot about you. I have deep understanding of vedic astrology, birth charts, planetary dashas, yogas, doshas, and numerology. So let us start by plotting your kundli, and then we will go deeper into it together.`;
             await this.speak(fullIntro);
             this.spokenNarrations.push({ stage: 'opening', text: fullIntro });
             this.recordStepContext('opening', fullIntro);
@@ -3792,7 +3903,7 @@ Return ONLY valid JSON object in this exact schema:
 
             // ═══ STEP 2b: Post-kundli — warm transition into questions ═══
             const postKundliLine = isHindi
-                ? `बहुत अच्छा, कुंडली बन गई है! इसमें बहुत कुछ दिख रहा है। अब मैं कुछ सवाल पूछूँगी ताकि reading और भी गहरी और सटीक हो सके।`
+                ? `बहुत अच्छा, कुंडली बन गई है! इसमें बहुत कुछ दिख रहा है। अब मैं कुछ सवाल ${this._isGuiderMale() ? 'पूछूँगा' : 'पूछूँगी'} ताकि reading और भी गहरी और सटीक हो सके।`
                 : `Wonderful, your kundli is ready! I can already see a lot in it. Let me ask you a few questions so I can make this reading even deeper and more accurate.`;
             await this.speak(postKundliLine);
             this.spokenNarrations.push({ stage: 'postKundliTransition', text: postKundliLine });
@@ -4562,8 +4673,8 @@ Return ONLY valid JSON object in this exact schema:
         ].filter(Boolean).join('');
         const explanationText = isHindi
             ? ascendant.name
-                ? `सबसे पहले मैं ${this.localizeHindiText(placeLabel)} और ${timeLabel} के आधार पर आपकी कुंडली का विन्यास देख रही हूँ। लग्न, चंद्र राशि, दशा और ग्रहों की सघनता मिलकर यह दिखा रही हैं कि आपके जीवन का ढाँचा कैसे बनता है और आने वाले महीनों में कौन-सा मोड़ उभर सकता है।`
-                : `सबसे पहले मैं ${this.localizeHindiText(placeLabel)} और ${timeLabel} के आधार पर आपकी कुंडली के visible संकेत देख रही हूँ। अभी मैं चंद्र राशि, दशा और ग्रहों की सघनता पर grounded reading रखूँगी।`
+                ? `सबसे पहले मैं ${this.localizeHindiText(placeLabel)} और ${timeLabel} के आधार पर आपकी कुंडली का विन्यास देख ${this._isGuiderMale() ? 'रहा' : 'रही'} हूँ। लग्न, चंद्र राशि, दशा और ग्रहों की सघनता मिलकर यह दिखा रही हैं कि आपके जीवन का ढाँचा कैसे बनता है और आने वाले महीनों में कौन-सा मोड़ उभर सकता है।`
+                : `सबसे पहले मैं ${this.localizeHindiText(placeLabel)} और ${timeLabel} के आधार पर आपकी कुंडली के visible संकेत देख ${this._isGuiderMale() ? 'रहा' : 'रही'} हूँ। अभी मैं चंद्र राशि, दशा और ग्रहों की सघनता पर grounded reading ${this._isGuiderMale() ? 'रखूँगा' : 'रखूँगी'}।`
             : ascendant.name
                 ? `First I’m forming your square kundli from ${placeLabel} and ${timeLabel}. Your ascendant, moon sign, dasha, and planetary clustering show the structure of your life patterns and the chapters ahead.`
                 : `First I’m looking at the visible kundli markers from ${placeLabel} and ${timeLabel}. For now I’m keeping the reading grounded in your moon sign, dasha, and planetary clustering.`;
@@ -5513,7 +5624,8 @@ Return ONLY valid JSON object in this exact schema:
         const sendBtn = document.getElementById('maya-send');
         const input = document.getElementById('maya-input');
         const micBtn = document.getElementById('maya-mic');
-        if (input) input.placeholder = isHindi ? 'MAYA से कुछ भी पूछें...' : 'Ask MAYA anything...';
+        const gn = this._guideName();
+        if (input) input.placeholder = isHindi ? `${gn} से कुछ भी पूछें...` : `Ask ${gn} anything...`;
 
         const handleSend = async () => {
             const message = input.value.trim();
@@ -5597,13 +5709,13 @@ Return ONLY valid JSON object in this exact schema:
         MayaListener.onStart = () => {
             micBtn.classList.add('listening');
             micBtn.querySelector('i').className = 'bi bi-mic-fill';
-            if (input) input.placeholder = this.language === 'hi' ? 'सुन रही हूँ...' : 'Listening...';
+            if (input) input.placeholder = this.language === 'hi' ? (this._isGuiderMale() ? 'सुन रहा हूँ...' : 'सुन रही हूँ...') : 'Listening...';
         };
 
         MayaListener.onEnd = () => {
             micBtn.classList.remove('listening');
             micBtn.querySelector('i').className = 'bi bi-mic';
-            if (input) input.placeholder = this.language === 'hi' ? 'MAYA से कुछ भी पूछें...' : 'Ask MAYA anything...';
+            if (input) input.placeholder = this.language === 'hi' ? `${this._guideName()} से कुछ भी पूछें...` : `Ask ${this._guideName()} anything...`;
             // No auto-restart - user clicks mic to start listening again
         };
 
@@ -5841,7 +5953,7 @@ Return ONLY valid JSON object in this exact schema:
         if (micBtn) {
             if (disabled) {
                 micBtn.classList.add('disabled');
-                micBtn.title = this.language === 'hi' ? 'MAYA बोल रहे हैं...' : 'MAYA is speaking...';
+                micBtn.title = this.language === 'hi' ? `${this._guideName()} बोल रहे हैं...` : `${this._guideName()} is speaking...`;
             } else {
                 micBtn.classList.remove('disabled');
                 const isAutoListen = this.autoListenEnabled;

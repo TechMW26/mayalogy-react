@@ -47,25 +47,36 @@ const MayaDynamicContent = {
     _normalizePersonaPrompt(prompt, lang = this.language) {
         if (!prompt) return '';
         const agentGender = this._getAgentGender();
+        const isMale = agentGender === 'male';
+        const guideName = isMale ? 'Moksh' : 'MAYA';
 
-        if (agentGender === 'male') {
-            // For male guide, just append the male persona guard and leave the
-            // underlying prompt structurally intact (no feminizing rewrites).
+        // ─── Dynamic name + gender replacement (before any other normalization) ───
+        let basePrompt = String(prompt)
+            .replace(/\bMAYA\b/g, guideName)
+            .replace(/\ba MALE\b/g, `a ${isMale ? 'male' : 'female'}`)
+            .replace(/\ba FEMALE\b/g, `a ${isMale ? 'male' : 'female'}`)
+            .replace(/\bMALE Vedic\b/g, `${isMale ? 'male' : 'female'} Vedic`)
+            .replace(/\bFEMALE Vedic\b/g, `${isMale ? 'male' : 'female'} Vedic`)
+            .replace(/\bMALE numerology\b/g, `${isMale ? 'male' : 'female'} numerology`)
+            .replace(/\bFEMALE numerology\b/g, `${isMale ? 'male' : 'female'} numerology`)
+            .replace(/\bMALE mystical\b/g, `${isMale ? 'male' : 'female'} mystical`)
+            .replace(/\bFEMALE mystical\b/g, `${isMale ? 'male' : 'female'} mystical`)
+            .replace(/\bMALE verb forms\b/g, `${isMale ? 'male' : 'female'} verb forms`)
+            .replace(/\bFEMALE verb forms\b/g, `${isMale ? 'male' : 'female'} verb forms`)
+            .replace(/elder brother figure/gi, isMale ? 'elder brother figure' : 'elder sister guide')
+            .replace(/elder brother/gi, isMale ? 'elder brother' : 'elder sister')
+            .replace(/elder sister/gi, isMale ? 'elder brother' : 'elder sister')
+            .replace(/बड़े भाई/g, isMale ? 'बड़े भाई' : 'बड़ी बहन')
+            .replace(/बड़ी बहन/g, isMale ? 'बड़े भाई' : 'बड़ी बहन');
+
+        if (isMale) {
             const personaGuardMale = lang === 'hi'
-                ? '\nPERSONA OVERRIDE: MAYA एक पुरुष guide है। अपने लिए हमेशा पुल्लिंग first-person forms use करें: हूँ, रहा हूँ, सकता हूँ, देख रहा हूँ, बताता हूँ, कह रहा हूँ। कभी भी feminine forms जैसे रही हूँ, सकती हूँ, बताती हूँ use न करें। Tone simple spoken Hinglish रखें, बहुत भारी या literary Hindi नहीं।'
-                : '\nPERSONA OVERRIDE: MAYA is strictly male. Speak as an expressive, conversational male guide with grounded authority. Never describe MAYA as female, sister-like, or feminine.';
-            return `${String(prompt)}${personaGuardMale}`;
+                ? `\nPERSONA OVERRIDE: ${guideName} एक पुरुष guide है। अपने लिए हमेशा पुल्लिंग first-person forms use करें: हूँ, रहा हूँ, सकता हूँ, देख रहा हूँ, बताता हूँ, कह रहा हूँ। कभी भी feminine forms जैसे रही हूँ, सकती हूँ, बताती हूँ use न करें। Tone simple spoken Hinglish रखें, बहुत भारी या literary Hindi नहीं।`
+                : `\nPERSONA OVERRIDE: ${guideName} is strictly male. Speak as an expressive, conversational male guide with grounded authority. Never describe ${guideName} as female, sister-like, or feminine.`;
+            return `${basePrompt}${personaGuardMale}`;
         }
 
-        let normalized = String(prompt)
-            .replace(/\bMALE\b/g, 'FEMALE')
-            .replace(/\bmale\b/g, 'female')
-            .replace(/elder brother figure/gi, 'elder sister guide')
-            .replace(/elder brother/gi, 'elder sister')
-            .replace(/brother energy/gi, 'sister energy')
-            .replace(/what he sees/gi, 'what she sees')
-            .replace(/बड़े भाई/g, 'बड़ी बहन')
-            .replace(/भाई जैसा/g, 'बहन जैसा')
+        let normalized = basePrompt
             .replace(/देवनागरी Hinglish/gi, 'simple spoken Hinglish: Hindi words mostly in Devanagari, common English terms in English script')
             .replace(/Hinglish देवनागरी/gi, 'simple spoken Hinglish: Hindi words mostly in Devanagari, common English terms in English script')
             .replace(/simple Hinglish देवनागरी में/gi, 'simple spoken Hinglish: Hindi words mostly in Devanagari, common English terms in English script')
@@ -78,8 +89,8 @@ const MayaDynamicContent = {
             .replace(/MALE verb forms in Hindi \(हूँ, रहा हूँ, सकता हूँ, देख रहा हूँ\)/g, 'FEMALE verb forms in Hindi (हूँ, रही हूँ, सकती हूँ, देख रही हूँ)');
 
         const personaGuard = lang === 'hi'
-            ? '\nPERSONA OVERRIDE: MAYA एक महिला guide है। अपने लिए हमेशा स्त्रीलिंग first-person forms use करें: हूँ, रही हूँ, सकती हूँ, देख रही हूँ, बताती हूँ, कह रही हूँ। कभी भी masculine forms जैसे रहा हूँ, सकता हूँ, बताता हूँ use न करें। Tone simple spoken Hinglish रखें, बहुत भारी या literary Hindi नहीं। हल्का everyday dialect flavour ठीक है, लेकिन आसानी बनी रहे।'
-            : '\nPERSONA OVERRIDE: MAYA is strictly female. Speak as an expressive, conversational female guide with grounded authority. Never describe MAYA as male, brother-like, or masculine.';
+            ? `\nPERSONA OVERRIDE: ${guideName} एक महिला guide है। अपने लिए हमेशा स्त्रीलिंग first-person forms use करें: हूँ, रही हूँ, सकती हूँ, देख रही हूँ, बताती हूँ, कह रही हूँ। कभी भी masculine forms जैसे रहा हूँ, सकता हूँ, बताता हूँ use न करें। Tone simple spoken Hinglish रखें, बहुत भारी या literary Hindi नहीं। हल्का everyday dialect flavour ठीक है, लेकिन आसानी बनी रहे।`
+            : `\nPERSONA OVERRIDE: ${guideName} is strictly female. Speak as an expressive, conversational female guide with grounded authority. Never describe ${guideName} as male, brother-like, or masculine.`;
 
         return `${normalized}${personaGuard}`;
     },
@@ -87,10 +98,13 @@ const MayaDynamicContent = {
     _normalizeGeneratedText(text) {
         if (!text) return '';
         const agentGender = this._getAgentGender();
+        const isMale = agentGender === 'male';
+        const guideName = isMale ? 'Moksh' : 'MAYA';
 
-        if (agentGender === 'male') {
+        if (isMale) {
             // Male guide: convert any feminine self-references to masculine.
             return String(text)
+                .replace(/\bMAYA\b/g, guideName)  // Dynamic guide name
                 .replace(/```(?:json|text)?/gi, '')
                 .replace(/`+/g, '')
                 .replace(/^\s*(?:json|script|response)\s*[:\-]?\s*/i, '')
