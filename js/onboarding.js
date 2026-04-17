@@ -5,7 +5,7 @@
 
 const MayaOnboarding = {
     currentStep: 0,
-    totalSteps: 6,
+    totalSteps: 7,
     userData: {},
     isComplete: false,
     locationOutsideHandler: null,
@@ -33,6 +33,10 @@ const MayaOnboarding = {
             hi: "इससे chart और साफ़ दिखेगा।"
         },
         birthPlace: {
+            en: "Got it. One more thing.",
+            hi: "समझ गई। एक बात और।"
+        },
+        maritalStatus: {
             en: "I have what I need. Let me begin.",
             hi: "जो चाहिए था, मिल गया। शुरू करती हूँ।"
         }
@@ -136,6 +140,19 @@ const MayaOnboarding = {
             placeholder: 'Enter your birth city',
             placeholderHi: 'अपना जन्म शहर दर्ज करें',
             validation: (value) => value && value.length >= 2
+        },
+        {
+            id: 'maritalStatus',
+            question: "What's your current relationship status?",
+            questionHi: "आपकी वर्तमान रिश्ते की स्थिति क्या है?",
+            field: 'maritalStatus',
+            type: 'select',
+            options: [
+                { value: 'married', label: 'Married', labelHi: 'विवाहित' },
+                { value: 'unmarried', label: 'Unmarried', labelHi: 'अविवाहित' },
+                { value: 'divorced', label: 'Divorced', labelHi: 'विवाह विच्छेद' }
+            ],
+            validation: (value) => ['married', 'unmarried', 'divorced'].includes(value)
         }
     ],
 

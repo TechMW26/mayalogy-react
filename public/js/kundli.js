@@ -854,8 +854,10 @@ const MayaKundli = {
 
         const sun = birthChart.planets.find((planet) => planet.name === 'Sun');
         const moon = birthChart.planets.find((planet) => planet.name === 'Moon');
-        const yogas = this.calculateYogas(birthChart.planets, birthChart.ascendant.name)
+        const allYogas = this.calculateYogas(birthChart.planets, birthChart.ascendant.name)
             .filter((yoga) => yoga.name !== 'Analyzing...');
+        // Only include yogas with "Very Strong" strength to avoid mentioning common yogas (like Gaja Kesari) for everyone
+        const yogas = allYogas.filter((yoga) => yoga.strength === 'Very Strong');
         const currentDasha = this.getCurrentDasha(birthChart.birthDate);
         const groupedSigns = planetGroups
             .filter((group) => group.planets.length >= 2)
