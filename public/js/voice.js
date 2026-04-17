@@ -660,14 +660,18 @@ const MayaVoice = {
 
     removeAdjacentPhraseRepetition(text) {
         let cleaned = String(text || '');
+        const separator = '(?:\\s*[,.!?।;:]\\s*|\\s+)';
 
         // Collapse repeated single tokens: "लग्न लग्न" -> "लग्न"
-        cleaned = cleaned.replace(/\b([A-Za-z\u0900-\u097F]+)\b(?:\s*[,;:]\s*|\s+)\1\b/gi, '$1');
+        cleaned = cleaned.replace(
+            new RegExp(`\\b([A-Za-z\\u0900-\\u097F]+)\\b${separator}\\1\\b`, 'gi'),
+            '$1'
+        );
 
         // Collapse repeated 2-4 word phrases: "mean lagna mean lagna" -> "mean lagna"
         for (let pass = 0; pass < 3; pass++) {
             cleaned = cleaned.replace(
-                /\b((?:[A-Za-z\u0900-\u097F]+\s+){1,3}[A-Za-z\u0900-\u097F]+)\b(?:\s*[,;:]\s*|\s+)\1\b/gi,
+                new RegExp(`\\b((?:[A-Za-z\\u0900-\\u097F]+\\s+){1,3}[A-Za-z\\u0900-\\u097F]+)\\b${separator}\\1\\b`, 'gi'),
                 '$1'
             );
         }

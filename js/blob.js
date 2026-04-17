@@ -230,7 +230,7 @@ const MayaBlob = {
             uTime: { value: 0 },
             uAmplitude: { value: 0.15 },
             uFrequency: { value: 1.5 },
-            uColor1: { value: new THREE.Color(0xffdf64) },  // Flatten dark band to remove shadow-like patch
+            uColor1: { value: new THREE.Color(0xa8741f) },  // Bronze (dark)
             uColor2: { value: new THREE.Color(0xffdf64) },  // Yellow (highlights)
             uColor3: { value: new THREE.Color(0xfffef5) },  // White (inner light)
             uGlowIntensity: { value: 0.6 }
@@ -242,7 +242,8 @@ const MayaBlob = {
             fragmentShader: this.fragmentShader,
             uniforms: this.uniforms,
             transparent: true,
-            side: THREE.DoubleSide
+            side: THREE.FrontSide,
+            depthWrite: false
         });
 
         // Mesh
@@ -254,7 +255,8 @@ const MayaBlob = {
         const innerMaterial = new THREE.MeshBasicMaterial({
             color: 0xfffef5,
             transparent: true,
-            opacity: 0.35
+            opacity: 0.22,
+            depthWrite: false
         });
         const innerSphere = new THREE.Mesh(innerGeometry, innerMaterial);
         this.blob.add(innerSphere);
