@@ -230,7 +230,7 @@ const MayaBlob = {
             uTime: { value: 0 },
             uAmplitude: { value: 0.15 },
             uFrequency: { value: 1.5 },
-            uColor1: { value: new THREE.Color(0xa8741f) },  // Bronze (dark)
+            uColor1: { value: new THREE.Color(0xffdf64) },  // Flatten dark band to remove shadow-like patch
             uColor2: { value: new THREE.Color(0xffdf64) },  // Yellow (highlights)
             uColor3: { value: new THREE.Color(0xfffef5) },  // White (inner light)
             uGlowIntensity: { value: 0.6 }

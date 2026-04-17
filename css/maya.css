@@ -1545,7 +1545,7 @@ h1, h2, h3, h4, h5, h6, p {
     border-radius: 28px;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24);
+    box-shadow: none;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     overflow: visible;
@@ -4958,7 +4958,7 @@ h1, h2, h3, h4, h5, h6, p {
 
 .maya-blob-container.maya-blob-container--thinking {
     overflow: visible;
-    filter: drop-shadow(0 0 24px rgba(212, 175, 55, 0.30)) drop-shadow(0 0 42px rgba(168, 116, 31, 0.22));
+    filter: none;
     animation: mayaThinkingBlobFloat 3.6s ease-in-out infinite;
 }
 
