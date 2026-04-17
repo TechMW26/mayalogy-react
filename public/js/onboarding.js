@@ -505,36 +505,75 @@ const MayaOnboarding = {
 
             case 'agentSelect':
                 inputHtml = `
-                    <div class="agent-slider-wrapper">
-                        <div class="agent-slider-track" id="agentSliderTrack">
-                            <div class="agent-slide" data-value="female">
-                                <div class="agent-slide-card">
-                                    <div class="agent-slide-img-wrap">
-                                        <img src="images/maya-guide.png" alt="Maya" class="agent-slide-img" draggable="false" />
+                    <svg class="agent-svg-filters" style="position:absolute;width:0;height:0;overflow:hidden">
+                        <defs>
+                            <filter id="electricDisplace" colorInterpolationFilters="sRGB" x="-20%" y="-20%" width="140%" height="140%">
+                                <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="n1" seed="1"/>
+                                <feOffset in="n1" dx="0" dy="0" result="o1"><animate attributeName="dy" values="700;0" dur="6s" repeatCount="indefinite" calcMode="linear"/></feOffset>
+                                <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="n2" seed="1"/>
+                                <feOffset in="n2" dx="0" dy="0" result="o2"><animate attributeName="dy" values="0;-700" dur="6s" repeatCount="indefinite" calcMode="linear"/></feOffset>
+                                <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="n3" seed="2"/>
+                                <feOffset in="n3" dx="0" dy="0" result="o3"><animate attributeName="dx" values="490;0" dur="6s" repeatCount="indefinite" calcMode="linear"/></feOffset>
+                                <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="n4" seed="2"/>
+                                <feOffset in="n4" dx="0" dy="0" result="o4"><animate attributeName="dx" values="0;-490" dur="6s" repeatCount="indefinite" calcMode="linear"/></feOffset>
+                                <feComposite in="o1" in2="o2" result="p1"/>
+                                <feComposite in="o3" in2="o4" result="p2"/>
+                                <feBlend in="p1" in2="p2" mode="color-dodge" result="combined"/>
+                                <feDisplacementMap in="SourceGraphic" in2="combined" scale="20" xChannelSelector="R" yChannelSelector="B"/>
+                            </filter>
+                        </defs>
+                    </svg>
+                    <div class="agent-cards-row">
+                        <button type="button" class="agent-electric-card" data-value="female">
+                            <div class="agent-ec-inner">
+                                <div class="agent-ec-border-outer">
+                                    <div class="agent-ec-border-main"></div>
+                                </div>
+                                <div class="agent-ec-glow1"></div>
+                                <div class="agent-ec-glow2"></div>
+                            </div>
+                            <div class="agent-ec-overlay1"></div>
+                            <div class="agent-ec-overlay2"></div>
+                            <div class="agent-ec-bg-glow"></div>
+                            <div class="agent-ec-content">
+                                <div class="agent-ec-top">
+                                    <div class="agent-ec-badge">${this.isHindiUI() ? 'महिला Guide' : 'Female Guide'}</div>
+                                    <div class="agent-ec-img-wrap">
+                                        <img src="images/maya-guide.png" alt="Maya" draggable="false"/>
                                     </div>
-                                    <div class="agent-slide-info">
-                                        <span class="agent-slide-name">Maya</span>
-                                        <span class="agent-slide-desc">${this.isHindiUI() ? 'आपकी महिला guide' : 'Your Female Guide'}</span>
-                                    </div>
+                                    <p class="agent-ec-name">Maya</p>
+                                </div>
+                                <hr class="agent-ec-divider"/>
+                                <div class="agent-ec-bottom">
+                                    <p class="agent-ec-desc">${this.isHindiUI() ? 'आपकी दिव्य मार्गदर्शक' : 'Your divine guide'}</p>
                                 </div>
                             </div>
-                            <div class="agent-slide" data-value="male">
-                                <div class="agent-slide-card">
-                                    <div class="agent-slide-img-wrap">
-                                        <img src="images/moksh-guide.png" alt="Moksh" class="agent-slide-img" draggable="false" />
+                        </button>
+                        <button type="button" class="agent-electric-card agent-electric-card--moksh" data-value="male">
+                            <div class="agent-ec-inner">
+                                <div class="agent-ec-border-outer">
+                                    <div class="agent-ec-border-main"></div>
+                                </div>
+                                <div class="agent-ec-glow1"></div>
+                                <div class="agent-ec-glow2"></div>
+                            </div>
+                            <div class="agent-ec-overlay1"></div>
+                            <div class="agent-ec-overlay2"></div>
+                            <div class="agent-ec-bg-glow"></div>
+                            <div class="agent-ec-content">
+                                <div class="agent-ec-top">
+                                    <div class="agent-ec-badge">${this.isHindiUI() ? 'पुरुष Guide' : 'Male Guide'}</div>
+                                    <div class="agent-ec-img-wrap">
+                                        <img src="images/moksh-guide.png" alt="Moksh" draggable="false"/>
                                     </div>
-                                    <div class="agent-slide-info">
-                                        <span class="agent-slide-name">Moksh</span>
-                                        <span class="agent-slide-desc">${this.isHindiUI() ? 'आपके पुरुष guide' : 'Your Male Guide'}</span>
-                                    </div>
+                                    <p class="agent-ec-name">Moksh</p>
+                                </div>
+                                <hr class="agent-ec-divider"/>
+                                <div class="agent-ec-bottom">
+                                    <p class="agent-ec-desc">${this.isHindiUI() ? 'आपके वैदिक मार्गदर्शक' : 'Your vedic guide'}</p>
                                 </div>
                             </div>
-                        </div>
-                        <div class="agent-slider-dots">
-                            <span class="agent-slider-dot active" data-index="0"></span>
-                            <span class="agent-slider-dot" data-index="1"></span>
-                        </div>
-                        <p class="agent-slider-hint">${this.isHindiUI() ? '← स्वाइप करें या टैप करें →' : '← Swipe or tap to choose →'}</p>
+                        </button>
                     </div>
                 `;
                 break;
@@ -630,97 +669,16 @@ const MayaOnboarding = {
             confirmBtn.addEventListener('click', () => this.completeOnboarding());
         }
 
-        // Agent slider (swipe + tap)
-        const sliderTrack = document.getElementById('agentSliderTrack');
-        if (sliderTrack) {
-            const slides = sliderTrack.querySelectorAll('.agent-slide');
-            const dots = document.querySelectorAll('.agent-slider-dot');
-            let currentSlide = 0;
-            let startX = 0, currentX = 0, isDragging = false;
-
-            const goToSlide = (index) => {
-                currentSlide = Math.max(0, Math.min(index, slides.length - 1));
-                sliderTrack.style.transform = `translateX(-${currentSlide * 100}%)`;
-                slides.forEach((s, i) => s.classList.toggle('active', i === currentSlide));
-                dots.forEach((d, i) => d.classList.toggle('active', i === currentSlide));
-            };
-
-            const selectCurrent = () => {
-                const value = slides[currentSlide].dataset.value;
+        // Agent electric cards — tap to select (no swipe)
+        const agentCards = document.querySelectorAll('.agent-electric-card');
+        agentCards.forEach(card => {
+            card.addEventListener('click', (e) => {
+                const value = e.currentTarget.dataset.value;
+                agentCards.forEach(c => c.classList.remove('selected'));
+                e.currentTarget.classList.add('selected');
                 setTimeout(() => this.handleSelection(step, value), 400);
-            };
-
-            // Touch events
-            sliderTrack.addEventListener('touchstart', (e) => {
-                startX = e.touches[0].clientX;
-                isDragging = true;
-                sliderTrack.style.transition = 'none';
-            }, { passive: true });
-            sliderTrack.addEventListener('touchmove', (e) => {
-                if (!isDragging) return;
-                currentX = e.touches[0].clientX;
-                const diff = currentX - startX;
-                const base = -currentSlide * sliderTrack.parentElement.offsetWidth;
-                sliderTrack.style.transform = `translateX(${base + diff}px)`;
-            }, { passive: true });
-            sliderTrack.addEventListener('touchend', () => {
-                isDragging = false;
-                sliderTrack.style.transition = 'transform 0.4s cubic-bezier(.4,0,.2,1)';
-                const diff = currentX - startX;
-                if (Math.abs(diff) > 50) {
-                    goToSlide(currentSlide + (diff < 0 ? 1 : -1));
-                } else {
-                    goToSlide(currentSlide);
-                }
-                selectCurrent();
             });
-
-            // Mouse drag (desktop)
-            sliderTrack.addEventListener('mousedown', (e) => {
-                startX = e.clientX;
-                isDragging = true;
-                sliderTrack.style.transition = 'none';
-                e.preventDefault();
-            });
-            window.addEventListener('mousemove', (e) => {
-                if (!isDragging) return;
-                currentX = e.clientX;
-                const diff = currentX - startX;
-                const base = -currentSlide * sliderTrack.parentElement.offsetWidth;
-                sliderTrack.style.transform = `translateX(${base + diff}px)`;
-            });
-            window.addEventListener('mouseup', () => {
-                if (!isDragging) return;
-                isDragging = false;
-                sliderTrack.style.transition = 'transform 0.4s cubic-bezier(.4,0,.2,1)';
-                const diff = currentX - startX;
-                if (Math.abs(diff) > 50) {
-                    goToSlide(currentSlide + (diff < 0 ? 1 : -1));
-                } else {
-                    goToSlide(currentSlide);
-                }
-                selectCurrent();
-            });
-
-            // Click/tap on individual slide
-            slides.forEach((slide, i) => {
-                slide.addEventListener('click', () => {
-                    goToSlide(i);
-                    selectCurrent();
-                });
-            });
-
-            // Dot navigation
-            dots.forEach((dot, i) => {
-                dot.addEventListener('click', () => {
-                    goToSlide(i);
-                    selectCurrent();
-                });
-            });
-
-            // Initialize first slide
-            goToSlide(0);
-        }
+        });
 
         // Unknown time button
         const unknownBtn = document.getElementById('unknownTimeBtn');
