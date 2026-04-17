@@ -2591,7 +2591,7 @@ ONLY return the spoken response. Nothing else.`;
         const dashaRef = dasha ? (isHindi ? `${dasha} दशा` : `${dasha} dasha`) : (isHindi ? 'आपकी chart' : 'your chart');
         const moonRef = moonSign ? (isHindi ? `${moonSign} चन्द्र` : `${moonSign} Moon`) : '';
 
-        return [
+        const questions = [
             {
                 key: 'recent_upheaval',
                 spoken: isHindi
@@ -2703,6 +2703,380 @@ ONLY return the spoken response. Nothing else.`;
                     ]
             }
         ];
+
+        return this.filterProfileQuestions(questions);
+    },
+
+    normalizeMaritalStatus(status) {
+        const raw = String(status || '').trim().toLowerCase();
+        if (!raw) return 'unknown';
+        if (['married', 'vivahit'].includes(raw)) return 'married';
+        if (['unmarried', 'single', 'avivahit'].includes(raw)) return 'unmarried';
+        if (['divorced', 'separated', 'widowed'].includes(raw)) return 'divorced';
+        return 'unknown';
+    },
+
+    filterProfileQuestions(questions = [], askedKeys = new Set()) {
+        const maritalStatus = this.normalizeMaritalStatus(this.userData?.maritalStatus);
+        const asked = askedKeys instanceof Set ? askedKeys : new Set(askedKeys || []);
+        let filtered = Array.isArray(questions) ? questions.filter(Boolean) : [];
+
+        // Skip relationship-status MCQ for married users.
+        if (maritalStatus === 'married') {
+            filtered = filtered.filter(q => q?.key !== 'relationship_status');
+        }
+
+        // Avoid asking the same key twice in one journey.
+        filtered = filtered.filter(q => q?.key && !asked.has(q.key));
+
+        return filtered;
+    },
+
+    getQuestionTopic(questionKey) {
+        const map = {
+            recent_upheaval: 'upheaval',
+            current_phase: 'emotional_state',
+            money_pattern: 'money',
+            relationship_status: 'relationship',
+            repeating_pattern: 'pattern'
+        };
+        return map[questionKey] || 'general';
+    },
+
+    getStageCandidateKeys(stageKey) {
+        const map = {
+            q1_kundli: ['recent_upheaval', 'current_phase', 'repeating_pattern'],
+            q2_numbers: ['current_phase', 'money_pattern', 'repeating_pattern', 'relationship_status'],
+            q3_money: ['money_pattern', 'current_phase', 'repeating_pattern'],
+            q4_relationship: ['relationship_status', 'current_phase', 'repeating_pattern', 'money_pattern'],
+            q5_pattern: ['repeating_pattern', 'current_phase', 'relationship_status', 'money_pattern']
+        };
+        return map[stageKey] || ['current_phase', 'repeating_pattern'];
+    },
+
+    getQuestionTopicConfidenceScores() {
+        const profile = this.personalization || {};
+        const maritalStatus = this.normalizeMaritalStatus(this.userData?.maritalStatus);
+        const dasha = String(profile.currentDasha?.vedic || profile.currentDasha?.planet || '').toLowerCase();
+        const dominantElement = String(profile.dominantElement || '').toLowerCase();
+        const lp = Number(this.calculations?.lifePath || 0);
+        const answersText = Object.values(this.sessionMemory?.profileAnswers || {}).join(' ').toLowerCase();
+
+        const scores = {
+            upheaval: 1,
+            emotional_state: 1,
+            money: 1,
+            relationship: 1,
+            pattern: 1
+        };
+
+        if (/rahu|ketu/.test(dasha)) {
+            scores.upheaval += 3;
+            scores.pattern += 2;
+            scores.relationship += 1;
+        }
+        if (/saturn|shani/.test(dasha)) {
+            scores.pattern += 3;
+            scores.money += 1;
+            scores.emotional_state += 1;
+        }
+        if (/jupiter|guru|sun|surya/.test(dasha)) {
+            scores.money += 2;
+            scores.emotional_state += 1;
+        }
+        if (/venus|shukra/.test(dasha)) {
+            scores.relationship += 3;
+            scores.emotional_state += 1;
+        }
+        if (/moon|chandra/.test(dasha)) {
+            scores.emotional_state += 3;
+            scores.relationship += 1;
+        }
+        if (/mars|mangal/.test(dasha)) {
+            scores.upheaval += 1;
+            scores.pattern += 1;
+            scores.money += 1;
+        }
+        if (/mercury|budh/.test(dasha)) {
+            scores.emotional_state += 2;
+            scores.money += 1;
+        }
+
+        if (dominantElement === 'water') {
+            scores.emotional_state += 2;
+            scores.relationship += 1;
+        }
+        if (dominantElement === 'earth') {
+            scores.money += 2;
+        }
+        if (dominantElement === 'fire') {
+            scores.upheaval += 2;
+            scores.money += 1;
+        }
+        if (dominantElement === 'air') {
+            scores.emotional_state += 1;
+            scores.relationship += 1;
+        }
+
+        if ([8, 4, 22].includes(lp)) scores.money += 2;
+        if ([2, 6, 9].includes(lp)) {
+            scores.relationship += 2;
+            scores.emotional_state += 1;
+        }
+        if ([7, 11, 33].includes(lp)) {
+            scores.emotional_state += 2;
+            scores.pattern += 1;
+        }
+        if ([1, 5].includes(lp)) scores.upheaval += 1;
+
+        if (maritalStatus === 'married') {
+            scores.relationship -= 3;
+        } else if (maritalStatus === 'unmarried') {
+            scores.relationship += 2;
+        } else if (maritalStatus === 'divorced') {
+            scores.relationship += 1;
+            scores.pattern += 1;
+        }
+
+        if (/career_shift|underpaid|plateau|volatile|flows_out|money|growth/.test(answersText)) {
+            scores.money += 2;
+        }
+        if (/relationship_shift|confused|distance|searching|not_priority|relationship/.test(answersText)) {
+            scores.relationship += 2;
+        }
+        if (/stuck|isolated|missing|rapid_change/.test(answersText)) {
+            scores.emotional_state += 2;
+            scores.upheaval += 1;
+        }
+        if (/abandonment|bad_endings|missed_chances|same_mistake/.test(answersText)) {
+            scores.pattern += 3;
+        }
+
+        return scores;
+    },
+
+    rankStageQuestionCandidates(stageKey, questions = []) {
+        const allowedKeys = this.getStageCandidateKeys(stageKey);
+        const topicScores = this.getQuestionTopicConfidenceScores();
+
+        return questions
+            .filter(q => allowedKeys.includes(q.key))
+            .map((q, index) => {
+                const topic = this.getQuestionTopic(q.key);
+                const stageBoost = allowedKeys.length - allowedKeys.indexOf(q.key);
+                return {
+                    question: q,
+                    topic,
+                    confidence: (topicScores[topic] || 0) + stageBoost + ((allowedKeys[0] === q.key) ? 1 : 0),
+                    order: index
+                };
+            })
+            .sort((left, right) => {
+                if (right.confidence !== left.confidence) return right.confidence - left.confidence;
+                return left.order - right.order;
+            });
+    },
+
+    getRankedTopicPoolForStage(stageKey) {
+        const candidates = this.getStageCandidateKeys(stageKey)
+            .map(key => ({ key, topic: this.getQuestionTopic(key), score: this.getQuestionTopicConfidenceScores()[this.getQuestionTopic(key)] || 0 }));
+
+        const deduped = [];
+        const seen = new Set();
+        for (const candidate of candidates.sort((a, b) => b.score - a.score)) {
+            if (seen.has(candidate.topic)) continue;
+            seen.add(candidate.topic);
+            deduped.push(candidate);
+        }
+        return deduped;
+    },
+
+    getFallbackProfileQuestionForStage(stageKey, askedKeys = new Set()) {
+        const pool = this.filterProfileQuestions(this.getProfileQuestions(), askedKeys);
+        if (!pool.length) return null;
+
+        const ranked = this.rankStageQuestionCandidates(stageKey, pool);
+        return ranked[0]?.question || pool[0];
+    },
+
+    _extractFirstJsonObject(text = '') {
+        const source = String(text || '').trim();
+        if (!source) return null;
+
+        try {
+            return JSON.parse(source);
+        } catch (_) {
+            // Continue to bracket extraction fallback.
+        }
+
+        const firstBrace = source.indexOf('{');
+        const lastBrace = source.lastIndexOf('}');
+        if (firstBrace >= 0 && lastBrace > firstBrace) {
+            const candidate = source.slice(firstBrace, lastBrace + 1);
+            try {
+                return JSON.parse(candidate);
+            } catch (_) {
+                return null;
+            }
+        }
+        return null;
+    },
+
+    _sanitizeAdaptiveQuestion(rawQuestion, fallbackQuestion, askedKeys = new Set()) {
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        if (!rawQuestion || typeof rawQuestion !== 'object') return fallbackQuestion;
+
+        const base = fallbackQuestion || {};
+        const questionText = String(rawQuestion.question || '').trim();
+        const spokenText = String(rawQuestion.spoken || questionText).trim();
+        const key = String(rawQuestion.key || base.key || `dynamic_${Date.now()}`).trim();
+
+        const options = Array.isArray(rawQuestion.options)
+            ? rawQuestion.options
+                .map((opt, idx) => ({
+                    label: String(opt?.label || '').trim(),
+                    value: String(opt?.value || `opt_${idx + 1}`).trim(),
+                    insight: String(opt?.insight || '').trim()
+                }))
+                .filter(opt => opt.label && opt.value)
+            : [];
+
+        if (!questionText || options.length < 3 || options.length > 4) {
+            return base;
+        }
+
+        const dedupedOptions = [];
+        const seen = new Set();
+        for (const opt of options) {
+            if (seen.has(opt.value)) continue;
+            seen.add(opt.value);
+            dedupedOptions.push(opt);
+        }
+
+        if (dedupedOptions.length < 3) return base;
+
+        const maritalStatus = this.normalizeMaritalStatus(this.userData?.maritalStatus);
+        const hasDatingLanguage = /find the right person|dating|single life|सही इंसान|डेटिंग/i.test(`${questionText} ${spokenText}`);
+        if (maritalStatus === 'married' && hasDatingLanguage) {
+            return base;
+        }
+
+        if ((askedKeys instanceof Set ? askedKeys : new Set()).has(key)) {
+            return base;
+        }
+
+        return {
+            key,
+            spoken: spokenText,
+            question: questionText,
+            options: dedupedOptions,
+            source: 'ai'
+        };
+    },
+
+    async getAdaptiveQuestionForStage(stageKey, askedKeys = new Set()) {
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const fallback = this.getFallbackProfileQuestionForStage(stageKey, askedKeys);
+        if (!fallback) return null;
+
+        if (!window.MayaAI?.callGemini) {
+            return fallback;
+        }
+
+        const profile = this.personalization || {};
+        const maritalStatus = this.normalizeMaritalStatus(this.userData?.maritalStatus);
+        const priorAnswers = Object.entries(this.sessionMemory?.profileAnswers || {})
+            .map(([k, v]) => `- ${k}: ${v}`)
+            .join('\n') || '- none yet';
+
+        const askedList = Array.from(askedKeys || []).join(', ') || 'none';
+        const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || 'unknown';
+        const moonSign = profile.moonSign || profile.vedic?.name || 'unknown';
+        const ascendant = profile.ascendant?.name || 'unknown';
+        const lp = this.calculations?.lifePath || 'unknown';
+        const rankedTopics = this.getRankedTopicPoolForStage(stageKey)
+            .map(item => `- ${item.topic}: confidence ${item.score} (from ${item.key})`)
+            .join('\n') || '- emotional_state: confidence 1';
+        const fallbackTopic = this.getQuestionTopic(fallback.key);
+        const fallbackSummary = JSON.stringify({
+            key: fallback.key,
+            topic: fallbackTopic,
+            question: fallback.question,
+            options: fallback.options?.map(opt => ({ label: opt.label, value: opt.value }))
+        });
+
+        const prompt = isHindi
+            ? `आप MAYA funnel के लिए केवल ONE dynamic MCQ question JSON format में generate करें।
+
+Stage: ${stageKey}
+User marital status: ${maritalStatus}
+Current dasha: ${dasha}
+Moon sign: ${moonSign}
+Ascendant: ${ascendant}
+Life path: ${lp}
+Already asked keys: ${askedList}
+
+Previous user answers:
+${priorAnswers}
+
+Ranked topic pool for this stage:
+${rankedTopics}
+
+Deterministic fallback candidate:
+${fallbackSummary}
+
+STRICT RULES:
+- अगर marital status = married है, तो dating/"right person" style सवाल मत पूछो।
+- सवाल chart-aware होना चाहिए (dasha/transit/house pattern signal mention करें).
+- सवाल previous answers पर build होना चाहिए (repeat नहीं).
+- सवाल का topic ranked topic pool के top 2 topics के अंदर ही होना चाहिए.
+- अगर confidence बहुत close हो तो fallback candidate के करीब रहो, पूरी तरह random topic मत चुनो.
+- 3 या 4 options ही दें.
+- हर option में label, value, insight दें.
+- भाषा हिंदी रखें.
+
+Return ONLY valid JSON object in this exact schema:
+{"key":"...","spoken":"...","question":"...","options":[{"label":"...","value":"...","insight":"..."}]}`
+            : `Generate exactly ONE dynamic MCQ question for MAYA funnel as JSON only.
+
+Stage: ${stageKey}
+User marital status: ${maritalStatus}
+Current dasha: ${dasha}
+Moon sign: ${moonSign}
+Ascendant: ${ascendant}
+Life path: ${lp}
+Already asked keys: ${askedList}
+
+Previous user answers:
+${priorAnswers}
+
+Ranked topic pool for this stage:
+${rankedTopics}
+
+Deterministic fallback candidate:
+${fallbackSummary}
+
+STRICT RULES:
+- If marital status is married, do NOT ask dating or "find the right person" style questions.
+- Question must feel chart-aware (mention dasha/transit/house signal naturally).
+- Build on previous answers; do not repeat themes already asked.
+- The question topic must stay within the top 2 ranked topics for this stage.
+- If scores are close, stay near the deterministic fallback candidate instead of jumping to a random theme.
+- Provide exactly 3 or 4 options.
+- Each option must include label, value, insight.
+- Keep language in English.
+
+Return ONLY valid JSON object in this exact schema:
+{"key":"...","spoken":"...","question":"...","options":[{"label":"...","value":"...","insight":"..."}]}`;
+
+        try {
+            const aiRaw = await MayaAI.callGemini(prompt);
+            const parsed = this._extractFirstJsonObject(aiRaw);
+            return this._sanitizeAdaptiveQuestion(parsed, fallback, askedKeys);
+        } catch (error) {
+            console.warn('Dynamic profile question generation failed:', error?.message || error);
+            return fallback;
+        }
     },
 
     /**
@@ -2711,7 +3085,8 @@ ONLY return the spoken response. Nothing else.`;
      */
     async runProfileQuestions() {
         const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
-        const questions = this.getProfileQuestions();
+        const stageOrder = ['q1_kundli', 'q2_numbers', 'q3_money', 'q4_relationship', 'q5_pattern'];
+        const askedKeys = new Set();
 
         // Intro - grounded in the chart
         const introLine = isHindi
@@ -2720,22 +3095,12 @@ ONLY return the spoken response. Nothing else.`;
         await this.speak(introLine);
         await MayaUtils.sleep(300);
 
-        for (const q of questions) {
-            const answer = await this.showValidationQuestion(
-                q.question,
-                q.options.map(o => ({ label: o.label, value: o.value })),
-                q.spoken
-            );
+        for (const stageKey of stageOrder) {
+            const q = await this.getAdaptiveQuestionForStage(stageKey, askedKeys);
+            if (!q) continue;
 
-            const chosen = q.options.find(o => o.value === answer);
-            const insightText = chosen?.insight || answer;
-            this.sessionMemory.profileAnswers[q.key] = `${answer} (${insightText})`;
-
-            // Show reading animation + AI ack (same as profile questions)
-            const hideAnim = this._showAnswerReadingAnim(isHindi);
-            const ack = await this._generateMcqAck(q.question, chosen?.label || answer, answer, isHindi);
-            hideAnim();
-            await this.speak(ack);
+            await this.askSingleProfileQuestion(q);
+            if (q.key) askedKeys.add(q.key);
             await MayaUtils.sleep(200);
         }
 
@@ -3208,8 +3573,8 @@ ONLY return the spoken response. Nothing else.`;
             // Show progress meter
             this.showProgressMeter();
 
-            // Get all questions up front so we can distribute them
-            const allQuestions = this.getProfileQuestions();
+            // Build questions adaptively per stage so each next question can use previous answers.
+            const askedProfileKeys = new Set();
 
             // ═══ STEP 1: Proper MAYA Introduction ═══
             console.log('🗣️ MAYA introduction...');
@@ -3269,9 +3634,11 @@ ONLY return the spoken response. Nothing else.`;
             // Store the promise for later use in showSuspenseBridge
             this._emailNarrationPregen = emailPregen;
 
-            if (allQuestions[0]) {
-                console.log('🎯 Q1 after kundli: recent_upheaval...');
-                await this.askSingleProfileQuestion(allQuestions[0]);
+            const q1 = await this.getAdaptiveQuestionForStage('q1_kundli', askedProfileKeys);
+            if (q1) {
+                console.log('🎯 Q1 after kundli: adaptive...');
+                await this.askSingleProfileQuestion(q1);
+                if (q1.key) askedProfileKeys.add(q1.key);
             }
 
             // ═══ STEP 4: ALL numbers in one unified UI ═══
@@ -3282,33 +3649,39 @@ ONLY return the spoken response. Nothing else.`;
             this.advanceProgress('soul_urge');
 
             // ═══ STEP 5: Second question — after numbers (current phase) ═══
-            if (allQuestions[1]) {
-                console.log('🎯 Q2 after numbers: current_phase...');
+            const q2 = await this.getAdaptiveQuestionForStage('q2_numbers', askedProfileKeys);
+            if (q2) {
+                console.log('🎯 Q2 after numbers: adaptive...');
                 const transQ2 = isHindi
                     ? 'अच्छा, अब numbers और कुंडली दोनों ने अपनी बात कह दी है। पर एक बात बताइए।'
                     : 'Now both the numbers and the chart have shared what they see. But tell me one thing.';
                 await this.speak(transQ2);
-                await this.askSingleProfileQuestion(allQuestions[1]);
+                await this.askSingleProfileQuestion(q2);
+                if (q2.key) askedProfileKeys.add(q2.key);
             }
 
             // ═══ STEP 6: Third question — money pattern ═══
-            if (allQuestions[2]) {
-                console.log('🎯 Q3: money_pattern...');
+            const q3 = await this.getAdaptiveQuestionForStage('q3_money', askedProfileKeys);
+            if (q3) {
+                console.log('🎯 Q3: adaptive...');
                 const transQ3 = isHindi
                     ? 'पैसों से जुड़ा एक pattern दिख रहा है कुंडली में। ये बताइए।'
                     : 'I see a pattern around money in your chart. Tell me this.';
                 await this.speak(transQ3);
-                await this.askSingleProfileQuestion(allQuestions[2]);
+                await this.askSingleProfileQuestion(q3);
+                if (q3.key) askedProfileKeys.add(q3.key);
             }
 
             // ═══ STEP 7: Fourth question — relationship status ═══
-            if (allQuestions[3]) {
-                console.log('🎯 Q4: relationship_status...');
+            const q4 = await this.getAdaptiveQuestionForStage('q4_relationship', askedProfileKeys);
+            if (q4) {
+                console.log('🎯 Q4: adaptive...');
                 const transQ4 = isHindi
                     ? 'रिश्तों के बारे में भी कुछ दिख रहा है। एक छोटा सवाल और पूछ लूँ?'
                     : 'I can see something about your relationships too. May I ask one more thing?';
                 await this.speak(transQ4);
-                await this.askSingleProfileQuestion(allQuestions[3]);
+                await this.askSingleProfileQuestion(q4);
+                if (q4.key) askedProfileKeys.add(q4.key);
             }
 
             // ═══ STEP 8: Hide overlay ═══
@@ -3328,13 +3701,15 @@ ONLY return the spoken response. Nothing else.`;
             this.advanceProgress('deep_patterns');
 
             // ═══ STEP 11: Fifth question - after teaser (repeating pattern) ═══
-            if (allQuestions[4]) {
-                console.log('🎯 Q5 after teaser: repeating_pattern...');
+            const q5 = await this.getAdaptiveQuestionForStage('q5_pattern', askedProfileKeys);
+            if (q5) {
+                console.log('🎯 Q5 after teaser: adaptive...');
                 const transQ5 = isHindi
                     ? 'अब तक जो दिखा वो बस शुरुआत है। एक और बात है जो मुझे बार-बार दिख रही है।'
                     : 'What I have shared so far is just the beginning. There is one more thing I keep seeing.';
                 await this.speak(transQ5);
-                await this.askSingleProfileQuestion(allQuestions[4]);
+                await this.askSingleProfileQuestion(q5);
+                if (q5.key) askedProfileKeys.add(q5.key);
             }
 
             // ═══ STEP 12: Suspense bridge → email gate ═══

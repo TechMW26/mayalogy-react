@@ -1208,6 +1208,23 @@ h1, h2, h3, h4, h5, h6, p {
     justify-content: center;
 }
 
+/* Force center alignment for all funnel headings despite global heading rule */
+.maya-overlay.funnel-mode h1,
+.maya-overlay.funnel-mode h2,
+.maya-overlay.funnel-mode h3,
+.maya-overlay.funnel-mode h4,
+.maya-overlay.funnel-mode h5,
+.maya-overlay.funnel-mode h6,
+.calculation-overlay h1,
+.calculation-overlay h2,
+.calculation-overlay h3,
+.calculation-overlay h4,
+.calculation-overlay h5,
+.calculation-overlay h6,
+.unified-numbers__header h3 {
+    text-align: center !important;
+}
+
 /* Funnel Controls - Pause/Resume Button */
 .maya-funnel-controls {
     position: fixed;
@@ -6275,6 +6292,11 @@ h1, h2, h3, h4, h5, h6, p {
     box-shadow: 0 0 0 3px rgba(212, 168, 75, 0.12);
 }
 
+.phone-input-wrapper > .country-code-selector,
+.phone-input-wrapper > .phone-number-input {
+    height: 56px;
+}
+
 .country-code-selector {
     display: flex;
     align-items: center;
@@ -6341,6 +6363,15 @@ h1, h2, h3, h4, h5, h6, p {
     flex: 1;
     min-width: 0;
     padding-left: 0.9rem;
+}
+
+.phone-input-wrapper > input.phone-number-input.form-control,
+.phone-input-wrapper > input.phone-number-input.form-control-lg {
+    border: 0 !important;
+    border-radius: 0 !important;
+    outline: none !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
 }
 
 .otp-input-group {
