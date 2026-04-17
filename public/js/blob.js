@@ -281,7 +281,7 @@ const MayaBlob = {
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
         const material = new THREE.PointsMaterial({
-            color: 0x66ccff,
+            color: 0xffdf64,
             size: 0.05,
             transparent: true,
             opacity: 0.6,
