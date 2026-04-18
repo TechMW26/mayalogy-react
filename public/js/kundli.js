@@ -856,9 +856,10 @@ const MayaKundli = {
         const moon = birthChart.planets.find((planet) => planet.name === 'Moon');
         const allYogas = this.calculateYogas(birthChart.planets, birthChart.ascendant.name)
             .filter((yoga) => yoga.name !== 'Analyzing...');
-        // Only include yogas with "Very Strong" strength to avoid mentioning common yogas (like Gaja Kesari) for everyone
+        // Only include yogas with "Very Strong" strength to avoid reporting common yogas to everyone
         const yogas = allYogas.filter((yoga) => yoga.strength === 'Very Strong');
-        const currentDasha = this.getCurrentDasha(birthChart.birthDate);
+        const moonPlanet = birthChart.planets.find((p) => p.name === 'Moon');
+        const currentDasha = this.getCurrentDasha(birthChart.birthDate, moonPlanet?.sign?.name, moonPlanet?.degree);
         const groupedSigns = planetGroups
             .filter((group) => group.planets.length >= 2)
             .map((group) => `${group.signName} (${group.planets.map((planet) => planet.info.vedic || planet.name).join(', ')})`);
@@ -883,45 +884,77 @@ const MayaKundli = {
     },
 
     /**
-     * Get Dasha periods (simplified Vimshottari)
+     * Get Dasha periods using proper Vimshottari system based on Moon's nakshatra.
+     * @param {string} birthDate
+     * @param {string} moonSign  - Moon's zodiac sign name e.g. 'Aries'
+     * @param {number} moonDegree - Moon's degree within that sign (0-30)
      */
-    getDashaPeriods(birthDate) {
+    getDashaPeriods(birthDate, moonSign, moonDegree) {
         const date = window.MayaAstrology ? MayaAstrology.parseDate(birthDate) : new Date(birthDate);
         if (!date) return [];
-        const year = date.getFullYear();
-        
+
+        // Vimshottari order and durations (years)
         const dashaOrder = ['Ketu', 'Venus', 'Sun', 'Moon', 'Mars', 'Rahu', 'Jupiter', 'Saturn', 'Mercury'];
         const dashaDurations = [7, 20, 6, 10, 7, 18, 16, 19, 17];
-        
+        const SIGN_NAMES = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+        const MS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000;
+
+        // Determine first dasha from Moon nakshatra
+        // 27 nakshatras × 13°20' each = 360°; nakshatra ruler = naksha % 9 maps to dashaOrder
+        const NAK_SPAN = 360 / 27; // 13.333...°
+        const signIdx = SIGN_NAMES.indexOf(moonSign);
+        let firstDashaIdx = 0;
+        let yearsElapsed = 0;
+
+        if (signIdx >= 0 && moonDegree != null && !isNaN(Number(moonDegree))) {
+            const moonLong = signIdx * 30 + Number(moonDegree);
+            const nakIdx = Math.floor(moonLong / NAK_SPAN) % 27;
+            firstDashaIdx = nakIdx % 9; // 0-8 into dashaOrder
+            // How far Moon has advanced in this nakshatra → elapsed portion of first dasha
+            const posInNak = moonLong % NAK_SPAN;
+            const fractionElapsed = posInNak / NAK_SPAN;
+            yearsElapsed = fractionElapsed * dashaDurations[firstDashaIdx];
+        }
+
+        // First dasha started (yearsElapsed) years before birth
+        let currentMs = date.getTime() - yearsElapsed * MS_PER_YEAR;
+
         const periods = [];
-        let currentYear = year;
-        let startIndex = (year % 9);
-        
         for (let i = 0; i < 9; i++) {
-            const index = (startIndex + i) % 9;
-            const planetInfo = this.planetInfo[dashaOrder[index]] || {};
+            const idx = (firstDashaIdx + i) % 9;
+            const planet = dashaOrder[idx];
+            const duration = dashaDurations[idx];
+            const planetInfo = this.planetInfo[planet] || {};
+            const startMs = currentMs;
+            const endMs = currentMs + duration * MS_PER_YEAR;
             periods.push({
-                planet: dashaOrder[index],
-                vedic: planetInfo.vedic || dashaOrder[index],
+                planet,
+                vedic: planetInfo.vedic || planet,
                 symbol: planetInfo.symbol || '•',
-                startYear: currentYear,
-                endYear: currentYear + dashaDurations[index],
-                duration: dashaDurations[index],
+                startYear: new Date(startMs).getFullYear(),
+                endYear: new Date(endMs).getFullYear(),
+                startMs,
+                endMs,
+                duration,
                 nature: planetInfo.nature || 'Neutral'
             });
-            currentYear += dashaDurations[index];
+            currentMs = endMs;
         }
-        
+
         return periods;
     },
 
     /**
-     * Get current running Dasha
+     * Get current running Vimshottari Dasha.
+     * @param {string} birthDate
+     * @param {string} moonSign   - Moon's sign name
+     * @param {number} moonDegree - Moon's degree within its sign
      */
-    getCurrentDasha(birthDate) {
-        const periods = this.getDashaPeriods(birthDate);
-        const currentYear = new Date().getFullYear();
-        return periods.find(p => currentYear >= p.startYear && currentYear < p.endYear);
+    getCurrentDasha(birthDate, moonSign, moonDegree) {
+        const periods = this.getDashaPeriods(birthDate, moonSign, moonDegree);
+        if (!periods.length) return null;
+        const now = Date.now();
+        return periods.find(p => now >= p.startMs && now < p.endMs) || null;
     },
 
     /**
@@ -958,10 +991,12 @@ const MayaKundli = {
             ? birthChart.planets.filter(p => p.sign.name === seventhHouseSign.name)
             : [];
 
-        // Dasha analysis
-        const dashas = this.getDashaPeriods(birthDate);
+        // Dasha analysis — needs Moon's nakshatra for accurate Vimshottari
+        const moonForMarriage = birthChart.planets.find(p => p.name === 'Moon');
+        const dashas = this.getDashaPeriods(birthDate, moonForMarriage?.sign?.name, moonForMarriage?.degree);
+        const nowMs = Date.now();
         const currentYear = new Date().getFullYear();
-        const currentDasha = dashas.find(p => currentYear >= p.startYear && currentYear < p.endYear);
+        const currentDasha = dashas.find(p => nowMs >= p.startMs && nowMs < p.endMs);
 
         // Venus dasha period (typical marriage trigger)
         const venusDasha = dashas.find(p => p.planet === 'Venus');
@@ -1170,10 +1205,12 @@ const MayaKundli = {
             lines.push(`Ascendant (Lagna): ${birthChart.ascendant.name}`);
         }
 
-        // Dasha timeline
-        const dashas = this.getDashaPeriods(birthDate);
+        // Dasha timeline — use Moon's nakshatra for accurate Vimshottari calculation
+        const moonPlanetFacts = birthChart.planets.find(p => p.name === 'Moon');
+        const dashas = this.getDashaPeriods(birthDate, moonPlanetFacts?.sign?.name, moonPlanetFacts?.degree);
+        const now = Date.now();
+        const currentDasha = dashas.find(d => now >= d.startMs && now < d.endMs);
         const currentYear = new Date().getFullYear();
-        const currentDasha = dashas.find(d => currentYear >= d.startYear && currentYear < d.endYear);
         const pastDashas = dashas.filter(d => d.endYear <= currentYear);
         const futureDashas = dashas.filter(d => d.startYear > currentYear);
 
@@ -1255,8 +1292,13 @@ const MayaKundli = {
     calculateYogas(planets, ascendantSign) {
         const yogas = [];
         const signs = MAYA_CONFIG.ZODIAC.SIGNS;
-        const signIndex = (signName) => signs.findIndex(s => s === signName);
-        const signGap = (a, b) => ((signIndex(a) - signIndex(b) + 12) % 12);
+        // IMPORTANT: ZODIAC.SIGNS is an array of objects {name, ...} — must compare by .name
+        const signIndex = (signName) => signs.findIndex(s => s.name === signName);
+        const signGap = (a, b) => {
+            const ia = signIndex(a), ib = signIndex(b);
+            if (ia < 0 || ib < 0) return -1; // unknown sign — no gap
+            return (ia - ib + 12) % 12;
+        };
 
         const planetPositions = {};
         const planetDegrees = {};
@@ -1269,14 +1311,18 @@ const MayaKundli = {
         const trikonaGaps = [0, 4, 8]; // 1st, 5th, 9th
 
         // Gaja Kesari Yoga - Jupiter in kendra (1,4,7,10) from Moon
+        // Only Very Strong when Jupiter is in EXACT same sign as Moon (conjunction)
         if (planetPositions['Jupiter'] && planetPositions['Moon']) {
             const gap = signGap(planetPositions['Jupiter'], planetPositions['Moon']);
-            if (kendraGaps.includes(gap)) {
+            if (gap >= 0 && kendraGaps.includes(gap)) {
+                // Conjunction (same sign) = Very Strong; other kendras = Medium at best
+                // We only show as Very Strong for conjunction
+                const strength = gap === 0 ? 'Very Strong' : 'Medium';
                 yogas.push({
                     name: 'गजकेसरी योग',
                     hindi: 'गजकेसरी योग',
                     description: `Jupiter (${planetPositions['Jupiter']}) in kendra from Moon (${planetPositions['Moon']}) - wisdom, respect, financial stability`,
-                    strength: gap === 0 ? 'Very Strong' : 'Strong'
+                    strength
                 });
             }
         }
@@ -1309,7 +1355,8 @@ const MayaKundli = {
         // Hamsa Yoga - Jupiter in kendra from Ascendant in own/exaltation sign
         if (ascendantSign && planetPositions['Jupiter']) {
             const jupSign = planetPositions['Jupiter'];
-            const jupKendra = kendraGaps.includes(signGap(jupSign, ascendantSign));
+            const jupGap = signGap(jupSign, ascendantSign);
+            const jupKendra = jupGap >= 0 && kendraGaps.includes(jupGap);
             const jupStrong = ['Sagittarius', 'Pisces', 'Cancer'].includes(jupSign);
             if (jupKendra && jupStrong) {
                 yogas.push({
@@ -1324,7 +1371,8 @@ const MayaKundli = {
         // Malavya Yoga - Venus in kendra from Ascendant in own/exaltation sign
         if (ascendantSign && planetPositions['Venus']) {
             const venSign = planetPositions['Venus'];
-            const venKendra = kendraGaps.includes(signGap(venSign, ascendantSign));
+            const venGap = signGap(venSign, ascendantSign);
+            const venKendra = venGap >= 0 && kendraGaps.includes(venGap);
             const venStrong = ['Taurus', 'Libra', 'Pisces'].includes(venSign);
             if (venKendra && venStrong) {
                 yogas.push({
@@ -1339,7 +1387,8 @@ const MayaKundli = {
         // Ruchaka Yoga - Mars in kendra from Ascendant in own/exaltation sign
         if (ascendantSign && planetPositions['Mars']) {
             const marsSign = planetPositions['Mars'];
-            const marsKendra = kendraGaps.includes(signGap(marsSign, ascendantSign));
+            const marsGap = signGap(marsSign, ascendantSign);
+            const marsKendra = marsGap >= 0 && kendraGaps.includes(marsGap);
             const marsStrong = ['Aries', 'Scorpio', 'Capricorn'].includes(marsSign);
             if (marsKendra && marsStrong) {
                 yogas.push({
@@ -1354,7 +1403,8 @@ const MayaKundli = {
         // Bhadra Yoga - Mercury in kendra from Ascendant in own/exaltation sign
         if (ascendantSign && planetPositions['Mercury']) {
             const mercSign = planetPositions['Mercury'];
-            const mercKendra = kendraGaps.includes(signGap(mercSign, ascendantSign));
+            const mercGap = signGap(mercSign, ascendantSign);
+            const mercKendra = mercGap >= 0 && kendraGaps.includes(mercGap);
             const mercStrong = ['Gemini', 'Virgo'].includes(mercSign);
             if (mercKendra && mercStrong) {
                 yogas.push({
@@ -1369,7 +1419,8 @@ const MayaKundli = {
         // Shasha Yoga - Saturn in kendra from Ascendant in own/exaltation sign
         if (ascendantSign && planetPositions['Saturn']) {
             const satSign = planetPositions['Saturn'];
-            const satKendra = kendraGaps.includes(signGap(satSign, ascendantSign));
+            const satGap = signGap(satSign, ascendantSign);
+            const satKendra = satGap >= 0 && kendraGaps.includes(satGap);
             const satStrong = ['Capricorn', 'Aquarius', 'Libra'].includes(satSign);
             if (satKendra && satStrong) {
                 yogas.push({
@@ -1392,7 +1443,7 @@ const MayaKundli = {
                 const lord = signLords[debSign];
                 if (lord && planetPositions[lord] && ascendantSign) {
                     const lordGap = signGap(planetPositions[lord], ascendantSign);
-                    if (kendraGaps.includes(lordGap)) {
+                    if (lordGap >= 0 && kendraGaps.includes(lordGap)) {
                         yogas.push({
                             name: 'नीचभंग राजयोग',
                             hindi: 'नीचभंग राजयोग',
@@ -1406,10 +1457,11 @@ const MayaKundli = {
         }
 
         // Dhana Yoga - lords of 2nd and 11th related
-        if (ascendantSign) {
-            const houseSignIndex = (houseNum) => (signIndex(ascendantSign) + houseNum - 1) % 12;
-            const secondSign = signs[houseSignIndex(2)];
-            const eleventhSign = signs[houseSignIndex(11)];
+        if (ascendantSign && signIndex(ascendantSign) >= 0) {
+            const ascIdx = signIndex(ascendantSign);
+            const houseSignIndex = (houseNum) => (ascIdx + houseNum - 1) % 12;
+            const secondSign = signs[houseSignIndex(2)]?.name;
+            const eleventhSign = signs[houseSignIndex(11)]?.name;
             const lord2 = signLords[secondSign];
             const lord11 = signLords[eleventhSign];
             if (lord2 && lord11 && planetPositions[lord2] && planetPositions[lord11] && planetPositions[lord2] === planetPositions[lord11]) {
@@ -1423,13 +1475,14 @@ const MayaKundli = {
         }
 
         // Viparita Raja Yoga - lords of 6th, 8th, 12th in each other's houses
-        if (ascendantSign) {
-            const houseSignIndex = (houseNum) => (signIndex(ascendantSign) + houseNum - 1) % 12;
-            const lord6 = signLords[signs[houseSignIndex(6)]];
-            const lord8 = signLords[signs[houseSignIndex(8)]];
-            const lord12 = signLords[signs[houseSignIndex(12)]];
+        if (ascendantSign && signIndex(ascendantSign) >= 0) {
+            const ascIdx2 = signIndex(ascendantSign);
+            const houseSignIndex = (houseNum) => (ascIdx2 + houseNum - 1) % 12;
+            const lord6 = signLords[signs[houseSignIndex(6)]?.name];
+            const lord8 = signLords[signs[houseSignIndex(8)]?.name];
+            const lord12 = signLords[signs[houseSignIndex(12)]?.name];
             const dusthanaLords = [lord6, lord8, lord12].filter(Boolean);
-            const dusthanaSigns = [signs[houseSignIndex(6)], signs[houseSignIndex(8)], signs[houseSignIndex(12)]];
+            const dusthanaSigns = [signs[houseSignIndex(6)]?.name, signs[houseSignIndex(8)]?.name, signs[houseSignIndex(12)]?.name].filter(Boolean);
             for (const lord of dusthanaLords) {
                 if (planetPositions[lord] && dusthanaSigns.includes(planetPositions[lord]) && planetPositions[lord] !== signs[houseSignIndex(dusthanaLords.indexOf(lord) === 0 ? 6 : dusthanaLords.indexOf(lord) === 1 ? 8 : 12)]) {
                     yogas.push({
@@ -1513,8 +1566,9 @@ const MayaKundli = {
             birthLon: profile.birthLon
         })?.name || birthChart.planets.find((planet) => planet.name === 'Moon')?.sign?.name || '';
         
-        const currentDasha = this.getCurrentDasha(profile.birthDate);
-        const dashaPeriods = this.getDashaPeriods(profile.birthDate);
+        const moonForDasha = birthChart.planets.find(p => p.name === 'Moon');
+        const currentDasha = this.getCurrentDasha(profile.birthDate, moonForDasha?.sign?.name, moonForDasha?.degree);
+        const dashaPeriods = this.getDashaPeriods(profile.birthDate, moonForDasha?.sign?.name, moonForDasha?.degree);
         const yogas = this.calculateYogas(birthChart.planets, birthChart.ascendant.name);
         const southChart = this.generateChart(birthChart.planets, birthChart.ascendant.name, 'south');
         const northChart = this.generateChart(birthChart.planets, birthChart.ascendant.name, 'north');

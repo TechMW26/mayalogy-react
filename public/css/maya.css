@@ -1961,7 +1961,7 @@ h1, h2, h3, h4, h5, h6, p {
     flex: 0 0 100%;
     display: flex;
     justify-content: center;
-    padding: 0 16px;
+    padding: 10px 16px;
     box-sizing: border-box;
 }
 
@@ -1973,8 +1973,7 @@ h1, h2, h3, h4, h5, h6, p {
     padding: 2px;
     border-radius: 24px;
     position: relative;
-    width: 100%;
-    max-width: 300px;
+    width: 280px;
     background: linear-gradient(
         -30deg,
         var(--gradient-color),
@@ -2209,27 +2208,54 @@ h1, h2, h3, h4, h5, h6, p {
     transform: scale(0.97);
 }
 
-/* ── Desktop: larger card ── */
+/* ── Desktop: side by side, no slider ── */
 @media (min-width: 600px) {
+    .onboarding-content {
+        max-width: 800px;
+        overflow-x: visible;
+    }
     .gc-slider-viewport {
-        max-width: 400px;
+        max-width: 750px;
+        overflow: visible;
+        padding: 1rem 0;
+    }
+    .gc-slider-track {
+        transform: none !important;
+        gap: 2rem;
+        justify-content: center;
+    }
+    .gc-slide {
+        flex: 0 0 auto;
+        width: auto;
+        padding: 12px;
+        cursor: pointer;
+    }
+    .gc-slide:hover .gc-card {
+        transform: translateY(-4px);
     }
     .gc-card {
-        max-width: 360px;
+        width: 280px;
+        transition: transform 0.3s ease;
     }
     .gc-avatar {
-        width: 170px;
-        height: 170px;
+        width: 130px;
+        height: 130px;
     }
     .gc-name {
-        font-size: 36px;
+        font-size: 30px;
     }
     .gc-content-top {
-        padding: 36px 36px 16px;
-        gap: 18px;
+        padding: 28px 24px 10px;
+        gap: 12px;
     }
     .gc-content-bottom {
-        padding: 16px 36px 32px;
+        padding: 10px 24px 24px;
+    }
+    .gc-slider-dots {
+        display: none;
+    }
+    .gc-choose-btn {
+        display: none;
     }
 }
 
@@ -6645,13 +6671,14 @@ h1, h2, h3, h4, h5, h6, p {
     position: absolute;
     left: 0;
     top: 0;
-    width: 82px;
+    width: 90px;
     height: 100%;
     opacity: 0;
     z-index: 2;
     cursor: pointer;
     border: none;
     background: transparent;
+    pointer-events: auto;
 }
 
 .phone-number-input {
@@ -6663,6 +6690,8 @@ h1, h2, h3, h4, h5, h6, p {
     flex: 1;
     min-width: 0;
     padding-left: 0.9rem;
+    position: relative;
+    z-index: 3;
 }
 
 .phone-input-wrapper > input.phone-number-input.form-control,

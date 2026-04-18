@@ -842,6 +842,29 @@ const MayaVoice = {
         };
     },
 
+    // ── TTS Prefetch ──────────────────────────────────────────
+    // Pre-warm the first audio chunk so playback starts instantly.
+    _prefetchCache: new Map(),
+
+    prefetchSpeech(text) {
+        if (!text || this.isMuted) return;
+        try {
+            const prepared = this.prepareForSpeech(text);
+            const chunks = this.splitIntoSpeechChunks(prepared);
+            if (chunks.length > 0) {
+                const firstChunk = chunks[0];
+                if (!this._prefetchCache.has(firstChunk)) {
+                    const options = this.buildChunkSpeechOptions(chunks, 0);
+                    this._prefetchCache.set(firstChunk, this.textToSpeech(firstChunk, options));
+                    // Auto-expire after 30s to avoid stale cache
+                    setTimeout(() => this._prefetchCache.delete(firstChunk), 30000);
+                }
+            }
+        } catch (e) {
+            console.warn('Prefetch TTS failed:', e.message);
+        }
+    },
+
     async speakChunks(chunks, onProgress = null) {
         const normalizedChunks = (chunks || []).map((chunk) => String(chunk || '').trim()).filter(Boolean);
         if (!normalizedChunks.length) return;
@@ -862,7 +885,13 @@ const MayaVoice = {
                 }
 
                 if (!pendingAudio) {
-                    pendingAudio = this.textToSpeech(text, this.buildChunkSpeechOptions(normalizedChunks, index));
+                    // Use prefetched audio if available for this chunk
+                    if (this._prefetchCache && this._prefetchCache.has(text)) {
+                        pendingAudio = this._prefetchCache.get(text);
+                        this._prefetchCache.delete(text);
+                    } else {
+                        pendingAudio = this.textToSpeech(text, this.buildChunkSpeechOptions(normalizedChunks, index));
+                    }
                 }
 
                 const audioBlob = await pendingAudio;
@@ -1343,6 +1372,11 @@ const MayaVoice = {
 
                 if (!this.isMuted) {
                     source.start(now);
+                    // Fire one-shot callback so callers know audio is actually playing
+                    if (this.onPlaybackStart) {
+                        this.onPlaybackStart();
+                        this.onPlaybackStart = null;
+                    }
                 } else {
                     resolve();
                 }

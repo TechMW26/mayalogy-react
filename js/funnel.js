@@ -2829,6 +2829,9 @@ ONLY return the spoken response. Nothing else.`;
                 { label: 'Not really', value: 'no' }
             ];
 
+        // Pre-warm TTS for the question
+        if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(checkQuestion);
+
         const answer = await this.showValidationQuestion(checkQuestion, options);
         const chosen = options.find(o => o.value === answer);
         this.recordStepContext('mini_check_answer', `Q: ${checkQuestion} | A: ${chosen?.label || answer}`);
@@ -2836,8 +2839,11 @@ ONLY return the spoken response. Nothing else.`;
         // Show reading animation + AI ack (same as profile questions)
         const hideAnim = this._showAnswerReadingAnim(isHindi);
         const ack = await this._generateMcqAck(checkQuestion, chosen?.label || answer, answer, isHindi);
-        hideAnim();
+        if (ack && window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(ack);
+        if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.onPlaybackStart = () => hideAnim();
+        else hideAnim();
         await this.speak(ack);
+        hideAnim(); // safety: no-op if already removed
         if (ack && ack.length > 8) {
             this.spokenNarrations.push({ stage: 'mini_check_ack', text: ack });
             this.recordStepContext('mini_check_ack', ack);
@@ -3371,9 +3377,26 @@ Return ONLY valid JSON object in this exact schema:
         await this.speak(introLine);
         await MayaUtils.sleep(300);
 
-        for (const stageKey of stageOrder) {
-            const q = await this.getAdaptiveQuestionForStage(stageKey, askedKeys);
-            if (!q) continue;
+        // Pipeline: pre-generate next question while current one is being asked
+        let nextQPromise = this.getAdaptiveQuestionForStage(stageOrder[0], askedKeys);
+
+        for (let i = 0; i < stageOrder.length; i++) {
+            const q = await nextQPromise;
+            if (!q) {
+                // Start generating the next one even if this one was null
+                if (i + 1 < stageOrder.length) {
+                    nextQPromise = this.getAdaptiveQuestionForStage(stageOrder[i + 1], askedKeys);
+                }
+                continue;
+            }
+
+            // Start pre-generating the NEXT question in the background
+            // while the current question is being asked + ack is playing
+            if (i + 1 < stageOrder.length) {
+                const optimisticKeys = new Set(askedKeys);
+                optimisticKeys.add(q.key);
+                nextQPromise = this.getAdaptiveQuestionForStage(stageOrder[i + 1], optimisticKeys);
+            }
 
             await this.askSingleProfileQuestion(q);
             if (q.key) askedKeys.add(q.key);
@@ -3520,7 +3543,9 @@ Return ONLY valid JSON object in this exact schema:
         // Show reading animation + AI ack
         const hideAnim = this._showAnswerReadingAnim(isHindi);
         const ack = await this._generateMcqAck(questionText, labelMap[chapter] || chapter, chapter, isHindi);
-        hideAnim();
+        if (ack && window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(ack);
+        if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.onPlaybackStart = () => hideAnim();
+        else hideAnim();
 
         if (textDisplay) textDisplay.style.display = 'none';
         if (blobContainer) {
@@ -3529,6 +3554,7 @@ Return ONLY valid JSON object in this exact schema:
         }
 
         await this.speak(ack);
+        hideAnim(); // safety: no-op if already removed
         if (ack && ack.length > 8) {
             this.spokenNarrations.push({ stage: 'chapter_choice_ack', text: ack });
             this.recordStepContext('chapter_choice_ack', ack);
@@ -3583,6 +3609,9 @@ Return ONLY valid JSON object in this exact schema:
         const prompt = prompts[chapterKey];
         if (!prompt) return 'default';
 
+        // Pre-warm TTS for the question
+        if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(prompt.question);
+
         const answer = await this.showValidationQuestion(prompt.question, prompt.options);
         const chosen = prompt.options.find(o => o.value === answer);
         this.recordStepContext(`micro_${chapterKey}`, `Q: ${prompt.question} | A: ${chosen?.label || answer}`);
@@ -3590,8 +3619,11 @@ Return ONLY valid JSON object in this exact schema:
         // Show reading animation + AI ack (same as profile questions)
         const hideAnim = this._showAnswerReadingAnim(isHindi);
         const ack = await this._generateMcqAck(prompt.question, chosen?.label || answer, answer, isHindi);
-        hideAnim();
+        if (ack && window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(ack);
+        if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.onPlaybackStart = () => hideAnim();
+        else hideAnim();
         await this.speak(ack);
+        hideAnim(); // safety: no-op if already removed
         if (ack && ack.length > 8) {
             this.spokenNarrations.push({ stage: `micro_${chapterKey}_ack`, text: ack });
             this.recordStepContext(`micro_${chapterKey}_ack`, ack);
@@ -3829,6 +3861,11 @@ Return ONLY valid JSON object in this exact schema:
     async askSingleProfileQuestion(q) {
         const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
 
+        // Pre-warm TTS so playback starts instantly when question appears
+        if (window.MayaVoice && !MayaVoice.isMuted) {
+            MayaVoice.prefetchSpeech(q.spoken || q.question);
+        }
+
         const answer = await this.showValidationQuestion(
             q.question,
             q.options.map(o => ({ label: o.label, value: o.value })),
@@ -3844,8 +3881,12 @@ Return ONLY valid JSON object in this exact schema:
         // Show reading animation + AI ack (shared across all MCQs)
         const hideAnim = this._showAnswerReadingAnim(isHindi);
         const ack = await this._generateMcqAck(q.question, chosen?.label || answer, answer, isHindi);
-        hideAnim();
+        // Pre-warm ack TTS while we set up the callback
+        if (ack && window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(ack);
+        if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.onPlaybackStart = () => hideAnim();
+        else hideAnim();
         await this.speak(ack);
+        hideAnim(); // safety: no-op if already removed
         if (ack && ack.length > 8) {
             this.spokenNarrations.push({ stage: `ack_${q.key}`, text: ack });
             this.recordStepContext(`ack_${q.key}`, ack);
@@ -3949,12 +3990,14 @@ Return ONLY valid JSON object in this exact schema:
             this.advanceProgress('soul_urge');
 
             // ═══ STEP 5: Second question — after numbers (current phase) ═══
+            const transQ2 = isHindi
+                ? 'अच्छा, अब numbers और कुंडली दोनों ने अपनी बात कह दी है। पर एक बात बताइए।'
+                : 'Now both the numbers and the chart have shared what they see. But tell me one thing.';
+            // Generate question + prefetch transition TTS in parallel
+            if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(transQ2);
             const q2 = await this.getAdaptiveQuestionForStage('q2_numbers', askedProfileKeys);
             if (q2) {
                 console.log('🎯 Q2 after numbers: adaptive...');
-                const transQ2 = isHindi
-                    ? 'अच्छा, अब numbers और कुंडली दोनों ने अपनी बात कह दी है। पर एक बात बताइए।'
-                    : 'Now both the numbers and the chart have shared what they see. But tell me one thing.';
                 await this.speak(transQ2);
                 this.spokenNarrations.push({ stage: 'transition_q2', text: transQ2 });
                 this.recordStepContext('transition_q2', transQ2);
@@ -3963,12 +4006,13 @@ Return ONLY valid JSON object in this exact schema:
             }
 
             // ═══ STEP 6: Third question — money pattern ═══
+            const transQ3 = isHindi
+                ? 'पैसों से जुड़ा एक pattern दिख रहा है कुंडली में। ये बताइए।'
+                : 'I see a pattern around money in your chart. Tell me this.';
+            if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(transQ3);
             const q3 = await this.getAdaptiveQuestionForStage('q3_money', askedProfileKeys);
             if (q3) {
                 console.log('🎯 Q3: adaptive...');
-                const transQ3 = isHindi
-                    ? 'पैसों से जुड़ा एक pattern दिख रहा है कुंडली में। ये बताइए।'
-                    : 'I see a pattern around money in your chart. Tell me this.';
                 await this.speak(transQ3);
                 this.spokenNarrations.push({ stage: 'transition_q3', text: transQ3 });
                 this.recordStepContext('transition_q3', transQ3);
@@ -3977,12 +4021,13 @@ Return ONLY valid JSON object in this exact schema:
             }
 
             // ═══ STEP 7: Fourth question — relationship status ═══
+            const transQ4 = isHindi
+                ? 'रिश्तों के बारे में भी कुछ दिख रहा है। एक छोटा सवाल और पूछ लूँ?'
+                : 'I can see something about your relationships too. May I ask one more thing?';
+            if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(transQ4);
             const q4 = await this.getAdaptiveQuestionForStage('q4_relationship', askedProfileKeys);
             if (q4) {
                 console.log('🎯 Q4: adaptive...');
-                const transQ4 = isHindi
-                    ? 'रिश्तों के बारे में भी कुछ दिख रहा है। एक छोटा सवाल और पूछ लूँ?'
-                    : 'I can see something about your relationships too. May I ask one more thing?';
                 await this.speak(transQ4);
                 this.spokenNarrations.push({ stage: 'transition_q4', text: transQ4 });
                 this.recordStepContext('transition_q4', transQ4);
@@ -4007,12 +4052,13 @@ Return ONLY valid JSON object in this exact schema:
             this.advanceProgress('deep_patterns');
 
             // ═══ STEP 11: Fifth question - after teaser (repeating pattern) ═══
+            const transQ5 = isHindi
+                ? 'अब तक जो दिखा वो बस शुरुआत है। एक और बात है जो मुझे बार-बार दिख रही है।'
+                : 'What I have shared so far is just the beginning. There is one more thing I keep seeing.';
+            if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(transQ5);
             const q5 = await this.getAdaptiveQuestionForStage('q5_pattern', askedProfileKeys);
             if (q5) {
                 console.log('🎯 Q5 after teaser: adaptive...');
-                const transQ5 = isHindi
-                    ? 'अब तक जो दिखा वो बस शुरुआत है। एक और बात है जो मुझे बार-बार दिख रही है।'
-                    : 'What I have shared so far is just the beginning. There is one more thing I keep seeing.';
                 await this.speak(transQ5);
                 this.spokenNarrations.push({ stage: 'transition_q5', text: transQ5 });
                 this.recordStepContext('transition_q5', transQ5);
@@ -5193,13 +5239,8 @@ Return ONLY valid JSON object in this exact schema:
 
         const result = await MayaAuth.sendOTP(phone, countryCode);
         if (!result.success) {
-            this.emailSubmissionInProgress = false;
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = `<i class="bi bi-whatsapp me-2"></i>${isHindi ? 'OTP भेजें WhatsApp पर' : 'Send OTP on WhatsApp'}`;
-            }
-            MayaUtils.toast.error(result.error || (isHindi ? 'OTP नहीं भेजा जा सका। दोबारा कोशिश करें।' : 'Could not send OTP. Please try again.'));
-            return;
+            // Even if API fails, still show OTP entry so master OTP can be used
+            console.warn('OTP send failed, proceeding to OTP entry anyway:', result.error);
         }
 
         this.emailSubmissionInProgress = false;

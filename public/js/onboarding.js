@@ -27,11 +27,11 @@ const MayaOnboarding = {
         },
         birthDate: {
             en: "This is where your visible timeline begins.",
-            hi: "यहीं से आपकी timeline शुरू होती है।"
+            hi: "यहीं से आपकी समयरेखा शुरू होती है।"
         },
         birthTime: {
             en: "This helps me see your chart more clearly.",
-            hi: "इससे chart और साफ़ दिखेगा।"
+            hi: "इससे कुंडली और साफ़ दिखेगी।"
         },
         birthPlace: {
             en: "Got it. One more thing.",
@@ -61,16 +61,16 @@ const MayaOnboarding = {
         openMyChart: { en: 'Open My Chart', hi: 'मेरी कुंडली खोलें' },
         unknownBirthTime: { en: "I don't know my birth time", hi: 'मुझे अपना जन्म समय नहीं पता' },
         confirmReveal: { en: 'Yes, tell me!', hi: 'हाँ, बताइए!' },
-        existingAccount: { en: 'Already have an account?', hi: 'क्या आपका पहले से अकाउंट है?' },
-        login: { en: 'Login', hi: 'लॉगिन' },
+        existingAccount: { en: 'Already have an account?', hi: 'क्या आपका पहले से खाता है?' },
+        login: { en: 'Login', hi: 'प्रवेश करें' },
         welcomeBack: { en: 'Welcome Back!', hi: 'फिर से स्वागत है!' },
-        loginPrompt: { en: 'Login with your WhatsApp number', hi: 'अपने WhatsApp नंबर से लॉगिन करें' },
+        loginPrompt: { en: 'Login with your WhatsApp number', hi: 'अपने WhatsApp नंबर से प्रवेश करें' },
         email: { en: 'WhatsApp Number', hi: 'WhatsApp नंबर' },
         password: { en: 'OTP', hi: 'OTP' },
         enterEmail: { en: 'Enter your WhatsApp number', hi: 'अपना WhatsApp नंबर दर्ज करें' },
         enterPassword: { en: 'Enter OTP', hi: 'OTP दर्ज करें' },
-        backToReading: { en: 'Back to Reading!', hi: 'रीडिंग पर वापस जाएँ!' },
-        loggingIn: { en: 'Logging in...', hi: 'लॉगिन हो रहा है...' },
+        backToReading: { en: 'Back to Reading!', hi: 'वापस जाएँ!' },
+        loggingIn: { en: 'Logging in...', hi: 'प्रवेश हो रहा है...' },
         enterEmailPassword: { en: 'Please enter a valid WhatsApp number', hi: 'कृपया सही WhatsApp नंबर भरें' },
         invalidLogin: { en: 'Invalid OTP or phone number', hi: 'OTP या नंबर सही नहीं है' },
         welcomeBackToast: { en: 'Welcome back!', hi: 'फिर से स्वागत है!' },
@@ -94,7 +94,7 @@ const MayaOnboarding = {
         {
             id: 'welcome',
             question: "What name should I use when I read your chart?",
-            questionHi: "मैं आपकी chart पढ़ते समय आपको किस नाम से बुलाऊँ?",
+            questionHi: "मैं आपकी कुंडली पढ़ते समय आपको किस नाम से बुलाऊँ?",
             field: 'name',
             type: 'name',
             placeholder: 'First name',
@@ -106,7 +106,7 @@ const MayaOnboarding = {
         {
             id: 'gender',
             question: (name) => `${name}, I want to speak to you correctly and personally. What's your gender?`,
-            questionHi: (name) => `${name}, मैं आपसे सही और personal तरीके से बात करना चाहती हूँ। आपका लिंग क्या है?`,
+            questionHi: (name) => `${name}, मैं आपसे सही और व्यक्तिगत तरीके से बात करना चाहती हूँ। आपका लिंग क्या है?`,
             field: 'gender',
             type: 'select',
             options: [
@@ -119,7 +119,7 @@ const MayaOnboarding = {
         {
             id: 'birthDate',
             question: "This is where your visible timeline begins. What's your date of birth?",
-            questionHi: "यहीं से आपकी timeline शुरू होती है। आपकी जन्म तिथि क्या है?",
+            questionHi: "यहीं से आपकी समयरेखा शुरू होती है। आपकी जन्म तिथि क्या है?",
             field: 'birthDate',
             type: 'date',
             validation: (value) => value && value.length > 0
@@ -127,7 +127,7 @@ const MayaOnboarding = {
         {
             id: 'birthTime',
             question: "Do you know your birth time? (Optional but helps accuracy)",
-            questionHi: "क्या आपको अपना जन्म समय पता है? (वैकल्पिक)",
+            questionHi: "क्या आपको अपना जन्म समय पता है? (ज़रूरी नहीं, पर सटीकता बढ़ाता है)",
             field: 'birthTime',
             type: 'time',
             optional: true,
@@ -160,7 +160,7 @@ const MayaOnboarding = {
         {
             id: 'agentGender',
             question: "One last thing — choose your guide",
-            questionHi: "आख़िरी बात — अपना guide चुनिए",
+            questionHi: "आख़िरी बात — अपना मार्गदर्शक चुनिए",
             field: 'agentGender',
             type: 'agentSelect',
             options: [
@@ -544,11 +544,9 @@ const MayaOnboarding = {
                                         <div class="gc-glow-1"></div>
                                         <div class="gc-glow-2"></div>
                                     </div>
-                                    <div class="gc-overlay-1"></div>
-                                    <div class="gc-overlay-2"></div>
                                     <div class="gc-content">
                                         <div class="gc-content-top">
-                                            <div class="gc-glass-badge">${this.isHindiUI() ? 'महिला Guide' : 'Female Guide'}</div>
+                                            <div class="gc-glass-badge">${this.isHindiUI() ? 'महिला मार्गदर्शक' : 'Female Guide'}</div>
                                             <div class="gc-avatar">
                                                 <img src="images/maya-guide.png" alt="Maya" draggable="false"/>
                                             </div>
@@ -572,11 +570,9 @@ const MayaOnboarding = {
                                         <div class="gc-glow-1"></div>
                                         <div class="gc-glow-2"></div>
                                     </div>
-                                    <div class="gc-overlay-1"></div>
-                                    <div class="gc-overlay-2"></div>
                                     <div class="gc-content">
                                         <div class="gc-content-top">
-                                            <div class="gc-glass-badge">${this.isHindiUI() ? 'पुरुष Guide' : 'Male Guide'}</div>
+                                            <div class="gc-glass-badge">${this.isHindiUI() ? 'पुरुष मार्गदर्शक' : 'Male Guide'}</div>
                                             <div class="gc-avatar">
                                                 <img src="images/moksh-guide.png" alt="Moksh" draggable="false"/>
                                             </div>
@@ -693,12 +689,13 @@ const MayaOnboarding = {
             confirmBtn.addEventListener('click', () => this.completeOnboarding());
         }
 
-        // Guide card slider — swipe to browse, button to select
+        // Guide card slider — swipe to browse, button to select (mobile); click to select (desktop)
         const gcTrack = document.getElementById('gcSliderTrack');
         if (gcTrack) {
             const gcSlides = gcTrack.querySelectorAll('.gc-slide');
             const gcDots = document.querySelectorAll('.gc-dot');
             const gcBtn = document.getElementById('gcChooseBtn');
+            const isDesktop = window.matchMedia('(min-width: 600px)').matches;
             let gcCurrent = 0;
             let gcStartX = 0, gcDragX = 0, gcDragging = false;
 
@@ -708,47 +705,57 @@ const MayaOnboarding = {
                 gcDots.forEach((d, i) => d.classList.toggle('active', i === gcCurrent));
             };
 
-            // Touch swipe (navigate only — does NOT select)
-            gcTrack.addEventListener('touchstart', (e) => {
-                gcStartX = e.touches[0].clientX;
-                gcDragX = gcStartX;
-                gcDragging = true;
-                gcTrack.style.transition = 'none';
-            }, { passive: true });
-            gcTrack.addEventListener('touchmove', (e) => {
-                if (!gcDragging) return;
-                gcDragX = e.touches[0].clientX;
-                const diff = gcDragX - gcStartX;
-                const base = -gcCurrent * gcTrack.parentElement.offsetWidth;
-                gcTrack.style.transform = `translateX(${base + diff}px)`;
-            }, { passive: true });
-            gcTrack.addEventListener('touchend', () => {
-                if (!gcDragging) return;
-                gcDragging = false;
-                gcTrack.style.transition = 'transform 0.35s cubic-bezier(.4,0,.2,1)';
-                const diff = gcDragX - gcStartX;
-                if (Math.abs(diff) > 50) {
-                    gcGo(gcCurrent + (diff < 0 ? 1 : -1));
-                } else {
-                    gcGo(gcCurrent);
-                }
-            });
-
-            // Dot tap
-            gcDots.forEach((dot, i) => {
-                dot.addEventListener('click', () => gcGo(i));
-            });
-
-            // Choose button — this is the ONLY way to select
-            if (gcBtn) {
-                gcBtn.addEventListener('click', () => {
-                    const value = gcSlides[gcCurrent].dataset.value;
-                    gcBtn.classList.add('gc-choose-btn--pressed');
-                    setTimeout(() => this.handleSelection(step, value), 350);
+            if (isDesktop) {
+                // Desktop: click card to select directly
+                gcSlides.forEach(slide => {
+                    slide.addEventListener('click', () => {
+                        const value = slide.dataset.value;
+                        setTimeout(() => this.handleSelection(step, value), 300);
+                    });
                 });
-            }
+            } else {
+                // Mobile: touch swipe (navigate only — does NOT select)
+                gcTrack.addEventListener('touchstart', (e) => {
+                    gcStartX = e.touches[0].clientX;
+                    gcDragX = gcStartX;
+                    gcDragging = true;
+                    gcTrack.style.transition = 'none';
+                }, { passive: true });
+                gcTrack.addEventListener('touchmove', (e) => {
+                    if (!gcDragging) return;
+                    gcDragX = e.touches[0].clientX;
+                    const diff = gcDragX - gcStartX;
+                    const base = -gcCurrent * gcTrack.parentElement.offsetWidth;
+                    gcTrack.style.transform = `translateX(${base + diff}px)`;
+                }, { passive: true });
+                gcTrack.addEventListener('touchend', () => {
+                    if (!gcDragging) return;
+                    gcDragging = false;
+                    gcTrack.style.transition = 'transform 0.35s cubic-bezier(.4,0,.2,1)';
+                    const diff = gcDragX - gcStartX;
+                    if (Math.abs(diff) > 50) {
+                        gcGo(gcCurrent + (diff < 0 ? 1 : -1));
+                    } else {
+                        gcGo(gcCurrent);
+                    }
+                });
 
-            gcGo(0);
+                // Dot tap
+                gcDots.forEach((dot, i) => {
+                    dot.addEventListener('click', () => gcGo(i));
+                });
+
+                // Choose button — mobile only way to select
+                if (gcBtn) {
+                    gcBtn.addEventListener('click', () => {
+                        const value = gcSlides[gcCurrent].dataset.value;
+                        gcBtn.classList.add('gc-choose-btn--pressed');
+                        setTimeout(() => this.handleSelection(step, value), 350);
+                    });
+                }
+
+                gcGo(0);
+            }
         }
 
         // Unknown time button
