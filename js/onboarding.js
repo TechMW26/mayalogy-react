@@ -44,7 +44,7 @@ const MayaOnboarding = {
             hi_f: "जो चाहिए था, मिल गया। शुरू करती हूँ।"
         }
     },
-    
+
     // Funnel State Keys
     STORAGE_KEYS: {
         FUNNEL_STATE: 'funnel_state',
@@ -182,15 +182,15 @@ const MayaOnboarding = {
             console.log('📊 Funnel already completed');
             return;
         }
-        
+
         // Restore saved funnel state
         const savedStep = MayaUtils.storage.get(this.STORAGE_KEYS.FUNNEL_STEP);
         const savedData = MayaUtils.storage.get(this.STORAGE_KEYS.FUNNEL_DATA);
-        
+
         this.currentStep = savedStep || 0;
         this.userData = savedData || {};
         this.isComplete = false;
-        
+
         console.log('📊 Funnel state restored:', {
             step: this.currentStep,
             stepName: this.steps[this.currentStep]?.id || 'unknown',
@@ -234,7 +234,7 @@ const MayaOnboarding = {
             displayLabel: isHindi ? (opt.labelHi || opt.label) : (opt.label || opt.labelHi)
         }));
     },
-    
+
     /**
      * Get funnel state summary
      */
@@ -248,7 +248,7 @@ const MayaOnboarding = {
             progress: Math.round(((MayaUtils.storage.get(this.STORAGE_KEYS.FUNNEL_STEP) || 0) / this.totalSteps) * 100)
         };
     },
-    
+
     /**
      * Check if funnel needs to be shown
      */
@@ -256,16 +256,16 @@ const MayaOnboarding = {
         const isAuthenticated = window.MayaAuth ? MayaAuth.isAuthenticated : false;
         const funnelComplete = MayaUtils.storage.get(this.STORAGE_KEYS.FUNNEL_COMPLETE);
         const profile = MayaUtils.storage.get('maya_profile');
-        
+
         // ALWAYS show funnel if user is not logged in
         if (!isAuthenticated) {
             return true;
         }
-        
+
         // For logged-in users, show funnel only if not complete or no profile
         return !funnelComplete || !profile || !profile.birthDate;
     },
-    
+
     /**
      * Reset funnel (for testing or re-onboarding)
      */
@@ -360,7 +360,7 @@ const MayaOnboarding = {
      */
     showStep(stepIndex) {
         console.log('📝 showStep called with index:', stepIndex);
-        
+
         const step = this.steps[stepIndex];
         if (!step) {
             console.error('📝 Invalid step index:', stepIndex, 'Total steps:', this.steps.length);
@@ -385,7 +385,7 @@ const MayaOnboarding = {
         const progress = ((stepIndex + 1) / this.totalSteps) * 100;
         const progressBar = document.querySelector('.onboarding-progress-bar');
         const progressText = document.querySelector('.onboarding-progress-text');
-        
+
         if (progressBar) {
             progressBar.style.width = `${progress}%`;
         }
@@ -408,13 +408,13 @@ const MayaOnboarding = {
             document.removeEventListener('pointerdown', this.locationOutsideHandler);
             this.locationOutsideHandler = null;
         }
-        
+
         console.log('Showing question in container:', question);
 
         let inputHtml = '';
         const placeholder = this.getStepText(step, 'placeholder');
         const options = this.getStepOptions(step);
-        
+
         switch (step.type) {
             case 'name':
                 const placeholder2 = this.getStepText(step, 'placeholder2');
@@ -443,7 +443,7 @@ const MayaOnboarding = {
                            autocomplete="off">
                 `;
                 break;
-                
+
             case 'select':
                 inputHtml = `
                     <div class="onboarding-options">
@@ -457,7 +457,7 @@ const MayaOnboarding = {
                     </div>
                 `;
                 break;
-                
+
             case 'date':
                 inputHtml = `
                     <input type="date" 
@@ -466,7 +466,7 @@ const MayaOnboarding = {
                            max="${new Date().toISOString().split('T')[0]}">
                 `;
                 break;
-                
+
             case 'time':
                 inputHtml = `
                     <input type="time" 
@@ -479,7 +479,7 @@ const MayaOnboarding = {
                     ` : ''}
                 `;
                 break;
-                
+
             case 'location':
                 inputHtml = `
                     <div class="position-relative onboarding-location-wrapper">
@@ -492,7 +492,7 @@ const MayaOnboarding = {
                     </div>
                 `;
                 break;
-                
+
             case 'confirm':
                 inputHtml = `
                     <div class="onboarding-options">
@@ -630,7 +630,7 @@ const MayaOnboarding = {
                     this.handleNext(step);
                 }
             });
-            
+
             // Focus input
             setTimeout(() => input.focus(), 100);
         }
@@ -1182,16 +1182,16 @@ const MayaOnboarding = {
                 this.userData[step.field] = value;
             }
         }
-        
+
         console.log('User data after step:', this.userData);
-        
+
         this.saveProgress();
 
         // Speak ritual micro-confirmation before advancing
         await this.speakRitualLine(step.id);
 
         this.currentStep++;
-        
+
         if (this.currentStep < this.steps.length) {
             this.showStep(this.currentStep);
         } else {
@@ -1242,7 +1242,7 @@ const MayaOnboarding = {
     async handleSelection(step, value) {
         if (step.field) {
             this.userData[step.field] = value;
-            
+
             // If language was selected, save it immediately
             if (step.field === 'language') {
                 MayaUtils.storage.set('maya_language', value);
@@ -1267,16 +1267,16 @@ const MayaOnboarding = {
                 console.log('Guide gender set to:', value);
             }
         }
-        
+
         console.log('User data after selection:', this.userData);
-        
+
         this.saveProgress();
 
         // Speak ritual micro-confirmation before advancing
         await this.speakRitualLine(step.id);
 
         this.currentStep++;
-        
+
         if (this.currentStep < this.steps.length) {
             this.showStep(this.currentStep);
         } else {
@@ -1300,10 +1300,10 @@ const MayaOnboarding = {
     saveProgress() {
         // Save current step
         MayaUtils.storage.set(this.STORAGE_KEYS.FUNNEL_STEP, this.currentStep);
-        
+
         // Save user data collected so far
         MayaUtils.storage.set(this.STORAGE_KEYS.FUNNEL_DATA, this.userData);
-        
+
         // Save overall state
         MayaUtils.storage.set(this.STORAGE_KEYS.FUNNEL_STATE, {
             step: this.currentStep,
@@ -1311,7 +1311,7 @@ const MayaOnboarding = {
             userData: this.userData,
             lastUpdated: new Date().toISOString()
         });
-        
+
         console.log('📊 Funnel progress saved:', {
             step: this.currentStep,
             stepName: this.steps[this.currentStep]?.id
@@ -1324,14 +1324,14 @@ const MayaOnboarding = {
     async completeOnboarding() {
         console.log('🎉 Completing onboarding...');
         this.isComplete = true;
-        
+
         // Validate required data
         if (!this.userData.name || !this.userData.birthDate) {
             console.error('❌ Missing required data:', this.userData);
             MayaUtils.toast.error(this.t('missingRequired'));
             return;
         }
-        
+
         let resolvedBirthPlace = {
             birthPlace: this.userData.birthPlace || '',
             birthLat: Number.isFinite(Number(this.userData.birthLat)) ? Number(this.userData.birthLat) : null,
@@ -1360,13 +1360,13 @@ const MayaOnboarding = {
             birthLon: Number.isFinite(resolvedBirthPlace.birthLon) ? resolvedBirthPlace.birthLon : null,
             language: this.userData.language || MayaUtils.storage.get('maya_language') || 'en'
         };
-        
+
         // Save to local storage
         MayaUtils.storage.set('maya_profile', profileData);
         MayaUtils.storage.set('funnel_data', this.userData);
-        
+
         console.log('✅ Profile saved:', profileData);
-        
+
         // Close modal with better handling
         const modalEl = document.getElementById('onboardingModal');
         if (modalEl) {
@@ -1375,7 +1375,7 @@ const MayaOnboarding = {
                 if (modal) {
                     console.log('🚪 Closing modal...');
                     modal.hide();
-                    
+
                     // Wait for modal to fully hide
                     await new Promise(resolve => {
                         modalEl.addEventListener('hidden.bs.modal', resolve, { once: true });
@@ -1393,13 +1393,13 @@ const MayaOnboarding = {
                 if (backdrop) backdrop.remove();
             }
         }
-        
+
         // Start the storytelling funnel with animated calculations
         console.log('🚀 Preparing to start storytelling funnel...');
-        
+
         // Small delay to ensure modal is fully closed
         await MayaUtils.sleep(300);
-        
+
         if (window.MayaFunnel) {
             // Use retry wrapper for funnel initialization
             try {
@@ -1407,7 +1407,7 @@ const MayaOnboarding = {
                     async (attempt) => {
                         console.log(`🎭 Initializing MayaFunnel${attempt > 1 ? ` (attempt ${attempt})` : ''}...`);
                         MayaFunnel.init(this.userData);
-                        
+
                         // Prompt user to enable audio (required for autoplay)
                         console.log('🔊 Requesting audio permission...');
                         try {
@@ -1416,7 +1416,7 @@ const MayaOnboarding = {
                             console.warn('⚠️ Audio permission skipped:', audioError.message);
                             // Continue without audio - not a critical error
                         }
-                        
+
                         // Start the funnel experience
                         console.log('🎭 Starting MayaFunnel.start()...');
                         await MayaFunnel.start();
@@ -1452,7 +1452,7 @@ const MayaOnboarding = {
             }
         }
     },
-    
+
     /**
      * Request audio permission from user - Directly enable voice without modal
      */
@@ -1478,7 +1478,7 @@ const MayaOnboarding = {
     getData() {
         return this.userData;
     },
-    
+
     /**
      * Debug helper - log current funnel state
      */
