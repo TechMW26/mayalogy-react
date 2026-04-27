@@ -17,6 +17,7 @@ import android.provider.MediaStore
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
+import android.webkit.JavascriptInterface
 import android.webkit.*
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
@@ -27,9 +28,11 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.google.firebase.messaging.FirebaseMessaging
 import com.maya.astrology.databinding.ActivityMainBinding
 import java.io.File
 import java.io.IOException
+import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -43,6 +46,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var locationPermissionLauncher: ActivityResultLauncher<Array<String>>
     private lateinit var cameraPermissionLauncher: ActivityResultLauncher<Array<String>>
     private lateinit var fileChooserLauncher: ActivityResultLauncher<Intent>
+    private lateinit var notificationPermissionLauncher: ActivityResultLauncher<String>
     
     // Pending permission callbacks
     private var pendingGeolocationCallback: GeolocationPermissions.Callback? = null
@@ -52,9 +56,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var connectivityManager: ConnectivityManager
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var isNetworkAvailable = true
+    private var pendingNotificationUrl: String? = null
     
     // Web app URL - load from hosted URL
-    private val webAppUrl = "https://app.mayalogy.in"
+    private val webAppUrl = "https://www.mayalogy.in/"
 
     companion object {
         private const val TAG = "MAYAAstrology"
@@ -89,6 +94,10 @@ class MainActivity : AppCompatActivity() {
         setupNetworkMonitoring()
         setupWebView()
         setupOfflinePage()
+        MayaPushNotifications.ensureChannel(this)
+        extractNotificationIntent(intent)
+        requestNotificationPermissionIfNeeded()
+        refreshFirebaseToken()
         
         // Check initial network state and load appropriate content
         checkNetworkAndLoad()
@@ -149,6 +158,14 @@ class MainActivity : AppCompatActivity() {
                 filePathCallback?.onReceiveValue(null)
             }
             filePathCallback = null
+        }
+
+        notificationPermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            if (!granted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Log.w(TAG, "Notification permission denied")
+            }
         }
     }
 
@@ -217,6 +234,8 @@ class MainActivity : AppCompatActivity() {
                 // User agent
                 userAgentString = "$userAgentString MAYAAstrology-Android/1.0"
             }
+
+            addJavascriptInterface(MayaWebAppBridge(), "MayaAndroid")
             
             // WebView client for handling page navigation
             webViewClient = object : WebViewClient() {
@@ -229,6 +248,7 @@ class MainActivity : AppCompatActivity() {
                     super.onPageFinished(view, url)
                     hideLoading()
                     hideOfflinePage()
+                    injectFcmTokenToWebView()
                 }
                 
                 override fun onReceivedError(
@@ -365,7 +385,7 @@ class MainActivity : AppCompatActivity() {
         isNetworkAvailable = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
         
         if (isNetworkAvailable) {
-            binding.webView.loadUrl(webAppUrl)
+            binding.webView.loadUrl(getLaunchUrl())
         } else {
             showOfflinePage()
         }
@@ -455,6 +475,114 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun hasNotificationPermission(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || hasNotificationPermission()) {
+            return
+        }
+
+        if (shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.notification_permission_title)
+                .setMessage(R.string.notification_permission_message)
+                .setPositiveButton(R.string.grant) { _, _ ->
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+                .setNegativeButton(R.string.cancel) { dialog, _ ->
+                    dialog.dismiss()
+                }
+                .show()
+        } else {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    private fun refreshFirebaseToken() {
+        FirebaseMessaging.getInstance().token
+            .addOnCompleteListener { task ->
+                if (!task.isSuccessful) {
+                    Log.w(TAG, "Unable to fetch FCM token", task.exception)
+                    return@addOnCompleteListener
+                }
+
+                val token = task.result
+                if (!token.isNullOrBlank()) {
+                    FcmTokenStore.saveToken(this, token)
+                    injectFcmTokenToWebView()
+                }
+            }
+    }
+
+    private fun extractNotificationIntent(intent: Intent?) {
+        val rawUrl = intent?.getStringExtra(MayaPushNotifications.EXTRA_NOTIFICATION_URL)
+        pendingNotificationUrl = resolveAppUrl(rawUrl)
+    }
+
+    private fun getLaunchUrl(): String {
+        return pendingNotificationUrl?.also { pendingNotificationUrl = null } ?: webAppUrl
+    }
+
+    private fun loadPendingNotificationUrl() {
+        val notificationUrl = pendingNotificationUrl ?: return
+        pendingNotificationUrl = null
+
+        if (isNetworkAvailable) {
+            hideOfflinePage()
+            binding.webView.loadUrl(notificationUrl)
+        } else {
+            showOfflinePage()
+        }
+    }
+
+    private fun resolveAppUrl(rawUrl: String?): String? {
+        if (rawUrl.isNullOrBlank()) {
+            return null
+        }
+
+        val trimmed = rawUrl.trim()
+        return when {
+            trimmed.startsWith("http://") || trimmed.startsWith("https://") -> trimmed
+            trimmed.startsWith("/") -> webAppUrl.trimEnd('/') + trimmed
+            else -> webAppUrl.trimEnd('/') + "/" + trimmed.removePrefix("/")
+        }
+    }
+
+    private fun injectFcmTokenToWebView() {
+        val token = FcmTokenStore.getToken(this) ?: return
+        val tokenJson = JSONObject.quote(token)
+        val script = """
+            (function() {
+                var token = $tokenJson;
+                if (window.onMayaFcmToken) {
+                    window.onMayaFcmToken(token);
+                }
+                window.dispatchEvent(new CustomEvent('maya:fcm-token', {
+                    detail: { token: token }
+                }));
+            })();
+        """.trimIndent()
+
+        binding.webView.post {
+            binding.webView.evaluateJavascript(script, null)
+        }
+    }
+
+    private inner class MayaWebAppBridge {
+        @JavascriptInterface
+        fun getFcmToken(): String {
+            return FcmTokenStore.getToken(this@MainActivity).orEmpty()
+        }
+
+        @JavascriptInterface
+        fun getAppBaseUrl(): String {
+            return webAppUrl
+        }
+    }
+
     private fun openFileChooser(fileChooserParams: WebChromeClient.FileChooserParams?) {
         val acceptTypes = fileChooserParams?.acceptTypes ?: arrayOf("image/*")
         val captureEnabled = fileChooserParams?.isCaptureEnabled ?: true
@@ -520,6 +648,14 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         binding.webView.onResume()
+        injectFcmTokenToWebView()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        extractNotificationIntent(intent)
+        loadPendingNotificationUrl()
     }
 
     override fun onPause() {

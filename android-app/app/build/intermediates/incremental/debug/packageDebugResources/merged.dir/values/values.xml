@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:ns1="http://schemas.android.com/tools">
+    <color name="background_card">#1A1625</color>
+    <color name="background_dark">#0b0b0c</color>
+    <color name="black">#000000</color>
+    <color name="danger">#EF4444</color>
+    <color name="ic_launcher_background">#0F0D15</color>
+    <color name="maya_accent">#F59E0B</color>
+    <color name="maya_primary">#8B5CF6</color>
+    <color name="maya_primary_dark">#7C3AED</color>
+    <color name="maya_secondary">#EC4899</color>
+    <color name="success">#10B981</color>
+    <color name="system_bar_color">#0b0b0c</color>
+    <color name="text_muted">#6B6880</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B8B5C3</color>
+    <color name="warning">#F59E0B</color>
+    <color name="white">#FFFFFF</color>
+    <string name="app_name">Mayalogy</string>
+    <string name="camera_permission_message">MAYA needs camera access for Vastu room scanning and analysis.</string>
+    <string name="camera_permission_title">Camera Permission</string>
+    <string name="cancel">Cancel</string>
+    <string name="exit_message">Are you sure you want to exit?</string>
+    <string name="exit_title">Exit Mayalogy</string>
+    <string name="firebase_database_url" translatable="false">https://maya---astrology-default-rtdb.firebaseio.com</string>
+    <string name="gcm_defaultSenderId" translatable="false">34919541385</string>
+    <string name="google_api_key" translatable="false">AIzaSyBLVU_t2F-bYgEI5MNCyqtEhTUHYLnvYaM</string>
+    <string name="google_app_id" translatable="false">1:34919541385:android:1fcbcd32192f7265c67458</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyBLVU_t2F-bYgEI5MNCyqtEhTUHYLnvYaM</string>
+    <string name="google_storage_bucket" translatable="false">maya---astrology.firebasestorage.app</string>
+    <string name="grant">Grant</string>
+    <string name="loading">Loading Mayalogy...</string>
+    <string name="location_permission_message">MAYA needs location access for accurate Vastu analysis based on your geographical position.</string>
+    <string name="location_permission_title">Location Permission</string>
+    <string name="no">No</string>
+    <string name="notification_permission_message">Mayalogy uses notifications for astrology updates, reminders, and important account alerts.</string>
+    <string name="notification_permission_title">Notification Permission</string>
+    <string name="offline_message">It seems you\'re not connected to the internet.\nPlease check your connection and try again.</string>
+    <string name="offline_title">You\'re Offline</string>
+    <string name="project_id" translatable="false">maya---astrology</string>
+    <string name="retry">Try Again</string>
+    <string name="yes">Yes</string>
+    <style name="Theme.MAYAAstrology" parent="Theme.Material3.Dark.NoActionBar">
+        
+        <item name="colorPrimary">@color/maya_primary</item>
+        <item name="colorPrimaryDark">@color/maya_primary_dark</item>
+        <item name="colorAccent">@color/maya_accent</item>
+        
+        
+        <item name="android:statusBarColor">#0b0b0c</item>
+        <item name="android:navigationBarColor">#0b0b0c</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar" ns1:targetApi="o_mr1">false</item>
+        
+        
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:fitsSystemWindows">true</item>
+        
+        <item name="android:windowLayoutInDisplayCutoutMode" ns1:targetApi="27">shortEdges</item>
+        
+        
+        <item name="android:windowBackground">#0b0b0c</item>
+        
+        
+        <item name="colorSurface">@color/background_card</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorOnPrimary">@color/white</item>
+    </style>
+    <style name="Theme.MAYAAstrology.Splash" parent="Theme.MAYAAstrology">
+        <item name="android:windowBackground">#0b0b0c</item>
+        <item name="android:statusBarColor">#0b0b0c</item>
+        <item name="android:navigationBarColor">#0b0b0c</item>
+    </style>
+</resources>

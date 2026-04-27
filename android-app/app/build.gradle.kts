@@ -27,7 +27,7 @@ val releaseStoreFile = resolveRepoFile(repoSecret("MAYA_STORE_FILE"))
 val releaseStorePassword = repoSecret("MAYA_STORE_PASSWORD")
 val releaseKeyAlias = repoSecret("MAYA_KEY_ALIAS") ?: "maya-key"
 val releaseKeyPassword = repoSecret("MAYA_KEY_PASSWORD")
-val hasReleaseSigning = releaseStoreFile != null
+val hasReleaseSigning = releaseStoreFile?.exists() == true
     && !releaseStorePassword.isNullOrBlank()
     && !releaseKeyAlias.isBlank()
     && !releaseKeyPassword.isNullOrBlank()
@@ -35,6 +35,7 @@ val hasReleaseSigning = releaseStoreFile != null
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -101,6 +102,8 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.webkit)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging.ktx)
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

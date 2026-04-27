@@ -9,12 +9,16 @@ const MayaAuth = {
     currentUser: null,
     isAuthenticated: false,
     token: null,
+    pushBridgeInitialized: false,
+    pendingFcmToken: null,
 
     /**
      * Initialize auth state from storage
      */
     async init() {
         console.log('🔐 Initializing Auth module...');
+
+        this.initFcmTokenBridge();
         
         // Initialize Firebase first
         if (window.MayaFirebase) {
@@ -51,8 +55,142 @@ const MayaAuth = {
         } else {
             console.log('👤 No stored auth found');
         }
+
+        if (this.isAuthenticated) {
+            void this.syncFcmToken();
+        }
         
         return this.isAuthenticated;
+    },
+
+    initFcmTokenBridge() {
+        if (this.pushBridgeInitialized) {
+            return;
+        }
+
+        this.pushBridgeInitialized = true;
+
+        const existingHandler = window.onMayaFcmToken;
+        const handleFcmToken = (token) => {
+            const normalizedToken = this.normalizeFcmToken(token);
+
+            if (!normalizedToken) {
+                return;
+            }
+
+            this.pendingFcmToken = normalizedToken;
+            MayaUtils.storage.set('maya_native_fcm_token', normalizedToken, { skipSync: true });
+
+            if (this.isAuthenticated) {
+                void this.syncFcmToken(normalizedToken);
+            }
+        };
+
+        window.onMayaFcmToken = (token) => {
+            handleFcmToken(token);
+
+            if (typeof existingHandler === 'function') {
+                existingHandler(token);
+            }
+        };
+
+        window.addEventListener('maya:fcm-token', (event) => {
+            handleFcmToken(event?.detail?.token);
+        });
+
+        handleFcmToken(this.readNativeFcmToken());
+    },
+
+    normalizeFcmToken(token) {
+        if (typeof token !== 'string') {
+            return '';
+        }
+
+        const normalizedToken = token.trim();
+        return normalizedToken && normalizedToken !== 'null' && normalizedToken !== 'undefined'
+            ? normalizedToken
+            : '';
+    },
+
+    readNativeFcmToken() {
+        try {
+            if (window.MayaAndroid && typeof MayaAndroid.getFcmToken === 'function') {
+                const nativeToken = this.normalizeFcmToken(MayaAndroid.getFcmToken());
+
+                if (nativeToken) {
+                    return nativeToken;
+                }
+            }
+        } catch (error) {
+            console.warn('Could not read native FCM token:', error);
+        }
+
+        return this.normalizeFcmToken(MayaUtils.storage.get('maya_native_fcm_token'));
+    },
+
+    getPushRegistrationContext() {
+        if (this.currentUser?.email) {
+            const emailKey = window.MayaFirebase?.emailToKey
+                ? MayaFirebase.emailToKey(this.currentUser.email)
+                : String(this.currentUser.email).replace(/[.#$[\]]/g, '_');
+
+            return {
+                email: this.currentUser.email,
+                cacheKey: `email:${emailKey}`
+            };
+        }
+
+        if (this.currentUser?.id) {
+            return {
+                userId: this.currentUser.id,
+                cacheKey: `phone:${this.currentUser.id}`
+            };
+        }
+
+        return null;
+    },
+
+    async syncFcmToken(token = this.pendingFcmToken || this.readNativeFcmToken()) {
+        const fcmToken = this.normalizeFcmToken(token);
+        const registrationContext = this.getPushRegistrationContext();
+
+        if (!this.isAuthenticated || !this.token || !registrationContext || !fcmToken) {
+            return { success: false, skipped: true };
+        }
+
+        const cachedRegistration = MayaUtils.storage.get('maya_fcm_registration');
+        if (cachedRegistration?.token === fcmToken && cachedRegistration?.userKey === registrationContext.cacheKey) {
+            return { success: true, cached: true };
+        }
+
+        const response = await fetch('/api/save-fcm-token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.token}`
+            },
+            body: JSON.stringify({
+                ...registrationContext,
+                fcmToken,
+                platform: 'android-webview',
+                source: 'android-webview',
+                appPackage: 'com.maya.astrology'
+            })
+        });
+
+        const responseBody = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(responseBody.error || 'Failed to register FCM token');
+        }
+
+        MayaUtils.storage.set('maya_fcm_registration', {
+            token: fcmToken,
+            userKey: registrationContext.cacheKey,
+            updatedAt: new Date().toISOString()
+        }, { skipSync: true });
+
+        return { success: true, tokenKey: responseBody.tokenKey || null };
     },
 
     /**
@@ -106,6 +244,7 @@ const MayaAuth = {
             });
 
             console.log('✅ Phone OTP auth success:', user.phone);
+            void this.syncFcmToken();
             return { success: true, user, isNewUser };
         } catch (err) {
             console.error('verifyOTP error:', err);
@@ -152,6 +291,7 @@ const MayaAuth = {
         MayaUtils.storage.remove('maya_token', { skipSync: true });
         MayaUtils.storage.remove('maya_session', { skipSync: true });
         MayaUtils.storage.remove('maya_profile', { skipSync: true });
+        MayaUtils.storage.remove('maya_fcm_registration', { skipSync: true });
         MayaUtils.storage.remove('funnel_complete', { skipSync: true });
         
         // Clear conversation history

@@ -12,6 +12,8 @@
     <string name="location_permission_message">MAYA needs location access for accurate Vastu analysis based on your geographical position.</string>
     <string name="camera_permission_title">Camera Permission</string>
     <string name="camera_permission_message">MAYA needs camera access for Vastu room scanning and analysis.</string>
+    <string name="notification_permission_title">Notification Permission</string>
+    <string name="notification_permission_message">Mayalogy uses notifications for astrology updates, reminders, and important account alerts.</string>
     <string name="grant">Grant</string>
     <string name="cancel">Cancel</string>
 </resources>

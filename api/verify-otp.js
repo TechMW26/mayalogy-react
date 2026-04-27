@@ -102,6 +102,7 @@ export default async function handler(req, res) {
             phone: `${countryCode}${phone}`,
             countryCode,
             phoneNumber: phone,
+            token,
             createdAt: now,
             lastLogin: now
         };
@@ -115,8 +116,9 @@ export default async function handler(req, res) {
         await fetch(`${firebaseUrl}/maya_phone_users/${phoneKey}.json${authParam}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lastLogin: now })
+            body: JSON.stringify({ lastLogin: now, token })
         }).catch(() => {});
+        user.token = token;
         user.lastLogin = now;
     }
 

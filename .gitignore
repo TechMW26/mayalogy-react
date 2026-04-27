@@ -15,3 +15,5 @@ js/runtime-env.js
 *.jks
 *.aab
 *.apk
+.vercel
+.env*.local

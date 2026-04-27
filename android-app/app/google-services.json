@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "34919541385",
+    "firebase_url": "https://maya---astrology-default-rtdb.firebaseio.com",
+    "project_id": "maya---astrology",
+    "storage_bucket": "maya---astrology.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:34919541385:android:1fcbcd32192f7265c67458",
+        "android_client_info": {
+          "package_name": "com.maya.astrology"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLVU_t2F-bYgEI5MNCyqtEhTUHYLnvYaM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
