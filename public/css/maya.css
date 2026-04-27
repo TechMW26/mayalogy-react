@@ -2005,7 +2005,6 @@ h1, h2, h3, h4, h5, h6, p {
     border: 2px solid var(--electric-border-color);
     margin-top: -4px;
     margin-left: -4px;
-    filter: url(#agentElectricBorder);
 }
 
 /* ── Glow layers (card.html: .glow-layer-1 + .glow-layer-2) ── */

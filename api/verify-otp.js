@@ -4,6 +4,8 @@
  * the user record in Firebase RTDB and returns a session token.
  */
 
+import { buildPhoneKey, isValidNormalizedPhone, normalizePhoneInput } from './_phone.js';
+
 export const config = {
     api: {
         bodyParser: { sizeLimit: '1mb' }
@@ -28,7 +30,15 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'OTP must be 6 digits' });
     }
 
-    const phoneKey = `${countryCode}_${phone}`.replace(/[^a-zA-Z0-9_]/g, '_');
+    const normalizedInput = normalizePhoneInput(phone, countryCode);
+    const normalizedPhone = normalizedInput.phone;
+    const normalizedCountryCode = normalizedInput.countryCode;
+
+    if (!isValidNormalizedPhone(normalizedPhone, normalizedCountryCode)) {
+        return res.status(400).json({ error: 'Invalid phone number or country code format' });
+    }
+
+    const phoneKey = buildPhoneKey(normalizedPhone, normalizedCountryCode);
     const firebaseUrl = process.env.FIREBASE_DB_URL;
     const firebaseSecret = process.env.FIREBASE_SECRET;
     const authParam = firebaseSecret ? `?auth=${firebaseSecret}` : '';
@@ -99,9 +109,9 @@ export default async function handler(req, res) {
     if (isNewUser) {
         user = {
             id: phoneKey,
-            phone: `${countryCode}${phone}`,
-            countryCode,
-            phoneNumber: phone,
+            phone: `${normalizedCountryCode}${normalizedPhone}`,
+            countryCode: normalizedCountryCode,
+            phoneNumber: normalizedPhone,
             token,
             createdAt: now,
             lastLogin: now

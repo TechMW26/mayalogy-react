@@ -4,6 +4,8 @@
  * and sends it via Interakt WhatsApp API.
  */
 
+import { buildPhoneKey, isValidNormalizedPhone, normalizePhoneInput } from './_phone.js';
+
 export const config = {
     api: {
         bodyParser: { sizeLimit: '1mb' }
@@ -22,17 +24,19 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'phone and countryCode are required' });
     }
 
-    // Basic phone validation: 6-15 digits
-    if (!/^\d{6,15}$/.test(phone)) {
-        return res.status(400).json({ error: 'Invalid phone number format' });
+    const normalizedInput = normalizePhoneInput(phone, countryCode);
+    const normalizedPhone = normalizedInput.phone;
+    const normalizedCountryCode = normalizedInput.countryCode;
+
+    if (!isValidNormalizedPhone(normalizedPhone, normalizedCountryCode)) {
+        return res.status(400).json({ error: 'Invalid phone number or country code format' });
     }
 
     // Generate cryptographically random 6-digit OTP
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes
 
-    // Sanitize key for Firebase path (no special chars)
-    const phoneKey = `${countryCode}_${phone}`.replace(/[^a-zA-Z0-9_]/g, '_');
+    const phoneKey = buildPhoneKey(normalizedPhone, normalizedCountryCode);
 
     const firebaseUrl = process.env.FIREBASE_DB_URL;
     const firebaseSecret = process.env.FIREBASE_SECRET; // Firebase legacy secret or service account token
@@ -43,11 +47,21 @@ export default async function handler(req, res) {
 
     // Store OTP in Firebase RTDB
     const authParam = firebaseSecret ? `?auth=${firebaseSecret}` : '';
+    const deleteOtpSession = () => fetch(`${firebaseUrl}/maya_otp_sessions/${phoneKey}.json${authParam}`, {
+        method: 'DELETE'
+    }).catch(() => { });
+
     try {
         const storeResp = await fetch(`${firebaseUrl}/maya_otp_sessions/${phoneKey}.json${authParam}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ otp, expiry, phone, countryCode, attempts: 0 })
+            body: JSON.stringify({
+                otp,
+                expiry,
+                phone: normalizedPhone,
+                countryCode: normalizedCountryCode,
+                attempts: 0
+            })
         });
         if (!storeResp.ok) {
             const errBody = await storeResp.text();
@@ -83,8 +97,8 @@ export default async function handler(req, res) {
     // Interakt message payload — uses Authentication template type
     // Template must be set up in Interakt with one body variable (the OTP code)
     const interaktPayload = {
-        countryCode,
-        phoneNumber: phone,
+        countryCode: normalizedCountryCode,
+        phoneNumber: normalizedPhone,
         callbackData: 'maya_otp_auth',
         type: 'Template',
         template: {
@@ -107,12 +121,20 @@ export default async function handler(req, res) {
 
         if (!interaktResp.ok) {
             const errBody = await interaktResp.json().catch(() => ({}));
+            const detail = errBody.message || 'Unknown error';
             console.error('Interakt send failed:', errBody);
-            return res.status(500).json({ error: 'Failed to send WhatsApp OTP', detail: errBody.message || 'Unknown error' });
+            await deleteOtpSession();
+
+            if (/phone number|country code/i.test(detail) && /invalid/i.test(detail)) {
+                return res.status(400).json({ error: 'Invalid phone number or country code', detail });
+            }
+
+            return res.status(502).json({ error: 'Failed to send WhatsApp OTP', detail });
         }
     } catch (err) {
         console.error('Interakt request error:', err.message);
-        return res.status(500).json({ error: 'Failed to reach WhatsApp service' });
+        await deleteOtpSession();
+        return res.status(502).json({ error: 'Failed to reach WhatsApp service' });
     }
 
     return res.status(200).json({ success: true, message: 'OTP sent to WhatsApp' });
