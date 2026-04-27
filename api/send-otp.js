@@ -94,33 +94,36 @@ export default async function handler(req, res) {
         ? interaktApiKey
         : Buffer.from(`${interaktApiKey}:`).toString('base64');
 
-    // Interakt message payload — uses Authentication template type
-    // Template must be set up in Interakt with one body variable (the OTP code)
-    const interaktPayload = {
+    let interaktPayload = buildInteraktPayload({
         countryCode: normalizedCountryCode,
         phoneNumber: normalizedPhone,
-        callbackData: 'maya_otp_auth',
-        type: 'Template',
-        template: {
-            name: templateName,
-            languageCode: 'en',
-            headerValues: [],
-            bodyValues: [otp]
-        }
-    };
+        templateName,
+        otp
+    });
 
     try {
-        const interaktResp = await fetch('https://api.interakt.ai/v1/public/message/', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Basic ${basicToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(interaktPayload)
-        });
+        let interaktResult = await sendInteraktMessage(basicToken, interaktPayload);
+        let { response: interaktResp, body: errBody } = interaktResult;
 
         if (!interaktResp.ok) {
-            const errBody = await interaktResp.json().catch(() => ({}));
+            const missingButtonVariable = parseMissingButtonVariableError(errBody.message);
+
+            if (missingButtonVariable) {
+                interaktPayload = buildInteraktPayload({
+                    countryCode: normalizedCountryCode,
+                    phoneNumber: normalizedPhone,
+                    templateName,
+                    otp,
+                    buttonValues: buildDefaultButtonValues(missingButtonVariable.index, missingButtonVariable.count, otp)
+                });
+
+                interaktResult = await sendInteraktMessage(basicToken, interaktPayload);
+                interaktResp = interaktResult.response;
+                errBody = interaktResult.body;
+            }
+        }
+
+        if (!interaktResp.ok) {
             const detail = errBody.message || 'Unknown error';
             console.error('Interakt send failed:', errBody);
             await deleteOtpSession();
@@ -138,4 +141,59 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({ success: true, message: 'OTP sent to WhatsApp' });
+}
+
+function buildInteraktPayload({ countryCode, phoneNumber, templateName, otp, buttonValues }) {
+    const payload = {
+        countryCode,
+        phoneNumber,
+        callbackData: 'maya_otp_auth',
+        type: 'Template',
+        template: {
+            name: templateName,
+            languageCode: 'en',
+            headerValues: [],
+            bodyValues: [otp]
+        }
+    };
+
+    if (buttonValues && Object.keys(buttonValues).length > 0) {
+        payload.template.buttonValues = buttonValues;
+    }
+
+    return payload;
+}
+
+async function sendInteraktMessage(basicToken, payload) {
+    const response = await fetch('https://api.interakt.ai/v1/public/message/', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Basic ${basicToken}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    });
+
+    const body = await response.json().catch(() => ({}));
+    return { response, body };
+}
+
+function parseMissingButtonVariableError(detail) {
+    const message = String(detail || '');
+    const match = message.match(/button at index\s+(\d+).*?expected number of values(?:\s+are|\s+is)?\s+(\d+)/i);
+
+    if (!match) {
+        return null;
+    }
+
+    return {
+        index: Number(match[1]),
+        count: Number(match[2])
+    };
+}
+
+function buildDefaultButtonValues(index, count, otp) {
+    return {
+        [index]: Array.from({ length: count }, () => otp)
+    };
 }
