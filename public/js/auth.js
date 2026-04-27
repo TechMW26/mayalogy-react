@@ -19,7 +19,7 @@ const MayaAuth = {
         console.log('🔐 Initializing Auth module...');
 
         this.initFcmTokenBridge();
-        
+
         // Initialize Firebase first
         if (window.MayaFirebase) {
             const result = MayaFirebase.init();
@@ -30,7 +30,7 @@ const MayaAuth = {
 
         const storedUser = MayaUtils.storage.get('maya_user');
         const storedToken = MayaUtils.storage.get('maya_token');
-        
+
         if (storedUser && storedToken) {
             this.currentUser = storedUser;
             this.token = storedToken;
@@ -59,7 +59,7 @@ const MayaAuth = {
         if (this.isAuthenticated) {
             void this.syncFcmToken();
         }
-        
+
         return this.isAuthenticated;
     },
 
@@ -286,19 +286,19 @@ const MayaAuth = {
         this.currentUser = null;
         this.token = null;
         this.isAuthenticated = false;
-        
+
         MayaUtils.storage.remove('maya_user', { skipSync: true });
         MayaUtils.storage.remove('maya_token', { skipSync: true });
         MayaUtils.storage.remove('maya_session', { skipSync: true });
         MayaUtils.storage.remove('maya_profile', { skipSync: true });
         MayaUtils.storage.remove('maya_fcm_registration', { skipSync: true });
         MayaUtils.storage.remove('funnel_complete', { skipSync: true });
-        
+
         // Clear conversation history
         if (window.MayaAI) {
             MayaAI.clearHistory();
         }
-        
+
         return true;
     },
 
@@ -323,7 +323,7 @@ const MayaAuth = {
             const result = storageInfo.type === 'email'
                 ? await MayaFirebase.updateProfile(storageInfo.identifier, profileData)
                 : await MayaFirebase.request(storageInfo.profilePath, 'PATCH', updates).then(() => ({ success: true }));
-            
+
             if (result.success) {
                 this.currentUser = { ...this.currentUser, ...profileData };
                 MayaUtils.storage.set('maya_user', this.currentUser);
@@ -383,7 +383,7 @@ const MayaAuth = {
         // First check local storage
         const localData = MayaUtils.storage.get('maya_profile');
         const storageInfo = this.getCurrentUserStorageInfo();
-        
+
         if (!this.isAuthenticated || !storageInfo) {
             return localData || null;
         }
@@ -396,7 +396,7 @@ const MayaAuth = {
             const result = storageInfo.type === 'email'
                 ? await MayaFirebase.getProfile(storageInfo.identifier)
                 : await MayaFirebase.request(storageInfo.profilePath, 'GET').then((user) => ({ success: !!user, user }));
-            
+
             if (result.success && result.user) {
                 // Merge ALL fields from cloud with local data
                 const profileData = {
@@ -417,15 +417,15 @@ const MayaAuth = {
                 // Merge: local data as base, cloud data overwrites
                 const mergedProfile = { ...localData, ...profileData };
                 MayaUtils.storage.set('maya_profile', mergedProfile);
-                
+
                 // Also sync language setting
                 if (profileData.language) {
                     MayaUtils.storage.set('maya_language', profileData.language);
                 }
-                
+
                 return mergedProfile;
             }
-            
+
             return localData || null;
         } catch (error) {
             console.error('Get birth details error:', error);
@@ -450,12 +450,12 @@ const MayaAuth = {
             const result = storageInfo.type === 'email'
                 ? await MayaFirebase.getProfile(storageInfo.identifier)
                 : await MayaFirebase.request(storageInfo.profilePath, 'GET').then((user) => ({ success: !!user, user }));
-            
+
             if (result.success) {
                 this.currentUser = { ...this.currentUser, ...result.user };
                 MayaUtils.storage.set('maya_user', this.currentUser);
             }
-            
+
             return result;
         } catch (error) {
             console.error('Get profile error:', error);

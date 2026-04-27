@@ -54,14 +54,14 @@ export default async function handler(req, res) {
         // Check expiry
         if (Date.now() > stored.expiry) {
             // Clean up expired session
-            await fetch(`${firebaseUrl}/maya_otp_sessions/${phoneKey}.json${authParam}`, { method: 'DELETE' }).catch(() => {});
+            await fetch(`${firebaseUrl}/maya_otp_sessions/${phoneKey}.json${authParam}`, { method: 'DELETE' }).catch(() => { });
             return res.status(401).json({ error: 'OTP has expired. Please request a new one.' });
         }
 
         // Rate limit: max 3 attempts
         const attempts = (stored.attempts || 0) + 1;
         if (attempts > 3) {
-            await fetch(`${firebaseUrl}/maya_otp_sessions/${phoneKey}.json${authParam}`, { method: 'DELETE' }).catch(() => {});
+            await fetch(`${firebaseUrl}/maya_otp_sessions/${phoneKey}.json${authParam}`, { method: 'DELETE' }).catch(() => { });
             return res.status(429).json({ error: 'Too many incorrect attempts. Please request a new OTP.' });
         }
 
@@ -72,7 +72,7 @@ export default async function handler(req, res) {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ attempts })
-            }).catch(() => {});
+            }).catch(() => { });
             const remaining = 3 - attempts;
             return res.status(401).json({
                 error: `Incorrect OTP. ${remaining > 0 ? remaining + ' attempt(s) remaining.' : 'No attempts remaining.'}`
@@ -80,7 +80,7 @@ export default async function handler(req, res) {
         }
 
         // OTP is valid — delete the session
-        await fetch(`${firebaseUrl}/maya_otp_sessions/${phoneKey}.json${authParam}`, { method: 'DELETE' }).catch(() => {});
+        await fetch(`${firebaseUrl}/maya_otp_sessions/${phoneKey}.json${authParam}`, { method: 'DELETE' }).catch(() => { });
     }
 
     // Create or retrieve user by phone
@@ -110,14 +110,14 @@ export default async function handler(req, res) {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(user)
-        }).catch(() => {});
+        }).catch(() => { });
     } else {
         // Update last login
         await fetch(`${firebaseUrl}/maya_phone_users/${phoneKey}.json${authParam}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ lastLogin: now, token })
-        }).catch(() => {});
+        }).catch(() => { });
         user.token = token;
         user.lastLogin = now;
     }
