@@ -1,0 +1,4 @@
+module nanopb {
+umbrella "/Users/aadilkhan/Library/Developer/Xcode/DerivedData/MayalogyiOS-gbgwysswemfjhebcednvmplabzma/SourcePackages/checkouts/nanopb/spm_headers"
+export *
+}

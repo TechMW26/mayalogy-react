@@ -5,10 +5,13 @@
 
 const MayaOnboarding = {
     currentStep: 0,
-    totalSteps: 7,
     userData: {},
     isComplete: false,
     locationOutsideHandler: null,
+
+    get totalSteps() {
+        return this.steps.length;
+    },
 
     // Ritual voice lines spoken at each onboarding step (micro-confirmations)
     ritualVoiceLines: {
@@ -672,23 +675,95 @@ const MayaOnboarding = {
             const isDesktop = window.matchMedia('(min-width: 600px)').matches;
             let gcCurrent = 0;
             let gcStartX = 0, gcDragX = 0, gcDragging = false;
+            let gcSubmitting = false;
+
+            const gcBindTap = (element, handler) => {
+                if (!element) return;
+
+                let gcTouchHandled = false;
+
+                element.addEventListener('touchend', (event) => {
+                    gcTouchHandled = true;
+                    event.preventDefault();
+                    handler(event);
+
+                    window.setTimeout(() => {
+                        gcTouchHandled = false;
+                    }, 400);
+                }, { passive: false });
+
+                element.addEventListener('click', (event) => {
+                    if (gcTouchHandled) {
+                        event.preventDefault();
+                        return;
+                    }
+
+                    handler(event);
+                });
+            };
+
+            const gcChooseLabel = (slide) => {
+                if (!slide) {
+                    return this.isHindiUI() ? 'इन्हें चुनें' : 'Choose';
+                }
+
+                const option = step.options?.find((entry) => entry.value === slide.dataset.value);
+                if (!option) {
+                    return this.isHindiUI() ? 'इन्हें चुनें' : 'Choose';
+                }
+
+                const label = this.isHindiUI() ? (option.labelHi || option.label) : (option.label || option.labelHi);
+                return this.isHindiUI() ? `${label} चुनें` : `Choose ${label}`;
+            };
+
+            const gcRefreshUI = () => {
+                gcSlides.forEach((slide, index) => {
+                    slide.classList.toggle('is-active', index === gcCurrent);
+                });
+
+                gcDots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === gcCurrent);
+                });
+
+                if (gcBtn) {
+                    const label = gcChooseLabel(gcSlides[gcCurrent]);
+                    gcBtn.textContent = label;
+                    gcBtn.setAttribute('aria-label', label);
+                    gcBtn.classList.remove('gc-choose-btn--pressed');
+                }
+            };
+
+            const gcCommitSelection = () => {
+                const value = gcSlides[gcCurrent]?.dataset.value;
+                if (!value || gcSubmitting) return;
+
+                gcSubmitting = true;
+
+                if (gcBtn) {
+                    gcBtn.classList.add('gc-choose-btn--pressed');
+                }
+
+                window.setTimeout(() => {
+                    void this.handleSelection(step, value);
+                }, 180);
+            };
 
             const gcGo = (idx) => {
                 gcCurrent = Math.max(0, Math.min(idx, gcSlides.length - 1));
                 gcTrack.style.transform = `translateX(-${gcCurrent * 100}%)`;
-                gcDots.forEach((d, i) => d.classList.toggle('active', i === gcCurrent));
+                gcRefreshUI();
             };
 
             if (isDesktop) {
-                // Desktop: click card to select directly
-                gcSlides.forEach(slide => {
-                    slide.addEventListener('click', () => {
-                        const value = slide.dataset.value;
-                        setTimeout(() => this.handleSelection(step, value), 300);
+                // Desktop: click card to select directly.
+                gcSlides.forEach((slide, index) => {
+                    gcBindTap(slide, () => {
+                        gcGo(index);
+                        gcCommitSelection();
                     });
                 });
             } else {
-                // Mobile: touch swipe (navigate only — does NOT select)
+                // Mobile: swipe to browse, or tap the visible card / CTA to select.
                 gcTrack.addEventListener('touchstart', (e) => {
                     gcStartX = e.touches[0].clientX;
                     gcDragX = gcStartX;
@@ -716,20 +791,25 @@ const MayaOnboarding = {
 
                 // Dot tap
                 gcDots.forEach((dot, i) => {
-                    dot.addEventListener('click', () => gcGo(i));
+                    gcBindTap(dot, () => gcGo(i));
                 });
 
-                // Choose button — mobile only way to select
-                if (gcBtn) {
-                    gcBtn.addEventListener('click', () => {
-                        const value = gcSlides[gcCurrent].dataset.value;
-                        gcBtn.classList.add('gc-choose-btn--pressed');
-                        setTimeout(() => this.handleSelection(step, value), 350);
+                gcSlides.forEach((slide, index) => {
+                    gcBindTap(slide, () => {
+                        gcGo(index);
+                        gcCommitSelection();
                     });
+                });
+
+                // Choose button — explicit mobile CTA for the currently visible guide.
+                if (gcBtn) {
+                    gcBindTap(gcBtn, () => gcCommitSelection());
                 }
 
                 gcGo(0);
             }
+
+            gcRefreshUI();
         }
 
         // Unknown time button

@@ -1,0 +1,79 @@
+{
+  "" : {
+    "diagnostics" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/Mayalogy-primary.dia",
+    "emit-module-dependencies" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/Mayalogy-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/Mayalogy-primary-emit-module.dia",
+    "pch" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/Mayalogy-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/Mayalogy-primary.swiftdeps"
+  },
+  "/Users/aadilkhan/Desktop/mayalogy/ios-app/Mayalogy/App/AppDelegate.swift" : {
+    "const-values" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/AppDelegate.swiftconstvalues",
+    "dependencies" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/AppDelegate.d",
+    "diagnostics" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/AppDelegate.dia",
+    "index-unit-output-path" : "/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/AppDelegate.o",
+    "llvm-bc" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/AppDelegate.bc",
+    "object" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/AppDelegate.o",
+    "swift-dependencies" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/AppDelegate.swiftdeps",
+    "swiftmodule" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/AppDelegate~partial.swiftmodule"
+  },
+  "/Users/aadilkhan/Desktop/mayalogy/ios-app/Mayalogy/App/MayaConfiguration.swift" : {
+    "const-values" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaConfiguration.swiftconstvalues",
+    "dependencies" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaConfiguration.d",
+    "diagnostics" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaConfiguration.dia",
+    "index-unit-output-path" : "/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaConfiguration.o",
+    "llvm-bc" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaConfiguration.bc",
+    "object" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaConfiguration.o",
+    "swift-dependencies" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaConfiguration.swiftdeps",
+    "swiftmodule" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaConfiguration~partial.swiftmodule"
+  },
+  "/Users/aadilkhan/Desktop/mayalogy/ios-app/Mayalogy/App/SceneDelegate.swift" : {
+    "const-values" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/SceneDelegate.swiftconstvalues",
+    "dependencies" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/SceneDelegate.d",
+    "diagnostics" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/SceneDelegate.dia",
+    "index-unit-output-path" : "/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/SceneDelegate.o",
+    "llvm-bc" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/SceneDelegate.bc",
+    "object" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/SceneDelegate.o",
+    "swift-dependencies" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/SceneDelegate.swiftdeps",
+    "swiftmodule" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/SceneDelegate~partial.swiftmodule"
+  },
+  "/Users/aadilkhan/Desktop/mayalogy/ios-app/Mayalogy/Networking/MayaNetworkMonitor.swift" : {
+    "const-values" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaNetworkMonitor.swiftconstvalues",
+    "dependencies" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaNetworkMonitor.d",
+    "diagnostics" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaNetworkMonitor.dia",
+    "index-unit-output-path" : "/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaNetworkMonitor.o",
+    "llvm-bc" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaNetworkMonitor.bc",
+    "object" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaNetworkMonitor.o",
+    "swift-dependencies" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaNetworkMonitor.swiftdeps",
+    "swiftmodule" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaNetworkMonitor~partial.swiftmodule"
+  },
+  "/Users/aadilkhan/Desktop/mayalogy/ios-app/Mayalogy/Notifications/MayaFcmTokenStore.swift" : {
+    "const-values" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaFcmTokenStore.swiftconstvalues",
+    "dependencies" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaFcmTokenStore.d",
+    "diagnostics" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaFcmTokenStore.dia",
+    "index-unit-output-path" : "/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaFcmTokenStore.o",
+    "llvm-bc" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaFcmTokenStore.bc",
+    "object" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaFcmTokenStore.o",
+    "swift-dependencies" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaFcmTokenStore.swiftdeps",
+    "swiftmodule" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaFcmTokenStore~partial.swiftmodule"
+  },
+  "/Users/aadilkhan/Desktop/mayalogy/ios-app/Mayalogy/Notifications/MayaNotificationRouter.swift" : {
+    "const-values" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaNotificationRouter.swiftconstvalues",
+    "dependencies" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaNotificationRouter.d",
+    "diagnostics" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaNotificationRouter.dia",
+    "index-unit-output-path" : "/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaNotificationRouter.o",
+    "llvm-bc" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaNotificationRouter.bc",
+    "object" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaNotificationRouter.o",
+    "swift-dependencies" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaNotificationRouter.swiftdeps",
+    "swiftmodule" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaNotificationRouter~partial.swiftmodule"
+  },
+  "/Users/aadilkhan/Desktop/mayalogy/ios-app/Mayalogy/Web/MayaWebViewController.swift" : {
+    "const-values" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaWebViewController.swiftconstvalues",
+    "dependencies" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaWebViewController.d",
+    "diagnostics" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaWebViewController.dia",
+    "index-unit-output-path" : "/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaWebViewController.o",
+    "llvm-bc" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaWebViewController.bc",
+    "object" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaWebViewController.o",
+    "swift-dependencies" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaWebViewController.swiftdeps",
+    "swiftmodule" : "/Users/aadilkhan/Desktop/mayalogy/ios-app/build/MayalogyiOS.build/Debug-iphonesimulator/Mayalogy.build/Objects-normal/x86_64/MayaWebViewController~partial.swiftmodule"
+  }
+}

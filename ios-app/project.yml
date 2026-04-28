@@ -1,0 +1,45 @@
+name: MayalogyiOS
+options:
+  createIntermediateGroups: true
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: 11.0.0
+configs:
+  Debug: debug
+  Release: release
+targets:
+  Mayalogy:
+    type: application
+    supportedDestinations: [ iOS ]
+    deploymentTarget: "15.0"
+    sources:
+      - path: Mayalogy
+    resources:
+      - path: Resources/Assets.xcassets
+    settings:
+      base:
+        PRODUCT_NAME: Mayalogy
+        PRODUCT_BUNDLE_IDENTIFIER: com.maya.astrology
+        INFOPLIST_FILE: Mayalogy/App/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: Mayalogy/App/Mayalogy.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 1.0.0
+        SWIFT_VERSION: 5.10
+        TARGETED_DEVICE_FAMILY: "1,2"
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_STYLE: Automatic
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+      configs:
+        Debug:
+          APS_ENVIRONMENT: development
+        Release:
+          APS_ENVIRONMENT: production
+    dependencies:
+      - package: Firebase
+        product: FirebaseCore
+      - package: Firebase
+        product: FirebaseMessaging

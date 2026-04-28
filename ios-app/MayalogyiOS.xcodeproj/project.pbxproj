@@ -1,0 +1,414 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		3E6664A295112CFDD1324966 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D25ED3E936CBCABE4A6C3CA /* AppDelegate.swift */; };
+		5E012CFC9ED77AB05F55050F /* MayaFcmTokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07248C97A3D59052898DE387 /* MayaFcmTokenStore.swift */; };
+		772CDA08C5DF6FACEC8F6528 /* MayaNotificationRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23CD081240A466FC919C9C31 /* MayaNotificationRouter.swift */; };
+		7DF08541A4D34CAFEE0CAF4D /* MayaConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46B24492CAC951F4FC63AA1B /* MayaConfiguration.swift */; };
+		9E1EBB87BF3FED8EE558DAA7 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CB96A1032247B8A7790FE27 /* SceneDelegate.swift */; };
+		9ED18E6DA1385DC0CC109C57 /* MayaNetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BACAF6E3C2AF2BEEDA9E72ED /* MayaNetworkMonitor.swift */; };
+		C9E187E4CA02365E1327FCA3 /* MayaWebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9449D6EA13D7F1E7DB7A45A3 /* MayaWebViewController.swift */; };
+		D06EFABB258373B894E9A3F1 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 8A1E85A3EA1E5E65E3E52824 /* FirebaseMessaging */; };
+		E0695728A7FE60C8881FA329 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = A52115D81DC30C8C1D490232 /* FirebaseCore */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		07248C97A3D59052898DE387 /* MayaFcmTokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MayaFcmTokenStore.swift; sourceTree = "<group>"; };
+		0C9C6F8E030A3A848EAAAB43 /* Mayalogy.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Mayalogy.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0D25ED3E936CBCABE4A6C3CA /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		1CB96A1032247B8A7790FE27 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		1EBEE5CA763C653EA6284EB1 /* Mayalogy.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Mayalogy.entitlements; sourceTree = "<group>"; };
+		23CD081240A466FC919C9C31 /* MayaNotificationRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MayaNotificationRouter.swift; sourceTree = "<group>"; };
+		46B24492CAC951F4FC63AA1B /* MayaConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MayaConfiguration.swift; sourceTree = "<group>"; };
+		9449D6EA13D7F1E7DB7A45A3 /* MayaWebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MayaWebViewController.swift; sourceTree = "<group>"; };
+		9DEF73E8DC2339911BBFE5A1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		BACAF6E3C2AF2BEEDA9E72ED /* MayaNetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MayaNetworkMonitor.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		DBAD65FDFDE444590A11A534 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E0695728A7FE60C8881FA329 /* FirebaseCore in Frameworks */,
+				D06EFABB258373B894E9A3F1 /* FirebaseMessaging in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		4DEDA226F53870FB5A7125E9 /* Web */ = {
+			isa = PBXGroup;
+			children = (
+				9449D6EA13D7F1E7DB7A45A3 /* MayaWebViewController.swift */,
+			);
+			path = Web;
+			sourceTree = "<group>";
+		};
+		71CE58D6D5D6442B60F95576 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				0D25ED3E936CBCABE4A6C3CA /* AppDelegate.swift */,
+				9DEF73E8DC2339911BBFE5A1 /* Info.plist */,
+				46B24492CAC951F4FC63AA1B /* MayaConfiguration.swift */,
+				1EBEE5CA763C653EA6284EB1 /* Mayalogy.entitlements */,
+				1CB96A1032247B8A7790FE27 /* SceneDelegate.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		902A92AECF9A065E49EF02C2 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				0C9C6F8E030A3A848EAAAB43 /* Mayalogy.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		ADD63BB74B000F158B753978 /* Notifications */ = {
+			isa = PBXGroup;
+			children = (
+				07248C97A3D59052898DE387 /* MayaFcmTokenStore.swift */,
+				23CD081240A466FC919C9C31 /* MayaNotificationRouter.swift */,
+			);
+			path = Notifications;
+			sourceTree = "<group>";
+		};
+		BA79C8FA72C6BF284F65D339 /* Networking */ = {
+			isa = PBXGroup;
+			children = (
+				BACAF6E3C2AF2BEEDA9E72ED /* MayaNetworkMonitor.swift */,
+			);
+			path = Networking;
+			sourceTree = "<group>";
+		};
+		F052245AE82F2135144D635F /* Mayalogy */ = {
+			isa = PBXGroup;
+			children = (
+				71CE58D6D5D6442B60F95576 /* App */,
+				BA79C8FA72C6BF284F65D339 /* Networking */,
+				ADD63BB74B000F158B753978 /* Notifications */,
+				4DEDA226F53870FB5A7125E9 /* Web */,
+			);
+			path = Mayalogy;
+			sourceTree = "<group>";
+		};
+		F3A9245EFDD72DABD096FD2B = {
+			isa = PBXGroup;
+			children = (
+				F052245AE82F2135144D635F /* Mayalogy */,
+				902A92AECF9A065E49EF02C2 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0B34DFC60BDC545659571EFE /* Mayalogy */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 53C720FFF23A208B06752BE1 /* Build configuration list for PBXNativeTarget "Mayalogy" */;
+			buildPhases = (
+				B3DBF9010E3CD25F794E5EC7 /* Sources */,
+				DBAD65FDFDE444590A11A534 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Mayalogy;
+			packageProductDependencies = (
+				A52115D81DC30C8C1D490232 /* FirebaseCore */,
+				8A1E85A3EA1E5E65E3E52824 /* FirebaseMessaging */,
+			);
+			productName = Mayalogy;
+			productReference = 0C9C6F8E030A3A848EAAAB43 /* Mayalogy.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		ACAE0A2A4EDA9EEC73A15F1B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					0B34DFC60BDC545659571EFE = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 7F9E74DE03E8A3249E993DF0 /* Build configuration list for PBXProject "MayalogyiOS" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = F3A9245EFDD72DABD096FD2B;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				FF563F8F003667A1BC621AA6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 902A92AECF9A065E49EF02C2 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				0B34DFC60BDC545659571EFE /* Mayalogy */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B3DBF9010E3CD25F794E5EC7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3E6664A295112CFDD1324966 /* AppDelegate.swift in Sources */,
+				7DF08541A4D34CAFEE0CAF4D /* MayaConfiguration.swift in Sources */,
+				5E012CFC9ED77AB05F55050F /* MayaFcmTokenStore.swift in Sources */,
+				9ED18E6DA1385DC0CC109C57 /* MayaNetworkMonitor.swift in Sources */,
+				772CDA08C5DF6FACEC8F6528 /* MayaNotificationRouter.swift in Sources */,
+				C9E187E4CA02365E1327FCA3 /* MayaWebViewController.swift in Sources */,
+				9E1EBB87BF3FED8EE558DAA7 /* SceneDelegate.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		7D45CBE024F23534C09B072D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APS_ENVIRONMENT = production;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Mayalogy/App/Mayalogy.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Mayalogy/App/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.maya.astrology;
+				PRODUCT_NAME = Mayalogy;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_VERSION = 5.1;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		BC53BD6DA1B2217851C74C83 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		FA4A50751E08E56062156F50 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		FA66055FFBA6407E6130C3CB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APS_ENVIRONMENT = development;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Mayalogy/App/Mayalogy.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Mayalogy/App/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.maya.astrology;
+				PRODUCT_NAME = Mayalogy;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_VERSION = 5.1;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		53C720FFF23A208B06752BE1 /* Build configuration list for PBXNativeTarget "Mayalogy" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FA66055FFBA6407E6130C3CB /* Debug */,
+				7D45CBE024F23534C09B072D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		7F9E74DE03E8A3249E993DF0 /* Build configuration list for PBXProject "MayalogyiOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BC53BD6DA1B2217851C74C83 /* Debug */,
+				FA4A50751E08E56062156F50 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		FF563F8F003667A1BC621AA6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		8A1E85A3EA1E5E65E3E52824 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FF563F8F003667A1BC621AA6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+		A52115D81DC30C8C1D490232 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FF563F8F003667A1BC621AA6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = ACAE0A2A4EDA9EEC73A15F1B /* Project object */;
+}
