@@ -22295,7 +22295,9 @@ com.maya.astrology.R$id:
     private void <init>()
 com.maya.astrology.R$layout:
     private void <init>()
-com.maya.astrology.R$mipmap
+com.maya.astrology.R$mipmap:
+    public static int ic_launcher_round
+    private void <init>()
 com.maya.astrology.R$string:
     public static int camera_permission_message
     public static int camera_permission_title
@@ -38088,6 +38090,7 @@ com.maya.astrology.R$color
 com.maya.astrology.R$drawable
 com.maya.astrology.R$id
 com.maya.astrology.R$layout
+com.maya.astrology.R$mipmap
 com.maya.astrology.R$string
 com.maya.astrology.databinding.ActivityMainBinding:
     public final android.widget.FrameLayout rootView

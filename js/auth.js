@@ -35,21 +35,14 @@ const MayaAuth = {
             this.currentUser = storedUser;
             this.token = storedToken;
             this.isAuthenticated = true;
-            const sessionIdentifier = storedUser.email || storedUser.phone;
-            MayaUtils.storage.set('maya_session', {
-                email: storedUser.email,
-                phone: storedUser.phone,
-                token: storedToken
-            }, { skipSync: true });
-
-            if (window.MayaDBSync && storedUser.email) {
-                MayaDBSync.init(storedUser.email);
-                try {
-                    await MayaDBSync.loadFromFirebase();
-                } catch (error) {
-                    console.warn('⚠️ Could not restore synced user data:', error);
-                }
+            try {
+                await this.hydrateAuthenticatedState({ loadRemoteProfile: true });
+            } catch (error) {
+                console.warn('⚠️ Could not hydrate stored auth state:', error);
+                this.persistAuthenticatedState(storedUser);
             }
+
+            const sessionIdentifier = this.currentUser.email || this.currentUser.phone;
 
             console.log('✅ Auth restored from storage:', sessionIdentifier);
         } else {
@@ -193,6 +186,114 @@ const MayaAuth = {
         return { success: true, tokenKey: responseBody.tokenKey || null };
     },
 
+    mergeKnownFields(target, source, keys) {
+        const merged = { ...(target || {}) };
+
+        keys.forEach((key) => {
+            const value = source?.[key];
+
+            if (value !== undefined && value !== null && value !== '') {
+                merged[key] = value;
+            }
+        });
+
+        return merged;
+    },
+
+    persistAuthenticatedState(user = this.currentUser) {
+        if (!user || !this.token) {
+            return null;
+        }
+
+        const authFields = [
+            'id', 'email', 'name', 'phone', 'countryCode', 'phoneNumber', 'createdAt', 'lastLogin',
+            'birthDate', 'birthTime', 'birthPlace', 'birthLat', 'birthLon', 'gender', 'maritalStatus',
+            'language', 'agentGender'
+        ];
+        const profileFields = [
+            'name', 'gender', 'agentGender', 'birthDate', 'birthTime', 'birthPlace', 'birthLat', 'birthLon',
+            'maritalStatus', 'language', 'email', 'phone', 'countryCode', 'phoneNumber'
+        ];
+
+        this.currentUser = this.mergeKnownFields(this.currentUser, user, authFields);
+        MayaUtils.storage.set('maya_session', {
+            email: this.currentUser.email || null,
+            phone: this.currentUser.phone || null,
+            token: this.token
+        }, { skipSync: true });
+
+        const mergedProfile = this.mergeKnownFields(MayaUtils.storage.get('maya_profile') || {}, this.currentUser, profileFields);
+        this.currentUser = this.mergeKnownFields(this.currentUser, mergedProfile, profileFields);
+        MayaUtils.storage.set('maya_user', this.currentUser);
+        MayaUtils.storage.set('maya_profile', mergedProfile);
+
+        const mergedFunnelData = this.mergeKnownFields(MayaUtils.storage.get('funnel_data') || {}, mergedProfile, profileFields);
+        MayaUtils.storage.set('funnel_data', mergedFunnelData);
+
+        if (mergedProfile.language) {
+            MayaUtils.storage.set('maya_language', mergedProfile.language);
+        }
+
+        if (mergedProfile.birthDate) {
+            MayaUtils.storage.set('funnel_complete', true);
+        }
+
+        return mergedProfile;
+    },
+
+    async hydrateAuthenticatedState({ loadRemoteProfile = true } = {}) {
+        if (!this.isAuthenticated || !this.currentUser) {
+            return { user: null, profile: null };
+        }
+
+        const storageInfo = this.getCurrentUserStorageInfo();
+
+        if (window.MayaDBSync && this.currentUser.email) {
+            MayaDBSync.init(this.currentUser.email);
+
+            try {
+                await MayaDBSync.loadFromFirebase();
+            } catch (error) {
+                console.warn('⚠️ Could not restore synced user data:', error);
+            }
+        }
+
+        if (!loadRemoteProfile || !storageInfo || !window.MayaFirebase) {
+            return {
+                user: this.currentUser,
+                profile: this.persistAuthenticatedState(this.currentUser)
+            };
+        }
+
+        let remoteUser = null;
+
+        try {
+            if (storageInfo.type === 'email') {
+                const result = await MayaFirebase.getProfile(storageInfo.identifier);
+                remoteUser = result?.success ? result.user : null;
+            } else {
+                remoteUser = await MayaFirebase.request(storageInfo.profilePath, 'GET');
+            }
+        } catch (error) {
+            console.warn('⚠️ Could not fetch remote auth profile:', error);
+        }
+
+        const profile = this.persistAuthenticatedState(remoteUser || this.currentUser);
+
+        if (storageInfo.type === 'phone' && profile?.birthDate && !remoteUser?.birthDate) {
+            try {
+                await this.saveBirthDetails(profile);
+            } catch (error) {
+                console.warn('⚠️ Could not backfill phone profile:', error);
+            }
+        }
+
+        return {
+            user: this.currentUser,
+            profile
+        };
+    },
+
     /**
      * Send WhatsApp OTP via Interakt
      */
@@ -230,22 +331,18 @@ const MayaAuth = {
             this.token = token;
             this.isAuthenticated = true;
 
-            MayaUtils.storage.set('maya_user', user);
             MayaUtils.storage.set('maya_token', token);
-            MayaUtils.storage.set('maya_session', { phone: user.phone, token }, { skipSync: true });
 
-            // Merge phone into profile
-            const profile = MayaUtils.storage.get('maya_profile') || {};
-            MayaUtils.storage.set('maya_profile', {
-                ...profile,
-                phone: user.phone,
-                countryCode: user.countryCode,
-                phoneNumber: user.phoneNumber
-            });
+            try {
+                await this.hydrateAuthenticatedState({ loadRemoteProfile: true });
+            } catch (error) {
+                console.warn('⚠️ Could not hydrate phone auth profile:', error);
+                this.persistAuthenticatedState(user);
+            }
 
-            console.log('✅ Phone OTP auth success:', user.phone);
+            console.log('✅ Phone OTP auth success:', this.currentUser.phone);
             void this.syncFcmToken();
-            return { success: true, user, isNewUser };
+            return { success: true, user: this.currentUser, isNewUser };
         } catch (err) {
             console.error('verifyOTP error:', err);
             return { success: false, error: 'Network error. Please try again.' };
@@ -325,8 +422,7 @@ const MayaAuth = {
                 : await MayaFirebase.request(storageInfo.profilePath, 'PATCH', updates).then(() => ({ success: true }));
 
             if (result.success) {
-                this.currentUser = { ...this.currentUser, ...profileData };
-                MayaUtils.storage.set('maya_user', this.currentUser);
+                this.persistAuthenticatedState({ ...this.currentUser, ...profileData });
                 return { success: true, user: this.currentUser };
             } else {
                 return { success: false, error: result.error || 'Update failed' };
@@ -423,6 +519,10 @@ const MayaAuth = {
                     MayaUtils.storage.set('maya_language', profileData.language);
                 }
 
+                if (mergedProfile.birthDate) {
+                    MayaUtils.storage.set('funnel_complete', true);
+                }
+
                 return mergedProfile;
             }
 
@@ -452,8 +552,7 @@ const MayaAuth = {
                 : await MayaFirebase.request(storageInfo.profilePath, 'GET').then((user) => ({ success: !!user, user }));
 
             if (result.success) {
-                this.currentUser = { ...this.currentUser, ...result.user };
-                MayaUtils.storage.set('maya_user', this.currentUser);
+                this.persistAuthenticatedState({ ...this.currentUser, ...result.user });
             }
 
             return result;

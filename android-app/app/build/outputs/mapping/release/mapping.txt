@@ -3,8 +3,8 @@
 # min_api: 24
 # common_typos_disable
 # {"id":"com.android.tools.r8.mapping","version":"2.2"}
-# pg_map_id: f7749d4
-# pg_map_hash: SHA-256 f7749d4e54622454192b5fba04442978c015e6f8efa13d151831e997a20358e3
+# pg_map_id: b4941b6
+# pg_map_hash: SHA-256 b4941b6f5eba2f3e3785568a6b282b20157dbc8ac71a2fd6a0738c132bbc2641
 android.app.AppComponentFactory -> android.app.AppComponentFactory:
 # {"id":"com.android.tools.r8.synthesized"}
     void <clinit>() -> <clinit>
@@ -124618,176 +124618,178 @@ com.maya.astrology.MainActivity$setupWebView$1$3 -> S1.l:
     25:29:boolean onShowFileChooser(android.webkit.WebView,android.webkit.ValueCallback,android.webkit.WebChromeClient$FileChooserParams):322:322 -> onShowFileChooser
 com.maya.astrology.MayaFirebaseMessagingService -> com.maya.astrology.MayaFirebaseMessagingService:
 # {"id":"sourceFile","fileName":"MayaFirebaseMessagingService.kt"}
-    1:4:void <init>():15:15 -> <init>
+    1:4:void <init>():16:16 -> <init>
     1:12:com.google.firebase.messaging.RemoteMessage$Notification com.google.firebase.messaging.RemoteMessage.getNotification():272:272 -> c
-    1:12:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):30 -> c
+    1:12:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):31 -> c
       # {"id":"com.android.tools.r8.residualsignature","signature":"(LO1/y;)V"}
     13:24:com.google.firebase.messaging.RemoteMessage$Notification com.google.firebase.messaging.RemoteMessage.getNotification():273:273 -> c
-    13:24:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):30 -> c
+    13:24:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):31 -> c
     25:28:com.google.firebase.messaging.RemoteMessage$Notification com.google.firebase.messaging.RemoteMessage.getNotification():275:275 -> c
-    25:28:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):30 -> c
+    25:28:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):31 -> c
     29:34:java.lang.String com.google.firebase.messaging.RemoteMessage$Notification.getTitle():512:512 -> c
-    29:34:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):30 -> c
-    35:53:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):31:31 -> c
-    54:62:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):32:32 -> c
+    29:34:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):31 -> c
+    35:53:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):32:32 -> c
+    54:62:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):33:33 -> c
     63:74:com.google.firebase.messaging.RemoteMessage$Notification com.google.firebase.messaging.RemoteMessage.getNotification():272:272 -> c
-    63:74:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):33 -> c
+    63:74:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):34 -> c
     75:86:com.google.firebase.messaging.RemoteMessage$Notification com.google.firebase.messaging.RemoteMessage.getNotification():273:273 -> c
-    75:86:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):33 -> c
+    75:86:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):34 -> c
     87:90:com.google.firebase.messaging.RemoteMessage$Notification com.google.firebase.messaging.RemoteMessage.getNotification():275:275 -> c
-    87:90:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):33 -> c
+    87:90:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):34 -> c
     91:96:java.lang.String com.google.firebase.messaging.RemoteMessage$Notification.getBody():538:538 -> c
-    91:96:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):33 -> c
-    97:112:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):34:34 -> c
-    113:129:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):35:35 -> c
-    130:145:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):37:37 -> c
-    146:161:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):38:38 -> c
-    162:176:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):39:39 -> c
+    91:96:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):34 -> c
+    97:112:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):35:35 -> c
+    113:129:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):36:36 -> c
+    130:145:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):38:38 -> c
+    146:161:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):39:39 -> c
+    162:176:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):40:40 -> c
     177:183:void com.maya.astrology.MayaPushNotifications.ensureChannel(android.content.Context):18:18 -> c
-    177:183:void showNotification(java.lang.String,java.lang.String,java.lang.String):45 -> c
-    177:183:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
+    177:183:void showNotification(java.lang.String,java.lang.String,java.lang.String):46 -> c
+    177:183:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
     184:194:void com.maya.astrology.MayaPushNotifications.ensureChannel(android.content.Context):22:22 -> c
-    184:194:void showNotification(java.lang.String,java.lang.String,java.lang.String):45 -> c
-    184:194:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
+    184:194:void showNotification(java.lang.String,java.lang.String,java.lang.String):46 -> c
+    184:194:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
     195:201:void com.maya.astrology.MayaPushNotifications.ensureChannel(android.content.Context):23:23 -> c
-    195:201:void showNotification(java.lang.String,java.lang.String,java.lang.String):45 -> c
-    195:201:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
+    195:201:void showNotification(java.lang.String,java.lang.String,java.lang.String):46 -> c
+    195:201:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
     202:204:void com.maya.astrology.MayaPushNotifications.ensureChannel(android.content.Context):28:28 -> c
-    202:204:void showNotification(java.lang.String,java.lang.String,java.lang.String):45 -> c
-    202:204:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
+    202:204:void showNotification(java.lang.String,java.lang.String,java.lang.String):46 -> c
+    202:204:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
     205:207:void com.maya.astrology.MayaPushNotifications.ensureChannel(android.content.Context):30:30 -> c
-    205:207:void showNotification(java.lang.String,java.lang.String,java.lang.String):45 -> c
-    205:207:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    208:216:void showNotification(java.lang.String,java.lang.String,java.lang.String):47:47 -> c
-    208:216:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    217:219:void showNotification(java.lang.String,java.lang.String,java.lang.String):48:48 -> c
-    217:219:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    220:224:void showNotification(java.lang.String,java.lang.String,java.lang.String):49:49 -> c
-    220:224:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    225:229:void showNotification(java.lang.String,java.lang.String,java.lang.String):50:50 -> c
-    225:229:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    230:236:void showNotification(java.lang.String,java.lang.String,java.lang.String):51:51 -> c
-    230:236:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    237:248:void showNotification(java.lang.String,java.lang.String,java.lang.String):56:56 -> c
-    237:248:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    249:252:void showNotification(java.lang.String,java.lang.String,java.lang.String):54:54 -> c
-    249:252:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    253:259:void showNotification(java.lang.String,java.lang.String,java.lang.String):61:61 -> c
-    253:259:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
+    205:207:void showNotification(java.lang.String,java.lang.String,java.lang.String):46 -> c
+    205:207:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    208:216:void showNotification(java.lang.String,java.lang.String,java.lang.String):48:48 -> c
+    208:216:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    217:219:void showNotification(java.lang.String,java.lang.String,java.lang.String):49:49 -> c
+    217:219:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    220:224:void showNotification(java.lang.String,java.lang.String,java.lang.String):50:50 -> c
+    220:224:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    225:229:void showNotification(java.lang.String,java.lang.String,java.lang.String):51:51 -> c
+    225:229:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    230:236:void showNotification(java.lang.String,java.lang.String,java.lang.String):52:52 -> c
+    230:236:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    237:248:void showNotification(java.lang.String,java.lang.String,java.lang.String):57:57 -> c
+    237:248:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    249:252:void showNotification(java.lang.String,java.lang.String,java.lang.String):55:55 -> c
+    249:252:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    253:259:void showNotification(java.lang.String,java.lang.String,java.lang.String):62:62 -> c
+    253:259:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
     260:266:androidx.core.app.NotificationCompat$Builder androidx.core.app.NotificationCompat$Builder.setSmallIcon(int):1348:1348 -> c
-    260:266:void showNotification(java.lang.String,java.lang.String,java.lang.String):62 -> c
-    260:266:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    267:272:androidx.core.app.NotificationCompat$Builder androidx.core.app.NotificationCompat$Builder.setContentTitle(java.lang.CharSequence):1394:1394 -> c
-    267:272:void showNotification(java.lang.String,java.lang.String,java.lang.String):63 -> c
-    267:272:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    273:278:androidx.core.app.NotificationCompat$Builder androidx.core.app.NotificationCompat$Builder.setContentText(java.lang.CharSequence):1402:1402 -> c
-    273:278:void showNotification(java.lang.String,java.lang.String,java.lang.String):64 -> c
-    273:278:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    279:280:void showNotification(java.lang.String,java.lang.String,java.lang.String):65:65 -> c
-    279:280:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    281:283:void androidx.core.app.NotificationCompat$Style.<init>():2694:2694 -> c
-    281:283:void androidx.core.app.NotificationCompat$BigTextStyle.<init>():3502 -> c
-    281:283:void showNotification(java.lang.String,java.lang.String,java.lang.String):65 -> c
-    281:283:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    284:289:androidx.core.app.NotificationCompat$BigTextStyle androidx.core.app.NotificationCompat$BigTextStyle.bigText(java.lang.CharSequence):3532:3532 -> c
-    284:289:void showNotification(java.lang.String,java.lang.String,java.lang.String):65 -> c
-    284:289:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    290:293:void showNotification(java.lang.String,java.lang.String,java.lang.String):65:65 -> c
-    290:293:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    294:295:androidx.core.app.NotificationCompat$Builder androidx.core.app.NotificationCompat$Builder.setPriority(int):1858:1858 -> c
-    294:295:void showNotification(java.lang.String,java.lang.String,java.lang.String):66 -> c
-    294:295:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    296:298:void showNotification(java.lang.String,java.lang.String,java.lang.String):67:67 -> c
-    296:298:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    299:303:androidx.core.app.NotificationCompat$Builder androidx.core.app.NotificationCompat$Builder.setContentIntent(android.app.PendingIntent):1522:1522 -> c
-    299:303:void showNotification(java.lang.String,java.lang.String,java.lang.String):68 -> c
-    299:303:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    304:307:int androidx.core.content.ContextCompat$Api23Impl.getColor(android.content.Context,int):1080:1080 -> c
-    304:307:int androidx.core.content.ContextCompat.getColor(android.content.Context,int):540 -> c
-    304:307:void showNotification(java.lang.String,java.lang.String,java.lang.String):69 -> c
-    304:307:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    308:309:androidx.core.app.NotificationCompat$Builder androidx.core.app.NotificationCompat$Builder.setColor(int):2154:2154 -> c
-    308:309:void showNotification(java.lang.String,java.lang.String,java.lang.String):69 -> c
-    308:309:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    310:322:void showNotification(java.lang.String,java.lang.String,java.lang.String):70:70 -> c
-    310:322:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    323:330:void showNotification(java.lang.String,java.lang.String,java.lang.String):73:73 -> c
-    323:330:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    331:338:void showNotification(java.lang.String,java.lang.String,java.lang.String):75:75 -> c
-    331:338:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    339:345:androidx.core.app.NotificationManagerCompat androidx.core.app.NotificationManagerCompat.from(android.content.Context):216:216 -> c
-    339:345:void showNotification(java.lang.String,java.lang.String,java.lang.String):79 -> c
-    339:345:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    346:354:void showNotification(java.lang.String,java.lang.String,java.lang.String):80:80 -> c
-    346:354:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    355:359:android.os.Bundle androidx.core.app.NotificationCompat.getExtras(android.app.Notification):8974:8974 -> c
-    355:359:boolean androidx.core.app.NotificationManagerCompat.useSideChannelForNotification(android.app.Notification):848 -> c
-    355:359:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):283 -> c
-    355:359:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
-    355:359:void showNotification(java.lang.String,java.lang.String,java.lang.String):79 -> c
-    355:359:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    360:367:boolean androidx.core.app.NotificationManagerCompat.useSideChannelForNotification(android.app.Notification):849:849 -> c
-    360:367:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):283 -> c
-    360:367:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
-    360:367:void showNotification(java.lang.String,java.lang.String,java.lang.String):79 -> c
-    360:367:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    368:376:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):284:284 -> c
-    368:376:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
-    368:376:void showNotification(java.lang.String,java.lang.String,java.lang.String):79 -> c
-    368:376:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    377:379:void androidx.core.app.NotificationManagerCompat.pushSideChannelQueue(androidx.core.app.NotificationManagerCompat$Task):872:872 -> c
-    377:379:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):284 -> c
-    377:379:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
-    377:379:void showNotification(java.lang.String,java.lang.String,java.lang.String):79 -> c
-    377:379:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    380:383:void androidx.core.app.NotificationManagerCompat.pushSideChannelQueue(androidx.core.app.NotificationManagerCompat$Task):873:873 -> c
-    380:383:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):284 -> c
-    380:383:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
-    380:383:void showNotification(java.lang.String,java.lang.String,java.lang.String):79 -> c
-    380:383:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    384:397:void androidx.core.app.NotificationManagerCompat.pushSideChannelQueue(androidx.core.app.NotificationManagerCompat$Task):874:874 -> c
-    384:397:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):284 -> c
-    384:397:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
-    384:397:void showNotification(java.lang.String,java.lang.String,java.lang.String):79 -> c
-    384:397:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    398:399:void androidx.core.app.NotificationManagerCompat.pushSideChannelQueue(androidx.core.app.NotificationManagerCompat$Task):876:876 -> c
-    398:399:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):284 -> c
-    398:399:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
-    398:399:void showNotification(java.lang.String,java.lang.String,java.lang.String):79 -> c
-    398:399:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    400:409:void androidx.core.app.NotificationManagerCompat$SideChannelManager.queueTask(androidx.core.app.NotificationManagerCompat$Task):909:909 -> c
-    400:409:void androidx.core.app.NotificationManagerCompat.pushSideChannelQueue(androidx.core.app.NotificationManagerCompat$Task):876 -> c
-    400:409:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):284 -> c
-    400:409:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
-    400:409:void showNotification(java.lang.String,java.lang.String,java.lang.String):79 -> c
-    400:409:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    410:410:void androidx.core.app.NotificationManagerCompat.pushSideChannelQueue(androidx.core.app.NotificationManagerCompat$Task):877:877 -> c
-    410:410:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):284 -> c
-    410:410:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
-    410:410:void showNotification(java.lang.String,java.lang.String,java.lang.String):79 -> c
-    410:410:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    411:416:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):287:287 -> c
-    411:416:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
-    411:416:void showNotification(java.lang.String,java.lang.String,java.lang.String):79 -> c
-    411:416:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    417:418:void androidx.core.app.NotificationManagerCompat.pushSideChannelQueue(androidx.core.app.NotificationManagerCompat$Task):877:877 -> c
-    417:418:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):284 -> c
-    417:418:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
-    417:418:void showNotification(java.lang.String,java.lang.String,java.lang.String):79 -> c
-    417:418:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
-    419:424:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):289:289 -> c
-    419:424:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
-    419:424:void showNotification(java.lang.String,java.lang.String,java.lang.String):79 -> c
-    419:424:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):41 -> c
+    260:266:void showNotification(java.lang.String,java.lang.String,java.lang.String):63 -> c
+    260:266:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    267:279:void showNotification(java.lang.String,java.lang.String,java.lang.String):64:64 -> c
+    267:279:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    280:285:androidx.core.app.NotificationCompat$Builder androidx.core.app.NotificationCompat$Builder.setContentTitle(java.lang.CharSequence):1394:1394 -> c
+    280:285:void showNotification(java.lang.String,java.lang.String,java.lang.String):65 -> c
+    280:285:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    286:291:androidx.core.app.NotificationCompat$Builder androidx.core.app.NotificationCompat$Builder.setContentText(java.lang.CharSequence):1402:1402 -> c
+    286:291:void showNotification(java.lang.String,java.lang.String,java.lang.String):66 -> c
+    286:291:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    292:293:void showNotification(java.lang.String,java.lang.String,java.lang.String):67:67 -> c
+    292:293:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    294:296:void androidx.core.app.NotificationCompat$Style.<init>():2694:2694 -> c
+    294:296:void androidx.core.app.NotificationCompat$BigTextStyle.<init>():3502 -> c
+    294:296:void showNotification(java.lang.String,java.lang.String,java.lang.String):67 -> c
+    294:296:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    297:302:androidx.core.app.NotificationCompat$BigTextStyle androidx.core.app.NotificationCompat$BigTextStyle.bigText(java.lang.CharSequence):3532:3532 -> c
+    297:302:void showNotification(java.lang.String,java.lang.String,java.lang.String):67 -> c
+    297:302:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    303:306:void showNotification(java.lang.String,java.lang.String,java.lang.String):67:67 -> c
+    303:306:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    307:308:androidx.core.app.NotificationCompat$Builder androidx.core.app.NotificationCompat$Builder.setPriority(int):1858:1858 -> c
+    307:308:void showNotification(java.lang.String,java.lang.String,java.lang.String):68 -> c
+    307:308:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    309:311:void showNotification(java.lang.String,java.lang.String,java.lang.String):69:69 -> c
+    309:311:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    312:316:androidx.core.app.NotificationCompat$Builder androidx.core.app.NotificationCompat$Builder.setContentIntent(android.app.PendingIntent):1522:1522 -> c
+    312:316:void showNotification(java.lang.String,java.lang.String,java.lang.String):70 -> c
+    312:316:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    317:320:int androidx.core.content.ContextCompat$Api23Impl.getColor(android.content.Context,int):1080:1080 -> c
+    317:320:int androidx.core.content.ContextCompat.getColor(android.content.Context,int):540 -> c
+    317:320:void showNotification(java.lang.String,java.lang.String,java.lang.String):71 -> c
+    317:320:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    321:322:androidx.core.app.NotificationCompat$Builder androidx.core.app.NotificationCompat$Builder.setColor(int):2154:2154 -> c
+    321:322:void showNotification(java.lang.String,java.lang.String,java.lang.String):71 -> c
+    321:322:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    323:335:void showNotification(java.lang.String,java.lang.String,java.lang.String):72:72 -> c
+    323:335:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    336:343:void showNotification(java.lang.String,java.lang.String,java.lang.String):75:75 -> c
+    336:343:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    344:351:void showNotification(java.lang.String,java.lang.String,java.lang.String):77:77 -> c
+    344:351:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    352:358:androidx.core.app.NotificationManagerCompat androidx.core.app.NotificationManagerCompat.from(android.content.Context):216:216 -> c
+    352:358:void showNotification(java.lang.String,java.lang.String,java.lang.String):81 -> c
+    352:358:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    359:367:void showNotification(java.lang.String,java.lang.String,java.lang.String):82:82 -> c
+    359:367:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    368:372:android.os.Bundle androidx.core.app.NotificationCompat.getExtras(android.app.Notification):8974:8974 -> c
+    368:372:boolean androidx.core.app.NotificationManagerCompat.useSideChannelForNotification(android.app.Notification):848 -> c
+    368:372:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):283 -> c
+    368:372:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
+    368:372:void showNotification(java.lang.String,java.lang.String,java.lang.String):81 -> c
+    368:372:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    373:380:boolean androidx.core.app.NotificationManagerCompat.useSideChannelForNotification(android.app.Notification):849:849 -> c
+    373:380:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):283 -> c
+    373:380:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
+    373:380:void showNotification(java.lang.String,java.lang.String,java.lang.String):81 -> c
+    373:380:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    381:389:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):284:284 -> c
+    381:389:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
+    381:389:void showNotification(java.lang.String,java.lang.String,java.lang.String):81 -> c
+    381:389:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    390:392:void androidx.core.app.NotificationManagerCompat.pushSideChannelQueue(androidx.core.app.NotificationManagerCompat$Task):872:872 -> c
+    390:392:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):284 -> c
+    390:392:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
+    390:392:void showNotification(java.lang.String,java.lang.String,java.lang.String):81 -> c
+    390:392:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    393:396:void androidx.core.app.NotificationManagerCompat.pushSideChannelQueue(androidx.core.app.NotificationManagerCompat$Task):873:873 -> c
+    393:396:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):284 -> c
+    393:396:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
+    393:396:void showNotification(java.lang.String,java.lang.String,java.lang.String):81 -> c
+    393:396:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    397:410:void androidx.core.app.NotificationManagerCompat.pushSideChannelQueue(androidx.core.app.NotificationManagerCompat$Task):874:874 -> c
+    397:410:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):284 -> c
+    397:410:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
+    397:410:void showNotification(java.lang.String,java.lang.String,java.lang.String):81 -> c
+    397:410:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    411:412:void androidx.core.app.NotificationManagerCompat.pushSideChannelQueue(androidx.core.app.NotificationManagerCompat$Task):876:876 -> c
+    411:412:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):284 -> c
+    411:412:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
+    411:412:void showNotification(java.lang.String,java.lang.String,java.lang.String):81 -> c
+    411:412:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    413:422:void androidx.core.app.NotificationManagerCompat$SideChannelManager.queueTask(androidx.core.app.NotificationManagerCompat$Task):909:909 -> c
+    413:422:void androidx.core.app.NotificationManagerCompat.pushSideChannelQueue(androidx.core.app.NotificationManagerCompat$Task):876 -> c
+    413:422:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):284 -> c
+    413:422:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
+    413:422:void showNotification(java.lang.String,java.lang.String,java.lang.String):81 -> c
+    413:422:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    423:423:void androidx.core.app.NotificationManagerCompat.pushSideChannelQueue(androidx.core.app.NotificationManagerCompat$Task):877:877 -> c
+    423:423:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):284 -> c
+    423:423:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
+    423:423:void showNotification(java.lang.String,java.lang.String,java.lang.String):81 -> c
+    423:423:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    424:429:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):287:287 -> c
+    424:429:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
+    424:429:void showNotification(java.lang.String,java.lang.String,java.lang.String):81 -> c
+    424:429:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    430:431:void androidx.core.app.NotificationManagerCompat.pushSideChannelQueue(androidx.core.app.NotificationManagerCompat$Task):877:877 -> c
+    430:431:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):284 -> c
+    430:431:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
+    430:431:void showNotification(java.lang.String,java.lang.String,java.lang.String):81 -> c
+    430:431:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
+    432:437:void androidx.core.app.NotificationManagerCompat.notify(java.lang.String,int,android.app.Notification):289:289 -> c
+    432:437:void androidx.core.app.NotificationManagerCompat.notify(int,android.app.Notification):270 -> c
+    432:437:void showNotification(java.lang.String,java.lang.String,java.lang.String):81 -> c
+    432:437:void onMessageReceived(com.google.firebase.messaging.RemoteMessage):42 -> c
     6:12:void com.maya.astrology.FcmTokenStore.saveToken(android.content.Context,java.lang.String):10:10 -> d
-    6:12:void onNewToken(java.lang.String):23 -> d
+    6:12:void onNewToken(java.lang.String):24 -> d
     13:16:void com.maya.astrology.FcmTokenStore.saveToken(android.content.Context,java.lang.String):11:11 -> d
-    13:16:void onNewToken(java.lang.String):23 -> d
+    13:16:void onNewToken(java.lang.String):24 -> d
     17:22:void com.maya.astrology.FcmTokenStore.saveToken(android.content.Context,java.lang.String):12:12 -> d
-    17:22:void onNewToken(java.lang.String):23 -> d
+    17:22:void onNewToken(java.lang.String):24 -> d
     23:25:void com.maya.astrology.FcmTokenStore.saveToken(android.content.Context,java.lang.String):13:13 -> d
-    23:25:void onNewToken(java.lang.String):23 -> d
-    26:33:void onNewToken(java.lang.String):24:24 -> d
+    23:25:void onNewToken(java.lang.String):24 -> d
+    26:33:void onNewToken(java.lang.String):25:25 -> d
 com.maya.astrology.MayaPushNotifications -> R8$$REMOVED$$CLASS$$265:
 # {"id":"sourceFile","fileName":"MayaPushNotifications.kt"}
 com.maya.astrology.databinding.ActivityMainBinding -> T1.a:

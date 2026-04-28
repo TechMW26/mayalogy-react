@@ -137,13 +137,28 @@ export default async function handler(req, res) {
         isNewUser,
         masterOtpUsed: isMasterOtp,
         token,
-        user: {
-            id: user.id,
-            phone: user.phone,
-            countryCode: user.countryCode,
-            phoneNumber: user.phoneNumber,
-            createdAt: user.createdAt,
-            lastLogin: now
-        }
+        user: buildClientUser(user, now)
     });
+}
+
+function buildClientUser(user, lastLogin) {
+    return {
+        id: user.id,
+        email: user.email || null,
+        name: user.name || null,
+        phone: user.phone,
+        countryCode: user.countryCode,
+        phoneNumber: user.phoneNumber,
+        createdAt: user.createdAt,
+        lastLogin,
+        birthDate: user.birthDate || null,
+        birthTime: user.birthTime || null,
+        birthPlace: user.birthPlace || null,
+        birthLat: user.birthLat ?? null,
+        birthLon: user.birthLon ?? null,
+        gender: user.gender || null,
+        maritalStatus: user.maritalStatus || null,
+        language: user.language || null,
+        agentGender: user.agentGender || null
+    };
 }

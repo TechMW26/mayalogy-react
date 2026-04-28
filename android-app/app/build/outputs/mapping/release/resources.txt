@@ -158,6 +158,7 @@ Marking id:tag_on_receive_content_mime_types:2131231167 reachable: referenced fr
 Marking id:tag_on_receive_content_listener:2131231166 reachable: referenced from /Users/aadilkhan/Desktop/mayalogy/android-app/app/build/intermediates/dex/release/minifyReleaseWithR8/classes.dex
 Marking string:app_name:2131755036 reachable: referenced from /Users/aadilkhan/Desktop/mayalogy/android-app/app/build/intermediates/dex/release/minifyReleaseWithR8/classes.dex
 Marking drawable:ic_notification:2131165358 reachable: referenced from /Users/aadilkhan/Desktop/mayalogy/android-app/app/build/intermediates/dex/release/minifyReleaseWithR8/classes.dex
+Marking mipmap:ic_launcher:2131558400 reachable: referenced from /Users/aadilkhan/Desktop/mayalogy/android-app/app/build/intermediates/dex/release/minifyReleaseWithR8/classes.dex
 Marking color:maya_primary:2131034823 reachable: referenced from /Users/aadilkhan/Desktop/mayalogy/android-app/app/build/intermediates/dex/release/minifyReleaseWithR8/classes.dex
 Marking attr:colorControlHighlight:2130903290 reachable: referenced from /Users/aadilkhan/Desktop/mayalogy/android-app/app/build/intermediates/dex/release/minifyReleaseWithR8/classes.dex
 Marking attr:colorButtonNormal:2130903287 reachable: referenced from /Users/aadilkhan/Desktop/mayalogy/android-app/app/build/intermediates/dex/release/minifyReleaseWithR8/classes.dex
