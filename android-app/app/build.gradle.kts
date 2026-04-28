@@ -26,7 +26,7 @@ fun resolveRepoFile(path: String?): File? {
 val releaseStoreFile = resolveRepoFile(repoSecret("MAYA_STORE_FILE"))
 val releaseStorePassword = repoSecret("MAYA_STORE_PASSWORD")
 val releaseKeyAlias = repoSecret("MAYA_KEY_ALIAS") ?: "maya-key"
-val releaseKeyPassword = repoSecret("MAYA_KEY_PASSWORD")
+val releaseKeyPassword = repoSecret("MAYA_KEY_PASSWORD") ?: releaseStorePassword
 val hasReleaseSigning = releaseStoreFile?.exists() == true
     && !releaseStorePassword.isNullOrBlank()
     && !releaseKeyAlias.isBlank()
@@ -46,8 +46,8 @@ android {
         applicationId = "com.maya.astrology"
         minSdk = 24
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

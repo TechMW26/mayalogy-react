@@ -1,8 +1,8 @@
 {
   "version": 3,
   "artifactType": {
-    "type": "MERGED_MANIFESTS",
-    "kind": "Directory"
+    "type": "BUNDLE",
+    "kind": "RegularFile"
   },
   "applicationId": "com.maya.astrology",
   "variantName": "release",
@@ -11,9 +11,7 @@
       "type": "SINGLE",
       "filters": [],
       "attributes": [],
-      "versionCode": 3,
-      "versionName": "1.1.1",
-      "outputFile": "AndroidManifest.xml"
+      "outputFile": "../../../../outputs/bundle/release/app-release.aab"
     }
   ],
   "elementType": "File"
