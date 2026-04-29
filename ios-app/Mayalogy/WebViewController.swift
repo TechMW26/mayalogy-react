@@ -133,6 +133,12 @@ final class WebViewController: UIViewController {
         )
         NotificationCenter.default.addObserver(
             self,
+            selector: #selector(handleFCMToken(_:)),
+            name: AppDelegate.didReceiveFCMTokenNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
             selector: #selector(handlePushPayload(_:)),
             name: AppDelegate.didReceivePushPayloadNotification,
             object: nil
@@ -154,21 +160,23 @@ final class WebViewController: UIViewController {
 
     // MARK: - JS bridge user script
     private func makeBridgeUserScript() -> WKUserScript {
-        let token = UserDefaults.standard.string(forKey: "MayaAPNsToken") ?? ""
+        let apns = UserDefaults.standard.string(forKey: AppDelegate.apnsTokenUserDefaultsKey) ?? ""
+        let fcm  = UserDefaults.standard.string(forKey: AppDelegate.fcmTokenUserDefaultsKey)  ?? ""
         let baseURL = webAppURL.absoluteString
-        let escaped = token.replacingOccurrences(of: "\"", with: "\\\"")
+        let escapedApns = apns.replacingOccurrences(of: "\"", with: "\\\"")
+        let escapedFcm  = fcm.replacingOccurrences(of: "\"", with: "\\\"")
         let js = """
         (function() {
             window.MayaIOS = {
                 platform: 'ios',
-                getApnsToken: function(){ return "\(escaped)"; },
-                getFcmToken: function(){ return "\(escaped)"; },
+                getApnsToken: function(){ return "\(escapedApns)"; },
+                getFcmToken: function(){ return "\(escapedFcm)"; },
                 getAppBaseUrl: function(){ return "\(baseURL)"; }
             };
             // Compatibility shim so the existing Android code paths keep working.
             if (!window.MayaAndroid) {
                 window.MayaAndroid = {
-                    getFcmToken: function(){ return window.MayaIOS.getApnsToken(); },
+                    getFcmToken: function(){ return window.MayaIOS.getFcmToken(); },
                     getAppBaseUrl: function(){ return window.MayaIOS.getAppBaseUrl(); }
                 };
             }
@@ -182,10 +190,22 @@ final class WebViewController: UIViewController {
         let js = """
         (function() {
             var token = "\(escaped)";
-            if (window.MayaIOS) { window.MayaIOS._token = token; }
-            if (window.onMayaFcmToken) { window.onMayaFcmToken(token); }
-            window.dispatchEvent(new CustomEvent('maya:fcm-token', { detail: { token: token } }));
+            if (window.MayaIOS) { window.MayaIOS._apnsToken = token; window.MayaIOS.getApnsToken = function(){ return token; }; }
             window.dispatchEvent(new CustomEvent('maya:apns-token', { detail: { token: token } }));
+        })();
+        """
+        webView.evaluateJavaScript(js, completionHandler: nil)
+    }
+
+    private func injectFCMToken(_ token: String) {
+        let escaped = token.replacingOccurrences(of: "\"", with: "\\\"")
+        let js = """
+        (function() {
+            var token = "\(escaped)";
+            if (window.MayaIOS) { window.MayaIOS._fcmToken = token; window.MayaIOS.getFcmToken = function(){ return token; }; }
+            if (window.MayaAndroid) { window.MayaAndroid.getFcmToken = function(){ return token; }; }
+            if (typeof window.onMayaFcmToken === 'function') { try { window.onMayaFcmToken(token); } catch (e) {} }
+            window.dispatchEvent(new CustomEvent('maya:fcm-token', { detail: { token: token } }));
         })();
         """
         webView.evaluateJavaScript(js, completionHandler: nil)
@@ -195,6 +215,11 @@ final class WebViewController: UIViewController {
     @objc private func handleAPNsToken(_ note: Notification) {
         guard let token = note.userInfo?["token"] as? String else { return }
         injectAPNsToken(token)
+    }
+
+    @objc private func handleFCMToken(_ note: Notification) {
+        guard let token = note.userInfo?["token"] as? String else { return }
+        injectFCMToken(token)
     }
 
     @objc private func handlePushPayload(_ note: Notification) {
@@ -281,8 +306,11 @@ extension WebViewController: WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         refreshControl.endRefreshing()
-        if let token = UserDefaults.standard.string(forKey: "MayaAPNsToken"), !token.isEmpty {
-            injectAPNsToken(token)
+        if let apns = UserDefaults.standard.string(forKey: AppDelegate.apnsTokenUserDefaultsKey), !apns.isEmpty {
+            injectAPNsToken(apns)
+        }
+        if let fcm = UserDefaults.standard.string(forKey: AppDelegate.fcmTokenUserDefaultsKey), !fcm.isEmpty {
+            injectFCMToken(fcm)
         }
     }
 
