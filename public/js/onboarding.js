@@ -764,16 +764,19 @@ const MayaOnboarding = {
                 });
             } else {
                 // Mobile: swipe to browse, or tap the visible card / CTA to select.
+                let gcSwiped = false;
                 gcTrack.addEventListener('touchstart', (e) => {
                     gcStartX = e.touches[0].clientX;
                     gcDragX = gcStartX;
                     gcDragging = true;
+                    gcSwiped = false;
                     gcTrack.style.transition = 'none';
                 }, { passive: true });
                 gcTrack.addEventListener('touchmove', (e) => {
                     if (!gcDragging) return;
                     gcDragX = e.touches[0].clientX;
                     const diff = gcDragX - gcStartX;
+                    if (Math.abs(diff) > 8) gcSwiped = true;
                     const base = -gcCurrent * gcTrack.parentElement.offsetWidth;
                     gcTrack.style.transform = `translateX(${base + diff}px)`;
                 }, { passive: true });
@@ -796,7 +799,11 @@ const MayaOnboarding = {
 
                 gcSlides.forEach((slide, index) => {
                     gcBindTap(slide, () => {
-                        gcGo(index);
+                        if (gcSwiped) return; // ignore taps that were actually swipes
+                        if (index !== gcCurrent) {
+                            gcGo(index);
+                            return;
+                        }
                         gcCommitSelection();
                     });
                 });

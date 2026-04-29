@@ -2133,10 +2133,9 @@ p {
 
 /* ── Border layers (card.html: .border-outer + .main-card) ── */
 .gc-border-outer {
-    border: 2px solid oklch(from var(--electric-border-color) l c h / 0.5);
+    border: 0;
     border-radius: 24px;
-    padding-right: 4px;
-    padding-bottom: 4px;
+    padding: 0;
 }
 
 .gc-main-card {
@@ -2144,8 +2143,6 @@ p {
     aspect-ratio: 3 / 4.3;
     border-radius: 24px;
     border: 2px solid var(--electric-border-color);
-    margin-top: -4px;
-    margin-left: -4px;
 }
 
 /* ── Glow layers (card.html: .glow-layer-1 + .glow-layer-2) ── */
