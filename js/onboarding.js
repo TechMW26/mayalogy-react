@@ -1061,9 +1061,37 @@ const MayaOnboarding = {
                 return;
             }
 
-            MayaUtils.storage.set(this.STORAGE_KEYS.FUNNEL_COMPLETE, true);
+            // Decide where to send the freshly-authenticated user.
+            // - Returning user (profile + birthDate present): drop them into the app.
+            // - New user (no profile yet): show a clean step-by-step form to
+            //   collect their birth details, then drop them into the app —
+            //   bypass the dramatic vocal funnel.
+            const profile = MayaUtils.storage.get('maya_profile') || {};
+            const remoteProfile = MayaAuth.currentUser || {};
+            const hasProfile = !!(profile?.birthDate || remoteProfile?.birthDate);
+
+            if (hasProfile) {
+                MayaUtils.storage.set(this.STORAGE_KEYS.FUNNEL_COMPLETE, true);
+            }
             MayaUtils.toast.success(this.t('welcomeBackToast'));
-            setTimeout(() => window.location.reload(), 500);
+
+            try {
+                window.MayaApp?.onUserAuthenticated?.();
+            } catch (err) {
+                console.warn('onUserAuthenticated failed after OTP login:', err);
+            }
+
+            setTimeout(() => {
+                if (hasProfile && window.MayaPages?.render) {
+                    this._closeOnboardingModal();
+                    const targetPage = MayaUtils.storage.get('maya_current_page') || 'home';
+                    MayaPages.render(targetPage);
+                } else {
+                    // New user — collect required details via a simple form,
+                    // then enter the app directly (no vocal funnel).
+                    this.showPostLoginProfileForm();
+                }
+            }, 500);
         });
 
         document.getElementById('ob-resend-link')?.addEventListener('click', async (event) => {
@@ -1086,6 +1114,439 @@ const MayaOnboarding = {
             event.preventDefault();
             this.showDirectLogin();
         });
+    },
+
+    /**
+     * Close the onboarding modal (used after a successful direct login).
+     */
+    _closeOnboardingModal() {
+        const modalEl = document.getElementById('onboardingModal');
+        if (!modalEl) return;
+        try {
+            const modal = (typeof bootstrap !== 'undefined' && bootstrap.Modal)
+                ? bootstrap.Modal.getInstance(modalEl)
+                : null;
+            if (modal) {
+                modal.hide();
+            }
+        } catch (err) {
+            console.warn('Failed to hide onboarding modal cleanly:', err);
+        }
+        // Hard fallback in case bootstrap state is stale.
+        modalEl.classList.remove('show');
+        modalEl.style.display = 'none';
+        modalEl.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('overflow');
+        document.body.style.removeProperty('padding-right');
+        document.querySelectorAll('.modal-backdrop').forEach((el) => el.remove());
+        this.isOpen = false;
+        if (window.MayaApp) {
+            window.MayaApp.isOnboardingActive = false;
+        }
+    },
+
+    /**
+     * Step-by-step profile form for users who logged in directly (via OTP)
+     * but don't yet have a saved astrology profile. Collects the minimum
+     * required birth details, then drops them into the app — no vocal funnel.
+     */
+    async showPostLoginProfileForm(startStep = 0) {
+        // Make sure the onboarding modal/container is on screen.
+        const modalEl = document.getElementById('onboardingModal');
+        if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            try {
+                let modal = bootstrap.Modal.getInstance(modalEl);
+                if (!modal) {
+                    modal = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
+                }
+                modal.show();
+            } catch (err) {
+                console.warn('Could not open onboarding modal for profile form:', err);
+            }
+        }
+        if (window.MayaApp) {
+            window.MayaApp.isOnboardingActive = true;
+        }
+
+        // Hide the funnel-style progress bar; we draw our own.
+        const progressBar = document.querySelector('.onboarding-progress');
+        if (progressBar) progressBar.style.display = 'none';
+
+        // Seed userData from any prior funnel data and the auth profile so
+        // refreshing or revisiting doesn't lose what was already entered.
+        const existingProfile = MayaUtils.storage.get('maya_profile') || {};
+        const existingFunnel = MayaUtils.storage.get('funnel_data') || {};
+        const authUser = (window.MayaAuth && MayaAuth.currentUser) || {};
+        this.userData = {
+            ...this.userData,
+            ...existingFunnel,
+            ...existingProfile,
+            name: this.userData.name || existingProfile.name || existingFunnel.name || authUser.name || '',
+            language: this.userData.language || existingProfile.language || MayaUtils.storage.get('maya_language') || 'en'
+        };
+
+        this._postLoginFormSteps = [
+            'name', 'gender', 'birthDate', 'birthTime',
+            'birthPlace', 'maritalStatus', 'agentGender'
+        ];
+        this._postLoginStep = Math.max(0, Math.min(startStep, this._postLoginFormSteps.length - 1));
+
+        // Wait one tick so the modal DOM is mounted before we paint into it.
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        this._renderPostLoginStep();
+    },
+
+    _renderPostLoginStep() {
+        const container = document.getElementById('onboardingContent');
+        if (!container) {
+            console.warn('onboardingContent not found; cannot render profile form');
+            return;
+        }
+
+        const isHindi = this.isHindiUI();
+        const stepKey = this._postLoginFormSteps[this._postLoginStep];
+        const stepIndex = this._postLoginStep;
+        const totalSteps = this._postLoginFormSteps.length;
+        const progressPct = Math.round(((stepIndex + 1) / totalSteps) * 100);
+
+        const titles = {
+            name:          { en: 'What should we call you?',         hi: 'हम आपको क्या कहकर बुलाएँ?' },
+            gender:        { en: 'Your gender',                       hi: 'आपका लिंग' },
+            birthDate:     { en: 'Your date of birth',                hi: 'आपकी जन्म तिथि' },
+            birthTime:     { en: 'Your time of birth',                hi: 'आपके जन्म का समय' },
+            birthPlace:    { en: 'Where were you born?',              hi: 'आप कहाँ पैदा हुए थे?' },
+            maritalStatus: { en: 'Relationship status',               hi: 'वैवाहिक स्थिति' },
+            agentGender:   { en: 'Choose your guide',                 hi: 'अपना मार्गदर्शक चुनिए' }
+        };
+        const subtitles = {
+            name:          { en: 'A first name we can use across your readings.',         hi: 'एक नाम जो आपकी रीडिंग में इस्तेमाल होगा।' },
+            gender:        { en: 'Helps tailor predictions to you.',                      hi: 'भविष्यवाणियाँ सटीक करने में मदद करता है।' },
+            birthDate:     { en: 'Required to build your chart.',                         hi: 'कुंडली बनाने के लिए आवश्यक।' },
+            birthTime:     { en: 'Optional, but improves accuracy.',                      hi: 'वैकल्पिक, पर सटीकता बढ़ाता है।' },
+            birthPlace:    { en: 'City of birth so we can compute the right ascendant.',  hi: 'जन्म स्थान सही लग्न के लिए।' },
+            maritalStatus: { en: 'Used in love and family insights.',                     hi: 'रिश्तों के विश्लेषण में मददगार।' },
+            agentGender:   { en: 'Pick the voice that will read your chart.',             hi: 'वह आवाज़ चुनिए जो आपकी कुंडली पढ़ेगी।' }
+        };
+
+        const backLabel = isHindi ? 'वापस' : 'Back';
+        const nextLabel = isHindi ? 'आगे बढ़ें' : 'Next';
+        const finishLabel = isHindi ? 'पूरा करें' : 'Finish';
+        const isLast = stepIndex === totalSteps - 1;
+
+        container.innerHTML = `
+            <div class="post-login-form-wrap" style="display:flex;flex-direction:column;gap:1.25rem;padding:0.5rem 0.25rem;">
+                <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+                        <small class="text-muted">${isHindi ? 'चरण' : 'Step'} ${stepIndex + 1} / ${totalSteps}</small>
+                        <small class="text-muted">${progressPct}%</small>
+                    </div>
+                    <div class="progress" style="height:6px;background:rgba(255,255,255,0.08);border-radius:999px;overflow:hidden;">
+                        <div class="progress-bar" role="progressbar" style="width:${progressPct}%;background:linear-gradient(90deg,#a48bff,#7c5cff);" aria-valuenow="${progressPct}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="mb-1">${titles[stepKey][isHindi ? 'hi' : 'en']}</h4>
+                    <p class="text-muted mb-3" style="font-size:0.9rem;">${subtitles[stepKey][isHindi ? 'hi' : 'en']}</p>
+                </div>
+
+                <div id="plf-step-body">${this._renderPostLoginField(stepKey, isHindi)}</div>
+
+                <div id="plf-error" class="alert alert-danger d-none" style="margin-bottom:0;"></div>
+
+                <div style="display:flex;gap:0.5rem;justify-content:space-between;margin-top:0.5rem;">
+                    <button type="button" class="btn btn-outline-secondary" id="plf-back" ${stepIndex === 0 ? 'disabled' : ''}>
+                        <i class="bi bi-arrow-left me-1"></i>${backLabel}
+                    </button>
+                    <button type="button" class="btn btn-primary" id="plf-next">
+                        ${isLast ? finishLabel : nextLabel}${isLast ? '' : ' <i class="bi bi-arrow-right ms-1"></i>'}
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Wire up controls for the current step.
+        this._wirePostLoginStep(stepKey, isHindi);
+
+        document.getElementById('plf-back')?.addEventListener('click', () => {
+            if (this._postLoginStep > 0) {
+                this._postLoginStep -= 1;
+                this._renderPostLoginStep();
+            }
+        });
+        document.getElementById('plf-next')?.addEventListener('click', () => this._handlePostLoginNext());
+    },
+
+    _renderPostLoginField(stepKey, isHindi) {
+        const ud = this.userData || {};
+        switch (stepKey) {
+            case 'name':
+                return `
+                    <input type="text" id="plf-name" class="form-control form-control-lg"
+                        placeholder="${isHindi ? 'अपना नाम दर्ज करें' : 'Enter your name'}"
+                        value="${(ud.name || '').replace(/"/g, '&quot;')}" autocomplete="given-name">
+                `;
+            case 'gender': {
+                const opts = [
+                    { v: 'male',   en: 'Male',   hi: 'पुरुष' },
+                    { v: 'female', en: 'Female', hi: 'महिला' },
+                    { v: 'other',  en: 'Other',  hi: 'अन्य' }
+                ];
+                return `<div class="d-grid gap-2">${opts.map((o) => `
+                    <button type="button" class="btn ${ud.gender === o.v ? 'btn-primary' : 'btn-outline-light'} plf-choice" data-field="gender" data-value="${o.v}">
+                        ${isHindi ? o.hi : o.en}
+                    </button>`).join('')}</div>`;
+            }
+            case 'birthDate':
+                return `
+                    <input type="date" id="plf-birthDate" class="form-control form-control-lg"
+                        value="${ud.birthDate || ''}" max="${new Date().toISOString().slice(0, 10)}">
+                `;
+            case 'birthTime':
+                return `
+                    <input type="time" id="plf-birthTime" class="form-control form-control-lg"
+                        value="${ud.birthTime && ud.birthTime !== 'unknown' ? ud.birthTime : ''}">
+                    <button type="button" class="btn btn-link mt-2 p-0" id="plf-unknownTime">
+                        ${isHindi ? 'मुझे अपना जन्म समय नहीं पता' : "I don't know my birth time"}
+                    </button>
+                `;
+            case 'birthPlace':
+                return `
+                    <div class="onboarding-location-wrapper position-relative">
+                        <input type="text" id="onboardingInput" class="form-control form-control-lg"
+                            placeholder="${isHindi ? 'जन्म का शहर' : 'Enter your birth city'}"
+                            value="${(ud.birthPlace || '').replace(/"/g, '&quot;')}" autocomplete="off">
+                        <div id="locationSuggestions" class="location-suggestions" style="display:none;position:absolute;left:0;right:0;top:100%;background:#1e1b2e;border:1px solid rgba(255,255,255,0.1);border-radius:0.5rem;margin-top:0.25rem;max-height:240px;overflow-y:auto;z-index:1080;"></div>
+                    </div>
+                `;
+            case 'maritalStatus': {
+                const opts = [
+                    { v: 'unmarried', en: 'Unmarried', hi: 'अविवाहित' },
+                    { v: 'married',   en: 'Married',   hi: 'विवाहित' },
+                    { v: 'divorced',  en: 'Divorced',  hi: 'विवाह विच्छेद' }
+                ];
+                return `<div class="d-grid gap-2">${opts.map((o) => `
+                    <button type="button" class="btn ${ud.maritalStatus === o.v ? 'btn-primary' : 'btn-outline-light'} plf-choice" data-field="maritalStatus" data-value="${o.v}">
+                        ${isHindi ? o.hi : o.en}
+                    </button>`).join('')}</div>`;
+            }
+            case 'agentGender': {
+                const opts = [
+                    { v: 'female', en: 'Maya',  desc: { en: 'Your divine guide',  hi: 'आपकी दिव्य मार्गदर्शक' } },
+                    { v: 'male',   en: 'Moksh', desc: { en: 'Your vedic guide',   hi: 'आपके वैदिक मार्गदर्शक' } }
+                ];
+                return `<div class="d-grid gap-2">${opts.map((o) => `
+                    <button type="button" class="btn ${ud.agentGender === o.v ? 'btn-primary' : 'btn-outline-light'} plf-choice text-start" data-field="agentGender" data-value="${o.v}">
+                        <div class="fw-bold">${o.en}</div>
+                        <small class="text-muted">${isHindi ? o.desc.hi : o.desc.en}</small>
+                    </button>`).join('')}</div>`;
+            }
+            default:
+                return '';
+        }
+    },
+
+    _wirePostLoginStep(stepKey, isHindi) {
+        // Choice-button steps: clicking sets value and auto-advances after a short pause.
+        document.querySelectorAll('#plf-step-body .plf-choice').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const field = btn.dataset.field;
+                const value = btn.dataset.value;
+                if (!field) return;
+                this.userData[field] = value;
+                document.querySelectorAll(`#plf-step-body .plf-choice[data-field="${field}"]`).forEach((el) => {
+                    el.classList.remove('btn-primary');
+                    el.classList.add('btn-outline-light');
+                });
+                btn.classList.remove('btn-outline-light');
+                btn.classList.add('btn-primary');
+                // Auto-advance for choice fields.
+                setTimeout(() => this._handlePostLoginNext(), 220);
+            });
+        });
+
+        if (stepKey === 'birthPlace') {
+            try {
+                this.setupLocationAutocomplete();
+            } catch (err) {
+                console.warn('Location autocomplete setup failed:', err);
+            }
+        }
+
+        if (stepKey === 'birthTime') {
+            document.getElementById('plf-unknownTime')?.addEventListener('click', () => {
+                this.userData.birthTime = 'unknown';
+                this._handlePostLoginNext();
+            });
+        }
+
+        // Enter-to-advance for text/date/time inputs.
+        const focusable = document.querySelector('#plf-step-body input');
+        if (focusable) {
+            setTimeout(() => focusable.focus(), 120);
+            focusable.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this._handlePostLoginNext();
+                }
+            });
+        }
+    },
+
+    _handlePostLoginNext() {
+        const isHindi = this.isHindiUI();
+        const stepKey = this._postLoginFormSteps[this._postLoginStep];
+        const errorBox = document.getElementById('plf-error');
+        const showError = (msg) => {
+            if (errorBox) {
+                errorBox.textContent = msg;
+                errorBox.classList.remove('d-none');
+            }
+        };
+        if (errorBox) errorBox.classList.add('d-none');
+
+        switch (stepKey) {
+            case 'name': {
+                const v = (document.getElementById('plf-name')?.value || '').trim();
+                if (v.length < 2) {
+                    showError(isHindi ? 'कृपया अपना नाम दर्ज करें' : 'Please enter your name');
+                    return;
+                }
+                this.userData.name = v;
+                break;
+            }
+            case 'gender':
+                if (!this.userData.gender) {
+                    showError(isHindi ? 'कृपया एक विकल्प चुनें' : 'Please choose an option');
+                    return;
+                }
+                break;
+            case 'birthDate': {
+                const v = document.getElementById('plf-birthDate')?.value || '';
+                if (!v) {
+                    showError(isHindi ? 'कृपया जन्म तिथि चुनें' : 'Please pick your date of birth');
+                    return;
+                }
+                this.userData.birthDate = v;
+                break;
+            }
+            case 'birthTime': {
+                const v = document.getElementById('plf-birthTime')?.value || '';
+                if (!v && this.userData.birthTime !== 'unknown') {
+                    // Birth time is optional; treat empty as unknown.
+                    this.userData.birthTime = 'unknown';
+                } else if (v) {
+                    this.userData.birthTime = v;
+                }
+                break;
+            }
+            case 'birthPlace': {
+                const v = (document.getElementById('onboardingInput')?.value || '').trim();
+                if (v.length < 2) {
+                    showError(isHindi ? 'कृपया जन्म स्थान दर्ज करें' : 'Please enter your birth city');
+                    return;
+                }
+                this.userData.birthPlace = v;
+                break;
+            }
+            case 'maritalStatus':
+                if (!this.userData.maritalStatus) {
+                    showError(isHindi ? 'कृपया एक विकल्प चुनें' : 'Please choose an option');
+                    return;
+                }
+                break;
+            case 'agentGender':
+                if (!this.userData.agentGender) {
+                    showError(isHindi ? 'कृपया एक मार्गदर्शक चुनें' : 'Please choose a guide');
+                    return;
+                }
+                break;
+        }
+
+        if (this._postLoginStep < this._postLoginFormSteps.length - 1) {
+            this._postLoginStep += 1;
+            this._renderPostLoginStep();
+        } else {
+            this._submitPostLoginProfile();
+        }
+    },
+
+    async _submitPostLoginProfile() {
+        const isHindi = this.isHindiUI();
+        const nextBtn = document.getElementById('plf-next');
+        if (nextBtn) {
+            nextBtn.disabled = true;
+            nextBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${isHindi ? 'सहेजा जा रहा है...' : 'Saving...'}`;
+        }
+
+        // Resolve the birth place to lat/lon if needed.
+        let resolved = {
+            birthPlace: this.userData.birthPlace || '',
+            birthLat: Number.isFinite(Number(this.userData.birthLat)) ? Number(this.userData.birthLat) : null,
+            birthLon: Number.isFinite(Number(this.userData.birthLon)) ? Number(this.userData.birthLon) : null
+        };
+        try {
+            if (this.userData.birthPlace && window.MayaUtils?.location?.resolveBirthPlace) {
+                resolved = await MayaUtils.location.resolveBirthPlace(this.userData.birthPlace, {
+                    birthLat: this.userData.birthLat,
+                    birthLon: this.userData.birthLon
+                });
+            }
+        } catch (err) {
+            console.warn('Birth place resolve failed:', err);
+        }
+
+        const language = this.userData.language || MayaUtils.storage.get('maya_language') || 'en';
+        const profileData = {
+            name: this.userData.name,
+            gender: this.userData.gender,
+            agentGender: this.userData.agentGender || 'female',
+            birthDate: this.userData.birthDate,
+            birthTime: this.userData.birthTime || 'unknown',
+            birthPlace: resolved.birthPlace || this.userData.birthPlace,
+            birthLat: Number.isFinite(resolved.birthLat) ? resolved.birthLat : null,
+            birthLon: Number.isFinite(resolved.birthLon) ? resolved.birthLon : null,
+            maritalStatus: this.userData.maritalStatus,
+            language
+        };
+
+        // Persist locally and remotely.
+        const existingProfile = MayaUtils.storage.get('maya_profile') || {};
+        const merged = { ...existingProfile, ...profileData };
+        MayaUtils.storage.set('maya_profile', merged);
+        MayaUtils.storage.set('funnel_data', { ...this.userData, ...profileData });
+        MayaUtils.storage.set(this.STORAGE_KEYS.FUNNEL_COMPLETE, true);
+        MayaUtils.storage.set('funnel_complete', true);
+
+        try {
+            if (window.MayaAuth?.saveBirthDetails) {
+                await MayaAuth.saveBirthDetails(merged);
+            }
+        } catch (err) {
+            console.warn('saveBirthDetails failed (will rely on local copy):', err);
+        }
+
+        try {
+            await window.MayaApp?.applyLanguagePreference?.(language, { force: true });
+        } catch (err) {
+            console.warn('applyLanguagePreference failed:', err);
+        }
+
+        // Reveal the app chrome and send the user straight to home — no vocal funnel.
+        try {
+            window.MayaApp?.onUserAuthenticated?.();
+        } catch (err) {
+            console.warn('onUserAuthenticated failed:', err);
+        }
+
+        this._closeOnboardingModal();
+        MayaUtils.toast.success(isHindi ? 'स्वागत है!' : 'Welcome!');
+
+        if (window.MayaPages?.render) {
+            const targetPage = MayaUtils.storage.get('maya_current_page') || 'home';
+            MayaPages.render(targetPage);
+        }
     },
 
     /**

@@ -476,6 +476,15 @@ const MayaApp = {
                 console.log('📊 Restoring page:', savedPage);
                 MayaPages.render(savedPage);
             }
+        } else if (isAuthenticated && !hasProfile && window.MayaOnboarding?.showPostLoginProfileForm) {
+            // Authenticated direct-login user without a saved profile yet —
+            // collect their birth details via the simple step-by-step form,
+            // then drop them into the app (no vocal funnel).
+            console.log('📊 Authenticated user without profile — showing post-login profile form...');
+            this.showOnboarding();
+            setTimeout(() => {
+                MayaOnboarding.showPostLoginProfileForm();
+            }, 600);
         } else {
             // Fallback: show funnel
             console.log('📊 Fallback: showing funnel...');
