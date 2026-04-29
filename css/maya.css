@@ -1541,6 +1541,14 @@ p {
     z-index: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    /* Anchor messages to the bottom of the visible area; when content
+       overflows, this still scrolls naturally because only the first
+       child gets the auto top-margin. */
+    justify-content: flex-end;
+}
+
+.maya-chat-messages > *:first-child {
+    margin-top: auto;
 }
 
 .maya-chat-bubble {
@@ -9477,6 +9485,15 @@ p {
     flex: 1;
     overflow-y: auto;
     padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    /* Anchor messages to the bottom; first-child gets auto top margin so
+       the column still scrolls correctly when content overflows. */
+    justify-content: flex-end;
+}
+
+.maya-chat__messages > *:first-child {
+    margin-top: auto;
 }
 
 .maya-chat__welcome {

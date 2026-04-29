@@ -1235,7 +1235,7 @@ const MayaOnboarding = {
         const isLast = stepIndex === totalSteps - 1;
 
         container.innerHTML = `
-            <div class="post-login-form-wrap" style="display:flex;flex-direction:column;gap:1.25rem;padding:0.5rem 0.25rem;">
+            <div class="post-login-form-wrap" style="display:flex;flex-direction:column;gap:1.25rem;padding:0.75rem 0.25rem;width:100%;max-width:420px;margin:0 auto;box-sizing:border-box;">
                 <div>
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
                         <small class="text-muted">${isHindi ? 'चरण' : 'Step'} ${stepIndex + 1} / ${totalSteps}</small>
@@ -1251,7 +1251,7 @@ const MayaOnboarding = {
                     <p class="text-muted mb-3" style="font-size:0.9rem;">${subtitles[stepKey][isHindi ? 'hi' : 'en']}</p>
                 </div>
 
-                <div id="plf-step-body">${this._renderPostLoginField(stepKey, isHindi)}</div>
+                <div id="plf-step-body" style="width:100%;min-height:120px;box-sizing:border-box;">${this._renderPostLoginField(stepKey, isHindi)}</div>
 
                 <div id="plf-error" class="alert alert-danger d-none" style="margin-bottom:0;"></div>
 
@@ -1281,12 +1281,26 @@ const MayaOnboarding = {
     _renderPostLoginField(stepKey, isHindi) {
         const ud = this.userData || {};
         switch (stepKey) {
-            case 'name':
+            case 'name': {
+                // Split any previously-stored full name back into first + last
+                // so editing a saved profile doesn't lose the surname.
+                const fullName = (ud.firstName || ud.lastName)
+                    ? `${ud.firstName || ''} ${ud.lastName || ''}`.trim()
+                    : (ud.name || '');
+                const parts = fullName.split(/\s+/).filter(Boolean);
+                const firstName = ud.firstName || parts[0] || '';
+                const lastName = ud.lastName || (parts.length > 1 ? parts.slice(1).join(' ') : '');
                 return `
-                    <input type="text" id="plf-name" class="form-control form-control-lg"
-                        placeholder="${isHindi ? 'अपना नाम दर्ज करें' : 'Enter your name'}"
-                        value="${(ud.name || '').replace(/"/g, '&quot;')}" autocomplete="given-name">
+                    <div style="display:flex;flex-direction:column;gap:0.75rem;width:100%;">
+                        <input type="text" id="plf-firstName" class="form-control form-control-lg"
+                            placeholder="${isHindi ? 'पहला नाम' : 'First name'}"
+                            value="${firstName.replace(/"/g, '&quot;')}" autocomplete="given-name" style="width:100%;">
+                        <input type="text" id="plf-lastName" class="form-control form-control-lg"
+                            placeholder="${isHindi ? 'उपनाम (सरनेम)' : 'Last name'}"
+                            value="${lastName.replace(/"/g, '&quot;')}" autocomplete="family-name" style="width:100%;">
+                    </div>
                 `;
+            }
             case 'gender': {
                 const opts = [
                     { v: 'male',   en: 'Male',   hi: 'पुरुष' },
@@ -1382,14 +1396,23 @@ const MayaOnboarding = {
         }
 
         // Enter-to-advance for text/date/time inputs.
-        const focusable = document.querySelector('#plf-step-body input');
-        if (focusable) {
-            setTimeout(() => focusable.focus(), 120);
-            focusable.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
+        const inputs = Array.from(document.querySelectorAll('#plf-step-body input'));
+        if (inputs.length) {
+            setTimeout(() => inputs[0].focus(), 120);
+            inputs.forEach((inp) => {
+                inp.addEventListener('keydown', (e) => {
+                    if (e.key !== 'Enter') return;
                     e.preventDefault();
-                    this._handlePostLoginNext();
-                }
+                    // If there's another visible text input after this one,
+                    // jump to it instead of advancing the step.
+                    const idx = inputs.indexOf(inp);
+                    const next = inputs.slice(idx + 1).find((el) => !el.disabled && el.type !== 'hidden');
+                    if (next) {
+                        next.focus();
+                    } else {
+                        this._handlePostLoginNext();
+                    }
+                });
             });
         }
     },
@@ -1408,12 +1431,19 @@ const MayaOnboarding = {
 
         switch (stepKey) {
             case 'name': {
-                const v = (document.getElementById('plf-name')?.value || '').trim();
-                if (v.length < 2) {
-                    showError(isHindi ? 'कृपया अपना नाम दर्ज करें' : 'Please enter your name');
+                const first = (document.getElementById('plf-firstName')?.value || '').trim();
+                const last = (document.getElementById('plf-lastName')?.value || '').trim();
+                if (first.length < 2) {
+                    showError(isHindi ? 'कृपया पहला नाम दर्ज करें' : 'Please enter your first name');
                     return;
                 }
-                this.userData.name = v;
+                if (last.length < 1) {
+                    showError(isHindi ? 'कृपया उपनाम दर्ज करें' : 'Please enter your last name');
+                    return;
+                }
+                this.userData.firstName = first;
+                this.userData.lastName = last;
+                this.userData.name = `${first} ${last}`.trim();
                 break;
             }
             case 'gender':
@@ -1500,6 +1530,8 @@ const MayaOnboarding = {
         const language = this.userData.language || MayaUtils.storage.get('maya_language') || 'en';
         const profileData = {
             name: this.userData.name,
+            firstName: this.userData.firstName || (this.userData.name || '').split(/\s+/)[0] || null,
+            lastName: this.userData.lastName || (this.userData.name || '').split(/\s+/).slice(1).join(' ') || null,
             gender: this.userData.gender,
             agentGender: this.userData.agentGender || 'female',
             birthDate: this.userData.birthDate,
