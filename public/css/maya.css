@@ -155,14 +155,16 @@ body {
     text-align: left;
 }
 
-/* Lock body scroll when modals/popups are open */
+/* Lock body scroll when modals/popups are open.
+   NOTE: Do NOT use `position: fixed` here — on Android WebView that prevents
+   touch-scroll events from propagating to inner scroll containers (e.g. the
+   onboarding modal / .onboarding-content), making the whole app un-scrollable.
+   `overflow: hidden` is sufficient to lock the underlying page scroll. */
 body.modal-open,
 body.popup-open,
 body.guest-mode {
     overflow: hidden !important;
-    position: fixed;
     width: 100%;
-    height: 100%;
 }
 
 /* Global left alignment for all content */
@@ -21976,4 +21978,60 @@ input[type="datetime-local"] {
     font-size: 0.82rem;
     padding: 0.5rem 1rem;
     white-space: nowrap;
+}
+
+/* =====================================================
+   Android WebView scroll patch (load last so it wins)
+   Fixes: "can't scroll any page in the Android APK".
+   Causes addressed:
+     1. body.guest-mode used to be position:fixed; height:100%;
+        which on Android WebView blocks touch-scroll inside
+        the Bootstrap onboarding modal.
+     2. Inner scroll containers were missing touch-action /
+        -webkit-overflow-scrolling, which Android needs in
+        order to route the pan gesture to them when the body
+        scroll is locked.
+   ===================================================== */
+html,
+body {
+    height: auto;
+    min-height: 100%;
+    -webkit-overflow-scrolling: touch;
+    touch-action: manipulation;
+    overscroll-behavior-y: contain;
+}
+
+/* Allow vertical pan gestures inside the main scroll containers */
+.modal,
+.modal-dialog,
+.modal-content,
+.onboarding-modal,
+.onboarding-modal .modal-body,
+.onboarding-main,
+.onboarding-content,
+#onboardingContent,
+.maya-page,
+.maya-overlay,
+.maya-overlay__body,
+.maya-modal__body,
+.maya-lucky-modal__body,
+.maya-aspect-modal__body {
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+}
+
+/* Make sure the onboarding modal body itself can scroll on small screens
+   (acts as a fallback if the inner .onboarding-content doesn't get the
+   touch). */
+.onboarding-modal .modal-body {
+    overflow-y: auto;
+}
+
+/* Belt-and-braces: when guest-mode is active we still want the funnel
+   modal interior to be the scroll target. */
+body.guest-mode .onboarding-content,
+body.guest-mode #onboardingContent {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
 }
