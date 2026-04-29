@@ -1,45 +1,65 @@
-name: MayalogyiOS
+name: Mayalogy
 options:
+  bundleIdPrefix: com.maya
+  deploymentTarget:
+    iOS: "15.0"
   createIntermediateGroups: true
-packages:
-  Firebase:
-    url: https://github.com/firebase/firebase-ios-sdk
-    from: 11.0.0
-configs:
-  Debug: debug
-  Release: release
+  groupSortPosition: top
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: ""
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "15.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    ENABLE_BITCODE: NO
+    CODE_SIGN_STYLE: Automatic
+
 targets:
   Mayalogy:
     type: application
-    supportedDestinations: [ iOS ]
+    platform: iOS
     deploymentTarget: "15.0"
     sources:
       - path: Mayalogy
     resources:
-      - path: Resources/Assets.xcassets
+      - path: Mayalogy/Resources
+        optional: true
+    info:
+      path: Mayalogy/Info.plist
+      properties:
+        CFBundleDisplayName: Mayalogy
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        UILaunchStoryboardName: LaunchScreen
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default Configuration
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIRequiresFullScreen: true
+        UIStatusBarStyle: UIStatusBarStyleLightContent
+        UIViewControllerBasedStatusBarAppearance: false
+        UIBackgroundModes:
+          - remote-notification
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: false
+          NSAllowsArbitraryLoadsInWebContent: true
+        NSCameraUsageDescription: Mayalogy uses the camera so you can capture photos for Vastu room scanning, profile pictures, and palm/face analysis.
+        NSPhotoLibraryUsageDescription: Mayalogy needs access to your photo library so you can upload existing pictures for Vastu and astrology features.
+        NSPhotoLibraryAddUsageDescription: Mayalogy can save generated charts and images to your photo library when you choose to download them.
+        NSMicrophoneUsageDescription: Mayalogy uses the microphone for voice-based questions to your astrologer.
+        NSLocationWhenInUseUsageDescription: Mayalogy uses your location to personalize Vastu and astrology results based on your geographical position.
+        NSUserTrackingUsageDescription: Mayalogy uses this to deliver more relevant horoscope content; you can change this anytime in Settings.
+        ITSAppUsesNonExemptEncryption: false
     settings:
       base:
-        PRODUCT_NAME: Mayalogy
         PRODUCT_BUNDLE_IDENTIFIER: com.maya.astrology
-        INFOPLIST_FILE: Mayalogy/App/Info.plist
-        GENERATE_INFOPLIST_FILE: NO
-        CODE_SIGN_ENTITLEMENTS: Mayalogy/App/Mayalogy.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        CURRENT_PROJECT_VERSION: 1
-        MARKETING_VERSION: 1.0.0
-        SWIFT_VERSION: 5.10
-        TARGETED_DEVICE_FAMILY: "1,2"
-        DEVELOPMENT_TEAM: ""
-        CODE_SIGN_STYLE: Automatic
-        SUPPORTS_MACCATALYST: NO
-        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
-      configs:
-        Debug:
-          APS_ENVIRONMENT: development
-        Release:
-          APS_ENVIRONMENT: production
-    dependencies:
-      - package: Firebase
-        product: FirebaseCore
-      - package: Firebase
-        product: FirebaseMessaging
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        INFOPLIST_KEY_UILaunchStoryboardName: LaunchScreen
+        GENERATE_INFOPLIST_FILE: NO

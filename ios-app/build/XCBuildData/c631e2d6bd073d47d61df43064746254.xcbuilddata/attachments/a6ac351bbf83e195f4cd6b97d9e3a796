@@ -1,4 +1,0 @@
-module GoogleUtilities_UserDefaults {
-umbrella "/Users/aadilkhan/Library/Developer/Xcode/DerivedData/MayalogyiOS-gbgwysswemfjhebcednvmplabzma/SourcePackages/checkouts/GoogleUtilities/GoogleUtilities/UserDefaults/Public"
-export *
-}

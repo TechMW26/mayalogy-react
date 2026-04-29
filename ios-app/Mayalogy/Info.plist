@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Mayalogy</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSAllowsArbitraryLoadsInWebContent</key>
+		<true/>
+	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Mayalogy uses the camera so you can capture photos for Vastu room scanning, profile pictures, and palm/face analysis.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Mayalogy uses your location to personalize Vastu and astrology results based on your geographical position.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Mayalogy uses the microphone for voice-based questions to your astrologer.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Mayalogy can save generated charts and images to your photo library when you choose to download them.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Mayalogy needs access to your photo library so you can upload existing pictures for Vastu and astrology features.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Mayalogy uses this to deliver more relevant horoscope content; you can change this anytime in Settings.</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneConfigurationName</key>
+					<string>Default Configuration</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIRequiresFullScreen</key>
+	<true/>
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleLightContent</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+</dict>
+</plist>

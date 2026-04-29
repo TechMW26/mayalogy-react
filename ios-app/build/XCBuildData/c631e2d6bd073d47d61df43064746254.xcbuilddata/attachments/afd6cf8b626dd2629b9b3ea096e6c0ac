@@ -1,4 +1,0 @@
-module FirebaseInstallations {
-umbrella header "/Users/aadilkhan/Library/Developer/Xcode/DerivedData/MayalogyiOS-gbgwysswemfjhebcednvmplabzma/SourcePackages/checkouts/firebase-ios-sdk/FirebaseInstallations/Source/Library/Public/FirebaseInstallations/FirebaseInstallations.h"
-export *
-}

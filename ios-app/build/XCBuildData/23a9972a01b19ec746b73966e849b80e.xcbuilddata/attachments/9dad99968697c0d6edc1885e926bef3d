@@ -1,4 +1,0 @@
-module GoogleUtilities_Logger {
-umbrella "/Users/aadilkhan/Library/Developer/Xcode/DerivedData/MayalogyiOS-gbgwysswemfjhebcednvmplabzma/SourcePackages/checkouts/GoogleUtilities/GoogleUtilities/Logger/Public"
-export *
-}
