@@ -49,12 +49,18 @@ targets:
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: false
           NSAllowsArbitraryLoadsInWebContent: true
-        NSCameraUsageDescription: Mayalogy uses the camera so you can capture photos for Vastu room scanning, profile pictures, and palm/face analysis.
-        NSPhotoLibraryUsageDescription: Mayalogy needs access to your photo library so you can upload existing pictures for Vastu and astrology features.
-        NSPhotoLibraryAddUsageDescription: Mayalogy can save generated charts and images to your photo library when you choose to download them.
-        NSMicrophoneUsageDescription: Mayalogy uses the microphone for voice-based questions to your astrologer.
-        NSLocationWhenInUseUsageDescription: Mayalogy uses your location to personalize Vastu and astrology results based on your geographical position.
-        NSUserTrackingUsageDescription: Mayalogy uses this to deliver more relevant horoscope content; you can change this anytime in Settings.
+        NSCameraUsageDescription: Mayalogy uses the camera so you can capture photos for
+          Vastu room scanning, profile pictures, and palm/face analysis.
+        NSPhotoLibraryUsageDescription: Mayalogy needs access to your photo library so
+          you can upload existing pictures for Vastu and astrology features.
+        NSPhotoLibraryAddUsageDescription: Mayalogy can save generated charts and images
+          to your photo library when you choose to download them.
+        NSMicrophoneUsageDescription: Mayalogy uses the microphone for voice-based
+          questions to your astrologer.
+        NSLocationWhenInUseUsageDescription: Mayalogy uses your location to personalize
+          Vastu and astrology results based on your geographical position.
+        NSUserTrackingUsageDescription: Mayalogy uses this to deliver more relevant
+          horoscope content; you can change this anytime in Settings.
         ITSAppUsesNonExemptEncryption: false
     settings:
       base:
