@@ -43,45 +43,51 @@ export const LEGACY_SHELL_HTML = String.raw`
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="journal">
+                        <i class="bi bi-journal-check"></i>
+                        <span>Maya Journal</span>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" href="#" data-page="horoscope">
-                        <i class="bi bi-stars"></i>
-                        <span data-i18n="Daily Horoscope">Daily Horoscope</span>
+                        <i class="bi bi-signpost-split"></i>
+                        <span>Daily Plan</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#" data-page="kundli">
                         <i class="bi bi-diagram-3"></i>
-                        <span data-i18n="Kundli">Kundli / Birth Chart</span>
+                        <span>Life Map</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#" data-page="numerology">
                         <i class="bi bi-123"></i>
-                        <span data-i18n="Numerology">Numerology Report</span>
+                        <span>Pattern Report</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#" data-page="compatibility">
                         <i class="bi bi-hearts"></i>
-                        <span data-i18n="Compatibility">Compatibility</span>
+                        <span>Relationship Check</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#" data-page="remedies">
                         <i class="bi bi-gem"></i>
-                        <span data-i18n="Remedies">Remedies & Gemstones</span>
+                        <span>Practice Library</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#" data-page="muhurat">
                         <i class="bi bi-calendar-check"></i>
-                        <span data-i18n="Muhurat">Muhurat</span>
+                        <span>Timing</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#" data-page="panchang">
                         <i class="bi bi-calendar3"></i>
-                        <span data-i18n="Panchang">Panchang</span>
+                        <span>Day Almanac</span>
                     </a>
                 </li>
                 <li class="nav-item">
@@ -99,7 +105,7 @@ export const LEGACY_SHELL_HTML = String.raw`
                 <li class="nav-item">
                     <a class="nav-link" href="#" data-page="palm-reading">
                         <i class="bi bi-hand-index"></i>
-                        <span data-i18n="Palm Reading">Palm Reading</span>
+                        <span>Hand Scan</span>
                     </a>
                 </li>
                 <li class="nav-item">
@@ -147,8 +153,8 @@ export const LEGACY_SHELL_HTML = String.raw`
             <span data-i18n="Home">Home</span>
         </a>
         <a href="#" class="nav-item" data-page="horoscope">
-            <i class="bi bi-stars"></i>
-            <span data-i18n="Horoscope">Horoscope</span>
+            <i class="bi bi-signpost-split"></i>
+            <span>Plan</span>
         </a>
         <button class="nav-item maya-btn" id="maya-nav-btn">
             <div class="maya-blob-mini" id="maya-blob-mini">
@@ -157,7 +163,7 @@ export const LEGACY_SHELL_HTML = String.raw`
         </button>
         <a href="#" class="nav-item" data-page="kundli">
             <i class="bi bi-diagram-3"></i>
-            <span data-i18n="Kundli">Kundli</span>
+            <span>Map</span>
         </a>
         <a href="#" class="nav-item" data-page="profile">
             <i class="bi bi-person"></i>

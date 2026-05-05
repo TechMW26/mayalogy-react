@@ -425,7 +425,7 @@ const MayaFirebase = {
     },
 
     /**
-     * Save daily horoscope for a user
+     * Save daily guidance plan for a user
      * Stored per-date for automatic daily refresh
      */
     async saveDailyHoroscope(email, horoscopeData) {
@@ -446,7 +446,7 @@ const MayaFirebase = {
     },
 
     /**
-     * Get daily horoscope for a user
+     * Get daily guidance plan for a user
      * Returns null if no horoscope exists for today
      */
     async getDailyHoroscope(email, date = null) {

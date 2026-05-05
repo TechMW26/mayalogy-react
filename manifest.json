@@ -1,7 +1,7 @@
 {
-  "name": "Mayalogy - Cosmic Guide",
+  "name": "Mayalogy - Personal Guidance Journal",
   "short_name": "Mayalogy",
-  "description": "Exploring Life through Cosmos.",
+  "description": "A personal guidance journal for daily reflection, voice coaching, timing, and mindful routines.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0b0b0c",
@@ -20,6 +20,11 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["astrology", "numerology", "horoscope", "vedic astrology"],
+  "categories": [
+    "lifestyle",
+    "productivity",
+    "health",
+    "education"
+  ],
   "lang": "en"
 }

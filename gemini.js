@@ -5,21 +5,15 @@ const GEMINI_API_KEY = getEnv('GEMINI_API_KEY') || getEnv('NEXT_PUBLIC_GEMINI_AP
 const OPENAI_API_KEY = getEnv('OPENAI_API_KEY') || getEnv('NEXT_PUBLIC_OPENAI_API_KEY') || browserSecrets.OPENAI_KEY;
 const PERPLEXITY_API_KEY = getEnv('PERPLEXITY_API_KEY') || browserSecrets.PERPLEXITY_KEY;
 
-// Models to try in order of preference for text (updated for 2026)
+// Single paid Gemini model to avoid fallback delays and rate-limit churn.
 const GEMINI_MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.5-pro',
-  'gemini-2.0-flash', 
-  'gemini-2.0-flash-lite'
+  'gemini-2.5-flash-lite'
 ];
 
-// Vision-capable models in order of preference (updated for 2026)
+// Single paid Gemini vision model to avoid fallback delays and rate-limit churn.
 // Note: Gemini has more lenient content policies for workplace screenshots
 const GEMINI_VISION_MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.5-pro',
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-lite'
+  'gemini-2.5-flash-lite'
 ];
 
 // Perplexity models
@@ -61,7 +55,7 @@ async function generatePerplexityContent(prompt, systemInstruction = '') {
   }
 
   console.log('🔮 Falling back to Perplexity AI...');
-  
+
   for (const model of PERPLEXITY_MODELS) {
     try {
       const response = await fetch('https://api.perplexity.ai/chat/completions', {
@@ -73,7 +67,7 @@ async function generatePerplexityContent(prompt, systemInstruction = '') {
         body: JSON.stringify({
           model: model,
           messages: [
-            { role: 'system', content: systemInstruction || 'You are MAYA, a cosmic guide trained on Vedic scriptures, Gita, astrology, numerology, and Pythagorean number theorems.' },
+            { role: 'system', content: systemInstruction || 'You are MAYA, a personal guidance coach for Mayalogy. Use reflection, practical next steps, mindful routines, and Vedic or numerology context only when it directly helps the user.' },
             { role: 'user', content: prompt }
           ],
           temperature: 0.7,
@@ -94,7 +88,7 @@ async function generatePerplexityContent(prompt, systemInstruction = '') {
 
       const errorText = await response.text();
       console.error(`Perplexity API error with ${model}: ${response.status}`, errorText);
-      
+
       if (response.status === 429) {
         throw new Error(`Perplexity rate limited: ${errorText}`);
       }
@@ -119,7 +113,7 @@ async function generateOpenAIContent(prompt, systemInstruction = '') {
   }
 
   console.log('🤖 Trying OpenAI first (gpt-4o-mini)...');
-  
+
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -130,7 +124,7 @@ async function generateOpenAIContent(prompt, systemInstruction = '') {
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: systemInstruction || 'You are MAYA, a cosmic guide trained on Vedic scriptures, Gita, astrology, numerology, and Pythagorean number theorems.' },
+          { role: 'system', content: systemInstruction || 'You are MAYA, a personal guidance coach for Mayalogy. Use reflection, practical next steps, mindful routines, and Vedic or numerology context only when it directly helps the user.' },
           { role: 'user', content: prompt }
         ],
         temperature: 0.7
@@ -140,12 +134,12 @@ async function generateOpenAIContent(prompt, systemInstruction = '') {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`OpenAI API error: ${response.status}`, errorText);
-      
+
       if (PERPLEXITY_API_KEY) {
         console.warn('⚠️ OpenAI failed, trying Perplexity...');
         return generatePerplexityContent(prompt, systemInstruction);
       }
-      
+
       throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
     }
 
@@ -196,10 +190,10 @@ async function tryGeminiVision(prompt, images) {
   // Try each Gemini model
   for (const model of GEMINI_VISION_MODELS) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-    
+
     try {
       console.log(`🔷 Trying Gemini Vision model: ${model} with ${images.length} images...`);
-      
+
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -209,13 +203,13 @@ async function tryGeminiVision(prompt, images) {
       if (response.ok) {
         const data = await response.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        
+
         // Check if response is a content policy refusal
         if (isContentPolicyError(text)) {
           console.warn(`⚠️ Gemini ${model} returned content policy message, trying next model...`);
           continue; // Try next model
         }
-        
+
         console.log(`✅ Gemini Vision succeeded with model: ${model} (${images.length} images)`);
         return { success: true, text, imagesUsed: images.length };
       }
@@ -224,7 +218,7 @@ async function tryGeminiVision(prompt, images) {
       if (response.status === 400) {
         const errorData = await response.json().catch(() => ({}));
         if (errorData.error?.message?.toLowerCase().includes('safety') ||
-            errorData.error?.message?.toLowerCase().includes('block')) {
+          errorData.error?.message?.toLowerCase().includes('block')) {
           console.warn(`⚠️ Gemini ${model} blocked due to safety, trying next model...`);
           continue; // Try next model
         }
@@ -251,7 +245,7 @@ async function tryGeminiVision(prompt, images) {
       console.error(`Gemini Vision ${model} failed:`, error.message);
     }
   }
-  
+
   // All Gemini models failed
   console.warn('⚠️ All Gemini Vision models failed');
   return { success: false, error: 'All Gemini models failed' };
@@ -294,7 +288,7 @@ export async function generateContent(prompt, systemInstruction = '') {
 
   for (const model of GEMINI_MODELS) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-    
+
     try {
       const response = await fetch(url, {
         method: 'POST',
@@ -354,7 +348,7 @@ export async function generateContent(prompt, systemInstruction = '') {
  */
 export async function generateVisionContent(prompt, images = []) {
   console.log(`[Vision] Starting analysis with ${images.length} images (NO screenshot skipping)`);
-  
+
   // Try OpenAI Vision first with ALL images (no reduction)
   if (OPENAI_API_KEY) {
     console.log('[Vision] Trying OpenAI Vision with all', images.length, 'images...');
@@ -383,7 +377,7 @@ export async function generateVisionContent(prompt, images = []) {
 
     console.log('[Vision] Gemini failed:', geminiResult.error || 'unknown error');
   }
-  
+
   // All attempts failed - throw error (no fake data)
   console.error('❌ All vision AI attempts failed with', images.length, 'images');
   throw new Error('AI_VISION_FAILED: Unable to analyze screenshots. All AI services failed. Please try again later.');

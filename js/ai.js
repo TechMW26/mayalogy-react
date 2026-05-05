@@ -34,7 +34,7 @@ const MayaAI = {
             language
         };
     },
-    
+
     /**
      * Initialize AI with user context
      */
@@ -42,7 +42,7 @@ const MayaAI = {
         const normalizedUser = this.normalizeUserData(userData);
         this.userData = normalizedUser;
         this.conversationHistory = [];
-        
+
         // Build initial context
         if (normalizedUser?.fullName && normalizedUser?.birthDate) {
             const numerology = MayaNumerology.calculateAll(normalizedUser.fullName, normalizedUser.birthDate);
@@ -50,7 +50,7 @@ const MayaAI = {
             const zodiac = MayaAstrology.getZodiac(normalizedUser.birthDate, normalizedUser);
             const personality = MayaAstrology.getPersonalityTraits(zodiac?.name || 'Aries');
             const firstName = String(normalizedUser.fullName || '').trim().split(/\s+/)[0] || 'friend';
-            
+
             this.userContext = {
                 name: normalizedUser.fullName,
                 firstName,
@@ -103,7 +103,7 @@ const MayaAI = {
                 .replace(/\bshe\s+sees\b/gi, 'he sees')
                 .replace(/\bshe\s+explains\b/gi, 'he explains')
                 .replace(/like a trusted guide who explains what she sees/gi,
-                         'like a trusted guide who explains what he sees');
+                    'like a trusted guide who explains what he sees');
             systemPrompt += `\n\n## GUIDE GENDER OVERRIDE (HIGHEST PRIORITY)\nMoksh is speaking as a MALE guide in this session. All first-person verbs MUST be masculine.\n- Hindi self-reference: "मैं देख रहा हूँ", "मैं बताता हूँ", "मैं कह रहा हूँ", "मैं सकता हूँ", "मैं बताऊँगा", "मैं करूँगा". Do NOT use feminine forms (रही हूँ, सकती हूँ, बताती हूँ, बताऊँगी, करूँगी).\n- English self-reference: "I see", "I read", "I notice" — no implied-feminine framing, no "sister-like" or "she". Refer to yourself as a male guide.\n- Do NOT describe yourself as female, sister-like, or use any feminine simile.\n- Your name is Moksh, not MAYA. Never call yourself MAYA.`;
         }
 
@@ -117,8 +117,8 @@ const MayaAI = {
             const displayName = this.userContext.firstName || this.userContext.name || 'friend';
             const zodiacName = this.userContext.zodiac?.name || 'Unknown';
             const zodiacSymbol = this.userContext.zodiac?.symbol || '';
-            
-            systemPrompt += `\n\n## CURRENT DATE & TIME\nToday is ${todayFormatted}, ${currentTime}. Current month: ${currentMonthName} ${currentYear}.\n\n⚠️ STRICT TEMPORAL RULES:\n- Months January through ${currentMonthName} ${currentYear} have ALREADY PASSED. Reference them ONLY in past tense ("that period has passed", "back in March", "during that time").\n- Do NOT give predictions, advice, or remedies for past months - that time is gone. Past events are ONLY useful as pattern recognition.\n- Future predictions must target months AFTER ${currentMonthName} ${currentYear}.\n- When referencing months in ${currentYear + 1}, ALWAYS include the year: "${currentYear + 1} ka January", "January ${currentYear + 1}" - never skip the year.\n- Every future prediction MUST include specific month + year.\n\n## CURRENT USER SESSION\nYou are now speaking with a real user inside the ${agentGender === 'male' ? 'Moksh' : 'MAYA'} app.\n\n**User Profile:**\n- Name: ${this.userContext.name}\n- Birth Date: ${this.userContext.birthDate}\n- Birth Time: ${this.userContext.birthTime || 'Not provided'}\n- Birth Place: ${this.userContext.birthPlace || 'Not provided'}\n- Gender: ${this.userContext.gender || 'Not specified'}\n- Language Preference: ${lang}\n\n**Their Cosmic Numbers:**\n- Life Path Number: ${this.userContext.numerology.lifePath} (core life purpose)\n- Destiny Number: ${this.userContext.numerology.destiny} (life mission from name)\n- Soul Urge Number: ${this.userContext.numerology.soulUrge} (inner desires, heart's craving)\n- Personality Number: ${this.userContext.numerology.personality} (how others perceive them)\n- Personal Year ${currentYear}: ${personalYear} (current annual cycle theme)\n\n**Their Western Zodiac:** ${`${zodiacName} ${zodiacSymbol}`.trim()}\n\n**Instructions for this session:**\n1. Address them by name: ${displayName} - but use the name MAX 1-2 times total. Use "you/your" or "आप/आपके" everywhere else. Name in every sentence is FORBIDDEN.\n2. Respond in ${lang}\n3. Reference their specific numbers when relevant\n4. Speak naturally and complete your thoughts fully - don't cut yourself off mid-sentence\n5. Create a sense of personal insight - make them feel "seen"\n6. If they're in the funnel flow, focus on intrigue and value; if in chat, be conversational and helpful\n7. Always be temporally aware - only predict FUTURE months, reference past months as past.`;
+
+            systemPrompt += `\n\n## CURRENT DATE & TIME\nToday is ${todayFormatted}, ${currentTime}. Current month: ${currentMonthName} ${currentYear}.\n\n⚠️ STRICT TEMPORAL RULES:\n- Months January through ${currentMonthName} ${currentYear} have ALREADY PASSED. Reference them ONLY in past tense ("that period has passed", "back in March", "during that time").\n- Do NOT give predictions, advice, or remedies for past months - that time is gone. Past events are ONLY useful as pattern recognition.\n- Future predictions must target months AFTER ${currentMonthName} ${currentYear}.\n- When referencing months in ${currentYear + 1}, ALWAYS include the year: "${currentYear + 1} ka January", "January ${currentYear + 1}" - never skip the year.\n- Every future prediction MUST include specific month + year.\n\n## CURRENT USER SESSION\nYou are now speaking with a real user inside the ${agentGender === 'male' ? 'Moksh' : 'MAYA'} app.\n\n**User Profile:**\n- Name: ${this.userContext.name}\n- Birth Date: ${this.userContext.birthDate}\n- Birth Time: ${this.userContext.birthTime || 'Not provided'}\n- Birth Place: ${this.userContext.birthPlace || 'Not provided'}\n- Gender: ${this.userContext.gender || 'Not specified'}\n- Language Preference: ${lang}\n\n**Their Personal Pattern Numbers:**\n- Life Path Number: ${this.userContext.numerology.lifePath} (core life purpose)\n- Destiny Number: ${this.userContext.numerology.destiny} (life mission from name)\n- Soul Urge Number: ${this.userContext.numerology.soulUrge} (inner desires, heart's craving)\n- Personality Number: ${this.userContext.numerology.personality} (how others perceive them)\n- Personal Year ${currentYear}: ${personalYear} (current annual cycle theme)\n\n**Their Western Zodiac:** ${`${zodiacName} ${zodiacSymbol}`.trim()}\n\n**Instructions for this session:**\n1. Address them by name: ${displayName} - but use the name MAX 1-2 times total. Use "you/your" or "आप/आपके" everywhere else. Name in every sentence is FORBIDDEN.\n2. Respond in ${lang}\n3. Reference their specific numbers when relevant\n4. Speak naturally and complete your thoughts fully - don't cut yourself off mid-sentence\n5. Create a sense of personal insight and translate it into a practical next step\n6. If they're in the funnel flow, focus on intrigue and value; if in chat, be conversational and helpful\n7. Always be temporally aware - only predict FUTURE months, reference past months as past.`;
 
             if (this.userContext.language === 'hi') {
                 systemPrompt += `\n8. When responding in Hindi, use ${this.getResponseLanguageInstruction('hi')}. Keep Hindi LIGHT and casual - like talking to a friend. Normal Hindi words that people actually use in daily speech (ज़िन्दगी, दिल, रास्ता, पैसा, वक़्त, तकलीफ़, हिम्मत, ताक़त, फ़ैसला, रिश्ता, ख़्वाब, etc.) MUST stay in Devanagari - they are Hindi-origin and should NOT be replaced with English. Only replace HEAVY/LITERARY/BOOKISH Sanskrit-laden Hindi: "सम्भावना" → "chance/मौक़ा", "परिस्थिति" → "हालात/situation", "विशेष" → "ख़ास", "प्रभाव" → "असर", "अनुभव" → "महसूस", "व्यक्तित्व" → "शख़्सियत", "सम्पूर्ण" → "पूरा", "आवश्यक" → "ज़रूरी". Vedic terms (राहु, शनि, दशा, लग्न, कुंडली, राशि, ग्रह, नक्षत्र) always stay in Devanagari.`;
@@ -192,10 +192,10 @@ const MayaAI = {
     async callGemini(message, options = {}) {
         const systemPrompt = this.buildSystemPrompt();
         const includeHistory = options.includeHistory === true;
-        
+
         // Build conversation for Gemini format
         const contents = [];
-        
+
         // Add system context as first user message
         contents.push({
             role: 'user',
@@ -207,13 +207,13 @@ const MayaAI = {
             || 'female';
         const _agName = _agGender === 'male' ? 'Moksh' : 'MAYA';
         const _modelAck = _agGender === 'male'
-            ? `I understand. I am ${_agName}, a male vedic astrology and numerology guide. I will follow these instructions, use masculine Hindi verb forms (रहा हूँ, सकता हूँ, बताता हूँ), and personalize my responses for the user.`
-            : `I understand. I am ${_agName}, a female vedic astrology and numerology guide. I will follow these instructions and personalize my responses for the user.`;
+            ? `I understand. I am ${_agName}, a male personal guidance coach. I will follow these instructions, use masculine Hindi verb forms (रहा हूँ, सकता हूँ, बताता हूँ), and personalize my responses for the user.`
+            : `I understand. I am ${_agName}, a female personal guidance coach. I will follow these instructions and personalize my responses for the user.`;
         contents.push({
             role: 'model',
             parts: [{ text: _modelAck }]
         });
-        
+
         if (includeHistory) {
             this.conversationHistory.forEach(msg => {
                 contents.push({
@@ -244,15 +244,14 @@ const MayaAI = {
             ]
         };
 
-        // Build list of all API keys to try: main key + fallbacks
+        // Use only the primary paid Gemini key. Free fallback keys slow requests down when rate-limited.
         const allGeminiKeys = [
-            MAYA_CONFIG.API_KEYS.GEMINI,
-            ...(MAYA_CONFIG.API_KEYS.GEMINI_FALLBACKS || [])
-        ];
-        
+            MAYA_CONFIG.API_KEYS.GEMINI
+        ].filter(Boolean);
+
         // Initialize rate limit tracking if not exists
         if (!this._rateLimitedKeys) this._rateLimitedKeys = new Map();
-        
+
         // Clean up expired rate limits (60 second cooldown)
         const now = Date.now();
         for (const [key, timestamp] of this._rateLimitedKeys) {
@@ -260,25 +259,25 @@ const MayaAI = {
                 this._rateLimitedKeys.delete(key);
             }
         }
-        
+
         // Try each Gemini model in order
-        const models = MAYA_CONFIG.GEMINI_MODELS || ['gemini-2.5-flash', 'gemini-2.0-flash'];
-        
+        const models = MAYA_CONFIG.GEMINI_MODELS || ['gemini-2.5-flash-lite'];
+
         // Try each API key with retry logic
         for (let keyIndex = 0; keyIndex < allGeminiKeys.length; keyIndex++) {
             const apiKey = allGeminiKeys[keyIndex];
             const keyLabel = keyIndex === 0 ? 'main' : `fallback-${keyIndex}`;
-            
+
             // Skip if this key is rate-limited (in cooldown)
             if (this._rateLimitedKeys.has(apiKey)) {
                 console.log(`⏭️ Skipping rate-limited key [${keyLabel}], cooling down...`);
                 continue;
             }
-            
+
             // Try each model with this key
             for (const model of models) {
                 const url = `${MAYA_CONFIG.ENDPOINTS.GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
-                
+
                 // Build model-specific payload: add thinkingConfig for 2.5 models
                 const modelPayload = { ...payload };
                 if (model.includes('2.5')) {
@@ -293,7 +292,7 @@ const MayaAI = {
                     const result = await MayaUtils.retry(
                         async (attempt) => {
                             console.log(`🔷 Trying Gemini [${keyLabel}] model: ${model}${attempt > 1 ? ` (attempt ${attempt})` : ''}...`);
-                            
+
                             const response = await MayaUtils.withTimeout(
                                 fetch(url, {
                                     method: 'POST',
@@ -308,7 +307,7 @@ const MayaAI = {
 
                             if (response.ok) {
                                 const data = await response.json();
-                                
+
                                 if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
                                     console.log(`✅ Gemini succeeded with [${keyLabel}] model: ${model}`);
                                     return data.candidates[0].content.parts[0].text;
@@ -350,11 +349,11 @@ const MayaAI = {
                             }
                         }
                     );
-                    
+
                     return result;
                 } catch (error) {
                     if (error.skipToNextKey) {
-                        console.warn(`⚠️ Gemini rate limited on [${keyLabel}], cooling down for 60s...`);
+                        console.warn(`⚠️ Gemini rate limited on [${keyLabel}], cooling down for 60s. No fallback keys will be tried.`);
                         this._rateLimitedKeys.set(apiKey, Date.now()); // Track rate limit
                         break; // Skip to next API key
                     }
@@ -367,7 +366,7 @@ const MayaAI = {
                 }
             }
         }
-        
+
         throw new Error('All Gemini API keys and models failed');
     },
 
@@ -383,7 +382,7 @@ const MayaAI = {
         });
 
         let response;
-        
+
         try {
             this.currentProvider = 'gemini';
             response = await this.callGemini(message, { includeHistory: true });
@@ -451,21 +450,21 @@ const MayaAI = {
         const languageInstruction = this.getResponseLanguageInstruction(language);
 
         const prompt = isPreAuth
-            ? `Write a completely AI-generated pre-auth opening for ${normalizedUser.fullName}. Use 5-6 sentences. The first sentence must greet them by name and briefly introduce MAYA. In the second sentence, create grounded mystic buildup and say that a hidden layer in their kundli, timing, or birth pattern is starting to open. Only in the third sentence should you call out the one detail that stands out immediately from their numbers, western sign, moon sign, or timing markers, and do not recite the literal birth date unless it is genuinely necessary. Include one real strength and one real tension. If you mention zodiac, keep western zodiac, vedic moon sign, and ascendant clearly labeled and never merge them. Ground it in these exact markers:\n- Life Path: ${numerology.lifePath}\n- Destiny: ${numerology.destiny}\n- Soul Urge: ${numerology.soulUrge}${chartMarkers ? `\n- ${chartMarkers}` : ''}\nMake it feel specific and intimate, not like a scripted teaser. Do not use stock praise, destiny cliches, or generic mystic filler. The final sentence must create a strong pull toward the next layer of the reading without mentioning payment. Respond in ${languageInstruction}. Return only the spoken text.`
-            : `Write a completely AI-generated personal reading opening for ${normalizedUser.fullName}. Use 5-6 sentences. The first sentence must greet them by name and briefly introduce MAYA. In the second sentence, create grounded mystic buildup and say that a hidden layer in their kundli, timing, or birth pattern is starting to open. Only in the third sentence should you call out the one detail that stands out immediately from their numbers, western sign, moon sign, or timing markers, and do not recite the literal birth date unless it is genuinely necessary. Ground it in these exact markers:\n- Life Path: ${numerology.lifePath}\n- Destiny: ${numerology.destiny}\n- Soul Urge: ${numerology.soulUrge}\n- Personal Year: ${numerology.personalYear}${chartMarkers ? `\n- ${chartMarkers}` : ''}\nName one pattern that supports them, one pattern that complicates things, and one timing clue that deserves attention. If you mention zodiac, keep western zodiac, vedic moon sign, and ascendant clearly labeled and never merge them. Do not sound scripted, promotional, or universally flattering. The ending should make them want the next reveal. Respond in ${languageInstruction}. Return only the spoken text.`;
+            ? `Write a completely AI-generated pre-auth opening for ${normalizedUser.fullName}. Use 5-6 sentences. The first sentence must greet them by name and briefly introduce MAYA as a personal guidance journal and voice coach. In the second sentence, say that their timing, numbers, and daily patterns can be turned into one practical plan. Only in the third sentence should you call out the one detail that stands out immediately from their numbers, western sign, moon sign, or timing markers, and do not recite the literal birth date unless it is genuinely necessary. Include one real strength and one real tension. If you mention zodiac, keep western zodiac, vedic moon sign, and ascendant clearly labeled and never merge them. Ground it in these exact markers:\n- Life Path: ${numerology.lifePath}\n- Destiny: ${numerology.destiny}\n- Soul Urge: ${numerology.soulUrge}${chartMarkers ? `\n- ${chartMarkers}` : ''}\nMake it feel specific and useful, not like a scripted teaser. Do not use stock praise, destiny cliches, or generic mystic filler. The final sentence should invite them to save a journal intention, not buy or unlock anything. Respond in ${languageInstruction}. Return only the spoken text.`
+            : `Write a completely AI-generated personal guidance opening for ${normalizedUser.fullName}. Use 5-6 sentences. The first sentence must greet them by name and briefly introduce MAYA as a personal guidance journal and voice coach. In the second sentence, say that their timing, numbers, and daily patterns can be turned into one practical plan. Only in the third sentence should you call out the one detail that stands out immediately from their numbers, western sign, moon sign, or timing markers, and do not recite the literal birth date unless it is genuinely necessary. Ground it in these exact markers:\n- Life Path: ${numerology.lifePath}\n- Destiny: ${numerology.destiny}\n- Soul Urge: ${numerology.soulUrge}\n- Personal Year: ${numerology.personalYear}${chartMarkers ? `\n- ${chartMarkers}` : ''}\nName one pattern that supports them, one pattern that complicates things, and one timing clue that deserves attention. If you mention zodiac, keep western zodiac, vedic moon sign, and ascendant clearly labeled and never merge them. Do not sound scripted, promotional, or universally flattering. End with one journal prompt or practical step. Respond in ${languageInstruction}. Return only the spoken text.`;
 
         return await this.sendMessage(prompt);
     },
 
     /**
-     * Generate daily horoscope
+     * Generate daily guidance plan
      * Now uses free horoscope API first, then falls back to AI
      */
     async generateDailyHoroscope(userData) {
         // Use user's preferred zodiac system
         const zodiac = MayaAstrology.getZodiac(userData.birthDate, userData);
         if (!zodiac) return null;
-        
+
         // Try free horoscope API first (no rate limits!)
         if (window.MayaHoroscopeAPI) {
             try {
@@ -474,62 +473,62 @@ const MayaAI = {
                     { birthDate: userData.birthDate },
                     zodiac.name
                 );
-                
+
                 if (horoscope && horoscope.combined) {
                     console.log('🔮 AI: ✅ Free horoscope API succeeded!');
                     // Format the response nicely
                     const personalYear = MayaNumerology.calculatePersonalYear(userData.birthDate);
                     const traits = MayaAstrology.getDailyTraits(zodiac.name);
-                    
+
                     const formattedHoroscope = `${userData.fullName}, ${horoscope.combined}
 
-Your cosmic elements for today:
-• Lucky Numbers: ${traits.lucky.join(', ')}
-• Power Color: ${traits.color}
-• Favorable Day: ${traits.day}
+Your guidance cues for today:
+• Number cues: ${traits.lucky.join(', ')}
+• Color cue: ${traits.color}
+• Supportive day rhythm: ${traits.day}
 • Personal Day Number: ${horoscope.personalDay}
 
 ${horoscope.personalDayInsight}`;
-                    
+
                     return formattedHoroscope;
                 }
             } catch (e) {
                 console.warn('🔮 AI: Free API failed, falling back to AI:', e.message);
             }
         }
-        
+
         // Fall back to AI generation
         const personalYear = MayaNumerology.calculatePersonalYear(userData.birthDate);
         const personalMonth = MayaNumerology.calculatePersonalMonth(userData.birthDate);
         const traits = MayaAstrology.getDailyTraits(zodiac.name);
-        
-        const today = new Date().toLocaleDateString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
+
+        const today = new Date().toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
         });
 
-        const prompt = `Generate a personalized daily horoscope for ${userData.fullName}.
+        const prompt = `Generate a personalized daily guidance plan for ${userData.fullName}.
 
 Date: ${today}
 Sun Sign: ${zodiac.name} ${zodiac.symbol}
 Personal Year: ${personalYear}
 Personal Month: ${personalMonth}
-Lucky Numbers: ${traits.lucky.join(', ')}
-Lucky Color: ${traits.color}
+Number Cues: ${traits.lucky.join(', ')}
+Color Cue: ${traits.color}
 Power Day: ${traits.day}
 
-Create a horoscope that covers:
+Create a practical guidance plan that covers:
 1. Overall energy of the day
 2. Love and relationships
 3. Career and finances
 4. Health and wellness
-5. Lucky elements for today
-6. One piece of cosmic advice
+5. Personal cues for today
+6. One concrete action step
 
 Make it feel personal and specific to them, not generic.
-Use mystical but accessible language.
+Use reflective but accessible language.
 Speak in ${this.getResponseLanguageInstruction(userData.language)}.
 Keep it concise but meaningful.`;
 
@@ -552,8 +551,8 @@ RULES FOR THIS ANSWER:
 2. Give a REALISTIC, calculated answer based on the user's actual birth chart, numbers, and planetary positions. Never be vague or generic.
 3. State the specific astrological/numerological reason behind your answer (planet, house, number, transit, dasha).
 4. If the question has a yes/no nature, lead with a clear yes or no, then give the brief reason.
-5. Sound like a confident astrologer giving a consultation, not a chatbot.
-6. If the question is off-topic, give a one-line redirect back to astrology.
+5. Sound like a confident guidance coach giving a focused consultation, not a chatbot.
+6. If the question is off-topic, give a one-line redirect back to reflection, timing, daily planning, or mindful action.
 7. Do NOT use filler phrases like "Let me check..." or "That's a great question...".
 Speak in ${this.getResponseLanguageInstruction(this.userContext?.language)}.`;
 
@@ -569,7 +568,7 @@ Speak in ${this.getResponseLanguageInstruction(this.userContext?.language)}.`;
         const zodiac2 = MayaAstrology.getZodiac(user2Data.birthDate, user2Data);
         if (!zodiac1 || !zodiac2) return null;
         const compatibility = MayaAstrology.getCompatibility(zodiac1.name, zodiac2.name);
-        
+
         const num1 = MayaNumerology.calculateAll(user1Data.fullName, user1Data.birthDate);
         const num2 = MayaNumerology.calculateAll(user2Data.fullName, user2Data.birthDate);
 

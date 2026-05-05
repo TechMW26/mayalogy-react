@@ -6,14 +6,14 @@
 
 const MayaPages = {
     currentPage: 'home',
-    
+
     // Centralized horoscope cache manager to prevent duplicate requests
     _horoscopeCache: {
         pending: null, // Promise for in-flight request
         data: null,    // Cached horoscope data
         date: null     // Date of cached data
     },
-    
+
     /**
      * Get user email for Firebase operations
      */
@@ -21,20 +21,23 @@ const MayaPages = {
         const session = MayaUtils.storage.get('maya_session');
         return session?.email || null;
     },
-    
+
     /**
      * Get today's date in local timezone (YYYY-MM-DD format)
      */
     _getLocalDate() {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
+        return this._formatLocalDateKey(new Date());
+    },
+
+    _formatLocalDateKey(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     },
 
     /**
-     * Get or generate daily horoscope
+     * Get or generate daily guidance plan
      * - Fetches from Firebase DB using today's date as key
      * - If data exists for today, use it (no regeneration)
      * - Only generates if no data exists for today
@@ -129,7 +132,7 @@ const MayaPages = {
 
                     const userEmail = this._getUserEmail();
                     if (userEmail && window.MayaFirebase) {
-                        MayaFirebase.saveDailyHoroscope(userEmail, result).catch(() => {});
+                        MayaFirebase.saveDailyHoroscope(userEmail, result).catch(() => { });
                     }
 
                     this._hideInsightSkeleton();
@@ -159,7 +162,7 @@ const MayaPages = {
                     const result = { date: today, zodiac: zodiac.name, text: response, isAI: true, source: 'ai' };
                     const userEmail = this._getUserEmail();
                     if (userEmail && window.MayaFirebase) {
-                        MayaFirebase.saveDailyHoroscope(userEmail, result).catch(() => {});
+                        MayaFirebase.saveDailyHoroscope(userEmail, result).catch(() => { });
                     }
 
                     this._hideInsightSkeleton();
@@ -173,7 +176,7 @@ const MayaPages = {
         this._hideInsightSkeleton();
         return { date: today, zodiac: zodiac.name, text: this._getDefaultHoroscope(zodiac.name), isAI: false, source: 'unavailable' };
     },
-    
+
     /**
      * Hide insight skeleton and show the text
      */
@@ -183,7 +186,7 @@ const MayaPages = {
         if (skeleton) skeleton.style.display = 'none';
         if (insightText) insightText.style.display = 'block';
     },
-    
+
     /**
      * Get default horoscope text
      */
@@ -193,7 +196,7 @@ const MayaPages = {
             ? 'आज का AI horoscope अभी उपलब्ध नहीं है। कृपया थोड़ी देर में फिर कोशिश करें।'
             : 'Today\'s AI horoscope is unavailable right now. Please try again in a moment.';
     },
-    
+
     /**
      * Update active navigation state in sidebar and bottom nav
      */
@@ -202,12 +205,12 @@ const MayaPages = {
         document.querySelectorAll('.sidebar-nav .nav-link, .bottom-nav .nav-item').forEach(item => {
             item.classList.remove('active');
         });
-        
+
         // Add active to matching nav items
         document.querySelectorAll(`[data-page="${pageId}"]`).forEach(item => {
             item.classList.add('active');
         });
-        
+
         // Special case: settings page maps to profile button in bottom nav
         if (pageId === 'settings' || pageId === 'profile') {
             document.querySelectorAll('[data-page="settings"], [data-page="profile"]').forEach(item => {
@@ -215,7 +218,7 @@ const MayaPages = {
             });
         }
     },
-    
+
     /**
      * Get skeleton loader HTML for different page types
      */
@@ -309,6 +312,9 @@ const MayaPages = {
             switch (pageId) {
                 case 'home':
                     pageContent = this.renderHome(profile, isHindi);
+                    break;
+                case 'journal':
+                    pageContent = this.renderJournal(profile, isHindi);
                     break;
                 case 'kundli':
                     pageContent = await MayaKundli.renderKundliPage(profile, isHindi);
@@ -414,23 +420,33 @@ const MayaPages = {
             day: 'numeric'
         });
         const zodiacSystem = MayaAstrology?.getZodiacSystem?.() || 'western';
+        const journalEntries = this.getJournalEntries();
+        const todayJournal = this.getTodayJournalEntry();
+        const journalStreak = this.getJournalStreak(journalEntries);
+        const dailyPractice = this.getDailyPractice(profile, isHindi);
         const homeLabels = {
             moonSign: zodiacSystem === 'vedic' ? t('Moon Sign') : t('Sun Sign'),
             unknown: t('Unknown'),
             lifePath: t('Life Path'),
             calculate: t('Calculate'),
-            todayMessage: t("Today's Cosmic Message"),
-            readFullHoroscope: t('Read Full Horoscope'),
-            speedDial: t('Speed Dial'),
+            journal: isHindi ? 'जर्नल' : 'Journal',
+            journalDone: isHindi ? 'आज पूरा' : 'Done today',
+            journalOpen: isHindi ? 'आज लिखें' : 'Open today',
+            streak: isHindi ? 'अभ्यास श्रृंखला' : 'Practice Streak',
+            dayUnit: isHindi ? 'दिन' : 'days',
+            todayMessage: isHindi ? 'आज की अभ्यास योजना' : "Today's Practice Plan",
+            openJournal: isHindi ? 'जर्नल खोलें' : 'Open Journal',
+            readFullHoroscope: isHindi ? 'दैनिक योजना देखें' : 'Open Daily Plan',
+            speedDial: isHindi ? 'कार्य उपकरण' : 'Action Tools',
             askMaya: t('Ask MAYA'),
-            fullReading: t('Get Your Full Reading'),
-            fullReadingText: t('Discover what the cosmos has in store for your love, career, and destiny.'),
-            startReading: t('Start Reading'),
-            luckyElements: t('Your Lucky Elements'),
-            luckyColor: t('Lucky Color'),
-            luckyNumbers: t('Lucky Numbers'),
-            luckyDay: t('Lucky Day'),
-            gemstone: t('Gemstone')
+            fullReading: isHindi ? 'आज की योजना MAYA से बनवाएं' : "Build Today's Plan with MAYA",
+            fullReadingText: isHindi ? 'अपने जर्नल, समय और प्रोफाइल संकेतों को एक स्पष्ट अगले कदम में बदलें।' : 'Turn your journal, timing, and profile signals into one practical next step.',
+            startReading: isHindi ? 'MAYA खोलें' : 'Open MAYA',
+            luckyElements: isHindi ? 'प्रोफाइल संकेत' : 'Profile Signals',
+            luckyColor: isHindi ? 'रंग संकेत' : 'Color Cue',
+            luckyNumbers: isHindi ? 'संख्या संकेत' : 'Number Cue',
+            luckyDay: isHindi ? 'दिन संकेत' : 'Day Cue',
+            gemstone: isHindi ? 'रत्न संकेत' : 'Gem Cue'
         };
         const localizedLifePathMeaning = t(lifePathMeaning || 'Calculate');
         const localizedMoonSign = zodiac?.name ? t(zodiac.name) : homeLabels.unknown;
@@ -452,20 +468,20 @@ const MayaPages = {
 
                 <!-- Quick Stats Row -->
                 <div class="maya-stats-row">
-                    <div class="maya-stat-card maya-stat-card--zodiac">
+                    <div class="maya-stat-card maya-stat-card--journal" data-page="journal" role="button" tabindex="0">
                         <div class="maya-stat-card__icon">
-                            ${zodiac?.image ? `<img src="${zodiac.image}" alt="${zodiac.name}" class="maya-stat-card__zodiac-img" onerror="this.style.display='none';this.nextElementSibling.style.display='block';"><span style="display:none;">${zodiac.symbol}</span>` : (zodiac?.symbol || '☉')}
+                            <i class="bi bi-journal-check"></i>
                         </div>
                         <div class="maya-stat-card__content">
-                            <span class="maya-stat-card__label">${homeLabels.moonSign}</span>
-                            <span class="maya-stat-card__value">${localizedMoonSign}</span>
+                            <span class="maya-stat-card__label">${homeLabels.journal}</span>
+                            <span class="maya-stat-card__value">${todayJournal ? homeLabels.journalDone : homeLabels.journalOpen}</span>
                         </div>
                     </div>
-                    <div class="maya-stat-card maya-stat-card--numerology">
-                        <div class="maya-stat-card__icon">${lifePath || '?'}</div>
+                    <div class="maya-stat-card maya-stat-card--practice" data-page="journal" role="button" tabindex="0">
+                        <div class="maya-stat-card__icon"><i class="bi bi-calendar2-check"></i></div>
                         <div class="maya-stat-card__content">
-                            <span class="maya-stat-card__label">${homeLabels.lifePath}</span>
-                            <span class="maya-stat-card__value">${localizedLifePathMeaning || homeLabels.calculate}</span>
+                            <span class="maya-stat-card__label">${homeLabels.streak}</span>
+                            <span class="maya-stat-card__value">${journalStreak} ${homeLabels.dayUnit}</span>
                         </div>
                     </div>
                 </div>
@@ -475,19 +491,36 @@ const MayaPages = {
                     <div class="maya-insight-card__header">
                         <span>${homeLabels.todayMessage}</span>
                     </div>
-                    <div id="dailyInsightSkeleton" class="maya-insight-skeleton">
+                    <div id="dailyInsightSkeleton" class="maya-insight-skeleton" style="display: none;">
                         <div class="skeleton-text" style="width: 100%; height: 1rem; margin-bottom: 0.5rem;"></div>
                         <div class="skeleton-text" style="width: 95%; height: 1rem; margin-bottom: 0.5rem;"></div>
                         <div class="skeleton-text" style="width: 85%; height: 1rem; margin-bottom: 0.5rem;"></div>
                         <div class="skeleton-text" style="width: 70%; height: 1rem;"></div>
                     </div>
-                    <p class="maya-insight-card__text" id="dailyInsight" style="display: none;"></p>
+                    <p class="maya-insight-card__text" id="dailyInsight" style="display: block;">${this._escapeHtml(dailyPractice.summary)}</p>
                     <div class="maya-insight-card__footer">
+                        <button class="maya-btn maya-btn--primary maya-btn--sm" data-page="journal">
+                            ${homeLabels.openJournal}
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
                         <button class="maya-btn maya-btn--ghost maya-btn--sm" data-page="horoscope">
                             ${homeLabels.readFullHoroscope}
                             <i class="bi bi-arrow-right"></i>
                         </button>
                     </div>
+                </div>
+
+                <div class="maya-practice-panel">
+                    ${dailyPractice.steps.map(step => `
+                        <div class="maya-practice-step">
+                            <div class="maya-practice-step__icon"><i class="bi ${step.icon}"></i></div>
+                            <div class="maya-practice-step__body">
+                                <span class="maya-practice-step__label">${step.label}</span>
+                                <strong>${step.title}</strong>
+                                <p>${step.text}</p>
+                            </div>
+                        </div>
+                    `).join('')}
                 </div>
 
                 <!-- Quick Actions Grid -->
@@ -497,17 +530,11 @@ const MayaPages = {
                         ${homeLabels.speedDial}
                     </h3>
                     <div class="maya-action-grid">
-                        <a href="#" class="maya-action-tile" data-page="kundli">
+                        <a href="#" class="maya-action-tile maya-action-tile--highlight" data-page="journal">
                             <div class="maya-action-tile__icon">
-                                <i class="bi bi-diagram-3"></i>
+                                <i class="bi bi-journal-check"></i>
                             </div>
-                            <span class="maya-action-tile__label">Kundli</span>
-                        </a>
-                        <a href="#" class="maya-action-tile" data-page="horoscope">
-                            <div class="maya-action-tile__icon">
-                                <i class="bi bi-sun"></i>
-                            </div>
-                            <span class="maya-action-tile__label">Horoscope</span>
+                            <span class="maya-action-tile__label">${isHindi ? 'जर्नल' : 'Journal'}</span>
                         </a>
                         <a href="#" class="maya-action-tile maya-action-tile--highlight" data-action="showMaya">
                             <div class="maya-action-tile__icon">
@@ -515,41 +542,53 @@ const MayaPages = {
                             </div>
                             <span class="maya-action-tile__label">${homeLabels.askMaya}</span>
                         </a>
+                        <a href="#" class="maya-action-tile" data-page="vastu">
+                            <div class="maya-action-tile__icon">
+                                <i class="bi bi-compass"></i>
+                            </div>
+                            <span class="maya-action-tile__label">${isHindi ? 'Vastu Scan' : 'Vastu Scan'}</span>
+                        </a>
+                        <a href="#" class="maya-action-tile" data-page="horoscope">
+                            <div class="maya-action-tile__icon">
+                                <i class="bi bi-signpost-split"></i>
+                            </div>
+                            <span class="maya-action-tile__label">${isHindi ? 'दैनिक योजना' : 'Daily Plan'}</span>
+                        </a>
+                        <a href="#" class="maya-action-tile" data-page="kundli">
+                            <div class="maya-action-tile__icon">
+                                <i class="bi bi-diagram-3"></i>
+                            </div>
+                            <span class="maya-action-tile__label">${isHindi ? 'लाइफ मैप' : 'Life Map'}</span>
+                        </a>
                         <a href="#" class="maya-action-tile" data-page="compatibility">
                             <div class="maya-action-tile__icon">
                                 <i class="bi bi-heart"></i>
                             </div>
-                            <span class="maya-action-tile__label">Match</span>
+                            <span class="maya-action-tile__label">${isHindi ? 'रिलेशन' : 'Relation'}</span>
                         </a>
                         <a href="#" class="maya-action-tile" data-page="numerology">
                             <div class="maya-action-tile__icon">
                                 <i class="bi bi-123"></i>
                             </div>
-                            <span class="maya-action-tile__label">Numerology</span>
+                            <span class="maya-action-tile__label">${isHindi ? 'पैटर्न' : 'Patterns'}</span>
                         </a>
                         <a href="#" class="maya-action-tile" data-page="panchang">
                             <div class="maya-action-tile__icon">
                                 <i class="bi bi-calendar-week"></i>
                             </div>
-                            <span class="maya-action-tile__label">Panchang</span>
-                        </a>
-                        <a href="#" class="maya-action-tile" data-page="vastu">
-                            <div class="maya-action-tile__icon">
-                                <i class="bi bi-compass"></i>
-                            </div>
-                            <span class="maya-action-tile__label">Vastu</span>
+                            <span class="maya-action-tile__label">${isHindi ? 'समय' : 'Timing'}</span>
                         </a>
                         <a href="#" class="maya-action-tile" data-page="palm-reading">
                             <div class="maya-action-tile__icon">
                                 <i class="bi bi-hand-index"></i>
                             </div>
-                            <span class="maya-action-tile__label">Palm Reading</span>
+                            <span class="maya-action-tile__label">${isHindi ? 'हैंड स्कैन' : 'Hand Scan'}</span>
                         </a>
                         <a href="#" class="maya-action-tile" data-page="spiritual-music">
                             <div class="maya-action-tile__icon">
                                 <i class="bi bi-music-note-beamed"></i>
                             </div>
-                            <span class="maya-action-tile__label">Bhakti Music</span>
+                            <span class="maya-action-tile__label">${isHindi ? 'संगीत' : 'Music'}</span>
                         </a>
                     </div>
                 </div>
@@ -621,7 +660,219 @@ const MayaPages = {
             </div>
         `;
     },
-    
+
+    _escapeHtml(value) {
+        const entityMap = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+
+        return String(value ?? '').replace(/[&<>"']/g, (char) => entityMap[char]);
+    },
+
+    getJournalEntries() {
+        const entries = MayaUtils.storage.get('maya_journal_entries') || [];
+        return Array.isArray(entries) ? entries : [];
+    },
+
+    getTodayJournalEntry() {
+        const today = this._getLocalDate();
+        return this.getJournalEntries().find((entry) => entry.date === today) || null;
+    },
+
+    getJournalStreak(entries = this.getJournalEntries()) {
+        const dateSet = new Set(entries.map((entry) => entry.date).filter(Boolean));
+        const cursor = new Date();
+        let streak = 0;
+
+        while (dateSet.has(this._formatLocalDateKey(cursor))) {
+            streak += 1;
+            cursor.setDate(cursor.getDate() - 1);
+        }
+
+        return streak;
+    },
+
+    getDailyPractice(profile, isHindi) {
+        const todayJournal = this.getTodayJournalEntry();
+        const firstName = profile?.name?.split(' ')[0] || (isHindi ? 'मित्र' : 'Friend');
+        const focusLabels = {
+            clarity: { en: 'clarity', hi: 'स्पष्टता' },
+            relationships: { en: 'relationships', hi: 'रिश्ते' },
+            work: { en: 'work', hi: 'काम' },
+            wellness: { en: 'wellness', hi: 'सेहत' },
+            home: { en: 'home energy', hi: 'घर की ऊर्जा' }
+        };
+        const focus = todayJournal?.focus || 'clarity';
+        const focusLabel = focusLabels[focus] || focusLabels.clarity;
+        const localizedFocus = isHindi ? focusLabel.hi : focusLabel.en;
+
+        return {
+            summary: isHindi
+                ? `${firstName}, आज ${localizedFocus} पर ध्यान दें। एक ईमानदार नोट लिखें, एक छोटा कदम चुनें, और शाम को देखें कि उससे क्या बदला।`
+                : `${firstName}, focus on ${localizedFocus} today. Write one honest note, choose one small next step, and check what changed by evening.`,
+            steps: [
+                {
+                    icon: 'bi-sunrise',
+                    label: isHindi ? 'सुबह' : 'Morning',
+                    title: isHindi ? 'इरादा सेट करें' : 'Set an intention',
+                    text: isHindi ? 'आज किस बात को सरल बनाना है, उसे एक वाक्य में लिखें।' : 'Write the one thing you want to make simpler today.'
+                },
+                {
+                    icon: 'bi-journal-text',
+                    label: isHindi ? 'दिन में' : 'Midday',
+                    title: isHindi ? 'जर्नल चेक-इन' : 'Journal check-in',
+                    text: isHindi ? 'मूड, फोकस और एक व्यवहारिक अगले कदम को सेव करें।' : 'Save your mood, focus, and one practical next action.'
+                },
+                {
+                    icon: 'bi-moon-stars',
+                    label: isHindi ? 'शाम' : 'Evening',
+                    title: isHindi ? 'प्रतिबिंब' : 'Reflect',
+                    text: isHindi ? 'MAYA से पूछें कि आज के नोट से कल की योजना कैसे बने।' : 'Ask MAYA to turn today\'s note into tomorrow\'s plan.'
+                }
+            ]
+        };
+    },
+
+    renderJournal(profile, isHindi) {
+        const today = this._getLocalDate();
+        const entries = this.getJournalEntries();
+        const todayEntry = this.getTodayJournalEntry();
+        const streak = this.getJournalStreak(entries);
+        const practice = this.getDailyPractice(profile, isHindi);
+        const firstName = profile?.name?.split(' ')[0] || (isHindi ? 'मित्र' : 'Friend');
+        const moodOptions = [
+            { value: 'calm', label: isHindi ? 'शांत' : 'Calm', icon: 'bi-water' },
+            { value: 'steady', label: isHindi ? 'स्थिर' : 'Steady', icon: 'bi-activity' },
+            { value: 'heavy', label: isHindi ? 'भारी' : 'Heavy', icon: 'bi-cloud' },
+            { value: 'bright', label: isHindi ? 'उत्साहित' : 'Bright', icon: 'bi-brightness-high' }
+        ];
+        const focusOptions = [
+            { value: 'clarity', label: isHindi ? 'स्पष्टता' : 'Clarity', icon: 'bi-eye' },
+            { value: 'relationships', label: isHindi ? 'रिश्ते' : 'Relationships', icon: 'bi-people' },
+            { value: 'work', label: isHindi ? 'काम' : 'Work', icon: 'bi-briefcase' },
+            { value: 'wellness', label: isHindi ? 'सेहत' : 'Wellness', icon: 'bi-heart-pulse' },
+            { value: 'home', label: isHindi ? 'घर' : 'Home', icon: 'bi-house-heart' }
+        ];
+        const selectedMood = todayEntry?.mood || 'steady';
+        const selectedFocus = todayEntry?.focus || 'clarity';
+        const sortedEntries = [...entries].sort((firstEntry, secondEntry) => (secondEntry.date || '').localeCompare(firstEntry.date || ''));
+        const historyHtml = sortedEntries.length ? sortedEntries.slice(0, 10).map((entry) => {
+            const mood = moodOptions.find((option) => option.value === entry.mood)?.label || entry.mood || '';
+            const focus = focusOptions.find((option) => option.value === entry.focus)?.label || entry.focus || '';
+            return `
+                <div class="maya-journal-entry">
+                    <div class="maya-journal-entry__meta">
+                        <span>${this._escapeHtml(entry.date)}</span>
+                        <span>${this._escapeHtml(mood)} - ${this._escapeHtml(focus)}</span>
+                    </div>
+                    ${entry.intention ? `<strong>${this._escapeHtml(entry.intention)}</strong>` : ''}
+                    ${entry.reflection ? `<p>${this._escapeHtml(entry.reflection)}</p>` : ''}
+                </div>
+            `;
+        }).join('') : `
+            <div class="maya-empty-state maya-empty-state--compact">
+                <div class="maya-empty-state__icon"><i class="bi bi-journal-plus"></i></div>
+                <h4>${isHindi ? 'पहली एंट्री लिखें' : 'Write your first entry'}</h4>
+                <p>${isHindi ? 'आपकी दैनिक योजना और बातचीत यहां से बेहतर होती जाएगी।' : 'Your daily plan and MAYA coaching will become more useful from here.'}</p>
+            </div>
+        `;
+
+        return `
+            <div class="maya-page maya-journal-page">
+                <div class="maya-page__header">
+                    <h2 class="maya-page__title">${isHindi ? 'Maya Journal' : 'Maya Journal'}</h2>
+                    <p class="maya-page__subtitle">${isHindi ? `${firstName}, हर दिन एक छोटा नोट, एक साफ इरादा, और एक व्यवहारिक कदम।` : `${firstName}, one daily note, one clear intention, and one practical step.`}</p>
+                </div>
+
+                <div class="maya-journal-summary">
+                    <div class="maya-journal-summary__item">
+                        <span>${isHindi ? 'आज' : 'Today'}</span>
+                        <strong>${todayEntry ? (isHindi ? 'पूरा' : 'Complete') : (isHindi ? 'बाकी' : 'Open')}</strong>
+                    </div>
+                    <div class="maya-journal-summary__item">
+                        <span>${isHindi ? 'श्रृंखला' : 'Streak'}</span>
+                        <strong>${streak} ${isHindi ? 'दिन' : 'days'}</strong>
+                    </div>
+                    <div class="maya-journal-summary__item">
+                        <span>${isHindi ? 'फोकस' : 'Focus'}</span>
+                        <strong>${focusOptions.find((option) => option.value === selectedFocus)?.label || 'Clarity'}</strong>
+                    </div>
+                </div>
+
+                <div class="maya-journal-plan">
+                    <div class="maya-journal-plan__icon"><i class="bi bi-signpost-split"></i></div>
+                    <div>
+                        <span>${isHindi ? 'आज की योजना' : "Today's Plan"}</span>
+                        <p>${this._escapeHtml(practice.summary)}</p>
+                    </div>
+                </div>
+
+                <div class="maya-journal-card">
+                    <input type="hidden" id="journalDate" value="${today}">
+
+                    <div class="maya-journal-field">
+                        <label>${isHindi ? 'मूड' : 'Mood'}</label>
+                        <div class="maya-journal-chips" id="journalMoodChips">
+                            ${moodOptions.map((option) => `
+                                <button type="button" class="maya-journal-chip ${option.value === selectedMood ? 'active' : ''}" data-journal-mood="${option.value}">
+                                    <i class="bi ${option.icon}"></i>
+                                    <span>${option.label}</span>
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="maya-journal-field">
+                        <label>${isHindi ? 'फोकस' : 'Focus'}</label>
+                        <div class="maya-journal-chips maya-journal-chips--wrap" id="journalFocusChips">
+                            ${focusOptions.map((option) => `
+                                <button type="button" class="maya-journal-chip ${option.value === selectedFocus ? 'active' : ''}" data-journal-focus="${option.value}">
+                                    <i class="bi ${option.icon}"></i>
+                                    <span>${option.label}</span>
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="maya-journal-field">
+                        <label for="journalIntention">${isHindi ? 'आज का इरादा' : "Today's intention"}</label>
+                        <input type="text" class="maya-input" id="journalIntention" value="${this._escapeHtml(todayEntry?.intention || '')}" placeholder="${isHindi ? 'एक छोटा व्यवहारिक कदम' : 'One small practical step'}">
+                    </div>
+
+                    <div class="maya-journal-field">
+                        <label for="journalReflection">${isHindi ? 'प्रतिबिंब' : 'Reflection'}</label>
+                        <textarea class="maya-input maya-journal-textarea" id="journalReflection" rows="5" placeholder="${isHindi ? 'आज मन में क्या चल रहा है?' : 'What is moving through your mind today?'}">${this._escapeHtml(todayEntry?.reflection || '')}</textarea>
+                    </div>
+
+                    <div class="maya-journal-actions">
+                        <button type="button" class="maya-btn maya-btn--primary" id="saveJournalEntry">
+                            <i class="bi bi-check2-circle"></i>
+                            <span>${isHindi ? 'जर्नल सेव करें' : 'Save Journal'}</span>
+                        </button>
+                        <button type="button" class="maya-btn maya-btn--outline" id="coachJournalBtn">
+                            <i class="bi bi-chat-heart"></i>
+                            <span>${isHindi ? 'MAYA से कोचिंग लें' : 'Coach with MAYA'}</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="maya-section">
+                    <h3 class="maya-section__title">
+                        <i class="bi bi-clock-history"></i>
+                        ${isHindi ? 'जर्नल इतिहास' : 'Journal History'}
+                    </h3>
+                    <div class="maya-journal-history">
+                        ${historyHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
     /**
      * Get time-based greeting
      */
@@ -661,7 +912,7 @@ const MayaPages = {
         // Get user's first name for pre-fill
         const userName = profile?.name || '';
         const userGender = profile?.gender || '';
-        
+
         return `
             <div class="maya-page maya-compatibility">
                 <div class="maya-page__header">
@@ -781,27 +1032,27 @@ const MayaPages = {
     },
 
     /**
-     * Render Daily Horoscope
+     * Render Daily Plan
      */
     async renderDailyHoroscope(profile, isHindi) {
         // Use user's preferred zodiac system (Western or Vedic)
         const zodiac = profile && profile.birthDate ? MayaAstrology.getZodiac(profile.birthDate, profile) : null;
         const today = new Date().toISOString().split('T')[0];
-        
+
         // Get user's first name for personalization
         const userName = profile?.name || '';
         const firstName = userName.split(' ')[0] || (isHindi ? 'मित्र' : 'Friend');
-        
+
         let horoscope = '';
         let isAIGenerated = false;
         let dosAndDonts = { dos: [], donts: [], source: 'loading' };
-        
+
         if (zodiac) {
             // Use centralized cache manager
             const cached = await this.getDailyHoroscope();
             horoscope = cached.text;
             isAIGenerated = cached.isAI === true;
-            
+
             // Generate Do's and Don'ts based on horoscope (async, will update UI)
             if (window.MayaHoroscopeAPI) {
                 try {
@@ -816,7 +1067,7 @@ const MayaPages = {
         // Generate ratings
         const seed = today.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
         const getRating = (offset) => Math.floor(((seed + offset) % 5) + 1);
-        
+
         const renderStars = (rating) => {
             let stars = '';
             for (let i = 1; i <= 5; i++) {
@@ -827,7 +1078,7 @@ const MayaPages = {
 
         const zodiacSystem = MayaAstrology.getZodiacSystem();
         const systemLabel = zodiacSystem === 'vedic' ? 'Vedic (Sidereal)' : 'Western (Tropical)';
-        
+
         // Personalized greeting based on time of day
         const hour = new Date().getHours();
         let greeting = isHindi ? 'नमस्ते' : 'Hello';
@@ -947,7 +1198,7 @@ const MayaPages = {
                             <i class="bi bi-calendar-x"></i>
                         </div>
                         <h4>Birth Date Required</h4>
-                        <p>Please add your birth date to see your personalized horoscope.</p>
+                        <p>Please add your birth date to see your personalized daily plan.</p>
                         <button class="maya-btn maya-btn--primary" data-page="profile">
                             <i class="bi bi-person-plus"></i>
                             <span>Add Birth Details</span>
@@ -973,16 +1224,16 @@ const MayaPages = {
                                 </div>
                             </div>
                             <h4>Hi, I'm MAYA</h4>
-                            <p>Your cosmic guide to life's questions. Ask me anything about love, career, relationships, or your astrological destiny.</p>
+                            <p>Your journal and voice guide for reflection, timing, relationships, work, and practical next steps.</p>
                             <div class="maya-chat__suggestions">
-                                <button class="maya-chip" data-question="What does my horoscope say about love today?">
-                                    <i class="bi bi-heart"></i> Love Today
+                                <button class="maya-chip" data-question="Help me turn today's journal into one relationship action.">
+                                    <i class="bi bi-heart"></i> Relationship
                                 </button>
-                                <button class="maya-chip" data-question="Will I be successful in my career this year?">
-                                    <i class="bi bi-briefcase"></i> Career
+                                <button class="maya-chip" data-question="Help me choose one focused work step for today.">
+                                    <i class="bi bi-briefcase"></i> Work
                                 </button>
-                                <button class="maya-chip" data-question="What are my lucky numbers today?">
-                                    <i class="bi bi-123"></i> Lucky Numbers
+                                <button class="maya-chip" data-question="What should I write in my journal tonight?">
+                                    <i class="bi bi-journal-text"></i> Journal Prompt
                                 </button>
                             </div>
                         </div>
@@ -1011,7 +1262,7 @@ const MayaPages = {
     renderChatHistory(isHindi) {
         // Get chat history from local storage
         const chatHistory = MayaUtils.storage.get('maya_chat_history') || [];
-        
+
         const emptyState = `
             <div class="maya-empty-state">
                 <div class="maya-empty-state__icon">
@@ -1025,14 +1276,14 @@ const MayaPages = {
                 </button>
             </div>
         `;
-        
+
         const historyList = chatHistory.length > 0 ? `
             <div class="maya-chat-history__list">
                 ${chatHistory.slice().reverse().map((chat, index) => {
-                    const originalIndex = chatHistory.length - 1 - index;
-                    const chatId = String(chat.id || `legacy-${originalIndex}`);
+            const originalIndex = chatHistory.length - 1 - index;
+            const chatId = String(chat.id || `legacy-${originalIndex}`);
 
-                    return `
+            return `
                     <div class="maya-chat-history__item" data-chat-id="${chatId}">
                         <div class="maya-chat-history__item-icon">
                             <i class="bi bi-chat-dots"></i>
@@ -1050,7 +1301,7 @@ const MayaPages = {
                         </button>
                     </div>
                 `;
-                }).join('')}
+        }).join('')}
             </div>
             <div class="maya-chat-history__actions">
                 <button class="maya-btn maya-btn--danger-outline maya-btn--sm" id="clearAllChats">
@@ -1086,7 +1337,7 @@ const MayaPages = {
         const date = new Date(timestamp);
         const now = new Date();
         const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays === 0) {
             return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         } else if (diffDays === 1) {
@@ -1106,10 +1357,10 @@ const MayaPages = {
         const panchangData = this.calculatePanchang(today);
 
         // Format Hindu date
-        const hinduMonths = ['Chaitra', 'Vaishakha', 'Jyeshtha', 'Ashadha', 'Shravana', 'Bhadrapada', 
-                            'Ashwin', 'Kartik', 'Margashirsha', 'Pausha', 'Magha', 'Phalguna'];
+        const hinduMonths = ['Chaitra', 'Vaishakha', 'Jyeshtha', 'Ashadha', 'Shravana', 'Bhadrapada',
+            'Ashwin', 'Kartik', 'Margashirsha', 'Pausha', 'Magha', 'Phalguna'];
         const hinduMonthsHindi = ['चैत्र', 'वैशाख', 'ज्येष्ठ', 'आषाढ़', 'श्रावण', 'भाद्रपद',
-                                  'आश्विन', 'कार्तिक', 'मार्गशीर्ष', 'पौष', 'माघ', 'फाल्गुन'];
+            'आश्विन', 'कार्तिक', 'मार्गशीर्ष', 'पौष', 'माघ', 'फाल्गुन'];
 
         return `
             <div class="maya-page maya-panchang">
@@ -1420,7 +1671,7 @@ const MayaPages = {
      */
     calculatePanchang(date) {
         const dayOfWeek = date.getDay();
-        
+
         // Varas (weekdays) with Hindi names
         const varas = [
             { name: 'Ravivara (Sunday)', hindi: 'रविवार', lord: 'Sun (Surya)' },
@@ -1431,7 +1682,7 @@ const MayaPages = {
             { name: 'Shukravara (Friday)', hindi: 'शुक्रवार', lord: 'Venus (Shukra)' },
             { name: 'Shanivara (Saturday)', hindi: 'शनिवार', lord: 'Saturn (Shani)' }
         ];
-        
+
         // Tithis with Hindi names
         const tithis = [
             { name: 'Pratipada', hindi: 'प्रतिपदा', number: 1 },
@@ -1451,7 +1702,7 @@ const MayaPages = {
             { name: 'Purnima', hindi: 'पूर्णिमा', number: 15 },
             { name: 'Amavasya', hindi: 'अमावस्या', number: 30 }
         ];
-        
+
         // 27 Nakshatras with lords
         const nakshatras = [
             { name: 'Ashwini', hindi: 'अश्विनी', lord: 'Ketu' },
@@ -1482,7 +1733,7 @@ const MayaPages = {
             { name: 'Uttara Bhadrapada', hindi: 'उत्तराभाद्रपदा', lord: 'Saturn' },
             { name: 'Revati', hindi: 'रेवती', lord: 'Mercury' }
         ];
-        
+
         // 27 Yogas
         const yogas = [
             { name: 'Vishkumbha', hindi: 'विष्कुम्भ', nature: 'Inauspicious' },
@@ -1513,7 +1764,7 @@ const MayaPages = {
             { name: 'Indra', hindi: 'इन्द्र', nature: 'Auspicious' },
             { name: 'Vaidhriti', hindi: 'वैधृति', nature: 'Inauspicious' }
         ];
-        
+
         // 11 Karanas (half-tithis)
         const karanas = [
             { name: 'Bava', hindi: 'बव', nature: 'Moveable' },
@@ -1528,7 +1779,7 @@ const MayaPages = {
             { name: 'Naga', hindi: 'नाग', nature: 'Fixed' },
             { name: 'Kimstughna', hindi: 'किंस्तुघ्न', nature: 'Fixed' }
         ];
-        
+
         // Rashis (Zodiac signs) with Hindi names
         const rashis = [
             { name: 'Aries', hindi: 'मेष' },
@@ -1550,13 +1801,13 @@ const MayaPages = {
             const year = d.getFullYear();
             const month = d.getMonth() + 1;
             const day = d.getDate() + d.getHours() / 24;
-            
+
             let y = year, m = month;
             if (m <= 2) { y--; m += 12; }
-            
+
             const A = Math.floor(y / 100);
             const B = 2 - A + Math.floor(A / 4);
-            
+
             return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + day + B - 1524.5;
         };
 
@@ -1580,17 +1831,17 @@ const MayaPages = {
             let M = 357.5291 + 35999.0503 * T;
             let Mp = 134.9634 + 477198.8675 * T;
             let F = 93.2721 + 483202.0175 * T;
-            
+
             D = D * Math.PI / 180;
             M = M * Math.PI / 180;
             Mp = Mp * Math.PI / 180;
             F = F * Math.PI / 180;
-            
+
             L += 6.289 * Math.sin(Mp);
             L += 1.274 * Math.sin(2 * D - Mp);
             L += 0.658 * Math.sin(2 * D);
             L += 0.214 * Math.sin(2 * Mp);
-            
+
             L = L % 360;
             if (L < 0) L += 360;
             return L;
@@ -1605,7 +1856,7 @@ const MayaPages = {
 
         const jd = getJulianDay(date);
         const ayanamsa = getAyanamsa(jd);
-        
+
         // Get Sidereal positions
         let sunLong = (getSunLongitude(jd) - ayanamsa) % 360;
         let moonLong = (getMoonLongitude(jd) - ayanamsa) % 360;
@@ -1617,20 +1868,20 @@ const MayaPages = {
         if (tithiDiff < 0) tithiDiff += 360;
         const tithiIndex = Math.floor(tithiDiff / 12);
         const tithiRemaining = 12 - (tithiDiff % 12);
-        
+
         // Calculate end time (approximate - based on Moon's daily motion of ~13 degrees)
         const hoursToTithiEnd = (tithiRemaining / 13) * 24;
         const tithiEndTime = new Date(date.getTime() + hoursToTithiEnd * 3600000);
-        
+
         // Determine Paksha and actual Tithi
         const isShukla = tithiIndex < 15;
         const pakshaTithiIndex = tithiIndex % 15;
         let tithi = tithis[pakshaTithiIndex];
-        
+
         // Special case for Purnima/Amavasya
         if (pakshaTithiIndex === 14) {
-            tithi = isShukla ? { name: 'Purnima', hindi: 'पूर्णिमा', number: 15 } 
-                            : { name: 'Amavasya', hindi: 'अमावस्या', number: 30 };
+            tithi = isShukla ? { name: 'Purnima', hindi: 'पूर्णिमा', number: 15 }
+                : { name: 'Amavasya', hindi: 'अमावस्या', number: 30 };
         }
 
         // Calculate Nakshatra (Moon longitude / 13.333)
@@ -1664,7 +1915,7 @@ const MayaPages = {
         // Calculate Vikram Samvat (Hindu calendar year)
         // Vikram Samvat = Gregorian Year + 57 (before Chaitra) or + 56 (after Chaitra)
         const vikramSamvat = date.getFullYear() + (date.getMonth() < 3 ? 56 : 57);
-        
+
         // Hindu month (approximate based on Sun's position)
         const hinduMonth = Math.floor((sunLong + 23.5) / 30) % 12;
 
@@ -1712,10 +1963,10 @@ const MayaPages = {
 
         const rahuKaalStart = sunriseHour + (rahuMuhurta * muhurtaDuration);
         const rahuKaalEnd = rahuKaalStart + muhurtaDuration;
-        
+
         const yamaStart = sunriseHour + (yamaMuhurta * muhurtaDuration);
         const yamaEnd = yamaStart + muhurtaDuration;
-        
+
         const gulikaStart = sunriseHour + (gulikaMuhurta * muhurtaDuration);
         const gulikaEnd = gulikaStart + muhurtaDuration;
 
@@ -1759,7 +2010,7 @@ const MayaPages = {
         const getDosAndDonts = () => {
             const dos = [];
             const donts = [];
-            
+
             // Based on Vara (weekday)
             const varaDos = {
                 0: ['Worship Sun God', 'Start health regimes', 'Meet with authorities'],
@@ -1770,7 +2021,7 @@ const MayaPages = {
                 5: ['Worship Goddess Lakshmi', 'Buy new items', 'Art and entertainment'],
                 6: ['Worship Shani Dev', 'Iron/oil related work', 'Servant matters']
             };
-            
+
             const varaDonts = {
                 0: ['Avoid starting journeys to East', 'Avoid oil application'],
                 1: ['Avoid buying salt', 'Avoid arguments'],
@@ -1813,7 +2064,7 @@ const MayaPages = {
             if (yoga.nature === 'Inauspicious') {
                 donts.push(`${yoga.name} Yoga - Be cautious in important matters`);
             }
-            
+
             // Based on Karana
             if (karana.name === 'Vishti') {
                 donts.push('Bhadra Karana - Avoid auspicious activities');
@@ -1829,7 +2080,7 @@ const MayaPages = {
         // Get festivals/observances for today
         const getFestivals = () => {
             const festivals = [];
-            
+
             // Ekadashi
             if (pakshaTithiIndex === 10) {
                 festivals.push({ name: 'Ekadashi Vrat', icon: 'bi-flower1' });
@@ -1876,36 +2127,36 @@ const MayaPages = {
             sunSignHindi: sunSign.hindi,
             hinduMonth: hinduMonth,
             vikramSamvat: vikramSamvat,
-            
+
             // Timings
             sunrise: formatTime(sunriseHour),
             sunset: formatTime(sunsetHour),
             moonrise: formatTime(sunriseHour + (tithiIndex * 0.8) % 12), // Approximate
             moonset: formatTime(sunsetHour + (tithiIndex * 0.8) % 12), // Approximate
-            
+
             // Auspicious timings
             brahmaMuhurat: `${formatTime(brahmaStart)} - ${formatTime(brahmaEnd)}`,
             abhijitMuhurat: `${formatTime(abhijitStart)} - ${formatTime(abhijitEnd)}`,
             vijayMuhurat: `${formatTime(vijayStart)} - ${formatTime(vijayEnd)}`,
             godhuliMuhurat: `${formatTime(godhuliStart)} - ${formatTime(godhuliEnd)}`,
             amritKaal: `${formatTime(amritStart)} - ${formatTime(amritEnd)}`,
-            
+
             // Inauspicious timings
             rahuKaal: `${formatTime(rahuKaalStart)} - ${formatTime(rahuKaalEnd)}`,
             yamagandaKaal: `${formatTime(yamaStart)} - ${formatTime(yamaEnd)}`,
             gulikaKaal: `${formatTime(gulikaStart)} - ${formatTime(gulikaEnd)}`,
             durMuhurat: `${formatTime(durStart)} - ${formatTime(durEnd)}`,
             varjyam: `${formatTime(varjyamStart)} - ${formatTime(varjyamEnd)}`,
-            
+
             // Additional info
             dishaShool: `${dishaShoolMap[dayOfWeek]} direction`,
             luckyColor: luckyColorMap[dayOfWeek],
             luckyNumber: luckyNumberMap[dayOfWeek],
-            
+
             // Do's and Don'ts
             dos: dos,
             donts: donts,
-            
+
             // Festivals
             festivals: getFestivals()
         };
@@ -1931,7 +2182,7 @@ const MayaPages = {
             'Saturn/Uranus': 'Om Praam Preem Praum Sah Shanaischaraya Namaha',
             'Jupiter/Neptune': 'Om Graam Greem Graum Sah Gurave Namaha'
         };
-        
+
         return mantras[ruling] || 'Om Namah Shivaya';
     },
 
@@ -1942,10 +2193,10 @@ const MayaPages = {
         // Use user's preferred zodiac system (Western or Vedic)
         const zodiac = profile.birthDate ? MayaAstrology.getZodiac(profile.birthDate, profile) : null;
         const zodiacSystem = MayaAstrology.getZodiacSystem();
-        
+
         // Get detailed remedy data for this zodiac
         const remedyData = zodiac ? this.getRemedyData(zodiac, isHindi) : null;
-        
+
         return `
             <div class="maya-page maya-remedies-page">
                 <div class="maya-page__content">
@@ -2250,10 +2501,10 @@ const MayaPages = {
                         <!-- Disclaimer -->
                         <div class="maya-remedies__disclaimer">
                             <i class="bi bi-info-circle"></i>
-                            <p>${isHindi ? 
-                                'ये उपाय सामान्य वैदिक ज्ञान पर आधारित हैं। किसी भी रत्न धारण करने से पहले किसी योग्य ज्योतिषी से परामर्श अवश्य करें।' :
-                                'These remedies are based on general Vedic knowledge. Please consult a qualified astrologer before wearing any gemstone.'
-                            }</p>
+                            <p>${isHindi ?
+                    'ये उपाय सामान्य वैदिक ज्ञान पर आधारित हैं। किसी भी रत्न धारण करने से पहले किसी योग्य ज्योतिषी से परामर्श अवश्य करें।' :
+                    'These remedies are based on general Vedic knowledge. Please consult a qualified professional before wearing any gemstone.'
+                }</p>
                         </div>
                     ` : `
                         <!-- Empty State -->
@@ -2280,9 +2531,9 @@ const MayaPages = {
     getRemedyData(zodiac, isHindi) {
         const planetRemedies = {
             'Sun': {
-                gemstone: { 
-                    name: 'Ruby', 
-                    hindi: 'माणिक्य', 
+                gemstone: {
+                    name: 'Ruby',
+                    hindi: 'माणिक्य',
                     color: '#e74c3c',
                     image: 'ruby.png',
                     finger: isHindi ? 'अनामिका (दाएं हाथ)' : 'Ring Finger (Right)',
@@ -2343,9 +2594,9 @@ const MayaPages = {
                 donts: isHindi ? ['सूर्यास्त के बाद भोजन न करें', 'पिताजी का अपमान न करें', 'काले कपड़े न पहनें'] : ['Don\'t eat after sunset', 'Don\'t disrespect father', 'Avoid black clothes']
             },
             'Moon': {
-                gemstone: { 
-                    name: 'Pearl', 
-                    hindi: 'मोती', 
+                gemstone: {
+                    name: 'Pearl',
+                    hindi: 'मोती',
                     color: '#ecf0f1',
                     image: 'pearl.png',
                     finger: isHindi ? 'कनिष्ठा (दाएं हाथ)' : 'Little Finger (Right)',
@@ -2406,9 +2657,9 @@ const MayaPages = {
                 donts: isHindi ? ['माता का अपमान न करें', 'दूध न बर्बाद करें', 'क्रोध न करें'] : ['Don\'t disrespect mother', 'Don\'t waste milk', 'Avoid anger']
             },
             'Mars': {
-                gemstone: { 
-                    name: 'Red Coral', 
-                    hindi: 'मूंगा', 
+                gemstone: {
+                    name: 'Red Coral',
+                    hindi: 'मूंगा',
                     color: '#e74c3c',
                     image: 'coral.png',
                     finger: isHindi ? 'अनामिका (दाएं हाथ)' : 'Ring Finger (Right)',
@@ -2469,9 +2720,9 @@ const MayaPages = {
                 donts: isHindi ? ['क्रोध न करें', 'हिंसा से बचें', 'लाल मिर्च न खाएं'] : ['Avoid anger', 'Avoid violence', 'Reduce spicy food']
             },
             'Mercury': {
-                gemstone: { 
-                    name: 'Emerald', 
-                    hindi: 'पन्ना', 
+                gemstone: {
+                    name: 'Emerald',
+                    hindi: 'पन्ना',
                     color: '#2ecc71',
                     image: 'emerald.png',
                     finger: isHindi ? 'कनिष्ठा (दाएं हाथ)' : 'Little Finger (Right)',
@@ -2532,9 +2783,9 @@ const MayaPages = {
                 donts: isHindi ? ['झूठ न बोलें', 'बहन का अपमान न करें', 'नशा न करें'] : ['Don\'t lie', 'Don\'t disrespect sister', 'Avoid intoxicants']
             },
             'Jupiter': {
-                gemstone: { 
-                    name: 'Yellow Sapphire', 
-                    hindi: 'पुखराज', 
+                gemstone: {
+                    name: 'Yellow Sapphire',
+                    hindi: 'पुखराज',
                     color: '#f1c40f',
                     image: 'topaz.png',
                     finger: isHindi ? 'तर्जनी (दाएं हाथ)' : 'Index Finger (Right)',
@@ -2595,9 +2846,9 @@ const MayaPages = {
                 donts: isHindi ? ['गुरु का अपमान न करें', 'झूठ न बोलें', 'अहंकार न करें'] : ['Don\'t disrespect guru', 'Don\'t lie', 'Avoid arrogance']
             },
             'Venus': {
-                gemstone: { 
-                    name: 'Diamond', 
-                    hindi: 'हीरा', 
+                gemstone: {
+                    name: 'Diamond',
+                    hindi: 'हीरा',
                     color: '#e8e8e8',
                     image: 'diamond.png',
                     finger: isHindi ? 'मध्यमा (दाएं हाथ)' : 'Middle Finger (Right)',
@@ -2658,9 +2909,9 @@ const MayaPages = {
                 donts: isHindi ? ['स्त्री का अपमान न करें', 'अश्लीलता से बचें', 'फिजूलखर्ची न करें'] : ['Don\'t disrespect women', 'Avoid vulgarity', 'Don\'t overspend']
             },
             'Saturn': {
-                gemstone: { 
-                    name: 'Blue Sapphire', 
-                    hindi: 'नीलम', 
+                gemstone: {
+                    name: 'Blue Sapphire',
+                    hindi: 'नीलम',
                     color: '#3498db',
                     image: 'sapphire.png',
                     finger: isHindi ? 'मध्यमा (दाएं हाथ)' : 'Middle Finger (Right)',
@@ -2724,10 +2975,10 @@ const MayaPages = {
 
         // Default to Sun if planet not found
         const planetData = planetRemedies[zodiac.ruling] || planetRemedies['Sun'];
-        
+
         // Update gemstone name from zodiac config
         planetData.gemstone.name = zodiac.gemstone || planetData.gemstone.name;
-        
+
         return planetData;
     },
 
@@ -2853,10 +3104,10 @@ const MayaPages = {
                             <h6>${isHindi ? 'गणना पद्धति' : 'Calculation Methodology'}</h6>
                         </div>
                         <div class="maya-muhurat__methodology-content">
-                            <p>${isHindi ? 
-                                'मुहूर्त गणना वैदिक ज्योतिष के अनुसार पंचांग तत्वों पर आधारित है: तिथि, नक्षत्र, योग, करण और वार।' :
-                                'Muhurat calculations are based on Vedic astrology principles using Panchang elements: Tithi, Nakshatra, Yoga, Karana, and Vara.'
-                            }</p>
+                            <p>${isHindi ?
+                'मुहूर्त गणना वैदिक ज्योतिष के अनुसार पंचांग तत्वों पर आधारित है: तिथि, नक्षत्र, योग, करण और वार।' :
+                'Muhurat calculations are based on Vedic astrology principles using Panchang elements: Tithi, Nakshatra, Yoga, Karana, and Vara.'
+            }</p>
                             <div class="maya-muhurat__methodology-factors">
                                 <span><i class="bi bi-check-circle-fill"></i> ${isHindi ? 'शुभ तिथियां' : 'Auspicious Tithis'}</span>
                                 <span><i class="bi bi-check-circle-fill"></i> ${isHindi ? 'शुभ नक्षत्र' : 'Favorable Nakshatras'}</span>
@@ -2869,16 +3120,16 @@ const MayaPages = {
                     <!-- Disclaimer -->
                     <div class="maya-muhurat__disclaimer">
                         <i class="bi bi-exclamation-circle"></i>
-                        <p>${isHindi ? 
-                            'ये मुहूर्त सामान्य गणना पर आधारित हैं। महत्वपूर्ण कार्यों के लिए कृपया किसी योग्य ज्योतिषी से परामर्श करें।' :
-                            'These muhurats are based on general calculations. For important events, please consult a qualified astrologer for personalized guidance.'
-                        }</p>
+                        <p>${isHindi ?
+                'ये मुहूर्त सामान्य गणना पर आधारित हैं। महत्वपूर्ण कार्यों के लिए कृपया किसी योग्य professional से परामर्श करें।' :
+                'These timing windows are based on general calculations. For important events, please consult a qualified professional for personalized guidance.'
+            }</p>
                     </div>
                 </div>
             </div>
         `;
     },
-    
+
     /**
      * Get Muhurat dates for an activity - Real Vedic Calculations
      */
@@ -2954,53 +3205,53 @@ const MayaPages = {
         const rules = activityRules[activity] || activityRules.business;
         const muhuratDates = [];
         const today = new Date();
-        
+
         // Check next 60 days for auspicious dates
         for (let i = 1; i <= 60 && muhuratDates.length < 6; i++) {
             const checkDate = new Date(today);
             checkDate.setDate(checkDate.getDate() + i);
-            
+
             const panchang = this.calculatePanchang(checkDate);
             const dayOfWeek = checkDate.getDay();
-            
+
             // Extract tithi number
             const tithiName = panchang.tithi.split('(')[0].trim();
             const tithiNumber = this.getTithiNumber(tithiName);
-            
+
             // Extract nakshatra name
             const nakshatraName = panchang.nakshatra.split('(')[0].trim();
-            
+
             // Check if day is avoided
             if (rules.avoidDays.includes(dayOfWeek)) continue;
-            
+
             // Check if tithi is auspicious
             const isTithiGood = rules.auspiciousTithis.includes(tithiNumber);
-            
+
             // Check if nakshatra is auspicious
             const isNakshatraGood = rules.auspiciousNakshatras.includes(nakshatraName);
-            
+
             // Check if day is favorable
             const isDayGood = rules.auspiciousDays.includes(dayOfWeek);
-            
+
             // Check yoga (avoid inauspicious yogas)
             const yogaName = panchang.yoga.split('(')[0].trim();
             const badYogas = ['Vyatipata', 'Vaidhriti', 'Parigha', 'Vajra', 'Vyaghata', 'Shoola', 'Ganda', 'Atiganda'];
             const isYogaBad = badYogas.includes(yogaName);
-            
+
             // Check karana (avoid Vishti/Bhadra)
             const karanaName = panchang.karana.split('(')[0].trim();
             const isKaranaBad = karanaName === 'Vishti';
-            
+
             // Calculate quality score
             let score = 0;
             let qualityFactors = [];
-            
+
             if (isTithiGood) { score += 25; qualityFactors.push(isHindi ? 'शुभ तिथि' : 'Good Tithi'); }
             if (isNakshatraGood) { score += 30; qualityFactors.push(isHindi ? 'शुभ नक्षत्र' : 'Good Nakshatra'); }
             if (isDayGood) { score += 20; qualityFactors.push(isHindi ? 'शुभ वार' : 'Good Day'); }
             if (!isYogaBad) { score += 15; qualityFactors.push(isHindi ? 'शुभ योग' : 'Good Yoga'); }
             if (!isKaranaBad) { score += 10; qualityFactors.push(isHindi ? 'शुभ करण' : 'Good Karana'); }
-            
+
             // Only include if score is at least 50 (decent muhurat)
             if (score >= 50) {
                 let quality, qualityClass;
@@ -3014,21 +3265,21 @@ const MayaPages = {
                     quality = isHindi ? 'सामान्य शुभ' : 'Moderately Auspicious';
                     qualityClass = 'moderate';
                 }
-                
+
                 // Calculate best muhurat time (avoid Rahu Kaal)
                 const rahuKaalTimes = panchang.rahuKaal.split(' - ');
                 const bestTime = this.calculateBestMuhuratTime(panchang, rahuKaalTimes);
-                
+
                 muhuratDates.push({
                     date: checkDate,
-                    dateStr: checkDate.toLocaleDateString(isHindi ? 'hi-IN' : 'en-IN', { 
-                        weekday: 'short', 
-                        day: 'numeric', 
-                        month: 'short' 
+                    dateStr: checkDate.toLocaleDateString(isHindi ? 'hi-IN' : 'en-IN', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short'
                     }),
-                    fullDate: checkDate.toLocaleDateString(isHindi ? 'hi-IN' : 'en-IN', { 
-                        weekday: 'long', 
-                        day: 'numeric', 
+                    fullDate: checkDate.toLocaleDateString(isHindi ? 'hi-IN' : 'en-IN', {
+                        weekday: 'long',
+                        day: 'numeric',
                         month: 'long',
                         year: 'numeric'
                     }),
@@ -3046,10 +3297,10 @@ const MayaPages = {
                 });
             }
         }
-        
+
         // Sort by score (best first)
         muhuratDates.sort((a, b) => b.score - a.score);
-        
+
         if (muhuratDates.length === 0) {
             return `
                 <div class="maya-muhurat__no-results">
@@ -3058,7 +3309,7 @@ const MayaPages = {
                 </div>
             `;
         }
-        
+
         return muhuratDates.map((d, idx) => `
             <div class="maya-muhurat__result-card maya-muhurat__result-card--${d.qualityClass}">
                 <div class="maya-muhurat__result-header">
@@ -3182,16 +3433,16 @@ const MayaPages = {
             // getZodiac() already returns the correct sign based on user's preferred system
             userRashi = zodiac?.name || 'Aries';
         }
-        
+
         // Day-specific deity and recommendations
         const dayWiseData = this.getDayWiseSpiritualData(isHindi);
         const today = new Date();
         const dayOfWeek = today.getDay();
         const todayData = dayWiseData[dayOfWeek];
-        
+
         // Rashi-wise recommendations
         const rashiData = this.getRashiWiseMusicData(userRashi, isHindi);
-        
+
         return `
             <div class="maya-page maya-spiritual-music">
                 <!-- Hero Header -->
@@ -3531,14 +3782,14 @@ const MayaPages = {
     initSpiritualMusicPage() {
         const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
         const profile = MayaUtils.storage.get('maya_profile') || {};
-        
+
         const API_KEY = MAYA_CONFIG.API_KEYS.YOUTUBE || '';
-        
+
         // Get day data
         const dayWiseData = this.getDayWiseSpiritualData(isHindi);
         const dayOfWeek = new Date().getDay();
         const todayData = dayWiseData[dayOfWeek];
-        
+
         // Get user's rashi based on their preferred zodiac system (western or vedic)
         let userRashi = 'Aries';
         if (profile && profile.birthDate && window.MayaAstrology) {
@@ -3547,7 +3798,7 @@ const MayaPages = {
             userRashi = zodiac?.name || 'Aries';
         }
         const rashiData = this.getRashiWiseMusicData(userRashi, isHindi);
-        
+
         // Search queries for each category
         const categoryQueries = {
             'todays-playlist': todayData.searchQueries[Math.floor(Math.random() * todayData.searchQueries.length)],
@@ -3561,7 +3812,7 @@ const MayaPages = {
             'morning-playlist': ['Morning Bhajan', 'Suprabhatam', 'Brahma Muhurat Prayer'][dayOfWeek % 3],
             'evening-playlist': ['Sandhya Aarti', 'Evening Bhajan', 'Shaam Ki Aarti'][dayOfWeek % 3]
         };
-        
+
         if (API_KEY) {
             Object.entries(categoryQueries).forEach(([playlistId, query]) => {
                 this.loadYouTubePlaylist(playlistId, query, API_KEY, isHindi);
@@ -3579,17 +3830,17 @@ const MayaPages = {
                 `;
             });
         }
-        
+
         // Filter chip click handlers
         document.querySelectorAll('.maya-spiritual-music__filter-chip').forEach(chip => {
             chip.addEventListener('click', (e) => {
                 // Update active state
-                document.querySelectorAll('.maya-spiritual-music__filter-chip').forEach(c => 
+                document.querySelectorAll('.maya-spiritual-music__filter-chip').forEach(c =>
                     c.classList.remove('maya-spiritual-music__filter-chip--active'));
                 e.target.closest('.maya-spiritual-music__filter-chip').classList.add('maya-spiritual-music__filter-chip--active');
-                
+
                 const filter = e.target.closest('.maya-spiritual-music__filter-chip').dataset.filter;
-                
+
                 // Show/hide sections based on filter
                 document.querySelectorAll('.maya-spiritual-music__section').forEach(section => {
                     if (filter === 'all') {
@@ -3600,13 +3851,13 @@ const MayaPages = {
                 });
             });
         });
-        
+
         // Player controls
         const closePlayerBtn = document.getElementById('close-player');
         const minimizePlayerBtn = document.getElementById('minimize-player');
         const player = document.getElementById('spiritual-player');
         const iframe = document.getElementById('spiritual-iframe');
-        
+
         if (closePlayerBtn) {
             closePlayerBtn.addEventListener('click', () => {
                 player.style.display = 'none';
@@ -3614,7 +3865,7 @@ const MayaPages = {
                 iframe.src = '';
             });
         }
-        
+
         if (minimizePlayerBtn) {
             minimizePlayerBtn.addEventListener('click', () => {
                 player.classList.toggle('maya-spiritual-music__player--minimized');
@@ -3638,26 +3889,26 @@ const MayaPages = {
             `;
             return;
         }
-        
+
         try {
             const searchURL = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=6&key=${apiKey}`;
-            
+
             const response = await fetch(searchURL);
             const data = await response.json();
-            
+
             // Check for API errors
             if (data.error) {
                 console.error('YouTube API Error:', data.error.message, 'Code:', data.error.code);
                 throw new Error(data.error.message || 'YouTube API error');
             }
-            
+
             if (data.items && data.items.length > 0) {
                 container.innerHTML = data.items.map(item => {
                     const videoId = item.id.videoId;
                     const title = item.snippet.title;
                     const thumbnail = item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default.url;
                     const channel = item.snippet.channelTitle;
-                    
+
                     return `
                         <div class="maya-spiritual-music__video-card" data-video-id="${videoId}">
                             <div class="maya-spiritual-music__video-thumbnail">
@@ -3673,7 +3924,7 @@ const MayaPages = {
                         </div>
                     `;
                 }).join('');
-                
+
                 // Add click handlers
                 container.querySelectorAll('.maya-spiritual-music__video-card').forEach(card => {
                     card.addEventListener('click', () => {
@@ -3713,12 +3964,12 @@ const MayaPages = {
             // Fallback to inline player
             const player = document.getElementById('spiritual-player');
             const iframe = document.getElementById('spiritual-iframe');
-            
+
             if (player && iframe) {
                 iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1`;
                 player.style.display = 'flex';
                 player.classList.remove('maya-spiritual-music__player--minimized');
-                
+
                 // Scroll to top smoothly
                 document.querySelector('.maya-page')?.scrollTo({ top: 0, behavior: 'smooth' });
             }
@@ -3740,7 +3991,7 @@ const MayaPages = {
     renderVastu(isHindi) {
         // Get saved Vastu analyses
         const savedAnalyses = MayaUtils.storage.get('maya_vastu_analyses') || [];
-        
+
         // Area labels
         const areaLabels = {
             entrance: { en: 'Main Entrance', hi: 'मुख्य द्वार', icon: 'bi-door-open' },
@@ -3752,7 +4003,7 @@ const MayaPages = {
             office: { en: 'Office', hi: 'कार्यालय', icon: 'bi-laptop' },
             other: { en: 'Other', hi: 'अन्य', icon: 'bi-grid' }
         };
-        
+
         // Render saved analyses cards
         const renderAnalysisCards = () => {
             if (savedAnalyses.length === 0) {
@@ -3771,19 +4022,19 @@ const MayaPages = {
                     </div>
                 `;
             }
-            
+
             return savedAnalyses.map((analysis, index) => {
                 const area = areaLabels[analysis.areaType] || areaLabels.other;
                 const date = new Date(analysis.timestamp);
-                const dateStr = date.toLocaleDateString(isHindi ? 'hi-IN' : 'en-IN', { 
-                    day: 'numeric', month: 'short', year: 'numeric' 
+                const dateStr = date.toLocaleDateString(isHindi ? 'hi-IN' : 'en-IN', {
+                    day: 'numeric', month: 'short', year: 'numeric'
                 });
-                
+
                 // Determine severity class based on score
                 let severityClass = 'maya-vastu__card--green';
                 let severityLabel = isHindi ? 'उत्तम' : 'Good';
                 let severityIcon = 'bi-check-circle-fill';
-                
+
                 if (analysis.score <= 4) {
                     severityClass = 'maya-vastu__card--red';
                     severityLabel = isHindi ? 'गंभीर दोष' : 'Major Dosha';
@@ -3793,7 +4044,7 @@ const MayaPages = {
                     severityLabel = isHindi ? 'मध्यम दोष' : 'Minor Dosha';
                     severityIcon = 'bi-exclamation-circle-fill';
                 }
-                
+
                 return `
                     <div class="maya-vastu__card ${severityClass}" data-analysis-index="${index}">
                         <div class="maya-vastu__card-header">
@@ -3833,7 +4084,7 @@ const MayaPages = {
                 `;
             }).join('');
         };
-        
+
         return `
             <div class="maya-page maya-vastu">
                 <!-- Hero Section -->
@@ -3887,7 +4138,7 @@ const MayaPages = {
             </div>
         `;
     },
-    
+
     /**
      * Render Vastu Calibration Flow (fullscreen)
      */
@@ -4238,7 +4489,7 @@ const MayaPages = {
                 `;
             }).join('');
         };
-        
+
         return `
             <div class="maya-page maya-palm-reading maya-palm-reading--fullscreen">
                 <!-- Back Button -->
@@ -4555,10 +4806,10 @@ const MayaPages = {
         // Use user's preferred zodiac system (Western or Vedic)
         const zodiac = profile?.birthDate ? MayaAstrology.getZodiac(profile.birthDate, profile) : null;
         const zodiacSystem = MayaAstrology.getZodiacSystem();
-        const initials = profile?.name ? profile.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2) : '?';
+        const initials = profile?.name ? profile.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?';
         const profilePhoto = MayaUtils.storage.get('maya_profile_photo');
         const session = MayaUtils.storage.get('maya_session');
-        
+
         return `
             <div class="maya-page maya-profile">
                 <div class="maya-page__header">
@@ -4570,9 +4821,9 @@ const MayaPages = {
                     <div class="maya-profile__photo-section">
                         <div class="maya-profile__avatar-wrapper">
                             <div class="maya-profile__avatar ${profilePhoto ? 'has-photo' : ''}">
-                                ${profilePhoto 
-                                    ? `<img src="${profilePhoto}" alt="Profile" class="maya-profile__avatar-img">` 
-                                    : `<span>${initials}</span>`}
+                                ${profilePhoto
+                ? `<img src="${profilePhoto}" alt="Profile" class="maya-profile__avatar-img">`
+                : `<span>${initials}</span>`}
                             </div>
                             <button class="maya-profile__photo-btn" id="changePhotoBtn" title="${isHindi ? 'फोटो बदलें' : 'Change Photo'}">
                                 <i class="bi bi-camera-fill"></i>
@@ -4838,6 +5089,9 @@ const MayaPages = {
             case 'home':
                 this.initHomePage();
                 break;
+            case 'journal':
+                this.initJournalPage();
+                break;
             case 'horoscope':
                 this.initHoroscopePage();
                 break;
@@ -4876,7 +5130,7 @@ const MayaPages = {
         // Re-bind quick action links for newly rendered content (use event delegation to avoid duplicates)
         this.bindPageLinks();
     },
-    
+
     /**
      * Initialize Kundli page - render charts
      */
@@ -4888,7 +5142,7 @@ const MayaPages = {
             }, 100);
         }
     },
-    
+
     /**
      * Bind page navigation links using event delegation (prevents duplicate listeners)
      */
@@ -4896,7 +5150,7 @@ const MayaPages = {
         // Only bind once using event delegation on the content container
         const content = document.getElementById('main-content');
         if (!content || content._pageLinksbound) return;
-        
+
         content._pageLinksbound = true;
         content.addEventListener('click', (e) => {
             const link = e.target.closest('[data-page]');
@@ -4905,7 +5159,7 @@ const MayaPages = {
                 const page = link.dataset.page;
                 this.render(page);
             }
-            
+
             // Handle showMaya action
             const actionLink = e.target.closest('[data-action="showMaya"]');
             if (actionLink) {
@@ -4914,17 +5168,17 @@ const MayaPages = {
             }
         });
     },
-    
+
     /**
      * Initialize Muhurat page
      */
     initMuhuratPage() {
         const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
-        
+
         document.querySelectorAll('.maya-muhurat__activity-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 // Remove active class from all
-                document.querySelectorAll('.maya-muhurat__activity-btn').forEach(b => 
+                document.querySelectorAll('.maya-muhurat__activity-btn').forEach(b =>
                     b.classList.remove('maya-muhurat__activity-btn--active'));
                 // Add to clicked
                 e.currentTarget.classList.add('maya-muhurat__activity-btn--active');
@@ -4944,13 +5198,13 @@ const MayaPages = {
     initPalmReadingPage() {
         const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
         console.log(' Initializing Palm Reading Page (Dual Hand Mode)');
-        
+
         // Hide header and footer for fullscreen mode
         const header = document.querySelector('.maya-header');
         const footer = document.querySelector('#bottom-nav') || document.querySelector('.maya-footer');
         if (header) header.style.display = 'none';
         if (footer) footer.style.display = 'none';
-        
+
         const homeSection = document.getElementById('palmHomeSection');
         const flowSection = document.getElementById('palmReadingFlow');
         const startReadingBtn = document.getElementById('startNewPalmReading');
@@ -4970,7 +5224,7 @@ const MayaPages = {
         const newScanBtn = document.getElementById('newPalmScanBtn');
         const saveBtn = document.getElementById('savePalmReadingBtn');
         const resultsContent = document.getElementById('palmResultsContent');
-        
+
         // Debug: Log which elements were found
         console.log(' Elements found:', {
             startBtn: !!startBtn,
@@ -5031,7 +5285,7 @@ const MayaPages = {
                 this.render('home');
             });
         }
-        
+
         // State for dual hand capture
         this._palmState = {
             leftHandImage: null,
@@ -5046,7 +5300,7 @@ const MayaPages = {
             currentHand: 'left',  // 'left' or 'right'
             analysisData: null
         };
-        
+
         // Store references for event delegation
         this._palmElements = {
             cameraInput,
@@ -5058,7 +5312,7 @@ const MayaPages = {
             palmImage,
             isHindi
         };
-        
+
         // Start scan button (Left hand)
         if (startBtn && cameraInput) {
             startBtn.onclick = () => {
@@ -5067,7 +5321,7 @@ const MayaPages = {
                 cameraInput.click();
             };
         }
-        
+
         // Scan right hand button
         if (scanRightHandBtn) {
             scanRightHandBtn.onclick = () => {
@@ -5093,29 +5347,29 @@ const MayaPages = {
                 }
             });
         }
-        
+
         // Camera input change
         if (cameraInput) {
             cameraInput.onchange = (e) => {
                 console.log(' Camera input changed, currentHand:', this._palmState.currentHand);
                 console.log(' Files:', e.target.files);
-                
+
                 if (e.target.files && e.target.files[0]) {
                     const file = e.target.files[0];
                     console.log(' File selected:', file.name, file.size);
-                    
+
                     // Check if HEIC/HEIF and convert first
-                    const isHEIC = file.type === 'image/heic' || 
-                                  file.type === 'image/heif' || 
-                                  file.name.toLowerCase().endsWith('.heic') ||
-                                  file.name.toLowerCase().endsWith('.heif');
-                    
+                    const isHEIC = file.type === 'image/heic' ||
+                        file.type === 'image/heif' ||
+                        file.name.toLowerCase().endsWith('.heic') ||
+                        file.name.toLowerCase().endsWith('.heif');
+
                     const processFile = async (fileToRead) => {
                         const reader = new FileReader();
                         reader.onload = async (event) => {
                             let imageData = event.target.result;
                             console.log(' Image loaded, length:', imageData.length);
-                            
+
                             // If still HEIC data URL, convert via canvas as fallback
                             if (imageData.startsWith('data:image/heic') || imageData.startsWith('data:image/heif')) {
                                 try {
@@ -5135,7 +5389,7 @@ const MayaPages = {
                                     console.warn(' Canvas HEIC fallback failed:', canvasErr);
                                 }
                             }
-                            
+
                             this._palmHandleImageLoaded(imageData, isHindi, palmImage, instructionsCard, rightHandInstructions, previewCard, loadingCard, resultsCard);
                         };
                         reader.onerror = (error) => {
@@ -5143,13 +5397,13 @@ const MayaPages = {
                         };
                         reader.readAsDataURL(fileToRead);
                     };
-                    
+
                     if (isHEIC && typeof heic2any !== 'undefined') {
                         console.log(' Converting HEIC to JPEG for palm reading...');
                         heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 })
                             .then(convertedBlob => {
                                 const jpeg = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
-                                console.log(' HEIC converted successfully:', Math.round(jpeg.size/1024) + 'KB');
+                                console.log(' HEIC converted successfully:', Math.round(jpeg.size / 1024) + 'KB');
                                 processFile(jpeg);
                             })
                             .catch(heicErr => {
@@ -5164,7 +5418,7 @@ const MayaPages = {
                 }
             };
         }
-        
+
         // Retake button
         if (retakeBtn) {
             retakeBtn.onclick = () => {
@@ -5179,12 +5433,12 @@ const MayaPages = {
                 previewCard.style.display = 'none';
             };
         }
-        
+
         // Confirm hand button (move to next step)
         if (confirmHandBtn) {
             confirmHandBtn.onclick = async () => {
                 console.log(' Confirm clicked, currentHand:', this._palmState.currentHand);
-                
+
                 if (this._palmState.currentHand === 'left' && !this._palmState.rightHandImage) {
                     // Left hand done, move to right hand capture
                     console.log(' Moving to right hand capture');
@@ -5200,14 +5454,14 @@ const MayaPages = {
                 }
             };
         }
-        
+
         // New scan button
         if (newScanBtn) {
             newScanBtn.onclick = () => {
                 startNewReadingFlow();
             };
         }
-        
+
         // Save button
         if (saveBtn) {
             saveBtn.onclick = () => {
@@ -5218,16 +5472,16 @@ const MayaPages = {
         } else {
             console.warn(' Save button not found!');
         }
-        
+
         // Initialize saved readings handlers
         this._initSavedPalmReadings(isHindi);
-        
+
         // Initialize modal handlers
         this._initSavePalmModal(isHindi);
 
         showPalmHomeState();
     },
-    
+
     /**
      * Reset palm reading state
      */
@@ -5252,24 +5506,24 @@ const MayaPages = {
      */
     _palmHandleImageLoaded(imageData, isHindi, palmImage, instructionsCard, rightHandInstructions, previewCard, loadingCard, resultsCard) {
         const previewLabel = document.getElementById('palmPreviewLabel');
-        const handName = this._palmState.currentHand === 'left' 
+        const handName = this._palmState.currentHand === 'left'
             ? (isHindi ? 'बाएं हाथ' : 'Left Hand')
             : (isHindi ? 'दाएं हाथ' : 'Right Hand');
         const badgeClass = this._palmState.currentHand === 'left' ? 'left' : 'right';
-        
+
         // Show preview immediately - validation happens with analysis later
         palmImage.src = imageData;
         previewLabel.innerHTML = `
             <span class="maya-palm__preview-badge maya-palm__preview-badge--${badgeClass}">${this._palmState.currentHand === 'left' ? 'L' : 'R'}</span>
             ${handName}
         `;
-        
+
         instructionsCard.style.display = 'none';
         if (rightHandInstructions) rightHandInstructions.style.display = 'none';
         previewCard.style.display = 'block';
         loadingCard.style.display = 'none';
         resultsCard.style.display = 'none';
-        
+
         // Store original image (no API calls yet)
         if (this._palmState.currentHand === 'left') {
             this._palmState.leftHandOriginal = imageData;
@@ -5278,7 +5532,7 @@ const MayaPages = {
             this._palmState.rightHandOriginal = imageData;
             this._palmState.rightHandImage = imageData;
         }
-        
+
         console.log(' Preview ready, waiting for user to confirm');
     },
 
@@ -5302,7 +5556,7 @@ Respond with ONLY this JSON, nothing else:
 {"isHand": true/false, "palmVisible": true/false, "whichHand": "left"/"right"/"unknown"}`;
 
             const response = await this._callGeminiVision(prompt, imageData);
-            
+
             if (!response) {
                 console.warn(' Hand validation: no response, allowing through');
                 return { valid: true, reason: '' };
@@ -5326,7 +5580,7 @@ Respond with ONLY this JSON, nothing else:
             if (!result.isHand) {
                 return {
                     valid: false,
-                    reason: isHindi 
+                    reason: isHindi
                         ? 'यह हाथ की छवि नहीं है। कृपया अपनी हथेली की फ़ोटो लें।'
                         : 'This doesn\'t appear to be a hand image. Please capture a photo of your palm.'
                 };
@@ -5365,7 +5619,7 @@ Respond with ONLY this JSON, nothing else:
             return { valid: true, reason: '' };
         }
     },
-    
+
     /**
      * Start palm analysis - process images and call AI
      * Handles bg removal + validation + analysis in one efficient flow
@@ -5375,15 +5629,15 @@ Respond with ONLY this JSON, nothing else:
         const previewCard = document.getElementById('palmPreview');
         const resultsCard = document.getElementById('palmResults');
         const loadingMessage = document.getElementById('palmLoadingMessage');
-        
+
         // Show loading
         previewCard.style.display = 'none';
         loadingCard.style.display = 'block';
-        
+
         // Use original images (skip bg removal to save credits and time)
         const leftImageForAI = this._palmState.leftHandOriginal || this._palmState.leftHandImage;
         const rightImageForAI = this._palmState.rightHandOriginal || this._palmState.rightHandImage;
-        
+
         // Show the images in cutouts
         const leftCutout = document.querySelector('#leftHandCutout img');
         const rightCutout = document.querySelector('#rightHandCutout img');
@@ -5418,7 +5672,7 @@ Respond with ONLY this JSON, nothing else:
             .catch(() => rightImageForAI);
 
         const bgRemovalPromise = Promise.allSettled([leftBgRemovalPromise, rightBgRemovalPromise]);
-        
+
         try {
             // Step 1: Combine images
             loadingMessage.textContent = isHindi ? 'हथेलियों को संयोजित किया जा रहा है...' : 'Combining your palms...';
@@ -5426,7 +5680,7 @@ Respond with ONLY this JSON, nothing else:
                 leftImageForAI,
                 rightImageForAI
             );
-            
+
             const [leftImageForAnalysis, rightImageForAnalysis] = await Promise.all([
                 withTimeout(leftBgRemovalPromise, 5000, leftImageForAI),
                 withTimeout(rightBgRemovalPromise, 5000, rightImageForAI)
@@ -5440,7 +5694,7 @@ Respond with ONLY this JSON, nothing else:
                 rightImageForAnalysis,
                 isHindi
             );
-            
+
             // Check if AI flagged invalid images
             if (analysisData && analysisData.validationError) {
                 console.log(' AI validation failed:', analysisData.validationError);
@@ -5452,30 +5706,30 @@ Respond with ONLY this JSON, nothing else:
                 this._resetPalmState();
                 return;
             }
-            
+
             this._palmState.analysisData = analysisData;
-            
+
             // Wait for bg removal to finish for display
             await bgRemovalPromise;
-            
+
             // Step 3: Render results
             this._renderCombinedHandsHero();
             this._renderPalmResults(analysisData, isHindi);
             this._initPalmTabs();
-            
+
             loadingCard.style.display = 'none';
             resultsCard.style.display = 'block';
-            
+
         } catch (error) {
             console.error('Palm analysis error:', error);
             MayaUtils.toast.error(isHindi ? 'विश्लेषण विफल' : 'Analysis failed');
             loadingCard.style.display = 'none';
-            
+
             // Show error state with retry button
             const errorCard = document.getElementById('palmError');
             if (errorCard) {
                 errorCard.style.display = 'block';
-                
+
                 // Setup retry button
                 const retryBtn = document.getElementById('palmRetryBtn');
                 if (retryBtn) {
@@ -5484,7 +5738,7 @@ Respond with ONLY this JSON, nothing else:
                         await this._startPalmAnalysis(isHindi);
                     };
                 }
-                
+
                 // Setup new scan button
                 const newScanBtn = document.getElementById('palmErrorNewScanBtn');
                 if (newScanBtn) {
@@ -5510,7 +5764,7 @@ Respond with ONLY this JSON, nothing else:
             }
         }
     },
-    
+
     /**
      * Remove background from hand image using remove.bg API
      * Falls back to Cloudinary background removal if remove.bg fails
@@ -5521,7 +5775,7 @@ Respond with ONLY this JSON, nothing else:
             console.warn(' Invalid image data');
             return imageData;
         }
-        
+
         try {
             console.log(' Refining...');
             const response = await fetch(MAYA_CONFIG.ENDPOINTS.REMOVE_BACKGROUND, {
@@ -5544,7 +5798,7 @@ Respond with ONLY this JSON, nothing else:
             return imageData;
         }
     },
-    
+
     /**
      * Combine two hand images side by side
      */
@@ -5552,10 +5806,10 @@ Respond with ONLY this JSON, nothing else:
         return new Promise((resolve) => {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            
+
             const imgLeft = new Image();
             const imgRight = new Image();
-            
+
             let loadedCount = 0;
             const onLoad = () => {
                 loadedCount++;
@@ -5563,43 +5817,43 @@ Respond with ONLY this JSON, nothing else:
                     // Set canvas size (side by side with gap)
                     const maxHeight = Math.max(imgLeft.height, imgRight.height);
                     const scaleFactor = 300 / maxHeight; // Normalize height
-                    
+
                     const leftW = imgLeft.width * scaleFactor;
                     const leftH = imgLeft.height * scaleFactor;
                     const rightW = imgRight.width * scaleFactor;
                     const rightH = imgRight.height * scaleFactor;
-                    
+
                     const gap = 20;
                     canvas.width = leftW + rightW + gap;
                     canvas.height = Math.max(leftH, rightH);
-                    
+
                     // Transparent background
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    
+
                     // Draw left hand
                     ctx.drawImage(imgLeft, 0, (canvas.height - leftH) / 2, leftW, leftH);
-                    
+
                     // Draw right hand
                     ctx.drawImage(imgRight, leftW + gap, (canvas.height - rightH) / 2, rightW, rightH);
-                    
+
                     resolve(canvas.toDataURL('image/png'));
                 }
             };
-            
+
             imgLeft.onload = onLoad;
             imgRight.onload = onLoad;
             imgLeft.src = leftImage;
             imgRight.src = rightImage;
         });
     },
-    
+
     /**
      * Render combined hands in hero section
      */
     _renderCombinedHandsHero() {
         const container = document.getElementById('palmCombinedHands');
         if (!container) return;
-        
+
         container.innerHTML = `
             <div class="maya-palm__combined-hand maya-palm__combined-hand--left">
                 <img src="${this._palmState.leftHandProcessed || this._palmState.leftHandOriginal || this._palmState.leftHandImage}" alt="Left Hand">
@@ -5611,7 +5865,7 @@ Respond with ONLY this JSON, nothing else:
             </div>
         `;
     },
-    
+
     /**
      * Initialize saved palm readings handlers
      */
@@ -5624,7 +5878,7 @@ Respond with ONLY this JSON, nothing else:
                 this._viewSavedPalmReading(index, isHindi);
             });
         });
-        
+
         // Delete reading handlers
         document.querySelectorAll('[data-delete-reading]').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -5634,16 +5888,16 @@ Respond with ONLY this JSON, nothing else:
             });
         });
     },
-    
+
     /**
      * View a saved palm reading
      */
     _viewSavedPalmReading(index, isHindi) {
         const savedReadings = MayaUtils.storage.get('maya_palm_readings') || [];
         const reading = savedReadings[index];
-        
+
         if (!reading) return;
-        
+
         // Restore state
         this._palmState = {
             leftHandImage: reading.leftHandImage,
@@ -5654,7 +5908,7 @@ Respond with ONLY this JSON, nothing else:
             currentHand: 'left',
             analysisData: reading.analysisData
         };
-        
+
         // Hide all sections
         document.getElementById('palmHomeSection')?.style.setProperty('display', 'none');
         document.getElementById('palmReadingFlow')?.style.setProperty('display', 'block');
@@ -5663,31 +5917,31 @@ Respond with ONLY this JSON, nothing else:
         document.getElementById('palmRightHandInstructions').style.display = 'none';
         document.getElementById('palmLoading').style.display = 'none';
         document.getElementById('palmError')?.style.setProperty('display', 'none');
-        
+
         // Render and show results
         this._renderCombinedHandsHero();
         this._renderPalmResults(reading.analysisData, isHindi);
         this._initPalmTabs();
-        
+
         document.getElementById('palmResults').style.display = 'block';
     },
-    
+
     /**
      * Delete a saved palm reading
      */
     _deleteSavedPalmReading(index, isHindi) {
         const confirmed = confirm(isHindi ? 'क्या आप इस रीडिंग को हटाना चाहते हैं?' : 'Delete this reading?');
         if (!confirmed) return;
-        
+
         const savedReadings = MayaUtils.storage.get('maya_palm_readings') || [];
         savedReadings.splice(index, 1);
         MayaUtils.storage.set('maya_palm_readings', savedReadings);
-        
+
         // Re-render the page
         this.render('palm-reading');
         MayaUtils.toast.success(isHindi ? 'रीडिंग हटा दी गई' : 'Reading deleted');
     },
-    
+
     /**
      * Show save palm reading modal
      */
@@ -5699,13 +5953,13 @@ Respond with ONLY this JSON, nothing else:
             // Remove display:none first, then add active class for animation
             modal.style.display = '';  // Clear inline display:none
             modal.style.removeProperty('display'); // Ensure it's removed
-            
+
             // Force a reflow to ensure styles are applied
             modal.offsetHeight;
-            
+
             // Now add active class for opacity/visibility animation
             modal.classList.add('maya-modal--active');
-            
+
             const nameInput = document.getElementById('palmReadingName');
             if (nameInput) {
                 nameInput.value = '';
@@ -5717,7 +5971,7 @@ Respond with ONLY this JSON, nothing else:
             MayaUtils.toast.error(isHindi ? 'मॉडल नहीं मिला' : 'Could not open save dialog');
         }
     },
-    
+
     /**
      * Initialize save modal handlers
      */
@@ -5728,7 +5982,7 @@ Respond with ONLY this JSON, nothing else:
         const confirmBtn = document.getElementById('confirmSavePalmBtn');
         const nameInput = document.getElementById('palmReadingName');
         const backdrop = modal?.querySelector('.maya-modal__backdrop');
-        
+
         const hideModal = () => {
             if (modal) {
                 modal.classList.remove('maya-modal--active');
@@ -5736,11 +5990,11 @@ Respond with ONLY this JSON, nothing else:
             }
             if (nameInput) nameInput.value = '';
         };
-        
+
         if (closeBtn) closeBtn.onclick = hideModal;
         if (cancelBtn) cancelBtn.onclick = hideModal;
         if (backdrop) backdrop.onclick = hideModal;
-        
+
         if (confirmBtn) {
             confirmBtn.onclick = () => {
                 const name = nameInput?.value?.trim() || (isHindi ? 'अनाम' : 'Unnamed');
@@ -5749,7 +6003,7 @@ Respond with ONLY this JSON, nothing else:
                 hideModal();
             };
         }
-        
+
         // Enter key to save
         if (nameInput) {
             nameInput.addEventListener('keypress', (e) => {
@@ -5759,13 +6013,13 @@ Respond with ONLY this JSON, nothing else:
             });
         }
     },
-    
+
     /**
      * Save palm reading to storage
      */
     _savePalmReading(name, isHindi) {
         const savedReadings = MayaUtils.storage.get('maya_palm_readings') || [];
-        
+
         const reading = {
             name: name,
             date: new Date().toISOString(),
@@ -5776,19 +6030,19 @@ Respond with ONLY this JSON, nothing else:
             combinedImage: this._palmState.combinedImage,
             analysisData: this._palmState.analysisData
         };
-        
+
         // Add to beginning of array (newest first)
         savedReadings.unshift(reading);
-        
+
         // Keep only last 10 readings
         if (savedReadings.length > 10) {
             savedReadings.pop();
         }
-        
+
         MayaUtils.storage.set('maya_palm_readings', savedReadings);
         MayaUtils.toast.success(isHindi ? 'रीडिंग सहेज ली गई!' : 'Reading saved!');
     },
-    
+
     /**
      * Analyze palm images using AI (both hands with user context)
      * Returns structured JSON data for card-based display
@@ -5796,26 +6050,26 @@ Respond with ONLY this JSON, nothing else:
     async _analyzePalm(leftHandImage, rightHandImage, isHindi) {
         const profile = MayaUtils.storage.get('maya_profile') || {};
         const lang = isHindi ? 'Hindi' : 'English';
-        
+
         // Get zodiac/rashi info
         const zodiac = profile.birthDate ? window.MayaAstrology?.getZodiac(profile.birthDate, profile) : null;
-        
+
         // Calculate age
         let age = null;
         if (profile.birthDate) {
             const birth = new Date(profile.birthDate);
             const today = new Date();
             age = today.getFullYear() - birth.getFullYear();
-            if (today.getMonth() < birth.getMonth() || 
+            if (today.getMonth() < birth.getMonth() ||
                 (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate())) {
                 age--;
             }
         }
-        
+
         // Generate unique session identifier for this reading
         const uniqueSessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const currentTimestamp = new Date().toISOString();
-        
+
         // Build detailed user context for truly personalized reading
         const userContext = [];
         if (profile.name) userContext.push(`Name: ${profile.name}`);
@@ -5829,7 +6083,7 @@ Respond with ONLY this JSON, nothing else:
             userContext.push(`Date of Birth: ${profile.birthDate} (Born on ${dayOfWeek})`);
             userContext.push(`Birth Day Number: ${birthDay}`);
             userContext.push(`Birth Month: ${birthMonth}`);
-            
+
             // Calculate Life Path Number
             const lifePathNum = this._calculateLifePathNumber(profile.birthDate);
             userContext.push(`Numerology Life Path Number: ${lifePathNum}`);
@@ -5838,10 +6092,10 @@ Respond with ONLY this JSON, nothing else:
             userContext.push(`Time of Birth: ${profile.birthTime}`);
             // Determine time period
             const [hours] = profile.birthTime.split(':').map(Number);
-            const timePeriod = hours < 6 ? 'Brahma Muhurta/Early Dawn' : 
-                              hours < 12 ? 'Morning/Pratah Kaal' :
-                              hours < 15 ? 'Afternoon/Madhyahna' :
-                              hours < 18 ? 'Evening/Sayahna' : 'Night/Ratri Kaal';
+            const timePeriod = hours < 6 ? 'Brahma Muhurta/Early Dawn' :
+                hours < 12 ? 'Morning/Pratah Kaal' :
+                    hours < 15 ? 'Afternoon/Madhyahna' :
+                        hours < 18 ? 'Evening/Sayahna' : 'Night/Ratri Kaal';
             userContext.push(`Birth Time Period: ${timePeriod}`);
         }
         if (profile.birthPlace) userContext.push(`Place of Birth: ${profile.birthPlace}`);
@@ -5850,7 +6104,7 @@ Respond with ONLY this JSON, nothing else:
             userContext.push(`Zodiac Element: ${zodiac.element || 'Unknown'}`);
             userContext.push(`Ruling Planet: ${zodiac.rulingPlanet || 'Unknown'}`);
         }
-        
+
         // Life stage context based on age
         let lifeStageContext = '';
         if (age) {
@@ -5861,11 +6115,11 @@ Respond with ONLY this JSON, nothing else:
             else lifeStageContext = 'Spiritual maturity - Inner peace, sharing wisdom, and life fulfillment';
             userContext.push(`Life Stage: ${lifeStageContext}`);
         }
-        
-        const userContextStr = userContext.length > 0 
+
+        const userContextStr = userContext.length > 0
             ? `\n\nUSER CONTEXT FOR HIGHLY PERSONALIZED READING:\n${userContext.join('\n')}\n\nCRITICAL: Use ALL this information to create a 100% UNIQUE reading specific to this person's life circumstances, age, zodiac traits, and numerology. NO GENERIC STATEMENTS.`
             : '\n\nNote: No user profile available. Analyze the palm images directly for unique physical characteristics.';
-        
+
         const prompt = `You are MAYA, a master female Vedic palmist with 50+ years expertise in Samudrik Shastra. You are analyzing BOTH hands of a real person at timestamp: ${currentTimestamp}, Session: ${uniqueSessionId}
 
 STEP 1 - IMAGE VALIDATION (do this FIRST before any analysis):
@@ -5952,15 +6206,15 @@ REMEMBER:
 - Absolutely NO generic fortune cookie statements
 - Make predictions specific to their current life phase
 - Each remedy must address something specific seen in THEIR palm`;
-        
+
         try {
             // Send both images to vision API
             const response = await this._callGeminiVisionMulti(prompt, [leftHandImage, rightHandImage]);
-            
+
             if (response) {
                 // Extract JSON from response - try multiple patterns
                 let jsonStr = response;
-                
+
                 // Try to find JSON in code blocks first
                 const codeBlockMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
                 if (codeBlockMatch) {
@@ -5982,7 +6236,7 @@ REMEMBER:
                         }
                     }
                 }
-                
+
                 // Clean up common issues
                 jsonStr = jsonStr
                     .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
@@ -5991,41 +6245,41 @@ REMEMBER:
                     .replace(/\n/g, ' ')             // Replace newlines with spaces
                     .replace(/\r/g, '')              // Remove carriage returns
                     .trim();
-                
+
                 console.log(' Cleaned JSON (first 300 chars):', jsonStr.substring(0, 300));
-                
+
                 try {
                     const data = JSON.parse(jsonStr);
                     console.log(' Parsed data keys:', Object.keys(data));
-                    
+
                     // Check for validation error from AI
                     if (data.validationError) {
                         console.log(' AI validation error:', data.validationError);
                         return { validationError: data.validationError };
                     }
-                    
+
                     return { ...data, isFallback: false };
                 } catch (e) {
                     console.warn('Palm JSON parse failed:', e.message);
                     console.log(' JSON string length:', jsonStr.length);
-                    
+
                     // Try to find where the JSON is malformed
                     try {
                         // Find matching braces to extract complete JSON
                         let braceCount = 0;
                         let startIdx = jsonStr.indexOf('{');
                         let endIdx = -1;
-                        
+
                         for (let i = startIdx; i < jsonStr.length; i++) {
                             if (jsonStr[i] === '{') braceCount++;
                             else if (jsonStr[i] === '}') braceCount--;
-                            
+
                             if (braceCount === 0) {
                                 endIdx = i + 1;
                                 break;
                             }
                         }
-                        
+
                         if (endIdx > startIdx) {
                             const balancedJson = jsonStr.substring(startIdx, endIdx);
                             console.log(' Attempting balanced JSON parse, length:', balancedJson.length);
@@ -6036,7 +6290,7 @@ REMEMBER:
                     } catch (e2) {
                         console.warn('Balanced JSON repair also failed:', e2.message);
                     }
-                    
+
                     // Try to extract partial data from truncated JSON
                     try {
                         console.log(' Attempting partial JSON extraction...');
@@ -6048,7 +6302,7 @@ REMEMBER:
                     } catch (e3) {
                         console.warn('Partial extraction failed:', e3.message);
                     }
-                    
+
                     // Use fallback as last resort
                     console.log(' Using fallback palm data');
                     return this._fallbackPalmData(isHindi);
@@ -6062,34 +6316,30 @@ REMEMBER:
             return this._fallbackPalmData(isHindi);
         }
     },
-    
+
     /**
      * Call Gemini Vision API with multiple images
-     * Uses the same robust approach as Vastu (multiple API keys + models)
+     * Uses the single paid Gemini key to avoid fallback-key rate limit delays.
      */
     async _callGeminiVisionMulti(prompt, images) {
-        // Get all API keys (primary + fallbacks) - same as Vastu
+        // Use only the primary paid Gemini key.
         const apiKeys = [
-            MAYA_CONFIG.API_KEYS.GEMINI,
-            ...(window.MAYA_SECRETS?.GEMINI_FALLBACKS || [])
+            MAYA_CONFIG.API_KEYS.GEMINI
         ].filter(Boolean);
-        
-        console.log(` Available Gemini API keys: ${apiKeys.length}`);
-        
+
+        console.log(`Using single Gemini API key: ${apiKeys.length}`);
+
         // Same models as Vastu calibrator
         const models = MAYA_CONFIG.GEMINI_MODELS || [
-            'gemini-2.5-flash',
-            'gemini-2.5-pro',
-            'gemini-2.0-flash',
-            'gemini-2.0-flash-lite'
+            'gemini-2.5-flash-lite'
         ];
-        
+
         // Build parts array with both images
         const parts = [
             { text: prompt },
             { text: "\n\n=== LEFT HAND IMAGE (Image 1) ===" }
         ];
-        
+
         // Add left hand image
         if (images[0]) {
             const mimeMatch = images[0].match(/^data:(image\/[\w-]+);base64,/);
@@ -6102,10 +6352,10 @@ REMEMBER:
                 }
             });
         }
-        
+
         // Add right hand label and image
         parts.push({ text: "\n\n=== RIGHT HAND IMAGE (Image 2) ===" });
-        
+
         if (images[1]) {
             const mimeMatch = images[1].match(/^data:(image\/[\w-]+);base64,/);
             const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
@@ -6117,7 +6367,7 @@ REMEMBER:
                 }
             });
         }
-        
+
         const payload = {
             contents: [{
                 parts: parts
@@ -6135,52 +6385,52 @@ REMEMBER:
                 { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
             ]
         };
-        
+
         let lastError = null;
-        
-        // Try each API key, then each model (same pattern as Vastu)
+
+        // Try the primary API key and configured model only.
         for (let keyIndex = 0; keyIndex < apiKeys.length; keyIndex++) {
             const apiKey = apiKeys[keyIndex];
             const keyLabel = keyIndex === 0 ? 'Primary' : `Fallback-${keyIndex}`;
-            
+
             for (const model of models) {
                 try {
                     const url = `${MAYA_CONFIG.ENDPOINTS.GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
                     console.log(` Trying Gemini [${keyLabel}] model: ${model}`);
-                    
+
                     const response = await fetch(url, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
-                    
+
                     const data = await response.json();
-                    
-                    // Handle rate limit (429) - immediately try next API key
+
+                    // Handle rate limit (429) without cycling through fallback keys.
                     if (response.status === 429) {
-                        console.warn(`⚠️ Gemini [${keyLabel}] rate limited on ${model}, trying next API key...`);
+                        console.warn(`⚠️ Gemini [${keyLabel}] rate limited on ${model}. No fallback keys will be tried.`);
                         lastError = data.error?.message || 'Rate limited';
-                        break; // Break inner loop to try next API key
+                        break;
                     }
-                    
+
                     // Handle 404 - model not found
                     if (response.status === 404) {
                         console.warn(`⚠️ Gemini [${keyLabel}] model ${model} not found, trying next...`);
                         continue;
                     }
-                    
+
                     // Handle 503 - overloaded
                     if (response.status === 503) {
                         console.warn(`⚠️ Gemini [${keyLabel}] model ${model} overloaded, trying next...`);
                         continue;
                     }
-                    
+
                     if (!response.ok) {
                         console.warn(`Gemini [${keyLabel}] ${model} error:`, data.error?.message || response.status);
                         lastError = data.error?.message || `HTTP ${response.status}`;
                         continue;
                     }
-                    
+
                     if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
                         console.log(`✅ Palm Vision success [${keyLabel}] with ${model}`);
                         return data.candidates[0].content.parts[0].text;
@@ -6194,8 +6444,8 @@ REMEMBER:
                 }
             }
         }
-        
-        console.error(`❌ All Gemini Vision API keys (${apiKeys.length}) and models failed. Last error:`, lastError);
+
+        console.error(`❌ Gemini Vision failed with the configured key/model. Last error:`, lastError);
         throw new Error(`Palm vision analysis failed: ${lastError}`);
     },
 
@@ -6208,7 +6458,7 @@ REMEMBER:
             console.error('Palm results container not found!');
             return;
         }
-        
+
         console.log(' Rendering palm results:', data);
         console.log(' Lines data:', data?.lines);
         console.log(' Traits data:', data?.traits);
@@ -6224,15 +6474,15 @@ REMEMBER:
         if (badgeIcon) {
             badgeIcon.className = data?.isFallback ? 'bi bi-info-circle-fill' : 'bi bi-check-circle-fill';
         }
-        
+
         // Store data for tab switching
         this._palmData = data;
         this._palmIsHindi = isHindi;
-        
+
         // Render lines tab by default
         this._renderPalmTab('lines');
     },
-    
+
     /**
      * Render specific palm tab content
      */
@@ -6242,17 +6492,17 @@ REMEMBER:
             console.error('Cannot render tab - container:', !!container, 'data:', !!this._palmData);
             return;
         }
-        
+
         const data = this._palmData;
         const isHindi = this._palmIsHindi;
         let html = '';
-        
+
         console.log(' Rendering tab:', tab, 'with data:', data);
-        
+
         if (tab === 'lines') {
             const lines = data.lines || [];
             console.log(' Rendering', lines.length, 'lines');
-            
+
             if (lines.length === 0) {
                 html = `<div class="maya-palm__empty-state">
                     <i class="bi bi-hand-index"></i>
@@ -6298,10 +6548,10 @@ REMEMBER:
         } else if (tab === 'traits') {
             const traits = data.traits || { positive: [], negative: [], neutral: [] };
             console.log(' Rendering traits:', traits);
-            
+
             // Check if any traits exist
             const hasAnyTraits = traits.positive?.length || traits.negative?.length || traits.neutral?.length;
-            
+
             if (!hasAnyTraits) {
                 html = `<div class="maya-palm__empty-state">
                     <i class="bi bi-person-check"></i>
@@ -6321,7 +6571,7 @@ REMEMBER:
                     });
                     html += '</div></div>';
                 }
-                
+
                 // Neutral traits
                 if (traits.neutral?.length) {
                     html += `<div class="maya-palm__trait-section">
@@ -6335,7 +6585,7 @@ REMEMBER:
                     });
                     html += '</div></div>';
                 }
-                
+
                 // Negative/Caution traits
                 if (traits.negative?.length) {
                     html += `<div class="maya-palm__trait-section">
@@ -6379,10 +6629,10 @@ REMEMBER:
                 'temple': 'building',
                 'default': 'check-circle-fill'
             };
-            
+
             const remedies = data.remedies || [];
             console.log(' Rendering remedies:', remedies);
-            
+
             if (remedies.length === 0) {
                 html = `<div class="maya-palm__empty-state">
                     <i class="bi bi-gem"></i>
@@ -6394,7 +6644,7 @@ REMEMBER:
                     // Get mapped icon or use default
                     const iconKey = (remedy.icon || 'default').toLowerCase();
                     const iconName = iconMap[iconKey] || iconMap['default'];
-                    
+
                     html += `
                         <div class="maya-palm__remedy-card">
                             <div class="maya-palm__remedy-icon">
@@ -6410,11 +6660,11 @@ REMEMBER:
                 html += '</div>';
             }
         }
-        
+
         console.log(' Final HTML length:', html.length);
         container.innerHTML = html;
     },
-    
+
     /**
      * Initialize palm result tabs
      */
@@ -6427,7 +6677,7 @@ REMEMBER:
                 this._renderPalmTab(tab.dataset.tab);
             };
         });
-        
+
         // Expandable line cards - click to show left/right hand details
         document.querySelectorAll('.maya-palm__line-card--expandable').forEach(card => {
             card.onclick = () => {
@@ -6435,13 +6685,13 @@ REMEMBER:
             };
         });
     },
-    
+
     /**
      * Extract partial palm data from truncated JSON
      */
     _extractPartialPalmData(jsonStr, isHindi) {
         const result = { lines: [], traits: { positive: [], negative: [], neutral: [] }, remedies: [] };
-        
+
         // Try to extract lines array
         const linesMatch = jsonStr.match(/"lines"\s*:\s*\[([\s\S]*?)(?:\]|\}$)/);
         if (linesMatch) {
@@ -6458,7 +6708,7 @@ REMEMBER:
                     const summaryMatch = match[0].match(/"summary"\s*:\s*"([^"]+)"/);
                     const statusMatch = match[0].match(/"status"\s*:\s*"([^"]+)"/);
                     const iconMatch = match[0].match(/"icon"\s*:\s*"([^"]+)"/);
-                    
+
                     if (nameMatch && summaryMatch) {
                         result.lines.push({
                             name: nameMatch[1],
@@ -6472,7 +6722,7 @@ REMEMBER:
                 }
             }
         }
-        
+
         // If we got at least 2 lines, fill in with fallback for rest
         if (result.lines.length >= 2) {
             const fallback = this._fallbackPalmData(isHindi);
@@ -6483,10 +6733,10 @@ REMEMBER:
             result.overallSummaryHi = fallback.overallSummaryHi;
             return result;
         }
-        
+
         return null;
     },
-    
+
     /**
      * Fallback palm data when AI fails - personalized based on user profile
      */
@@ -6494,7 +6744,7 @@ REMEMBER:
         const profile = MayaUtils.storage.get('maya_profile') || {};
         const zodiac = profile.birthDate ? window.MayaAstrology?.getZodiac(profile.birthDate, profile) : null;
         const userName = profile.name || (isHindi ? 'प्रिय' : 'Dear seeker');
-        
+
         // Calculate age for personalized content
         let age = null;
         if (profile.birthDate) {
@@ -6502,7 +6752,7 @@ REMEMBER:
             const today = new Date();
             age = today.getFullYear() - birth.getFullYear();
         }
-        
+
         // Personalized gemstone based on zodiac
         const gemstoneRecommendations = {
             'Aries': { gem: 'Red Coral (Moonga)', gemHi: 'मूंगा', day: 'Tuesday', finger: 'ring finger' },
@@ -6518,15 +6768,15 @@ REMEMBER:
             'Aquarius': { gem: 'Blue Sapphire (Neelam)', gemHi: 'नीलम', day: 'Saturday', finger: 'middle finger' },
             'Pisces': { gem: 'Yellow Sapphire (Pukhraj)', gemHi: 'पुखराज', day: 'Thursday', finger: 'index finger' }
         };
-        
+
         const gemRec = zodiac ? gemstoneRecommendations[zodiac.name] || gemstoneRecommendations['Sagittarius'] : gemstoneRecommendations['Sagittarius'];
-        
+
         // Life stage based traits
-        let lifeStageInsight = age && age < 30 
+        let lifeStageInsight = age && age < 30
             ? { text: 'Your youth brings tremendous energy for ambitious pursuits', textHi: 'आपकी युवावस्था महत्वाकांक्षी लक्ष्यों के लिए जबरदस्त ऊर्जा लाती है' }
-            : age && age < 45 
-            ? { text: 'Peak years of achievement - your efforts will bear rich fruits', textHi: 'उपलब्धि के शिखर वर्ष - आपके प्रयास समृद्ध फल देंगे' }
-            : { text: 'Wisdom years bring clarity and respect from others', textHi: 'ज्ञान के वर्ष स्पष्टता और दूसरों से सम्मान लाते हैं' };
+            : age && age < 45
+                ? { text: 'Peak years of achievement - your efforts will bear rich fruits', textHi: 'उपलब्धि के शिखर वर्ष - आपके प्रयास समृद्ध फल देंगे' }
+                : { text: 'Wisdom years bring clarity and respect from others', textHi: 'ज्ञान के वर्ष स्पष्टता और दूसरों से सम्मान लाते हैं' };
 
         return {
             isFallback: true,
@@ -6580,7 +6830,7 @@ REMEMBER:
             const day = date.getDate();
             const month = date.getMonth() + 1;
             const year = date.getFullYear();
-            
+
             // Reduce each component to single digit (or master number)
             const reduceToSingle = (num) => {
                 while (num > 9 && num !== 11 && num !== 22 && num !== 33) {
@@ -6588,11 +6838,11 @@ REMEMBER:
                 }
                 return num;
             };
-            
+
             const dayNum = reduceToSingle(day);
             const monthNum = reduceToSingle(month);
             const yearNum = reduceToSingle(String(year).split('').reduce((a, b) => a + parseInt(b), 0));
-            
+
             return reduceToSingle(dayNum + monthNum + yearNum);
         } catch (e) {
             return null;
@@ -6605,16 +6855,16 @@ REMEMBER:
     initVastuPage() {
         const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
         console.log('🏠 Initializing Vastu Page');
-        
+
         // New calibration button
         const newCalibrationBtn = document.getElementById('startNewCalibration');
         console.log('🔘 New Calibration Button found:', !!newCalibrationBtn);
-        
+
         if (newCalibrationBtn) {
             // Remove any existing listeners first
             newCalibrationBtn.replaceWith(newCalibrationBtn.cloneNode(true));
             const freshBtn = document.getElementById('startNewCalibration');
-            
+
             freshBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -6622,7 +6872,7 @@ REMEMBER:
                 this._startVastuCalibration(isHindi);
             });
         }
-        
+
         // View analysis handlers
         document.querySelectorAll('[data-view-analysis]').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -6630,7 +6880,7 @@ REMEMBER:
                 this._viewSavedAnalysis(index, isHindi);
             });
         });
-        
+
         // Delete analysis handlers
         document.querySelectorAll('[data-delete-analysis]').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -6640,7 +6890,7 @@ REMEMBER:
             });
         });
     },
-    
+
     /**
      * Start Vastu Calibration (fullscreen flow)
      */
@@ -6655,7 +6905,7 @@ REMEMBER:
             console.error('🏠 Could not find #main-content element!');
         }
     },
-    
+
     /**
      * Initialize Vastu Calibration page (fullscreen)
      * Handles geolocation, compass, camera, and AI analysis
@@ -6665,7 +6915,7 @@ REMEMBER:
         document.querySelector('.maya-header')?.classList.add('maya-header--hidden');
         document.querySelector('#bottom-nav')?.classList.add('bottom-nav--hidden');
         document.querySelector('#main-content')?.classList.add('main-content--fullscreen');
-        
+
         // State management for Vastu flow
         this._vastuState = {
             currentStep: 1,
@@ -6682,7 +6932,7 @@ REMEMBER:
             compassHandler: null,
             cameraStarting: false // Prevent multiple camera starts
         };
-        
+
         // Back button handler
         const backBtn = document.getElementById('vastuBackBtn');
         if (backBtn) {
@@ -6690,29 +6940,29 @@ REMEMBER:
                 this._exitVastuPage();
             });
         }
-        
+
         // Initialize step 1 - Location
         this._initVastuLocationStep(isHindi);
-        
+
         // Initialize step 2 - Camera with Compass
         this._initVastuCameraStep(isHindi);
-        
+
         // Initialize area selection step
         this._initVastuAreaStep(isHindi);
-        
+
         // Initialize step 3 - Analysis
         this._initVastuAnalysisStep(isHindi);
     },
-    
+
     /**
      * View a saved Vastu analysis
      */
     _viewSavedAnalysis(index, isHindi) {
         const savedAnalyses = MayaUtils.storage.get('maya_vastu_analyses') || [];
         const analysis = savedAnalyses[index];
-        
+
         if (!analysis) return;
-        
+
         const areaLabels = {
             entrance: { en: 'Main Entrance', hi: 'मुख्य द्वार' },
             living_room: { en: 'Living Room', hi: 'बैठक' },
@@ -6723,9 +6973,9 @@ REMEMBER:
             office: { en: 'Office', hi: 'कार्यालय' },
             other: { en: 'Other', hi: 'अन्य' }
         };
-        
+
         const area = areaLabels[analysis.areaType] || areaLabels.other;
-        
+
         // Show analysis in a fullscreen modal
         const modalHtml = `
             <div class="maya-modal maya-modal--vastu maya-modal--fullscreen" id="vastuAnalysisModal">
@@ -6756,17 +7006,17 @@ REMEMBER:
                 </div>
             </div>
         `;
-        
+
         document.body.insertAdjacentHTML('beforeend', modalHtml);
-        
+
         // Activate the modal (base .maya-modal is hidden by default)
         requestAnimationFrame(() => {
             document.getElementById('vastuAnalysisModal')?.classList.add('maya-modal--active');
         });
-        
+
         // Prevent body scroll when modal is open
         document.body.style.overflow = 'hidden';
-        
+
         // Close modal handlers
         const closeModal = () => {
             const modal = document.getElementById('vastuAnalysisModal');
@@ -6776,10 +7026,10 @@ REMEMBER:
             }
             document.body.style.overflow = '';
         };
-        
+
         document.getElementById('closeVastuModal')?.addEventListener('click', closeModal);
         document.getElementById('vastuModalOverlay')?.addEventListener('click', closeModal);
-        
+
         // Also handle escape key
         const handleEscape = (e) => {
             if (e.key === 'Escape') {
@@ -6789,7 +7039,7 @@ REMEMBER:
         };
         document.addEventListener('keydown', handleEscape);
     },
-    
+
     /**
      * Delete a saved Vastu analysis
      */
@@ -6797,45 +7047,45 @@ REMEMBER:
         if (!confirm(isHindi ? 'क्या आप इस विश्लेषण को हटाना चाहते हैं?' : 'Delete this analysis?')) {
             return;
         }
-        
+
         const savedAnalyses = MayaUtils.storage.get('maya_vastu_analyses') || [];
         savedAnalyses.splice(index, 1);
         MayaUtils.storage.set('maya_vastu_analyses', savedAnalyses);
-        
+
         MayaUtils.toast.success(isHindi ? 'विश्लेषण हटाया गया' : 'Analysis deleted');
         this.render('vastu');
     },
-    
+
     /**
      * Exit Vastu page and restore header/footer
      */
     _exitVastuPage() {
         // Stop camera and compass
         this._stopCameraAndCompass();
-        
+
         // Restore header and footer
         document.querySelector('.maya-header')?.classList.remove('maya-header--hidden');
         document.querySelector('#bottom-nav')?.classList.remove('bottom-nav--hidden');
         document.querySelector('#main-content')?.classList.remove('main-content--fullscreen');
-        
+
         // Go back to home
         this.render('home');
     },
-    
+
     /**
      * Initialize Vastu Location Step
      */
     _initVastuLocationStep(isHindi) {
         const getLocationBtn = document.getElementById('getLocationBtn');
         const locationDisplay = document.getElementById('locationDisplay');
-        
+
         if (getLocationBtn) {
             getLocationBtn.addEventListener('click', async () => {
                 getLocationBtn.disabled = true;
                 getLocationBtn.innerHTML = `<i class="bi bi-hourglass-split"></i> <span>${isHindi ? 'प्राप्त हो रहा है...' : 'Getting location...'}</span>`;
-                
+
                 console.log('📍 Location button clicked');
-                
+
                 // Helper: try geolocation with given options + manual timeout
                 const tryGeolocation = (options, label) => {
                     return new Promise((resolve, reject) => {
@@ -6843,15 +7093,15 @@ REMEMBER:
                             reject(new Error('Geolocation not supported'));
                             return;
                         }
-                        
+
                         console.log(`📍 Trying ${label}...`);
-                        
+
                         // Manual timeout safety net (in case browser timeout doesn't fire)
                         const safetyTimer = setTimeout(() => {
                             console.warn(`📍 ${label} safety timeout hit`);
                             reject(new Error('Manual timeout'));
                         }, (options.timeout || 10000) + 3000);
-                        
+
                         navigator.geolocation.getCurrentPosition(
                             (pos) => {
                                 clearTimeout(safetyTimer);
@@ -6867,7 +7117,7 @@ REMEMBER:
                         );
                     });
                 };
-                
+
                 // Helper: IP-based fallback
                 const tryIPGeolocation = async () => {
                     console.log('📍 Trying IP-based geolocation fallback...');
@@ -6878,7 +7128,7 @@ REMEMBER:
                             return { coords: { latitude: data.latitude, longitude: data.longitude } };
                         }
                     } catch (e) { console.warn('📍 ipapi.co failed:', e); }
-                    
+
                     try {
                         const resp = await fetch('https://ip-api.com/json/?fields=lat,lon', { signal: AbortSignal.timeout(8000) });
                         const data = await resp.json();
@@ -6886,13 +7136,13 @@ REMEMBER:
                             return { coords: { latitude: data.lat, longitude: data.lon } };
                         }
                     } catch (e) { console.warn('📍 ip-api.com failed:', e); }
-                    
+
                     throw new Error('All location methods failed');
                 };
-                
+
                 try {
                     let position;
-                    
+
                     try {
                         // Attempt 1: Fast coarse location (cached OK, low accuracy)
                         position = await tryGeolocation({
@@ -6903,7 +7153,7 @@ REMEMBER:
                     } catch (coarseErr) {
                         // Only try high accuracy if coarse wasn't a permission denial
                         if (coarseErr.code === 1) throw coarseErr; // permission denied - don't retry
-                        
+
                         try {
                             // Attempt 2: High accuracy GPS
                             getLocationBtn.innerHTML = `<i class="bi bi-hourglass-split"></i> <span>${isHindi ? 'GPS खोज रहा है...' : 'Searching GPS...'}</span>`;
@@ -6919,25 +7169,25 @@ REMEMBER:
                             MayaUtils.toast.info(isHindi ? 'अनुमानित स्थान का उपयोग' : 'Using approximate location');
                         }
                     }
-                    
+
                     this._vastuState.latitude = parseFloat(position.coords.latitude).toFixed(6);
                     this._vastuState.longitude = parseFloat(position.coords.longitude).toFixed(6);
-                    
+
                     // Update display with success
                     locationDisplay.innerHTML = `
                         <i class="bi bi-check-circle-fill" style="color:var(--maya-success);font-size:1.25rem"></i>
                         <span style="color:var(--maya-text-primary);font-size:0.85rem">${this._vastuState.latitude}°, ${this._vastuState.longitude}°</span>
                     `;
                     locationDisplay.style.gap = '8px';
-                    
+
                     MayaUtils.toast.success(isHindi ? 'स्थान प्राप्त!' : 'Location found!');
-                    
+
                     // Go to Enable Compass step (Step 1.5)
                     setTimeout(() => {
                         this._goToVastuStep(1.5);
                         this._initCompassEnableStep(isHindi);
                     }, 400);
-                    
+
                 } catch (error) {
                     console.error('📍 All location attempts failed:', error);
                     let errorMsg = isHindi ? 'स्थान प्राप्त करने में विफल' : 'Failed to get location';
@@ -6948,7 +7198,7 @@ REMEMBER:
                     } else if (error.code === 3 || error.message?.includes('timeout')) {
                         errorMsg = isHindi ? 'स्थान प्राप्त करने में समय लगा, पुनः प्रयास करें' : 'Location timed out, please try again';
                     }
-                    
+
                     MayaUtils.toast.error(errorMsg);
                     getLocationBtn.disabled = false;
                     getLocationBtn.innerHTML = `<i class="bi bi-arrow-clockwise"></i> <span>${isHindi ? 'पुनः प्रयास करें' : 'Try Again'}</span>`;
@@ -6956,7 +7206,7 @@ REMEMBER:
             });
         }
     },
-    
+
     /**
      * Initialize Compass Enable Step (step 1.5)
      * Shows Enable Compass button, on click requests permission and proceeds to compass page
@@ -6970,35 +7220,35 @@ REMEMBER:
         const retryCompassBtn = document.getElementById('retryCompassBtn');
         const manualSection = document.getElementById('compassManualSection');
         const proceedWithManualBtn = document.getElementById('proceedWithManualBtn');
-        
+
         // Direction names helper
         const directionNames = {
             en: ['North', 'North-East', 'East', 'South-East', 'South', 'South-West', 'West', 'North-West'],
             hi: ['उत्तर', 'ईशान', 'पूर्व', 'आग्नेय', 'दक्षिण', 'नैऋत्य', 'पश्चिम', 'वायव्य']
         };
-        
+
         this._getDirectionName = (degree) => {
             const names = isHindi ? directionNames.hi : directionNames.en;
             const index = Math.round(degree / 45) % 8;
             return names[index];
         };
-        
+
         // Check if device orientation is available
         const hasDeviceOrientation = typeof DeviceOrientationEvent !== 'undefined';
         const requiresPermission = hasDeviceOrientation && typeof DeviceOrientationEvent.requestPermission === 'function';
-        
+
         console.log('🧭 Compass Enable Step - hasDeviceOrientation:', hasDeviceOrientation, 'requiresPermission:', requiresPermission);
-        
+
         // Reset UI state
         compassIcon.classList.remove('maya-vastu__panel-icon--success', 'maya-vastu__panel-icon--warning');
         compassIcon.innerHTML = '<i class="bi bi-compass"></i>';
         compassTitle.textContent = isHindi ? 'कंपास सक्रिय करें' : 'Enable Compass';
         compassDesc.textContent = isHindi ? 'वास्तु विश्लेषण के लिए सही दिशा जानना आवश्यक है' : 'Accurate direction is needed for Vastu analysis';
-        
+
         // Hide retry and manual initially
         if (retryCompassBtn) retryCompassBtn.style.display = 'none';
         if (manualSection) manualSection.style.display = 'none';
-        
+
         if (!hasDeviceOrientation) {
             // No compass support - show manual fallback
             compassStatus.innerHTML = `
@@ -7021,19 +7271,19 @@ REMEMBER:
             enableCompassBtn.innerHTML = isHindi ? 'कंपास सक्रिय करें' : 'Enable Compass';
             enableCompassBtn.disabled = false;
         }
-        
+
         // Enable compass button handler
         if (enableCompassBtn) {
             enableCompassBtn.onclick = async () => {
                 enableCompassBtn.disabled = true;
                 enableCompassBtn.innerHTML = isHindi ? 'सक्रिय हो रहा है...' : 'Enabling...';
-                
+
                 try {
                     // Request permission if needed (iOS 13+)
                     if (requiresPermission) {
                         const permission = await DeviceOrientationEvent.requestPermission();
                         console.log('🧭 Compass permission result:', permission);
-                        
+
                         if (permission === 'granted') {
                             this._vastuState.compassPermissionGranted = true;
                         } else {
@@ -7046,10 +7296,10 @@ REMEMBER:
                     } else {
                         this._vastuState.compassPermissionGranted = true;
                     }
-                    
+
                     // Test if compass actually works
                     const compassWorks = await this._testCompassWorks();
-                    
+
                     if (compassWorks) {
                         // Success! Show brief success message
                         compassStatus.innerHTML = `
@@ -7060,12 +7310,12 @@ REMEMBER:
                         `;
                         compassIcon.classList.add('maya-vastu__panel-icon--success');
                         compassIcon.innerHTML = '<i class="bi bi-check-circle-fill"></i>';
-                        
+
                         MayaUtils.toast.success(isHindi ? 'कंपास सक्रिय!' : 'Compass enabled!');
-                        
+
                         // Request camera permission now (before going to compass page)
                         await this._requestCameraPermission(isHindi);
-                        
+
                         // Proceed to compass direction lock page after short delay
                         setTimeout(() => {
                             this._goToVastuStep(2);
@@ -7087,51 +7337,51 @@ REMEMBER:
                 }
             };
         }
-        
+
         // Manual direction selection
         document.querySelectorAll('#compassManualSection .maya-vastu__dir-btn').forEach(btn => {
             btn.onclick = () => {
                 document.querySelectorAll('#compassManualSection .maya-vastu__dir-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                
+
                 const degree = parseInt(btn.dataset.deg);
                 this._vastuState.directionDegree = degree;
                 this._vastuState.direction = this._getDirectionName(degree);
                 this._vastuState.compassMode = 'manual';
-                
+
                 // Show proceed button
                 if (proceedWithManualBtn) proceedWithManualBtn.style.display = 'block';
             };
         });
-        
+
         // Proceed with manual selection - request camera permission then go to compass
         if (proceedWithManualBtn) {
             proceedWithManualBtn.onclick = async () => {
                 this._vastuState.compassPermissionGranted = false;
-                
+
                 // Request camera permission first
                 await this._requestCameraPermission(isHindi);
-                
+
                 this._goToVastuStep(2);
                 this._initDirectionLock(isHindi);
             };
         }
     },
-    
+
     /**
      * Test if compass actually provides data
      */
     _testCompassWorks() {
         return new Promise((resolve) => {
             let dataReceived = false;
-            
+
             const timeout = setTimeout(() => {
                 if (!dataReceived) {
                     window.removeEventListener('deviceorientation', testHandler);
                     resolve(false);
                 }
             }, 2000);
-            
+
             const testHandler = (event) => {
                 const hasHeading = event.alpha !== null || event.webkitCompassHeading !== undefined;
                 if (hasHeading) {
@@ -7141,11 +7391,11 @@ REMEMBER:
                     resolve(true);
                 }
             };
-            
+
             window.addEventListener('deviceorientation', testHandler, true);
         });
     },
-    
+
     /**
      * Request camera permission early (before camera step)
      * This ensures the camera opens directly without asking again
@@ -7153,17 +7403,17 @@ REMEMBER:
     async _requestCameraPermission(isHindi) {
         try {
             console.log('📷 Requesting camera permission early...');
-            
+
             // Request camera access to trigger permission prompt
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { 
-                    facingMode: { ideal: 'environment' } 
-                } 
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: { ideal: 'environment' }
+                }
             });
-            
+
             // Stop the stream immediately - we just needed the permission
             stream.getTracks().forEach(track => track.stop());
-            
+
             console.log('📷 Camera permission granted!');
             MayaUtils.toast.success(isHindi ? 'कैमरा अनुमति मिली!' : 'Camera permission granted!');
             return true;
@@ -7173,7 +7423,7 @@ REMEMBER:
             return false;
         }
     },
-    
+
     /**
      * Show manual fallback in enable step
      */
@@ -7183,21 +7433,21 @@ REMEMBER:
         const compassTitle = document.getElementById('compassStepTitle');
         const compassDesc = document.getElementById('compassStepDesc');
         const manualSection = document.getElementById('compassManualSection');
-        
+
         compassStatus.innerHTML = `
             <div class="maya-vastu__compass-status-icon maya-vastu__compass-status-icon--warning">
                 <i class="bi bi-exclamation-triangle-fill" style="font-size: 2rem;"></i>
             </div>
             <span style="text-align:center; color: var(--maya-warning);">${isHindi ? 'कंपास उपलब्ध नहीं' : 'Compass not available'}</span>
         `;
-        
+
         compassIcon.classList.add('maya-vastu__panel-icon--warning');
         compassTitle.textContent = isHindi ? 'मैन्युअल दिशा चुनें' : 'Select Direction Manually';
         compassDesc.textContent = isHindi ? 'कृपया नीचे से दिशा चुनें' : 'Please select direction below';
-        
+
         if (manualSection) manualSection.style.display = 'block';
     },
-    
+
     /**
      * Initialize Compass Step (step 1.5) - OLD VERSION
      * Handles compass permission, retry logic, and manual fallback
@@ -7212,25 +7462,25 @@ REMEMBER:
         const retryCompassBtn = document.getElementById('retryCompassBtn');
         const manualSection = document.getElementById('compassManualSection');
         const proceedWithManualBtn = document.getElementById('proceedWithManualBtn');
-        
+
         // Direction names helper
         const directionNames = {
             en: ['North', 'North-East', 'East', 'South-East', 'South', 'South-West', 'West', 'North-West'],
             hi: ['उत्तर', 'ईशान', 'पूर्व', 'आग्नेय', 'दक्षिण', 'नैऋत्य', 'पश्चिम', 'वायव्य']
         };
-        
+
         this._getDirectionName = (degree) => {
             const names = isHindi ? directionNames.hi : directionNames.en;
             const index = Math.round(degree / 45) % 8;
             return names[index];
         };
-        
+
         // Check if device orientation is available
         const hasDeviceOrientation = typeof DeviceOrientationEvent !== 'undefined';
         const requiresPermission = hasDeviceOrientation && typeof DeviceOrientationEvent.requestPermission === 'function';
-        
+
         console.log('🧭 Compass check - hasDeviceOrientation:', hasDeviceOrientation, 'requiresPermission:', requiresPermission);
-        
+
         // If permission required (iOS 13+), show the enable button
         if (requiresPermission) {
             compassStatusText.textContent = isHindi ? 'कंपास के लिए अनुमति आवश्यक' : 'Compass permission required';
@@ -7244,17 +7494,17 @@ REMEMBER:
             // No device orientation support - show manual only
             this._showCompassManualFallback(isHindi);
         }
-        
+
         // Enable compass button handler (for iOS)
         if (enableCompassBtn) {
             enableCompassBtn.addEventListener('click', async () => {
                 enableCompassBtn.disabled = true;
                 enableCompassBtn.innerHTML = `<div class="maya-spinner maya-spinner--sm"></div><span>${isHindi ? 'अनुमति मांग रहा है...' : 'Requesting...'}</span>`;
-                
+
                 try {
                     const permission = await DeviceOrientationEvent.requestPermission();
                     console.log('🧭 Compass permission result:', permission);
-                    
+
                     if (permission === 'granted') {
                         await this._tryInitializeCompass(isHindi, 0);
                     } else {
@@ -7266,41 +7516,41 @@ REMEMBER:
                     MayaUtils.toast.error(isHindi ? 'कंपास त्रुटि' : 'Compass error');
                     this._showCompassManualFallback(isHindi);
                 }
-                
+
                 enableCompassBtn.disabled = false;
                 enableCompassBtn.innerHTML = isHindi ? 'पुनः प्रयास' : 'Try Again';
             });
         }
-        
+
         // Retry button handler
         if (retryCompassBtn) {
             retryCompassBtn.addEventListener('click', async () => {
                 retryCompassBtn.disabled = true;
                 retryCompassBtn.innerHTML = isHindi ? 'प्रयास कर रहा है...' : 'Trying...';
-                
+
                 await this._tryInitializeCompass(isHindi, 0);
-                
+
                 retryCompassBtn.disabled = false;
                 retryCompassBtn.innerHTML = isHindi ? 'पुनः प्रयास करें' : 'Retry';
             });
         }
-        
+
         // Manual direction selection
         document.querySelectorAll('#compassManualSection .maya-vastu__dir-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('#compassManualSection .maya-vastu__dir-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                
+
                 const degree = parseInt(btn.dataset.deg);
                 this._vastuState.directionDegree = degree;
                 this._vastuState.direction = this._getDirectionName(degree);
                 this._vastuState.compassMode = 'manual';
-                
+
                 // Show proceed button
                 if (proceedWithManualBtn) proceedWithManualBtn.style.display = 'block';
             });
         });
-        
+
         // Proceed with manual selection
         if (proceedWithManualBtn) {
             proceedWithManualBtn.addEventListener('click', () => {
@@ -7308,7 +7558,7 @@ REMEMBER:
             });
         }
     },
-    
+
     /**
      * Try to initialize compass with retry logic
      */
@@ -7319,21 +7569,21 @@ REMEMBER:
         const compassIcon = document.getElementById('compassInitIcon');
         const retryCompassBtn = document.getElementById('retryCompassBtn');
         const manualSection = document.getElementById('compassManualSection');
-        
+
         // Show loading state
         if (compassStatus.querySelector('.maya-spinner') === null) {
             compassStatus.innerHTML = `<div class="maya-vastu__compass-status-icon"><div class="maya-spinner maya-spinner--sm"></div></div><span id="compassStatusText">${isHindi ? 'कंपास शुरू हो रहा है...' : 'Starting compass...'}</span>`;
         }
-        
+
         return new Promise((resolve) => {
             let dataReceived = false;
             let testHandler = null;
-            
+
             const timeout = setTimeout(() => {
                 if (!dataReceived) {
                     window.removeEventListener('deviceorientation', testHandler);
                     console.log(`🧭 Compass timeout - retry ${retryCount + 1}/${maxRetries}`);
-                    
+
                     if (retryCount < maxRetries - 1) {
                         // Retry
                         compassStatusText.textContent = isHindi ? `पुनः प्रयास ${retryCount + 2}/${maxRetries}...` : `Retry ${retryCount + 2}/${maxRetries}...`;
@@ -7346,18 +7596,18 @@ REMEMBER:
                     }
                 }
             }, 2000);
-            
+
             testHandler = (event) => {
                 const heading = event.alpha !== null || event.webkitCompassHeading !== undefined;
-                
+
                 if (heading) {
                     dataReceived = true;
                     clearTimeout(timeout);
                     window.removeEventListener('deviceorientation', testHandler);
-                    
+
                     console.log('🧭 Compass working!');
                     this._vastuState.compassMode = 'auto';
-                    
+
                     // Success! Update UI
                     compassStatus.innerHTML = `
                         <div class="maya-vastu__compass-status-icon maya-vastu__compass-status-icon--success">
@@ -7367,20 +7617,20 @@ REMEMBER:
                     `;
                     compassIcon.classList.add('maya-vastu__panel-icon--success');
                     compassIcon.innerHTML = '<i class="bi bi-check-circle-fill"></i>';
-                    
+
                     // Proceed to camera after short delay
                     setTimeout(() => {
                         this._proceedToCamera(isHindi);
                     }, 800);
-                    
+
                     resolve(true);
                 }
             };
-            
+
             window.addEventListener('deviceorientation', testHandler, true);
         });
     },
-    
+
     /**
      * Show manual compass fallback
      */
@@ -7393,23 +7643,23 @@ REMEMBER:
         const enableCompassBtn = document.getElementById('enableCompassBtn');
         const retryCompassBtn = document.getElementById('retryCompassBtn');
         const manualSection = document.getElementById('compassManualSection');
-        
+
         compassStatus.innerHTML = `
             <div class="maya-vastu__compass-status-icon maya-vastu__compass-status-icon--warning">
                 <i class="bi bi-exclamation-triangle-fill"></i>
             </div>
             <span>${isHindi ? 'कंपास उपलब्ध नहीं' : 'Compass not available'}</span>
         `;
-        
+
         compassIcon.classList.add('maya-vastu__panel-icon--warning');
         compassTitle.textContent = isHindi ? 'मैन्युअल दिशा चुनें' : 'Select Direction Manually';
         compassDesc.textContent = isHindi ? 'कंपास उपलब्ध नहीं है, कृपया दिशा चुनें' : 'Compass not available, please select direction';
-        
+
         if (enableCompassBtn) enableCompassBtn.style.display = 'none';
         if (retryCompassBtn) retryCompassBtn.style.display = 'block';
         if (manualSection) manualSection.style.display = 'block';
     },
-    
+
     /**
      * Proceed to direction lock step
      */
@@ -7417,7 +7667,7 @@ REMEMBER:
         this._goToVastuStep(2);
         this._initDirectionLock(isHindi);
     },
-    
+
     /**
      * Initialize Direction Lock Screen (Compass Only - No Camera)
      * Auto-requests compass permission if needed
@@ -7426,11 +7676,11 @@ REMEMBER:
         this._vastuState = this._vastuState || {};
         this._vastuState.compassActive = true;
         this._vastuState.isHindi = isHindi;
-        
+
         const lockBtn = document.getElementById('lockDirectionBtn');
         const nativeInput = document.getElementById('nativeCameraInput');
         const directionHeader = document.querySelector('.maya-vastu__direction-header');
-        
+
         // Update instructions - now says "Lock Direction" then camera opens
         if (directionHeader) {
             directionHeader.innerHTML = `
@@ -7438,7 +7688,7 @@ REMEMBER:
                 <p>${isHindi ? 'फोन को स्कैन करने वाले क्षेत्र की ओर इशारा करें, फिर "दिशा लॉक करें" दबाएं' : 'Point phone towards area to scan, then tap "Lock Direction"'}</p>
             `;
         }
-        
+
         // Back button - go back to location step
         const backBtn = document.getElementById('directionBackBtn');
         if (backBtn) {
@@ -7447,42 +7697,42 @@ REMEMBER:
                 this._goToVastuStep(1);
             };
         }
-        
+
         // Setup native camera handler - camera only, no gallery picker
         if (nativeInput) {
             // Reset input value to allow re-selection of same file
             nativeInput.value = '';
-            
+
             // Force camera capture only (no gallery)
             nativeInput.setAttribute('accept', 'image/*');
             nativeInput.setAttribute('capture', 'environment');
-            
+
             // Remove any onclick that might trigger gallery
             nativeInput.onclick = null;
-            
+
             nativeInput.onchange = (e) => {
                 console.log('📷 Camera input changed, files:', e.target.files?.length);
                 if (e.target.files && e.target.files[0]) {
                     const file = e.target.files[0];
-                    console.log('📷 File selected:', file.name, file.type, Math.round(file.size/1024) + 'KB');
+                    console.log('📷 File selected:', file.name, file.type, Math.round(file.size / 1024) + 'KB');
                     this._processNativePhoto(file, isHindi);
                 }
             };
         }
-        
+
         // Lock button - locks direction and opens camera
         if (lockBtn) {
             lockBtn.onclick = () => {
                 // Store locked direction
                 this._vastuState.lockedDirection = this._vastuState.direction || 'North';
                 this._vastuState.lockedDegree = this._vastuState.directionDegree || 0;
-                
+
                 // Stop compass
                 this._stopCompass();
-                
+
                 // Show feedback - direction locked
                 MayaUtils.toast.success(isHindi ? `दिशा लॉक: ${this._vastuState.lockedDirection} ${this._vastuState.lockedDegree}°` : `Direction locked: ${this._vastuState.lockedDirection} ${this._vastuState.lockedDegree}°`);
-                
+
                 // Open camera after a short delay
                 if (nativeInput) {
                     setTimeout(() => {
@@ -7492,13 +7742,13 @@ REMEMBER:
                 }
             };
         }
-        
+
         // If permission already granted, start compass immediately
         if (this._vastuState.compassPermissionGranted) {
             this._startLiveCompass(isHindi);
         }
     },
-    
+
     /**
      * Request compass permission immediately (called right after getting location)
      * This ensures compass starts as soon as the compass step is shown
@@ -7506,20 +7756,20 @@ REMEMBER:
     async _requestCompassPermissionAndStart(isHindi) {
         const hasDeviceOrientation = 'DeviceOrientationEvent' in window;
         const requiresPermission = typeof DeviceOrientationEvent?.requestPermission === 'function';
-        
+
         console.log('🧭 Requesting compass permission - hasDeviceOrientation:', hasDeviceOrientation, 'requiresPermission:', requiresPermission);
-        
+
         if (!hasDeviceOrientation) {
             MayaUtils.toast.info(isHindi ? 'कंपास उपलब्ध नहीं' : 'Compass not available');
             return false;
         }
-        
+
         if (requiresPermission) {
             // iOS 13+ - request permission
             try {
                 const permission = await DeviceOrientationEvent.requestPermission();
                 console.log('🧭 Compass permission result:', permission);
-                
+
                 if (permission === 'granted') {
                     this._vastuState.compassPermissionGranted = true;
                     MayaUtils.toast.success(isHindi ? 'कंपास सक्रिय!' : 'Compass active!');
@@ -7539,7 +7789,7 @@ REMEMBER:
             return true;
         }
     },
-    
+
     /**
      * Initialize compass for direction lock
      * On iOS, permission will be requested on first interaction with lock button
@@ -7548,23 +7798,23 @@ REMEMBER:
         const hasDeviceOrientation = 'DeviceOrientationEvent' in window;
         const requiresPermission = typeof DeviceOrientationEvent.requestPermission === 'function';
         const lockBtn = document.getElementById('lockDirectionBtn');
-        
+
         // Set default direction
         this._vastuState.direction = isHindi ? 'उत्तर' : 'North';
         this._vastuState.directionDegree = 0;
-        
+
         if (!hasDeviceOrientation) {
             // No compass support - will use default
             MayaUtils.toast.info(isHindi ? 'कंपास उपलब्ध नहीं' : 'Compass unavailable');
             return;
         }
-        
+
         // If permission already granted (from _requestCompassPermissionAndStart), start compass
         if (this._vastuState.compassPermissionGranted) {
             this._startLiveCompass(isHindi);
             return;
         }
-        
+
         if (requiresPermission) {
             // iOS 13+ - need to request on user gesture
             // Wrap lock button to request permission first time
@@ -7594,27 +7844,27 @@ REMEMBER:
             this._startLiveCompass(isHindi);
         }
     },
-    
+
     /**
      * Process photo from native camera
      * Supports HEIC, HEIF, JPEG, PNG, WebP, BMP, GIF
      * Converts all to JPEG for maximum compatibility
      */
     async _processNativePhoto(file, isHindi) {
-        console.log('📷 Processing photo:', file.name, file.type, Math.round(file.size/1024) + 'KB');
-        
+        console.log('📷 Processing photo:', file.name, file.type, Math.round(file.size / 1024) + 'KB');
+
         // Show loading indicator
         MayaUtils.toast.info(isHindi ? 'फोटो प्रोसेस हो रही है...' : 'Processing photo...');
-        
+
         try {
             let processedFile = file;
-            
+
             // Check if HEIC/HEIF and convert using heic2any library
-            const isHEIC = file.type === 'image/heic' || 
-                          file.type === 'image/heif' || 
-                          file.name.toLowerCase().endsWith('.heic') ||
-                          file.name.toLowerCase().endsWith('.heif');
-            
+            const isHEIC = file.type === 'image/heic' ||
+                file.type === 'image/heif' ||
+                file.name.toLowerCase().endsWith('.heic') ||
+                file.name.toLowerCase().endsWith('.heif');
+
             if (isHEIC && typeof heic2any !== 'undefined') {
                 console.log('📷 Converting HEIC to JPEG...');
                 try {
@@ -7625,7 +7875,7 @@ REMEMBER:
                     });
                     // heic2any may return array for multi-image HEIC
                     processedFile = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
-                    console.log('📷 HEIC converted successfully:', Math.round(processedFile.size/1024) + 'KB');
+                    console.log('📷 HEIC converted successfully:', Math.round(processedFile.size / 1024) + 'KB');
                     // Mark that we successfully converted - not raw HEIC anymore
                     this._vastuState.heicConverted = true;
                 } catch (heicError) {
@@ -7634,29 +7884,29 @@ REMEMBER:
                     // Continue with original file - will try other methods
                 }
             }
-            
+
             // Read file and process
             const dataUrl = await this._readFileAsDataURL(processedFile);
-            console.log('📷 File read, size:', Math.round(dataUrl.length/1024) + 'KB');
-            
+            console.log('📷 File read, size:', Math.round(dataUrl.length / 1024) + 'KB');
+
             // Try to decode and resize using canvas (pass original file for HEIC detection)
             const finalDataUrl = await this._decodeAndResizeImage(dataUrl, file.type, file);
-            
+
             this._vastuState.photoData = finalDataUrl;
             this._vastuState.photoIsHEIC = file.type === 'image/heic' || file.type === 'image/heif' ||
-                                           file.name?.toLowerCase().endsWith('.heic');
-            console.log('📷 Final image ready:', Math.round(finalDataUrl.length/1024) + 'KB', 
-                        this._vastuState.photoIsHEIC ? '(HEIC)' : '(JPEG)');
-            
+                file.name?.toLowerCase().endsWith('.heic');
+            console.log('📷 Final image ready:', Math.round(finalDataUrl.length / 1024) + 'KB',
+                this._vastuState.photoIsHEIC ? '(HEIC)' : '(JPEG)');
+
             this._goToVastuStep('2b');
             this._showPhotoConfirmation(isHindi);
-            
+
         } catch (error) {
             console.error('📷 Photo processing error:', error);
             MayaUtils.toast.error(isHindi ? 'फोटो प्रोसेस नहीं हुई, कृपया JPEG फोटो लें' : 'Photo processing failed, please take a JPEG photo');
         }
     },
-    
+
     /**
      * Read file as data URL
      */
@@ -7668,7 +7918,7 @@ REMEMBER:
             reader.readAsDataURL(file);
         });
     },
-    
+
     /**
      * Decode image and resize to max 1200px, convert to JPEG
      * For HEIC that browser can't decode, preserve original for Gemini (which supports HEIC)
@@ -7676,16 +7926,16 @@ REMEMBER:
     _decodeAndResizeImage(dataUrl, originalType, originalFile) {
         return new Promise((resolve, reject) => {
             const img = new Image();
-            
+
             img.onload = () => {
                 console.log('📷 Image decoded:', img.width, 'x', img.height);
-                
+
                 // Resize to reduce API token usage
                 // 1024px max provides good quality while keeping size reasonable
                 const maxSize = 1024;
                 let width = img.width;
                 let height = img.height;
-                
+
                 if (width > maxSize || height > maxSize) {
                     if (width > height) {
                         height = Math.round((height * maxSize) / width);
@@ -7695,40 +7945,40 @@ REMEMBER:
                         height = maxSize;
                     }
                 }
-                
+
                 // Draw to canvas
                 const canvas = document.createElement('canvas');
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
-                
+
                 // White background
                 ctx.fillStyle = '#FFFFFF';
                 ctx.fillRect(0, 0, width, height);
                 ctx.drawImage(img, 0, 0, width, height);
-                
+
                 // Convert to JPEG - target ~200-400KB for optimal Gemini token usage
                 const jpeg = canvas.toDataURL('image/jpeg', 0.8);
                 console.log('📷 Resized to:', width, 'x', height, 'Size:', Math.round(jpeg.length / 1024), 'KB');
                 resolve(jpeg);
             };
-            
+
             img.onerror = () => {
                 // Browser can't decode (HEIC on Chrome/Firefox)
                 console.warn('📷 Browser cannot decode image');
-                
+
                 // Check file size - if too large, we need to compress
                 const sizeKB = Math.round(dataUrl.length / 1024);
-                
+
                 if (sizeKB > 500) {
                     // File is too large - Gemini will use too many input tokens
                     console.warn(`📷 Image too large (${sizeKB}KB), need compression`);
-                    
+
                     // For HEIC, try using heic2any one more time with lower quality
                     const isHEIC = originalType === 'image/heic' || originalType === 'image/heif' ||
-                                   (originalFile?.name?.toLowerCase().endsWith('.heic')) ||
-                                   (originalFile?.name?.toLowerCase().endsWith('.heif'));
-                    
+                        (originalFile?.name?.toLowerCase().endsWith('.heic')) ||
+                        (originalFile?.name?.toLowerCase().endsWith('.heif'));
+
                     if (isHEIC && typeof heic2any !== 'undefined' && originalFile) {
                         console.log('📷 Retrying HEIC conversion with lower quality...');
                         heic2any({
@@ -7755,26 +8005,26 @@ REMEMBER:
                         return;
                     }
                 }
-                
+
                 // For small files or non-HEIC, keep original
                 const isHEIC = originalType === 'image/heic' || originalType === 'image/heif' ||
-                               (originalFile?.name?.toLowerCase().endsWith('.heic')) ||
-                               (originalFile?.name?.toLowerCase().endsWith('.heif'));
-                
+                    (originalFile?.name?.toLowerCase().endsWith('.heic')) ||
+                    (originalFile?.name?.toLowerCase().endsWith('.heif'));
+
                 if (isHEIC) {
                     const correctedUrl = dataUrl.replace(/^data:application\/octet-stream/, 'data:image/heic')
-                                                .replace(/^data:image\/heif/, 'data:image/heic');
+                        .replace(/^data:image\/heif/, 'data:image/heic');
                     console.log('📷 Preserved HEIC format for Gemini API');
                     resolve(correctedUrl);
                 } else {
                     resolve(dataUrl);
                 }
             };
-            
+
             img.src = dataUrl;
         });
     },
-    
+
     /**
      * Show photo confirmation screen
      */
@@ -7784,16 +8034,16 @@ REMEMBER:
         const photoReview = document.getElementById('photoReview');
         const retakeBtn = document.getElementById('retakeBtn');
         const usePhotoBtn = document.getElementById('usePhotoBtn');
-        
+
         // For HEIC that browser can't display, show placeholder immediately
         if (this._vastuState.photoIsHEIC && capturedPhoto) {
             console.log('📷 HEIC detected, showing placeholder');
             capturedPhoto.style.display = 'none';
-            
+
             // Remove any existing placeholder
             const existingPlaceholder = capturedPhoto.parentNode.querySelector('.maya-vastu__photo-placeholder');
             if (existingPlaceholder) existingPlaceholder.remove();
-            
+
             const placeholder = document.createElement('div');
             placeholder.className = 'maya-vastu__photo-placeholder';
             placeholder.innerHTML = `
@@ -7808,10 +8058,10 @@ REMEMBER:
             capturedPhoto.onerror = () => {
                 console.warn('📷 Cannot display image, showing placeholder');
                 capturedPhoto.style.display = 'none';
-                
+
                 const existingPlaceholder = capturedPhoto.parentNode.querySelector('.maya-vastu__photo-placeholder');
                 if (existingPlaceholder) existingPlaceholder.remove();
-                
+
                 const placeholder = document.createElement('div');
                 placeholder.className = 'maya-vastu__photo-placeholder';
                 placeholder.innerHTML = `
@@ -7821,23 +8071,23 @@ REMEMBER:
                 placeholder.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;background:#1a1b1d;min-height:300px';
                 capturedPhoto.parentNode.insertBefore(placeholder, capturedPhoto);
             };
-            
+
             capturedPhoto.onload = () => {
                 console.log('📷 Photo displayed successfully');
                 capturedPhoto.style.display = 'block';
             };
-            
+
             capturedPhoto.src = this._vastuState.photoData;
         }
-        
+
         // Show locked direction
         if (reviewDirection) {
             reviewDirection.textContent = `${this._vastuState.lockedDirection} ${this._vastuState.lockedDegree}°`;
         }
-        
+
         // Show review panel
         if (photoReview) photoReview.style.display = 'flex';
-        
+
         // Retake - go back to direction lock and retrigger camera
         if (retakeBtn) {
             retakeBtn.onclick = () => {
@@ -7845,13 +8095,13 @@ REMEMBER:
                 this._initDirectionLock(isHindi);
             };
         }
-        
+
         // Use photo - proceed to area selection
         if (usePhotoBtn) {
             usePhotoBtn.onclick = () => this._goToAreaSelection(isHindi);
         }
     },
-    
+
     /**
      * Stop compass
      */
@@ -7884,27 +8134,27 @@ REMEMBER:
         const compassDial = document.getElementById('compassDial');
         const directionDegree = document.getElementById('directionDegree');
         const directionName = document.getElementById('directionName');
-        
+
         console.log('🧭 Starting live compass...');
         this._vastuState.compassActive = true;
-        
+
         // Low-pass filter variables for smooth compass readings
         let smoothedHeading = null;
         const smoothingFactor = 0.12; // Lower = smoother (0.05-0.2 range)
         let lastDisplayUpdate = 0;
         const displayUpdateInterval = 100; // Update display every 100ms (10 FPS)
-        
+
         // Remove any existing listener first
         if (this._vastuState.compassHandler) {
             window.removeEventListener('deviceorientation', this._vastuState.compassHandler, true);
             window.removeEventListener('deviceorientationabsolute', this._vastuState.compassHandler, true);
         }
-        
+
         this._vastuState.compassHandler = (event) => {
             if (!this._vastuState.compassActive) return;
-            
+
             let heading = null;
-            
+
             // iOS uses webkitCompassHeading (true north)
             if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
                 heading = event.webkitCompassHeading;
@@ -7913,7 +8163,7 @@ REMEMBER:
                 // For absolute heading, use (360 - alpha) as approximation
                 heading = (360 - event.alpha) % 360;
             }
-            
+
             if (heading !== null && !isNaN(heading)) {
                 // Apply low-pass filter for smooth readings
                 if (smoothedHeading === null) {
@@ -7922,39 +8172,39 @@ REMEMBER:
                 } else {
                     // Calculate shortest angular difference (handle 0°/360° wrap-around)
                     let delta = heading - smoothedHeading;
-                    
+
                     // Normalize delta to [-180, 180] range for shortest path
                     if (delta > 180) delta -= 360;
                     if (delta < -180) delta += 360;
-                    
+
                     // Apply exponential smoothing
                     smoothedHeading = (smoothedHeading + delta * smoothingFactor + 360) % 360;
                 }
-                
+
                 // Throttle display updates to reduce jitter
                 const now = Date.now();
                 if (now - lastDisplayUpdate >= displayUpdateInterval) {
                     lastDisplayUpdate = now;
-                    
+
                     const roundedHeading = Math.round(smoothedHeading);
-                    
+
                     // Rotate the compass dial (background) opposite to heading
                     // So North on the dial aligns with where device is pointing
                     if (compassDial) {
                         compassDial.style.transform = `rotate(${-smoothedHeading}deg)`;
                         compassDial.style.webkitTransform = `rotate(${-smoothedHeading}deg)`;
                     }
-                    
+
                     // Update display
                     if (directionDegree) directionDegree.textContent = `${roundedHeading}°`;
                     if (directionName) directionName.textContent = this._getDirectionName(roundedHeading);
-                    
+
                     this._vastuState.directionDegree = roundedHeading;
                     this._vastuState.direction = this._getDirectionName(roundedHeading);
                 }
             }
         };
-        
+
         // Try deviceorientationabsolute first (more accurate on Android)
         if ('ondeviceorientationabsolute' in window) {
             console.log('🧭 Using deviceorientationabsolute');
@@ -7962,7 +8212,7 @@ REMEMBER:
         }
         // Always also listen to deviceorientation for iOS
         window.addEventListener('deviceorientation', this._vastuState.compassHandler, true);
-        
+
         console.log('🧭 Compass listeners attached with low-pass filter');
     },
 
@@ -7973,58 +8223,58 @@ REMEMBER:
         const capturePhotoBtn = document.getElementById('capturePhotoBtn');
         const retakePhotoBtn = document.getElementById('retakePhotoBtn');
         const proceedToAreaBtn = document.getElementById('proceedToAreaBtn');
-        
+
         // Direction names
         const directionNames = {
             en: ['North', 'North-East', 'East', 'South-East', 'South', 'South-West', 'West', 'North-West'],
             hi: ['उत्तर', 'ईशान', 'पूर्व', 'आग्नेय', 'दक्षिण', 'नैऋत्य', 'पश्चिम', 'वायव्य']
         };
-        
+
         this._getDirectionName = (degree) => {
             const names = isHindi ? directionNames.hi : directionNames.en;
             const index = Math.round(degree / 45) % 8;
             return names[index];
         };
-        
+
         // Manual direction selection (fallback)
         document.querySelectorAll('.maya-vastu__dir-btn-overlay').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.maya-vastu__dir-btn-overlay').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                
+
                 const degree = parseInt(btn.dataset.deg);
                 this._vastuState.directionDegree = degree;
                 this._vastuState.direction = this._getDirectionName(degree);
-                
+
                 // Update compass display - rotate ring, keep needle fixed
                 const compassRing = document.querySelector('.maya-vastu__compass-ring-3d');
                 const directionDegree = document.getElementById('directionDegree');
                 const directionName = document.getElementById('directionName');
-                
+
                 if (compassRing) compassRing.style.transform = `rotate(${-degree}deg)`;
                 if (directionDegree) directionDegree.textContent = `${degree}°`;
                 if (directionName) directionName.textContent = this._vastuState.direction;
-                
+
                 // Hide manual selection, enable capture
                 document.getElementById('manualDirectionSection')?.classList.add('maya-vastu__manual-overlay--selected');
                 capturePhotoBtn.disabled = false;
             });
         });
-        
+
         // Capture photo
         if (capturePhotoBtn) {
             capturePhotoBtn.addEventListener('click', () => {
                 this._capturePhoto(isHindi);
             });
         }
-        
+
         // Retake photo
         if (retakePhotoBtn) {
             retakePhotoBtn.addEventListener('click', () => {
                 this._retakePhoto(isHindi);
             });
         }
-        
+
         // Proceed to area selection
         if (proceedToAreaBtn) {
             proceedToAreaBtn.addEventListener('click', () => {
@@ -8032,7 +8282,7 @@ REMEMBER:
             });
         }
     },
-    
+
     /**
      * Initialize Area Selection Step
      */
@@ -8040,15 +8290,15 @@ REMEMBER:
         const customAreaSection = document.getElementById('customAreaSection');
         const customAreaInput = document.getElementById('customAreaInput');
         const proceedWithCustomAreaBtn = document.getElementById('proceedWithCustomAreaBtn');
-        
+
         document.querySelectorAll('.maya-vastu__area-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.maya-vastu__area-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                
+
                 this._vastuState.areaType = btn.dataset.area;
                 this._vastuState.customAreaName = null; // Reset custom area
-                
+
                 // If "Other" is selected, show custom input instead of proceeding
                 if (btn.dataset.area === 'other') {
                     if (customAreaSection) {
@@ -8057,10 +8307,10 @@ REMEMBER:
                     }
                     return; // Don't proceed automatically
                 }
-                
+
                 // Hide custom area section for other options
                 if (customAreaSection) customAreaSection.style.display = 'none';
-                
+
                 // Proceed to analysis after selection (now step 4)
                 setTimeout(() => {
                     this._stopCameraAndCompass();
@@ -8069,7 +8319,7 @@ REMEMBER:
                 }, 300);
             });
         });
-        
+
         // Handle custom area submission
         if (proceedWithCustomAreaBtn) {
             proceedWithCustomAreaBtn.addEventListener('click', () => {
@@ -8077,13 +8327,13 @@ REMEMBER:
                 if (customValue) {
                     this._vastuState.customAreaName = customValue;
                 }
-                
+
                 this._stopCameraAndCompass();
                 this._goToVastuStep(4);
                 this._startVastuAnalysis(isHindi);
             });
         }
-        
+
         // Also allow Enter key to submit
         if (customAreaInput) {
             customAreaInput.addEventListener('keypress', (e) => {
@@ -8093,7 +8343,7 @@ REMEMBER:
             });
         }
     },
-    
+
     /**
      * Capture photo
      */
@@ -8108,33 +8358,33 @@ REMEMBER:
         const postCaptureActions = document.getElementById('postCaptureActions');
         const directionBadge = document.getElementById('directionBadge');
         const manualSection = document.getElementById('manualDirectionSection');
-        
+
         if (!videoEl || !videoEl.videoWidth) {
             MayaUtils.toast.error(isHindi ? 'कैमरा तैयार नहीं' : 'Camera not ready');
             return;
         }
-        
+
         // Lock current direction
         this._vastuState.compassActive = false;
-        
+
         // Capture photo to canvas
         canvasEl.width = videoEl.videoWidth;
         canvasEl.height = videoEl.videoHeight;
         const ctx = canvasEl.getContext('2d');
         ctx.drawImage(videoEl, 0, 0);
-        
+
         // Get base64 image
         const photoData = canvasEl.toDataURL('image/jpeg', 0.8);
         this._vastuState.photoData = photoData;
-        
+
         // Show captured photo
         capturedPhotoEl.src = photoData;
         capturedPhotoEl.style.display = 'block';
         videoEl.style.display = 'none';
-        
+
         // Stop camera stream to free resources
         this._stopCamera();
-        
+
         // Update UI
         if (compassOverlay) compassOverlay.style.display = 'none';
         if (directionBadge) directionBadge.style.display = 'none';
@@ -8147,10 +8397,10 @@ REMEMBER:
         }
         if (captureControls) captureControls.style.display = 'none';
         if (postCaptureActions) postCaptureActions.style.display = 'flex';
-        
+
         MayaUtils.toast.success(isHindi ? `${this._vastuState.direction} में फोटो कैप्चर` : `Photo captured facing ${this._vastuState.direction}`);
     },
-    
+
     /**
      * Retake photo - restart camera for new capture
      */
@@ -8159,37 +8409,37 @@ REMEMBER:
         const directionLocked = document.getElementById('directionLocked');
         const directionBadge = document.getElementById('directionBadge');
         const postCaptureActions = document.getElementById('postCaptureActions');
-        
+
         this._vastuState.photoData = null;
         this._vastuState.compassActive = true;
-        
+
         // Hide captured photo and related UI
         if (capturedPhotoEl) capturedPhotoEl.style.display = 'none';
         if (directionLocked) directionLocked.style.display = 'none';
         if (directionBadge) directionBadge.style.display = 'flex';
         if (postCaptureActions) postCaptureActions.style.display = 'none';
-        
+
         // Restart camera
         await this._startCameraOnly(isHindi);
     },
-    
+
     /**
      * Go to area selection
      */
     _goToAreaSelection(isHindi) {
         const previewImage = document.getElementById('previewImage');
         const previewDirection = document.getElementById('previewDirection');
-        
+
         // Set preview with LOCKED direction values
         if (previewImage) previewImage.src = this._vastuState.photoData;
         if (previewDirection) {
             previewDirection.textContent = `${this._vastuState.lockedDirection || this._vastuState.direction} (${this._vastuState.lockedDegree || this._vastuState.directionDegree}°)`;
         }
-        
+
         // Go to area selection step
         this._goToVastuStep(2.5);
     },
-    
+
     /**
      * Stop camera and compass - cleanup resources
      */
@@ -8199,29 +8449,29 @@ REMEMBER:
 
         // Stop camera stream
         this._stopCameraStream();
-        
+
         // Stop compass
         this._vastuState.compassActive = false;
         if (this._vastuState.compassHandler) {
             window.removeEventListener('deviceorientation', this._vastuState.compassHandler);
             this._vastuState.compassHandler = null;
         }
-        
+
         // Clear captured photo
         this._vastuState.capturedPhoto = null;
     },
-    
+
     /**
      * Navigate between Vastu steps
      */
     _goToVastuStep(step) {
         this._vastuState.currentStep = step;
-        
+
         // Hide all panels
         document.querySelectorAll('.maya-vastu__panel').forEach(p => {
             p.classList.remove('maya-vastu__panel--active');
         });
-        
+
         // Show target panel
         let panelId;
         if (step === 1.5) {
@@ -8234,17 +8484,17 @@ REMEMBER:
             panelId = `vastuStep${step}`;
         }
         document.getElementById(panelId)?.classList.add('maya-vastu__panel--active');
-        
+
         // Update step indicator
         this._updateStepIndicator(step);
     },
-    
+
     /**
      * Update step indicator dots
      */
     _updateStepIndicator(step) {
         const dots = document.querySelectorAll('.maya-vastu__step-dot');
-        
+
         // Map steps to dot indices:
         // Dot 0: Location (step 1)
         // Dot 1: Compass (step 1.5)
@@ -8255,10 +8505,10 @@ REMEMBER:
         else if (step <= 1.5) activeIndex = 1;
         else if (step === 2 || step === '2b' || step <= 2.5) activeIndex = 2;
         else activeIndex = 3;
-        
+
         dots.forEach((dot, index) => {
             dot.classList.remove('maya-vastu__step-dot--active', 'maya-vastu__step-dot--completed');
-            
+
             if (index < activeIndex) {
                 dot.classList.add('maya-vastu__step-dot--completed');
             } else if (index === activeIndex) {
@@ -8266,20 +8516,20 @@ REMEMBER:
             }
         });
     },
-    
+
     /**
      * Initialize Vastu Analysis Step
      */
     _initVastuAnalysisStep(isHindi) {
         const doneBtn = document.getElementById('doneVastuBtn');
         const newAnalysisBtn = document.getElementById('newAnalysisBtn');
-        
+
         if (doneBtn) {
             doneBtn.addEventListener('click', () => {
                 this._exitVastuPage();
             });
         }
-        
+
         if (newAnalysisBtn) {
             newAnalysisBtn.addEventListener('click', () => {
                 // Reset and restart calibration
@@ -8288,7 +8538,7 @@ REMEMBER:
             });
         }
     },
-    
+
     /**
      * Start AI Vastu Analysis with retry logic
      */
@@ -8299,7 +8549,7 @@ REMEMBER:
         const actionsDiv = document.getElementById('analysisActions');
         const metaDiv = document.getElementById('analysisMetaInfo');
         const scrollArea = document.getElementById('analysisScrollArea');
-        
+
         // Show meta information
         const areaLabels = {
             entrance: isHindi ? 'मुख्य प्रवेश द्वार' : 'Main Entrance',
@@ -8314,12 +8564,12 @@ REMEMBER:
             staircase: isHindi ? 'सीढ़ियां' : 'Staircase',
             other: isHindi ? 'अन्य' : 'Other'
         };
-        
+
         // Get display label for area - use custom name if provided
-        const areaDisplayLabel = this._vastuState.customAreaName 
-            ? this._vastuState.customAreaName 
+        const areaDisplayLabel = this._vastuState.customAreaName
+            ? this._vastuState.customAreaName
             : areaLabels[this._vastuState.areaType];
-        
+
         if (metaDiv) {
             metaDiv.innerHTML = `
                 <span class="maya-vastu__meta-chip"><i class="bi bi-geo-alt"></i> ${this._vastuState.latitude}°, ${this._vastuState.longitude}°</span>
@@ -8327,33 +8577,33 @@ REMEMBER:
                 <span class="maya-vastu__meta-chip"><i class="bi bi-house"></i> ${areaDisplayLabel}</span>
             `;
         }
-        
+
         // Reset and show loading
         if (loadingDiv) loadingDiv.style.display = 'flex';
         if (scrollArea) scrollArea.style.display = 'none';
         if (resultDiv) resultDiv.style.display = 'none';
         if (actionsDiv) actionsDiv.style.display = 'none';
-        
+
         // Show retry count if retrying
         const loadingText = loadingDiv?.querySelector('p');
         if (retryCount > 0 && loadingText) {
-            loadingText.textContent = isHindi 
-                ? `पुनः प्रयास ${retryCount}/${maxRetries}...` 
+            loadingText.textContent = isHindi
+                ? `पुनः प्रयास ${retryCount}/${maxRetries}...`
                 : `Retry attempt ${retryCount}/${maxRetries}...`;
         }
-        
+
         try {
             // Generate Vastu analysis using AI
             const { analysisHtml, score } = await this._generateVastuAnalysis(isHindi);
-            
+
             // Validate we got a real analysis (not empty/minimal)
             if (!analysisHtml || analysisHtml.length < 200) {
                 throw new Error('Insufficient analysis generated');
             }
-            
+
             // Save the analysis
             this._saveVastuAnalysis(analysisHtml, score);
-            
+
             setTimeout(() => {
                 if (loadingDiv) loadingDiv.style.display = 'none';
                 if (scrollArea) scrollArea.style.display = 'block';
@@ -8363,31 +8613,31 @@ REMEMBER:
                 }
                 if (actionsDiv) actionsDiv.style.display = 'flex';
             }, 300);
-            
+
         } catch (error) {
             console.error('Vastu analysis error:', error);
-            
+
             // Check if it's a rate limit error - be thorough with detection
             const errorMsg = (error.message || '').toLowerCase();
-            const isRateLimitError = errorMsg.includes('quota') || 
-                                     errorMsg.includes('429') || 
-                                     errorMsg.includes('rate limit') ||
-                                     errorMsg.includes('exceeded') ||
-                                     errorMsg.includes('too many requests');
-            
+            const isRateLimitError = errorMsg.includes('quota') ||
+                errorMsg.includes('429') ||
+                errorMsg.includes('rate limit') ||
+                errorMsg.includes('exceeded') ||
+                errorMsg.includes('too many requests');
+
             console.log('🔍 Rate limit detection:', { isRateLimitError, errorMsg: error.message?.substring(0, 100) });
-            
+
             // For rate limits, use fallback immediately instead of retrying
             if (isRateLimitError) {
                 console.log('⚠️ Rate limited - using fallback Vastu analysis');
                 MayaUtils.toast.warning(isHindi ? 'AI व्यस्त है, बेसिक विश्लेषण दिखा रहे हैं' : 'AI busy, showing basic analysis');
-                
+
                 try {
                     // Use fallback analysis
                     const { analysisHtml, score } = await this._fallbackVastuAnalysis(isHindi);
                     console.log('✅ Fallback analysis generated, score:', score);
                     this._saveVastuAnalysis(analysisHtml, score);
-                    
+
                     if (loadingDiv) loadingDiv.style.display = 'none';
                     if (scrollArea) scrollArea.style.display = 'block';
                     if (resultDiv) {
@@ -8400,25 +8650,25 @@ REMEMBER:
                     console.error('Fallback analysis also failed:', fallbackError);
                 }
             }
-            
+
             // Retry if we haven't exceeded max retries (for non-rate-limit errors)
             if (retryCount < maxRetries && !isRateLimitError) {
                 console.log(`🔄 Retrying Vastu analysis (${retryCount + 1}/${maxRetries})...`);
                 MayaUtils.toast.warning(isHindi ? `पुनः प्रयास हो रहा है...` : `Retrying analysis...`);
-                
+
                 // Wait a bit before retrying
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 return this._startVastuAnalysis(isHindi, retryCount + 1);
             }
-            
+
             // Max retries reached or rate limited - show fallback or error
             if (loadingDiv) loadingDiv.style.display = 'none';
-            
+
             // Try fallback one more time
             try {
                 const { analysisHtml, score } = await this._fallbackVastuAnalysis(isHindi);
                 this._saveVastuAnalysis(analysisHtml, score);
-                
+
                 if (scrollArea) scrollArea.style.display = 'block';
                 if (resultDiv) {
                     resultDiv.style.display = 'block';
@@ -8443,7 +8693,7 @@ REMEMBER:
                             </button>
                         </div>
                     `;
-                    
+
                     document.getElementById('retryAnalysisBtn')?.addEventListener('click', () => {
                         this._startVastuAnalysis(isHindi, 0);
                     });
@@ -8452,14 +8702,14 @@ REMEMBER:
             }
         }
     },
-    
+
     /**
      * Generate Vastu Analysis using AI with vision
      */
     async _generateVastuAnalysis(isHindi) {
         const profile = MayaUtils.storage.get('maya_profile') || {};
         const language = isHindi ? 'Hindi (Hinglish in Devanagari)' : 'English';
-        
+
         // Area-specific Vastu considerations
         const areaVastuPoints = {
             entrance: 'Main entrance direction, placement of door, threshold, shoe rack placement, nameplate position, welcome elements',
@@ -8474,17 +8724,17 @@ REMEMBER:
             staircase: 'Direction of stairs, landing placement, space under stairs, lighting',
             other: 'General Vastu principles for the space'
         };
-        
+
         // Get area name - use custom name if provided, otherwise use area type
-        const areaName = this._vastuState.customAreaName 
-            ? this._vastuState.customAreaName 
+        const areaName = this._vastuState.customAreaName
+            ? this._vastuState.customAreaName
             : this._vastuState.areaType.replace('_', ' ');
-        
+
         // Get Vastu points - for custom areas, use both "other" general points and the custom description
-        const vastuPoints = this._vastuState.customAreaName 
+        const vastuPoints = this._vastuState.customAreaName
             ? `General Vastu principles for ${this._vastuState.customAreaName}. User specified this area as: ${this._vastuState.customAreaName}`
             : areaVastuPoints[this._vastuState.areaType];
-        
+
         const vastuPrompt = `You are MAYA, an expert in Vastu Shastra (ancient Indian architectural science). Analyze this space photo according to Vastu principles.
 
 **Context:**
@@ -8544,44 +8794,41 @@ Rules:
             return await this._fallbackVastuAnalysis(isHindi);
         }
     },
-    
+
     /**
      * Call Gemini Vision API for image analysis
      * Includes retry logic for rate limits
      */
     async _callGeminiVision(prompt, imageData) {
-        // Get all API keys (primary + fallbacks)
+        // Use only the primary paid Gemini key.
         const apiKeys = [
-            MAYA_CONFIG.API_KEYS.GEMINI,
-            ...(window.MAYA_SECRETS?.GEMINI_FALLBACKS || [])
+            MAYA_CONFIG.API_KEYS.GEMINI
         ].filter(Boolean);
-        
-        console.log(`🔑 Available Gemini API keys: ${apiKeys.length}`);
-        
+
+        console.log(`🔑 Using single Gemini API key: ${apiKeys.length}`);
+
         // Recommended models for image analysis (multimodal understanding)
         const models = [
-            'gemini-2.5-flash',      // Primary: fast multimodal
-            'gemini-2.5-pro',        // Fallback: complex reasoning
-            'gemini-2.0-flash'       // Legacy fallback
+            'gemini-2.5-flash-lite'
         ];
-        
+
         // Check if we have valid image data
         if (!imageData || !imageData.startsWith('data:image/')) {
             console.error('Invalid image data provided to Gemini Vision');
             throw new Error('No valid image data');
         }
-        
+
         // Extract MIME type and base64 data properly
         const mimeMatch = imageData.match(/^data:(image\/[\w-]+);base64,/);
         let mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-        
+
         // Gemini supports: PNG, JPEG, WEBP, HEIC, HEIF
         if (mimeType === 'image/heif') mimeType = 'image/heic';
-        
+
         const base64Image = imageData.replace(/^data:image\/[\w-]+;base64,/, '');
-        
+
         console.log('🖼️ Gemini Vision - Image size:', Math.round(base64Image.length / 1024), 'KB, MIME:', mimeType);
-        
+
         const payload = {
             contents: [{
                 parts: [
@@ -8606,52 +8853,52 @@ Rules:
                 { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
             ]
         };
-        
+
         let lastError = null;
-        
-        // Try each API key, then each model (like the working project)
+
+        // Try the primary API key and configured model only.
         for (let keyIndex = 0; keyIndex < apiKeys.length; keyIndex++) {
             const apiKey = apiKeys[keyIndex];
             const keyLabel = keyIndex === 0 ? 'Primary' : `Fallback-${keyIndex}`;
-            
+
             for (const model of models) {
                 try {
                     const url = `${MAYA_CONFIG.ENDPOINTS.GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
                     console.log(`🤖 Trying Gemini [${keyLabel}] model: ${model}`);
-                    
+
                     const response = await fetch(url, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
-                    
+
                     const data = await response.json();
-                    
-                    // Handle rate limit (429) - immediately try next API key
+
+                    // Handle rate limit (429) without cycling through fallback keys.
                     if (response.status === 429) {
-                        console.warn(`⚠️ Gemini [${keyLabel}] rate limited on ${model}, trying next API key...`);
+                        console.warn(`⚠️ Gemini [${keyLabel}] rate limited on ${model}. No fallback keys will be tried.`);
                         lastError = data.error?.message || 'Rate limited';
-                        break; // Break inner loop to try next API key
+                        break;
                     }
-                    
+
                     // Handle 404 - model not found
                     if (response.status === 404) {
                         console.warn(`⚠️ Gemini [${keyLabel}] model ${model} not found, trying next...`);
                         continue;
                     }
-                    
+
                     // Handle 503 - overloaded
                     if (response.status === 503) {
                         console.warn(`⚠️ Gemini [${keyLabel}] model ${model} overloaded, trying next...`);
                         continue;
                     }
-                    
+
                     if (!response.ok) {
                         console.warn(`Gemini [${keyLabel}] ${model} error:`, data.error?.message || response.status);
                         lastError = data.error?.message || `HTTP ${response.status}`;
                         continue;
                     }
-                    
+
                     if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
                         console.log(`✅ Gemini Vision success [${keyLabel}] with ${model}`);
                         return data.candidates[0].content.parts[0].text;
@@ -8665,11 +8912,11 @@ Rules:
                 }
             }
         }
-        
-        console.error(`❌ All Gemini Vision API keys (${apiKeys.length}) and models failed. Last error:`, lastError);
+
+        console.error(`❌ Gemini Vision failed with the configured key/model. Last error:`, lastError);
         throw new Error(`Vision analysis failed: ${lastError}`);
     },
-    
+
     /**
      * Fallback Vastu analysis without image (when API is rate limited)
      * Provides comprehensive guidance based on direction and area type
@@ -8701,7 +8948,7 @@ Rules:
             entrance: {
                 ideal: ['North', 'East', 'North-East'],
                 avoid: ['South', 'South-West'],
-                tips: isHindi 
+                tips: isHindi
                     ? [
                         '🚪 मुख्य द्वार पर शुभ स्वास्तिक या ॐ चिन्ह लगाएं',
                         '🌺 तोरण या बंदनवार लगाएं',
@@ -8709,7 +8956,7 @@ Rules:
                         '💡 प्रवेश द्वार हमेशा रोशन रखें',
                         '🪴 तुलसी या मनी प्लांट रखें',
                         '🔔 घंटी या विंड चाइम लगाएं'
-                      ]
+                    ]
                     : [
                         '🚪 Place Swastik or Om symbol at entrance',
                         '🌺 Hang a toran or decorative bandanwar',
@@ -8717,7 +8964,7 @@ Rules:
                         '💡 Keep entrance well-lit always',
                         '🪴 Place Tulsi or Money plant near entrance',
                         '🔔 Hang a bell or wind chime'
-                      ],
+                    ],
                 remedies: isHindi
                     ? ['द्वार के बाहर गणेश जी की प्रतिमा रखें', 'नमक-पानी से साप्ताहिक सफाई करें']
                     : ['Place Ganesh idol outside door', 'Weekly cleansing with salt water']
@@ -8733,7 +8980,7 @@ Rules:
                         '🪴 पौधे उत्तर-पूर्व कोने में रखें',
                         '🎨 पारिवारिक फोटो दक्षिण-पश्चिम में लगाएं',
                         '💡 उत्तर-पूर्व कोना खुला और रोशन रखें'
-                      ]
+                    ]
                     : [
                         '🛋️ Place heavy furniture in South-West corner',
                         '📺 Mount TV on East or North wall',
@@ -8741,7 +8988,7 @@ Rules:
                         '🪴 Keep plants in North-East corner',
                         '🎨 Family photos should be in South-West',
                         '💡 Keep North-East corner open and bright'
-                      ],
+                    ],
                 remedies: isHindi
                     ? ['क्रिस्टल या पिरामिड रखें', 'सप्ताह में एक बार धूप-दीप जलाएं']
                     : ['Place crystal or pyramid', 'Light incense weekly']
@@ -8757,7 +9004,7 @@ Rules:
                         '🚪 बिस्तर को दरवाजे के सीधे सामने न रखें',
                         '🎨 हल्के और सुखदायक रंग चुनें',
                         '💑 जोड़े की फोटो दक्षिण-पश्चिम में रखें'
-                      ]
+                    ]
                     : [
                         '🛏️ Sleep with head towards South or East',
                         '🪞 Avoid mirror facing the bed',
@@ -8765,7 +9012,7 @@ Rules:
                         '🚪 Don\'t place bed directly facing door',
                         '🎨 Choose light and soothing colors',
                         '💑 Couple\'s photo in South-West'
-                      ],
+                    ],
                 remedies: isHindi
                     ? ['शयनकक्ष में गुलाबी रंग की वस्तुएं रखें', 'लैवेंडर या चंदन की खुशबू रखें']
                     : ['Keep pink colored items in bedroom', 'Use lavender or sandalwood fragrance']
@@ -8781,7 +9028,7 @@ Rules:
                         '💨 एग्जॉस्ट पूर्व दिशा में लगाएं',
                         '🍽️ पूर्व की ओर मुख करके खाना बनाएं',
                         '🌿 तुलसी या अन्य जड़ी-बूटी रखें'
-                      ]
+                    ]
                     : [
                         '🔥 Place stove in South-East corner',
                         '🚰 Keep distance between sink and stove',
@@ -8789,7 +9036,7 @@ Rules:
                         '💨 Exhaust fan towards East',
                         '🍽️ Cook facing East direction',
                         '🌿 Keep Tulsi or herbs in kitchen'
-                      ],
+                    ],
                 remedies: isHindi
                     ? ['रसोई में पीले रंग का उपयोग करें', 'नमक का कटोरा रखें']
                     : ['Use yellow color in kitchen', 'Keep a bowl of salt']
@@ -8805,7 +9052,7 @@ Rules:
                         '💧 नल टपकना नहीं चाहिए',
                         '🪟 हवादार और सूखा रखें',
                         '🚪 दरवाजा हमेशा बंद रखें'
-                      ]
+                    ]
                     : [
                         '🚽 Toilet seat in North-South direction',
                         '🚿 Shower in East or North',
@@ -8813,7 +9060,7 @@ Rules:
                         '💧 No leaking taps (drains wealth)',
                         '🪟 Keep well-ventilated and dry',
                         '🚪 Always keep door closed'
-                      ],
+                    ],
                 remedies: isHindi
                     ? ['समुद्री नमक से साप्ताहिक सफाई', 'ताजे फूल या पौधे रखें']
                     : ['Weekly cleansing with sea salt', 'Keep fresh flowers or plants']
@@ -8829,7 +9076,7 @@ Rules:
                         '🌸 ताजे फूल और जल रोज बदलें',
                         '📿 मूर्तियां जमीन से ऊपर रखें',
                         '🧹 नियमित स्वच्छता बनाए रखें'
-                      ]
+                    ]
                     : [
                         '🕉️ Deity should face East or West',
                         '🙏 Face East or North while praying',
@@ -8837,7 +9084,7 @@ Rules:
                         '🌸 Change flowers and water daily',
                         '📿 Keep idols above ground level',
                         '🧹 Maintain regular cleanliness'
-                      ],
+                    ],
                 remedies: isHindi
                     ? ['रोज घी का दीपक जलाएं', 'गंगाजल छिड़कें']
                     : ['Light ghee lamp daily', 'Sprinkle Gangajal']
@@ -8853,7 +9100,7 @@ Rules:
                         '🪴 मनी प्लांट उत्तर में रखें',
                         '⏰ घड़ी उत्तर या पूर्व दीवार पर',
                         '🎯 प्रेरणादायक चित्र उत्तर में'
-                      ]
+                    ]
                     : [
                         '💼 Sit facing North or East',
                         '🖥️ Place computer in South-East',
@@ -8861,7 +9108,7 @@ Rules:
                         '🪴 Money plant in North',
                         '⏰ Clock on North or East wall',
                         '🎯 Inspirational images in North'
-                      ],
+                    ],
                 remedies: isHindi
                     ? ['क्रिस्टल पिरामिड रखें', 'लाफिंग बुद्धा उत्तर में रखें']
                     : ['Keep crystal pyramid', 'Place laughing Buddha in North']
@@ -8877,7 +9124,7 @@ Rules:
                         '🧹 अनावश्यक सामान हटाएं',
                         '🎨 सुखदायक रंग चुनें',
                         '🔔 सकारात्मक ध्वनियां रखें'
-                      ]
+                    ]
                     : [
                         '✨ Keep North-East corner clean and open',
                         '🌿 Place plants that bring positive energy',
@@ -8885,25 +9132,25 @@ Rules:
                         '🧹 Remove unnecessary clutter',
                         '🎨 Choose soothing colors',
                         '🔔 Keep positive sounds'
-                      ],
+                    ],
                 remedies: isHindi
                     ? ['समुद्री नमक से सफाई', 'कपूर जलाएं']
                     : ['Cleanse with sea salt', 'Burn camphor']
             }
         };
-        
+
         const areaType = this._vastuState.areaType || 'other';
         const guidance = areaGuidance[areaType] || areaGuidance.other;
         const direction = this._vastuState.direction || 'North';
-        
+
         // Calculate direction score
         const isIdeal = guidance.ideal.some(d => direction.toLowerCase().includes(d.toLowerCase().split('-')[0]));
         const isAvoided = guidance.avoid.some(d => direction.toLowerCase().includes(d.toLowerCase().split('-')[0]));
-        
+
         let score = 6; // Default neutral
         if (isIdeal) score = 8;
         if (isAvoided) score = 4;
-        
+
         // Get area label
         const areaLabels = {
             entrance: isHindi ? 'प्रवेश द्वार' : 'Entrance',
@@ -8915,9 +9162,9 @@ Rules:
             office: isHindi ? 'कार्यालय' : 'Office',
             other: this._vastuState.customAreaName || (isHindi ? 'क्षेत्र' : 'Area')
         };
-        
+
         const areaLabel = areaLabels[areaType] || areaLabels.other;
-        
+
         // Build comprehensive analysis HTML with improved card-based UI
         const analysisHtml = `
             <!-- Score Hero Card -->
@@ -8941,11 +9188,11 @@ Rules:
                         ${direction} • ${this._vastuState.directionDegree}°
                     </div>
                     <span class="maya-vastu-result__status-tag">
-                        ${score >= 7 
-                            ? (isHindi ? '✨ शुभ' : '✨ Auspicious') 
-                            : score >= 5 
-                                ? (isHindi ? '⚖️ तटस्थ' : '⚖️ Neutral')
-                                : (isHindi ? '⚠️ सुधार आवश्यक' : '⚠️ Needs Improvement')}
+                        ${score >= 7
+                ? (isHindi ? '✨ शुभ' : '✨ Auspicious')
+                : score >= 5
+                    ? (isHindi ? '⚖️ तटस्थ' : '⚖️ Neutral')
+                    : (isHindi ? '⚠️ सुधार आवश्यक' : '⚠️ Needs Improvement')}
                     </span>
                 </div>
             </div>
@@ -8961,12 +9208,12 @@ Rules:
                 <div class="maya-vastu-result__card-body">
                     <div class="maya-vastu-result__status-box maya-vastu-result__status-box--${isIdeal ? 'good' : isAvoided ? 'warning' : 'neutral'}">
                         <i class="bi bi-${isIdeal ? 'check-circle-fill' : isAvoided ? 'exclamation-triangle-fill' : 'info-circle-fill'}"></i>
-                        <p>${isIdeal 
-                            ? (isHindi ? `${direction} दिशा ${areaLabel} के लिए शुभ है!` : `${direction} is auspicious for ${areaLabel}!`)
-                            : isAvoided
-                                ? (isHindi ? `${direction} दिशा ${areaLabel} के लिए आदर्श नहीं है।` : `${direction} is not ideal for ${areaLabel}.`)
-                                : (isHindi ? `${direction} दिशा ${areaLabel} के लिए तटस्थ है।` : `${direction} is neutral for ${areaLabel}.`)
-                        }</p>
+                        <p>${isIdeal
+                ? (isHindi ? `${direction} दिशा ${areaLabel} के लिए शुभ है!` : `${direction} is auspicious for ${areaLabel}!`)
+                : isAvoided
+                    ? (isHindi ? `${direction} दिशा ${areaLabel} के लिए आदर्श नहीं है।` : `${direction} is not ideal for ${areaLabel}.`)
+                    : (isHindi ? `${direction} दिशा ${areaLabel} के लिए तटस्थ है।` : `${direction} is neutral for ${areaLabel}.`)
+            }</p>
                     </div>
                     <div class="maya-vastu-result__ideal-directions">
                         <span class="maya-vastu-result__label">${isHindi ? 'आदर्श दिशाएं' : 'Ideal Directions'}</span>
@@ -9030,16 +9277,16 @@ Rules:
                 <i class="bi bi-chevron-right"></i>
             </div>
         `;
-        
+
         return { analysisHtml, score };
     },
-    
+
     /**
      * Format Vastu response for display and extract score
      */
     _formatVastuResponse(response, isHindi) {
         let data;
-        
+
         try {
             // Try to parse JSON response - strip markdown code fences if present
             let cleaned = response.trim();
@@ -9051,7 +9298,7 @@ Rules:
             let score = 5;
             const scoreMatch = response.match(/SCORE:\s*(\d+)\/10/i) || response.match(/["']?score["']?\s*:\s*(\d+)/i) || response.match(/(\d+)\/10/);
             if (scoreMatch) score = Math.min(10, Math.max(1, parseInt(scoreMatch[1])));
-            
+
             data = {
                 score: score,
                 scoreSummary: isHindi ? 'वास्तु विश्लेषण पूर्ण' : 'Vastu analysis complete',
@@ -9061,25 +9308,25 @@ Rules:
                 placements: []
             };
         }
-        
+
         const score = Math.min(10, Math.max(1, data.score || 5));
         const scoreClass = score >= 7 ? 'good' : score >= 5 ? 'neutral' : 'improve';
         const scoreColor = score >= 7 ? '#22c55e' : score >= 5 ? '#f59e0b' : '#ef4444';
-        const scoreLabel = score >= 7 
+        const scoreLabel = score >= 7
             ? (isHindi ? '✨ शुभ' : '✨ Auspicious')
-            : score >= 5 
+            : score >= 5
                 ? (isHindi ? '⚖️ ठीक है' : '⚖️ Moderate')
                 : (isHindi ? '⚠️ सुधार आवश्यक' : '⚠️ Needs Improvement');
-        
+
         // Get area name
         const areaName = this._vastuState.customAreaName || this._vastuState.areaType?.replace('_', ' ') || 'Space';
         const direction = this._vastuState.direction || '';
         const degree = this._vastuState.directionDegree || '';
-        
+
         // Build score ring SVG
         const circumference = 2 * Math.PI * 40;
         const dashLen = (score / 10) * circumference;
-        
+
         // Build HTML
         const html = `
             <!-- Score Hero -->
@@ -9133,9 +9380,8 @@ Rules:
                 <div class="vastu-r__items">
                     ${data.doshas.map(d => `
                         <div class="vastu-r__item vastu-r__item--dosha">
-                            <span class="vastu-r__severity vastu-r__severity--${d.severity || 'medium'}">${
-                                d.severity === 'high' ? '!' : d.severity === 'low' ? '~' : '•'
-                            }</span>
+                            <span class="vastu-r__severity vastu-r__severity--${d.severity || 'medium'}">${d.severity === 'high' ? '!' : d.severity === 'low' ? '~' : '•'
+            }</span>
                             <div>
                                 <strong>${d.title}</strong>
                                 <p>${d.desc}</p>
@@ -9193,16 +9439,16 @@ Rules:
                 <i class="bi bi-chevron-right"></i>
             </div>
         `;
-        
+
         return { html, score };
     },
-    
+
     /**
      * Save Vastu analysis to storage
      */
     _saveVastuAnalysis(analysisHtml, score) {
         const savedAnalyses = MayaUtils.storage.get('maya_vastu_analyses') || [];
-        
+
         const newAnalysis = {
             id: Date.now(),
             timestamp: new Date().toISOString(),
@@ -9215,15 +9461,15 @@ Rules:
             analysisHtml: analysisHtml,
             photoData: this._vastuState.photoData // Optional: store thumbnail
         };
-        
+
         // Add to beginning of array (most recent first)
         savedAnalyses.unshift(newAnalysis);
-        
+
         // Keep only last 20 analyses
         if (savedAnalyses.length > 20) {
             savedAnalyses.pop();
         }
-        
+
         MayaUtils.storage.set('maya_vastu_analyses', savedAnalyses);
     },
 
@@ -9232,7 +9478,7 @@ Rules:
      */
     initChatHistoryPage() {
         const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
-        
+
         // Delete individual chat
         document.querySelectorAll('[data-delete-chat]').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -9241,7 +9487,7 @@ Rules:
                 this.deleteChatItem(chatId, isHindi);
             });
         });
-        
+
         // Clear all chats
         const clearAllBtn = document.getElementById('clearAllChats');
         if (clearAllBtn) {
@@ -9253,7 +9499,7 @@ Rules:
                 }
             });
         }
-        
+
         // Click on chat item to view full conversation
         document.querySelectorAll('.maya-chat-history__item').forEach(item => {
             item.addEventListener('click', (e) => {
@@ -9264,7 +9510,7 @@ Rules:
             });
         });
     },
-    
+
     /**
      * Resolve a chat entry from its rendered history ID.
      */
@@ -9293,9 +9539,9 @@ Rules:
      */
     showChatDetailModal(chatId, isHindi) {
         const { chat } = this._resolveChatHistoryEntry(chatId);
-        
+
         if (!chat) return;
-        
+
         const modal = document.createElement('div');
         modal.className = 'maya-modal maya-modal--active';
         modal.id = 'chatDetailModal';
@@ -9350,24 +9596,24 @@ Rules:
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
-        
+
         // Close handlers
         const closeModal = () => {
             if (window.MayaVoice) MayaVoice.stop();
             modal.classList.remove('maya-modal--active');
             setTimeout(() => modal.remove(), 300);
         };
-        
+
         modal.querySelector('.maya-modal__backdrop').addEventListener('click', closeModal);
         modal.querySelector('#closeChatDetail').addEventListener('click', closeModal);
         modal.querySelector('#closeChatDetailBtn').addEventListener('click', closeModal);
-        
+
         // Speak button
         const speakBtn = modal.querySelector('#speakChatBtn');
         let isSpeaking = false;
-        
+
         speakBtn.addEventListener('click', async () => {
             if (isSpeaking) {
                 MayaVoice.stop();
@@ -9409,15 +9655,15 @@ Rules:
         const speakBtn = document.getElementById('speakHoroscope');
         const horoscopeText = document.getElementById('horoscopeText');
         const subtitleEl = document.getElementById('horoscopeSubtitle');
-        
+
         console.log('🎤 Elements found:', { speakBtn: !!speakBtn, horoscopeText: !!horoscopeText, MayaVoice: !!window.MayaVoice });
-        
+
         if (speakBtn && horoscopeText && window.MayaVoice) {
             let isSpeaking = false;
-            
+
             speakBtn.addEventListener('click', async () => {
                 console.log('🎤 Speak button clicked, isSpeaking:', isSpeaking, 'isMuted:', MayaVoice.isMuted);
-                
+
                 if (isSpeaking) {
                     // Stop speaking
                     MayaVoice.stop();
@@ -9433,18 +9679,18 @@ Rules:
                     // Start speaking - fast streaming mode
                     const text = horoscopeText.textContent;
                     console.log('🎤 Speaking text:', text.substring(0, 50) + '...');
-                    
+
                     speakBtn.innerHTML = '<i class="bi bi-stop-fill"></i>';
                     speakBtn.classList.add('speaking');
                     isSpeaking = true;
-                    
+
                     // Hide full text, show subtitle immediately
                     horoscopeText.style.display = 'none';
                     if (subtitleEl) {
                         subtitleEl.style.display = 'block';
                         subtitleEl.textContent = 'Starting...';
                     }
-                    
+
                     try {
                         // Use fast chunked speak with progress callback for subtitle display
                         await MayaVoice.speak(text, (currentSentence, isComplete) => {
@@ -9468,7 +9714,7 @@ Rules:
                             subtitleEl.style.display = 'none';
                         }
                     }
-                    
+
                     // Reset button when done
                     speakBtn.innerHTML = '<i class="bi bi-volume-up-fill"></i>';
                     speakBtn.classList.remove('speaking');
@@ -9486,7 +9732,7 @@ Rules:
      */
     initAspectCards() {
         const aspectCards = document.querySelectorAll('.maya-rating-item--clickable');
-        
+
         aspectCards.forEach(card => {
             card.addEventListener('click', async () => {
                 const aspect = card.dataset.aspect;
@@ -9494,7 +9740,7 @@ Rules:
                 const zodiac = card.dataset.zodiac;
                 const horoscope = decodeURIComponent(card.dataset.horoscope || '');
                 const profile = MayaUtils.storage.get('maya_profile') || {};
-                
+
                 this.showAspectModal(aspect, rating, zodiac, horoscope, profile);
             });
         });
@@ -9505,7 +9751,7 @@ Rules:
      */
     async showAspectModal(aspect, rating, zodiac, horoscope, profile) {
         const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
-        
+
         const aspectIcons = {
             love: 'bi-heart-fill',
             career: 'bi-briefcase-fill',
@@ -9575,16 +9821,16 @@ Rules:
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
-        
+
         // Close handlers
         const closeModal = () => {
             if (window.MayaVoice) MayaVoice.stop();
             modal.classList.remove('maya-modal--active');
             setTimeout(() => modal.remove(), 300);
         };
-        
+
         modal.querySelector('.maya-modal__backdrop').addEventListener('click', closeModal);
         modal.querySelector('#closeAspectModal').addEventListener('click', closeModal);
         modal.querySelector('#closeAspectModalBtn').addEventListener('click', closeModal);
@@ -9593,15 +9839,15 @@ Rules:
         let insightText = '';
         try {
             const insight = await MayaHoroscopeAPI.generateAspectInsight(aspect, rating, horoscope, zodiac, profile);
-            
+
             const bodyEl = modal.querySelector('.maya-aspect-modal__body');
-            
+
             // Build content based on rating
             const statusClass = rating <= 2 ? 'warning' : rating >= 4 ? 'positive' : 'neutral';
             const statusIcon = rating <= 2 ? 'bi-exclamation-triangle-fill' : rating >= 4 ? 'bi-check-circle-fill' : 'bi-info-circle-fill';
-            const statusLabel = rating <= 2 
+            const statusLabel = rating <= 2
                 ? (isHindi ? 'सावधानी आवश्यक' : 'Caution Needed')
-                : rating >= 4 
+                : rating >= 4
                     ? (isHindi ? 'अनुकूल दिन' : 'Favorable Day')
                     : (isHindi ? 'संतुलित दिन' : 'Balanced Day');
 
@@ -9632,10 +9878,10 @@ Rules:
         // Speak button
         const speakBtn = modal.querySelector('#speakAspectBtn');
         let isSpeaking = false;
-        
+
         speakBtn.addEventListener('click', async () => {
             if (!insightText) return;
-            
+
             if (isSpeaking) {
                 MayaVoice.stop();
                 speakBtn.innerHTML = `<i class="bi bi-volume-up-fill"></i> ${isHindi ? 'सुनें' : 'Listen'}`;
@@ -9658,19 +9904,10 @@ Rules:
      * Initialize Home page
      */
     async initHomePage() {
-        // Load daily insight using centralized cache
-        const profile = MayaUtils.storage.get('maya_profile');
-        if (profile?.birthDate) {
-            // Use centralized horoscope cache manager
-            const cached = await this.getDailyHoroscope();
-            const insightEl = document.getElementById('dailyInsight');
-            if (insightEl && cached.text) {
-                // Truncate for home page display
-                const displayText = cached.text.length > 200 
-                    ? cached.text.substring(0, 200) + '...' 
-                    : cached.text;
-                insightEl.textContent = displayText;
-            }
+        const insightEl = document.getElementById('dailyInsight');
+        const profile = MayaUtils.storage.get('maya_profile') || {};
+        if (insightEl) {
+            insightEl.textContent = this.getDailyPractice(profile, MayaUtils.storage.get('maya_language') === 'hi').summary;
         }
 
         // Full reading button
@@ -9682,9 +9919,82 @@ Rules:
                 }
             });
         }
-        
+
         // Lucky element cards click handlers
         this.initLuckyCards();
+    },
+
+    initJournalPage() {
+        let selectedMood = document.querySelector('[data-journal-mood].active')?.dataset.journalMood || 'steady';
+        let selectedFocus = document.querySelector('[data-journal-focus].active')?.dataset.journalFocus || 'clarity';
+
+        const bindChipGroup = (selector, dataKey, onSelect) => {
+            document.querySelectorAll(selector).forEach((chip) => {
+                chip.addEventListener('click', () => {
+                    document.querySelectorAll(selector).forEach((item) => item.classList.remove('active'));
+                    chip.classList.add('active');
+                    onSelect(chip.dataset[dataKey]);
+                });
+            });
+        };
+
+        bindChipGroup('[data-journal-mood]', 'journalMood', (value) => {
+            selectedMood = value || selectedMood;
+        });
+        bindChipGroup('[data-journal-focus]', 'journalFocus', (value) => {
+            selectedFocus = value || selectedFocus;
+        });
+
+        document.getElementById('saveJournalEntry')?.addEventListener('click', () => {
+            const date = document.getElementById('journalDate')?.value || this._getLocalDate();
+            const intention = document.getElementById('journalIntention')?.value?.trim() || '';
+            const reflection = document.getElementById('journalReflection')?.value?.trim() || '';
+            const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
+
+            if (!intention && !reflection) {
+                MayaUtils.toast?.info(isHindi ? 'एक इरादा या प्रतिबिंब लिखें' : 'Write an intention or reflection first');
+                return;
+            }
+
+            const entries = this.getJournalEntries();
+            const entry = {
+                id: date,
+                date,
+                mood: selectedMood,
+                focus: selectedFocus,
+                intention,
+                reflection,
+                updatedAt: new Date().toISOString()
+            };
+            const existingIndex = entries.findIndex((item) => item.date === date);
+
+            if (existingIndex >= 0) {
+                entries[existingIndex] = entry;
+            } else {
+                entries.unshift(entry);
+            }
+
+            MayaUtils.storage.set('maya_journal_entries', entries.slice(0, 60));
+            MayaUtils.toast?.success(isHindi ? 'जर्नल सेव हो गया' : 'Journal saved');
+            this.render('journal');
+        });
+
+        document.getElementById('coachJournalBtn')?.addEventListener('click', () => {
+            const intention = document.getElementById('journalIntention')?.value?.trim() || '';
+            const reflection = document.getElementById('journalReflection')?.value?.trim() || '';
+            const prompt = `Use my Mayalogy journal to coach me with one clear next step. Mood: ${selectedMood}. Focus: ${selectedFocus}. Intention: ${intention || 'not set'}. Reflection: ${reflection || 'not written yet'}.`;
+
+            if (window.MayaApp) {
+                MayaApp.showMaya();
+                window.setTimeout(() => {
+                    const input = document.getElementById('maya-input');
+                    if (input) {
+                        input.value = prompt;
+                        input.focus();
+                    }
+                }, 350);
+            }
+        });
     },
 
     /**
@@ -9692,7 +10002,7 @@ Rules:
      */
     initLuckyCards() {
         const luckyCards = document.querySelectorAll('.maya-lucky-card');
-        
+
         luckyCards.forEach(card => {
             card.addEventListener('click', () => {
                 const type = card.dataset.luckyType;
@@ -9710,14 +10020,14 @@ Rules:
         // Remove any existing lucky modal first
         const existingModal = document.getElementById('luckyModal');
         if (existingModal) existingModal.remove();
-        
+
         const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
-        
+
         const modalData = this.getLuckyModalData(type, value, name, isHindi);
-        
+
         // Create modal HTML - show display name for colors, not hex value
         const displayValue = type === 'color' ? (name || value) : value;
-        
+
         const modalHTML = `
             <div class="maya-lucky-modal" id="luckyModal">
                 <div class="maya-lucky-modal__backdrop" id="luckyModalBackdrop"></div>
@@ -9744,20 +10054,20 @@ Rules:
                 </div>
             </div>
         `;
-        
+
         // Add modal to body
         document.body.insertAdjacentHTML('beforeend', modalHTML);
-        
+
         // Get elements
         const modal = document.getElementById('luckyModal');
         const closeBtn = document.getElementById('closeLuckyModal');
         const backdrop = document.getElementById('luckyModalBackdrop');
-        
+
         // Show modal with animation
         requestAnimationFrame(() => {
             modal.classList.add('show');
         });
-        
+
         const closeModal = () => {
             if (modal) {
                 modal.classList.remove('show');
@@ -9765,7 +10075,7 @@ Rules:
             }
             document.removeEventListener('keydown', escHandler);
         };
-        
+
         // Close button click (including icon inside)
         if (closeBtn) {
             closeBtn.addEventListener('click', (e) => {
@@ -9774,12 +10084,12 @@ Rules:
                 closeModal();
             });
         }
-        
+
         // Close on backdrop click
         if (backdrop) {
             backdrop.addEventListener('click', closeModal);
         }
-        
+
         // Also close on modal wrapper click (outside content)
         if (modal) {
             modal.addEventListener('click', (e) => {
@@ -9788,7 +10098,7 @@ Rules:
                 }
             });
         }
-        
+
         // Close on Escape key
         const escHandler = (e) => {
             if (e.key === 'Escape') {
@@ -9806,7 +10116,7 @@ Rules:
             color: {
                 title: isHindi ? 'आपका शुभ रंग' : 'Your Lucky Color',
                 icon: `<div class="maya-lucky-modal__icon--color" style="background: ${value}; box-shadow: 0 0 30px ${value}80;"></div>`,
-                description: isHindi 
+                description: isHindi
                     ? `${name || value} आपके राशि के लिए शुभ रंग है। यह रंग आपकी ऊर्जा को बढ़ाता है और सकारात्मकता लाता है।`
                     : `${name || value} is your auspicious color based on your zodiac sign. This color enhances your energy and brings positivity.`,
                 tips: isHindi ? [
@@ -9822,7 +10132,7 @@ Rules:
             number: {
                 title: isHindi ? 'आपके शुभ अंक' : 'Your Lucky Numbers',
                 icon: `<span class="maya-lucky-modal__icon--number">${value.split(',')[0]}</span>`,
-                description: isHindi 
+                description: isHindi
                     ? `${value} आपके शुभ अंक हैं। ये संख्याएं आपके जीवन में सौभाग्य और सफलता लाती हैं।`
                     : `${value} are your lucky numbers. These numbers bring fortune and success in various aspects of your life.`,
                 tips: isHindi ? [
@@ -9838,7 +10148,7 @@ Rules:
             day: {
                 title: isHindi ? 'आपका शुभ दिन' : 'Your Lucky Day',
                 icon: `<i class="bi bi-calendar-check"></i>`,
-                description: isHindi 
+                description: isHindi
                     ? `${value} आपके लिए सबसे शुभ दिन है। इस दिन शुरू किए गए काम सफल होते हैं।`
                     : `${value} is your most auspicious day of the week. Activities started on this day are more likely to succeed.`,
                 tips: isHindi ? [
@@ -9854,7 +10164,7 @@ Rules:
             gemstone: {
                 title: isHindi ? 'आपका रत्न' : 'Your Gemstone',
                 icon: `<img src="images/gemstones/${value.toLowerCase().replace(/\s+/g, '-')}.png" alt="${value}" class="maya-lucky-modal__gem-img" onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\\'bi bi-gem\\'></i>'">`,
-                description: isHindi 
+                description: isHindi
                     ? `${value} आपके राशि का रत्न है। इसे धारण करने से ग्रहों की शुभ ऊर्जा प्राप्त होती है।`
                     : `${value} is your zodiac gemstone. Wearing it channels positive planetary energies and brings balance.`,
                 tips: isHindi ? [
@@ -9868,7 +10178,7 @@ Rules:
                 ]
             }
         };
-        
+
         return data[type] || data.color;
     },
 
@@ -9882,9 +10192,9 @@ Rules:
             this.initFallbackPlaceSearch();
             return;
         }
-        
+
         const placeInputs = document.querySelectorAll('.maya-place-autocomplete');
-        
+
         placeInputs.forEach(input => {
             const clearStoredPlaceMeta = () => {
                 const wrapper = input.closest('.maya-place-autocomplete-wrapper');
@@ -9905,44 +10215,44 @@ Rules:
                 types: ['(cities)'],
                 fields: ['geometry', 'name', 'formatted_address', 'utc_offset_minutes']
             });
-            
+
             autocomplete.addListener('place_changed', () => {
                 const place = autocomplete.getPlace();
-                
+
                 if (place.geometry) {
                     const lat = place.geometry.location.lat();
                     const lng = place.geometry.location.lng();
                     const timezone = place.utc_offset_minutes || 0;
-                    
+
                     // Store coordinates in hidden fields
                     const wrapper = input.closest('.maya-place-autocomplete-wrapper');
                     if (wrapper) {
                         const latInput = wrapper.querySelector('input[id$="BirthLat"]');
                         const lngInput = wrapper.querySelector('input[id$="BirthLng"]');
                         const tzInput = wrapper.querySelector('input[id$="Timezone"]');
-                        
+
                         if (latInput) latInput.value = lat;
                         if (lngInput) lngInput.value = lng;
                         if (tzInput) tzInput.value = timezone;
                     }
-                    
+
                     console.log(`📍 Place selected: ${place.formatted_address} (${lat}, ${lng})`);
                 }
             });
         });
     },
-    
+
     /**
      * Fallback place search using Nominatim (OpenStreetMap) - free API
      */
     initFallbackPlaceSearch() {
         const placeInputs = document.querySelectorAll('.maya-place-autocomplete');
-        
+
         placeInputs.forEach(input => {
             let debounceTimer;
             let dropdown = null;
             const wrapper = input.closest('.maya-place-autocomplete-wrapper') || input.parentElement;
-            
+
             // Create dropdown container
             const createDropdown = () => {
                 if (!dropdown) {
@@ -9952,21 +10262,21 @@ Rules:
                 }
                 return dropdown;
             };
-            
+
             // Hide dropdown
             const hideDropdown = () => {
                 if (dropdown) {
                     dropdown.style.display = 'none';
                 }
             };
-            
+
             // Search places using Nominatim API
             const searchPlaces = async (query) => {
                 if (query.length < 3) {
                     hideDropdown();
                     return;
                 }
-                
+
                 try {
                     const response = await fetch(
                         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`,
@@ -9976,22 +10286,22 @@ Rules:
                         }
                     );
                     const results = await response.json();
-                    
+
                     const dd = createDropdown();
                     dd.style.display = 'block';
-                    
+
                     if (results.length === 0) {
                         dd.innerHTML = '<div class="maya-place-dropdown__item maya-place-dropdown__item--empty">No places found</div>';
                         return;
                     }
-                    
+
                     dd.innerHTML = results.map((place, idx) => `
                         <div class="maya-place-dropdown__item" data-idx="${idx}">
                             <i class="bi bi-geo-alt-fill"></i>
                             <span>${place.display_name}</span>
                         </div>
                     `).join('');
-                    
+
                     // Use pointerdown as well as click so mobile taps do not lose the selection on blur.
                     dd.querySelectorAll('.maya-place-dropdown__item[data-idx]').forEach(item => {
                         const handleSelection = (event) => {
@@ -10000,21 +10310,21 @@ Rules:
 
                             const idx = parseInt(item.dataset.idx);
                             const place = results[idx];
-                            
+
                             input.value = place.display_name;
-                            
+
                             // Store coordinates
                             if (wrapper) {
                                 const latInput = wrapper.querySelector('input[id$="BirthLat"]');
                                 const lngInput = wrapper.querySelector('input[id$="BirthLng"]');
                                 const tzInput = wrapper.querySelector('input[id$="Timezone"]');
-                                
+
                                 if (latInput) latInput.value = place.lat;
                                 if (lngInput) lngInput.value = place.lon;
                                 // Nominatim doesn't provide timezone, calculate from longitude
                                 if (tzInput) tzInput.value = Math.round(parseFloat(place.lon) / 15) * 60;
                             }
-                            
+
                             console.log(`📍 Place selected: ${place.display_name} (${place.lat}, ${place.lon})`);
                             hideDropdown();
                         };
@@ -10026,7 +10336,7 @@ Rules:
                     console.error('Place search error:', error);
                 }
             };
-            
+
             // Input event with debounce
             input.addEventListener('input', (e) => {
                 const wrapper = input.closest('.maya-place-autocomplete-wrapper');
@@ -10043,12 +10353,12 @@ Rules:
                     searchPlaces(e.target.value);
                 }, 300);
             });
-            
+
             // Hide dropdown on blur (with delay for click)
             input.addEventListener('blur', () => {
                 setTimeout(hideDropdown, 200);
             });
-            
+
             // Show dropdown on focus if has value
             input.addEventListener('focus', () => {
                 if (input.value.length >= 3) {
@@ -10064,7 +10374,7 @@ Rules:
     initCompatibilityPage() {
         // Initialize place autocomplete
         this.initPlacesAutocomplete();
-        
+
         const checkBtn = document.getElementById('checkCompatibility');
         if (checkBtn) {
             checkBtn.addEventListener('click', async () => {
@@ -10074,7 +10384,7 @@ Rules:
                 const partnerName = document.getElementById('partnerName')?.value.trim() || 'Person 2';
                 const partnerGender = document.getElementById('partnerGender')?.value || '';
                 const partnerDate = document.getElementById('partnerBirthDate').value;
-                
+
                 if (!yourDate || !partnerDate) {
                     MayaUtils.toast.error('Please enter both birth dates');
                     return;
@@ -10093,7 +10403,7 @@ Rules:
                     birthLat: document.getElementById('partnerBirthLat')?.value || '',
                     birthLon: document.getElementById('partnerBirthLng')?.value || ''
                 });
-                
+
                 if (!yourZodiac || !partnerZodiac) {
                     MayaUtils.toast.error('Invalid birth dates');
                     return;
@@ -10101,14 +10411,14 @@ Rules:
 
                 const compatibility = MayaAstrology.getCompatibility(yourZodiac.name, partnerZodiac.name);
                 const resultDiv = document.getElementById('compatibilityResult');
-                
+
                 // Determine color based on score
                 const getScoreColor = (score) => {
                     if (score >= 75) return '#22c55e';
                     if (score >= 50) return '#f59e0b';
                     return '#ef4444';
                 };
-                
+
                 // Gender icons
                 const getGenderIcon = (gender) => {
                     if (gender === 'male') return '<i class="bi bi-gender-male"></i>';
@@ -10116,7 +10426,7 @@ Rules:
                     if (gender === 'other') return '<i class="bi bi-gender-ambiguous"></i>';
                     return '';
                 };
-                
+
                 // Zodiac image helper
                 const getZodiacImage = (zodiac) => {
                     if (zodiac.image) {
@@ -10125,7 +10435,7 @@ Rules:
                     }
                     return `<span class="maya-compat-result__sign-fallback">${zodiac.symbol || '♈'}</span>`;
                 };
-                
+
                 // Get guna score color
                 const getGunaColor = (score, max) => {
                     const percent = (score / max) * 100;
@@ -10134,7 +10444,7 @@ Rules:
                     if (percent > 0) return '#f97316';
                     return '#ef4444';
                 };
-                
+
                 if (resultDiv) {
                     resultDiv.innerHTML = `
                         <div class="maya-compat-result">
@@ -10206,10 +10516,10 @@ Rules:
                             </button>
                         </div>
                     `;
-                    
+
                     // Scroll to result
                     resultDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    
+
                     // Add share button listener
                     const shareBtn = document.getElementById('shareCompatibility');
                     if (shareBtn) {
@@ -10221,7 +10531,7 @@ Rules:
             });
         }
     },
-    
+
     /**
      * Generate and share compatibility result as image
      */
@@ -10230,18 +10540,18 @@ Rules:
             // Create canvas for the share image
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            
+
             // Set canvas size (optimized for social sharing)
             canvas.width = 600;
             canvas.height = 800;
-            
+
             // Background gradient
             const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
             gradient.addColorStop(0, '#0f0f23');
             gradient.addColorStop(1, '#1a1a2e');
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
+
             // Add subtle pattern
             ctx.fillStyle = 'rgba(99, 102, 241, 0.05)';
             for (let i = 0; i < 20; i++) {
@@ -10249,45 +10559,45 @@ Rules:
                 ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 50 + 10, 0, Math.PI * 2);
                 ctx.fill();
             }
-            
+
             // Title - MAYALOGY
             ctx.fillStyle = '#c79a3a';
             ctx.font = 'bold 28px Arial';
             ctx.textAlign = 'center';
             ctx.fillText('MAYALOGY', canvas.width / 2, 50);
-            
+
             ctx.fillStyle = '#888';
             ctx.font = '14px Arial';
             ctx.fillText('Ashtakoot Guna Milan', canvas.width / 2, 75);
-            
+
             // Names and signs
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 24px Arial';
             ctx.fillText(name1 || 'Person 1', 150, 140);
             ctx.fillText(name2 || 'Person 2', 450, 140);
-            
+
             ctx.fillStyle = '#c79a3a';
             ctx.font = '18px Arial';
             ctx.fillText(zodiac1.name, 150, 170);
             ctx.fillText(zodiac2.name, 450, 170);
-            
+
             // Heart in the middle
             ctx.fillStyle = '#ef4444';
             ctx.font = '40px Arial';
             ctx.fillText('❤️', canvas.width / 2, 155);
-            
+
             // Score circle
             const centerX = canvas.width / 2;
             const centerY = 280;
             const radius = 70;
-            
+
             // Background circle
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
             ctx.strokeStyle = 'rgba(255,255,255,0.1)';
             ctx.lineWidth = 12;
             ctx.stroke();
-            
+
             // Score arc
             const scoreColor = compatibility.score >= 75 ? '#22c55e' : compatibility.score >= 50 ? '#f59e0b' : '#ef4444';
             ctx.beginPath();
@@ -10296,56 +10606,56 @@ Rules:
             ctx.lineWidth = 12;
             ctx.lineCap = 'round';
             ctx.stroke();
-            
+
             // Score text
             ctx.fillStyle = scoreColor;
             ctx.font = 'bold 36px Arial';
             ctx.fillText(`${compatibility.totalGunas}/36`, centerX, centerY + 10);
-            
+
             // Match level
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 22px Arial';
             ctx.fillText(compatibility.level, centerX, 390);
-            
+
             // Gunas breakdown
             let gunaY = 440;
             ctx.font = '14px Arial';
             ctx.textAlign = 'left';
-            
+
             Object.entries(compatibility.aspects).forEach(([key, data]) => {
                 // Guna name
                 ctx.fillStyle = '#ffffff';
                 ctx.fillText(key.split(' ')[0], 50, gunaY);
-                
+
                 // Bar background
                 ctx.fillStyle = 'rgba(255,255,255,0.1)';
                 ctx.fillRect(200, gunaY - 10, 300, 14);
-                
+
                 // Bar fill
                 const barColor = (data.score / data.max) >= 0.75 ? '#22c55e' : (data.score / data.max) >= 0.5 ? '#f59e0b' : '#ef4444';
                 ctx.fillStyle = barColor;
                 ctx.fillRect(200, gunaY - 10, 300 * (data.score / data.max), 14);
-                
+
                 // Score
                 ctx.fillStyle = barColor;
                 ctx.textAlign = 'right';
                 ctx.fillText(`${data.score}/${data.max}`, 560, gunaY);
                 ctx.textAlign = 'left';
-                
+
                 gunaY += 35;
             });
-            
+
             // Footer
             ctx.fillStyle = '#666';
             ctx.font = '12px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('Generated by Mayalogy - Your Cosmic Guide', centerX, canvas.height - 30);
+            ctx.fillText('Generated by Mayalogy - Personal Guidance Journal', centerX, canvas.height - 30);
             ctx.fillText('mayalogy.com', centerX, canvas.height - 12);
-            
+
             // Convert canvas to blob
             canvas.toBlob(async (blob) => {
                 const file = new File([blob], 'mayalogy-compatibility.png', { type: 'image/png' });
-                
+
                 // Try native share if available
                 if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
                     try {
@@ -10364,13 +10674,13 @@ Rules:
                     this.downloadCompatibilityImage(canvas);
                 }
             }, 'image/png');
-            
+
         } catch (error) {
             console.error('Error generating share image:', error);
             MayaUtils.toast.error('Unable to generate share image');
         }
     },
-    
+
     /**
      * Download compatibility image as fallback
      */
@@ -10391,14 +10701,14 @@ Rules:
             MayaApp.showMaya();
         }
     },
-    
+
     /**
      * Send chat message
      */
     async sendChatMessage(input, messagesDiv, profile) {
         const message = input.value.trim();
         if (!message) return;
-        
+
         // Hide welcome screen
         const welcome = messagesDiv.querySelector('.maya-chat__welcome');
         if (welcome) welcome.style.display = 'none';
@@ -10428,7 +10738,7 @@ Rules:
                 </div>
             </div>
         `;
-        
+
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
         try {
@@ -10439,7 +10749,7 @@ Rules:
                 birthPlace: profile.birthPlace,
                 language: MayaUtils.storage.get('maya_language') || 'en'
             });
-            
+
             // Remove typing indicator
             document.getElementById('typingIndicator')?.remove();
 
@@ -10484,38 +10794,38 @@ Rules:
     initProfilePage() {
         const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
         this.initPlacesAutocomplete();
-        
+
         // Photo upload handling
         const changePhotoBtn = document.getElementById('changePhotoBtn');
         const photoInput = document.getElementById('profilePhotoInput');
         const removePhotoBtn = document.getElementById('removePhotoBtn');
-        
+
         if (changePhotoBtn && photoInput) {
             changePhotoBtn.addEventListener('click', () => photoInput.click());
-            
+
             photoInput.addEventListener('change', async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                
+
                 // Validate file size (max 20MB)
                 if (file.size > 20 * 1024 * 1024) {
                     MayaUtils.toast.error(isHindi ? 'फोटो 20MB से छोटी होनी चाहिए' : 'Photo must be smaller than 20MB');
                     return;
                 }
-                
+
                 // Validate file type
                 if (!file.type.startsWith('image/')) {
                     MayaUtils.toast.error(isHindi ? 'कृपया एक छवि फ़ाइल चुनें' : 'Please select an image file');
                     return;
                 }
-                
+
                 try {
                     // Convert to base64 and resize
                     const base64 = await this.resizeAndConvertImage(file, 200);
                     MayaUtils.storage.set('maya_profile_photo', base64);
                     MayaUtils.toast.success(isHindi ? 'फोटो अपडेट हो गई' : 'Photo updated');
                     this.render('profile');
-                    
+
                     // Update sidebar avatar if exists
                     this.updateSidebarAvatar();
                 } catch (err) {
@@ -10524,7 +10834,7 @@ Rules:
                 }
             });
         }
-        
+
         if (removePhotoBtn) {
             removePhotoBtn.addEventListener('click', () => {
                 MayaUtils.storage.remove('maya_profile_photo');
@@ -10533,7 +10843,7 @@ Rules:
                 this.updateSidebarAvatar();
             });
         }
-        
+
         // Zodiac System Toggle
         const zodiacToggle = document.getElementById('zodiacSystemToggle');
         if (zodiacToggle) {
@@ -10542,17 +10852,17 @@ Rules:
                 if (btn && btn.dataset.system) {
                     const system = btn.dataset.system;
                     MayaAstrology.setZodiacSystem(system);
-                    
+
                     // Update active state
                     zodiacToggle.querySelectorAll('.maya-toggle-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
-                    
+
                     // Show toast
-                    const systemName = system === 'vedic' 
-                        ? (isHindi ? 'वैदिक (सायन)' : 'Vedic (Sidereal)') 
+                    const systemName = system === 'vedic'
+                        ? (isHindi ? 'वैदिक (सायन)' : 'Vedic (Sidereal)')
                         : (isHindi ? 'पाश्चात्य (निरयन)' : 'Western (Tropical)');
                     MayaUtils.toast.success(isHindi ? `${systemName} में बदला` : `Switched to ${systemName} zodiac`);
-                    
+
                     // Refresh page to update zodiac display
                     setTimeout(() => this.render('profile'), 500);
                 }
@@ -10608,10 +10918,10 @@ Rules:
 
                 await MayaAuth.saveBirthDetails(profileData);
                 MayaUtils.toast.success(isHindi ? 'प्रोफ़ाइल सहेजी गई!' : 'Profile saved successfully!');
-                
+
                 // Refresh the page to show updated avatar
                 this.render('profile');
-                
+
                 // Update sidebar
                 if (window.MayaApp) {
                     MayaApp.updateSidebarUserInfo();
@@ -10619,7 +10929,7 @@ Rules:
             });
         }
     },
-    
+
     /**
      * Resize and convert image to base64
      */
@@ -10632,7 +10942,7 @@ Rules:
                     const canvas = document.createElement('canvas');
                     let width = img.width;
                     let height = img.height;
-                    
+
                     // Calculate new dimensions maintaining aspect ratio
                     if (width > height) {
                         if (width > maxSize) {
@@ -10645,13 +10955,13 @@ Rules:
                             height = maxSize;
                         }
                     }
-                    
+
                     canvas.width = width;
                     canvas.height = height;
-                    
+
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-                    
+
                     resolve(canvas.toDataURL('image/jpeg', 0.8));
                 };
                 img.onerror = reject;
@@ -10661,7 +10971,7 @@ Rules:
             reader.readAsDataURL(file);
         });
     },
-    
+
     /**
      * Update sidebar avatar with profile photo
      */
@@ -10677,10 +10987,10 @@ Rules:
      */
     initSettingsPage() {
         const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
-        
+
         // Initialize custom dropdowns
         this._initCustomDropdowns();
-        
+
         // Language dropdown handler
         const langSelect = document.getElementById('settingLanguage');
         if (langSelect) {
@@ -10740,9 +11050,9 @@ Rules:
                         if (window.MayaApp) {
                             MayaApp.applyTheme(value);
                         }
-                        const themeName = value === 'dark' ? (isHindi ? 'डार्क' : 'Dark') : 
-                                          value === 'light' ? (isHindi ? 'लाइट' : 'Light') : 
-                                          (isHindi ? 'सिस्टम' : 'System');
+                        const themeName = value === 'dark' ? (isHindi ? 'डार्क' : 'Dark') :
+                            value === 'light' ? (isHindi ? 'लाइट' : 'Light') :
+                                (isHindi ? 'सिस्टम' : 'System');
                         MayaUtils.toast.success(isHindi ? `थीम ${themeName} में बदली` : `Theme changed to ${themeName}`);
                     });
                 });
@@ -10758,8 +11068,8 @@ Rules:
                 if (window.MayaVoice) {
                     MayaVoice.setMute(muted);
                 }
-                MayaUtils.toast.success(isHindi 
-                    ? (muted ? 'आवाज़ बंद' : 'आवाज़ चालू') 
+                MayaUtils.toast.success(isHindi
+                    ? (muted ? 'आवाज़ बंद' : 'आवाज़ चालू')
                     : (muted ? 'Voice disabled' : 'Voice enabled'));
             });
         }
@@ -10769,8 +11079,8 @@ Rules:
         if (notifToggle) {
             notifToggle.addEventListener('change', (e) => {
                 MayaUtils.storage.set('maya_notifications', e.target.checked);
-                MayaUtils.toast.success(isHindi 
-                    ? (e.target.checked ? 'सूचनाएं चालू' : 'सूचनाएं बंद') 
+                MayaUtils.toast.success(isHindi
+                    ? (e.target.checked ? 'सूचनाएं चालू' : 'सूचनाएं बंद')
                     : (e.target.checked ? 'Notifications enabled' : 'Notifications disabled'));
             });
         }
@@ -10800,12 +11110,12 @@ Rules:
                 e.preventDefault();
                 clearCacheBtn.disabled = true;
                 clearCacheBtn.innerHTML = `<i class="bi bi-hourglass-split"></i> <span>${isHindi ? 'कृपया प्रतीक्षा करें...' : 'Please wait...'}</span>`;
-                
+
                 MayaUtils.toast.info(isHindi ? 'कैश साफ़ हो रहा है...' : 'Clearing cache...');
-                
+
                 // Small delay for UX
                 await new Promise(r => setTimeout(r, 500));
-                
+
                 // Clear and reload
                 await MayaUtils.forceReload();
             });
@@ -10817,18 +11127,18 @@ Rules:
      */
     _initCustomDropdowns() {
         const dropdowns = document.querySelectorAll('.maya-select-wrapper');
-        
+
         dropdowns.forEach(wrapper => {
             const select = wrapper.querySelector('.maya-select');
             const dropdown = wrapper.querySelector('.maya-select-dropdown');
             const options = wrapper.querySelectorAll('.maya-select-option');
-            
+
             if (!select || !dropdown) return;
-            
+
             // Toggle dropdown on click
             select.addEventListener('click', (e) => {
                 e.stopPropagation();
-                
+
                 // Close other open dropdowns & reset their wrapper z-index
                 document.querySelectorAll('.maya-select.open').forEach(s => {
                     if (s !== select) {
@@ -10836,35 +11146,35 @@ Rules:
                         s.closest('.maya-select-wrapper')?.style.removeProperty('z-index');
                     }
                 });
-                
+
                 select.classList.toggle('open');
                 // Raise wrapper z-index when open so dropdown paints above siblings
                 const w = select.closest('.maya-select-wrapper');
                 if (w) w.style.zIndex = select.classList.contains('open') ? '100' : '';
             });
-            
+
             // Handle option selection
             options.forEach(option => {
                 option.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const value = option.dataset.value;
                     const text = option.textContent;
-                    
+
                     // Update select display
                     select.textContent = text;
                     select.dataset.value = value;
-                    
+
                     // Update selected state
                     options.forEach(o => o.classList.remove('selected'));
                     option.classList.add('selected');
-                    
+
                     // Close dropdown & reset z-index
                     select.classList.remove('open');
                     select.closest('.maya-select-wrapper')?.style.removeProperty('z-index');
                 });
             });
         });
-        
+
         // Close dropdowns when clicking outside
         document.addEventListener('click', () => {
             document.querySelectorAll('.maya-select.open').forEach(s => {

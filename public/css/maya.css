@@ -1549,7 +1549,7 @@ p {
     justify-content: flex-end;
 }
 
-.maya-chat-messages > *:first-child {
+.maya-chat-messages>*:first-child {
     margin-top: auto;
 }
 
@@ -8364,6 +8364,21 @@ p {
     color: var(--maya-primary);
 }
 
+.maya-stat-card--journal,
+.maya-stat-card--practice {
+    cursor: pointer;
+}
+
+.maya-stat-card--journal .maya-stat-card__icon {
+    background: rgba(34, 197, 94, 0.16);
+    color: #22c55e;
+}
+
+.maya-stat-card--practice .maya-stat-card__icon {
+    background: rgba(96, 165, 250, 0.16);
+    color: #60a5fa;
+}
+
 .maya-stat-card__content {
     display: flex;
     flex-direction: column;
@@ -8438,6 +8453,244 @@ p {
     margin-top: 1rem;
     padding-top: 1rem;
     border-top: 1px solid var(--maya-border-light);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.maya-practice-panel {
+    display: grid;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.maya-practice-step {
+    display: flex;
+    gap: 0.85rem;
+    align-items: flex-start;
+    background: var(--maya-bg-card);
+    border: 1px solid var(--maya-border-light);
+    border-radius: 16px;
+    padding: 1rem;
+}
+
+.maya-practice-step__icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: rgba(199, 154, 58, 0.16);
+    color: var(--maya-primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.maya-practice-step__body {
+    min-width: 0;
+}
+
+.maya-practice-step__label {
+    display: block;
+    color: var(--maya-text-muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.15rem;
+}
+
+.maya-practice-step__body strong {
+    color: var(--maya-text-primary);
+    font-size: 0.95rem;
+}
+
+.maya-practice-step__body p {
+    color: var(--maya-text-secondary);
+    font-size: 0.86rem;
+    line-height: 1.45;
+    margin: 0.25rem 0 0;
+}
+
+.maya-journal-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.maya-journal-summary__item,
+.maya-journal-plan,
+.maya-journal-card,
+.maya-journal-entry {
+    background: var(--maya-bg-card);
+    border: 1px solid var(--maya-border-light);
+}
+
+.maya-journal-summary__item {
+    border-radius: 16px;
+    padding: 0.9rem;
+    min-width: 0;
+}
+
+.maya-journal-summary__item span {
+    display: block;
+    color: var(--maya-text-muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.25rem;
+}
+
+.maya-journal-summary__item strong {
+    color: var(--maya-text-primary);
+    font-size: 0.98rem;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+.maya-journal-plan {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    border-radius: 18px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.maya-journal-plan__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(96, 165, 250, 0.16);
+    color: #60a5fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.maya-journal-plan span {
+    color: var(--maya-primary-light);
+    font-weight: 700;
+    font-size: 0.86rem;
+}
+
+.maya-journal-plan p {
+    color: var(--maya-text-secondary);
+    line-height: 1.55;
+    margin: 0.25rem 0 0;
+}
+
+.maya-journal-card {
+    border-radius: 18px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.maya-journal-field+.maya-journal-field {
+    margin-top: 1rem;
+}
+
+.maya-journal-field label {
+    display: block;
+    color: var(--maya-text-primary);
+    font-weight: 700;
+    font-size: 0.88rem;
+    margin: 0 0 0.5rem;
+}
+
+.maya-journal-chips {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
+.maya-journal-chips--wrap {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.maya-journal-chip {
+    min-height: 42px;
+    border-radius: 12px;
+    border: 1px solid var(--maya-border-light);
+    background: var(--maya-bg-tertiary);
+    color: var(--maya-text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.65rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    transition: all 0.2s ease;
+}
+
+.maya-journal-chip.active {
+    border-color: var(--maya-primary);
+    color: var(--maya-text-primary);
+    background: rgba(199, 154, 58, 0.16);
+}
+
+.maya-journal-textarea {
+    resize: vertical;
+    min-height: 120px;
+}
+
+.maya-journal-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.maya-journal-history {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.maya-journal-entry {
+    border-radius: 16px;
+    padding: 1rem;
+}
+
+.maya-journal-entry__meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    color: var(--maya-text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 0.45rem;
+}
+
+.maya-journal-entry strong {
+    display: block;
+    color: var(--maya-text-primary);
+    margin-bottom: 0.35rem;
+}
+
+.maya-journal-entry p {
+    color: var(--maya-text-secondary);
+    line-height: 1.5;
+    margin: 0;
+}
+
+@media (max-width: 480px) {
+    .maya-journal-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .maya-journal-chips,
+    .maya-journal-actions {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .maya-journal-plan,
+    .maya-practice-step {
+        padding: 0.9rem;
+    }
 }
 
 /* Action Grid */
@@ -9494,7 +9747,7 @@ p {
     justify-content: flex-end;
 }
 
-.maya-chat__messages > *:first-child {
+.maya-chat__messages>*:first-child {
     margin-top: auto;
 }
 

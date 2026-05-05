@@ -149,7 +149,10 @@ export async function handleTextToSpeechRequest(payload, env = process.env) {
   const apiKey = getEnvValue(env, 'ELEVENLABS_API_KEY');
 
   if (!apiKey) {
-    return jsonResponse(503, { error: 'ELEVENLABS_API_KEY is not configured' });
+    return jsonResponse(503, {
+      code: 'ELEVENLABS_API_KEY_MISSING',
+      error: 'ELEVENLABS_API_KEY is not configured',
+    });
   }
 
   const voiceId = normalizeText(payload?.voiceId)
@@ -189,8 +192,18 @@ export async function handleTextToSpeechRequest(payload, env = process.env) {
 
   if (!response.ok) {
     const errorText = await response.text();
+    let errorBody = errorText || `ElevenLabs request failed with status ${response.status}`;
+
+    try {
+      const parsedError = JSON.parse(errorText);
+      errorBody = parsedError?.detail?.message || parsedError?.message || parsedError?.error || errorBody;
+    } catch (_error) {
+      // Keep the raw upstream text when it is not JSON.
+    }
+
     return jsonResponse(response.status, {
-      error: errorText || `ElevenLabs request failed with status ${response.status}`,
+      code: response.status === 503 ? 'ELEVENLABS_UNAVAILABLE' : 'ELEVENLABS_REQUEST_FAILED',
+      error: errorBody,
     });
   }
 

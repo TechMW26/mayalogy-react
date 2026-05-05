@@ -41,15 +41,16 @@ function writeResult(res, result) {
   res.end(JSON.stringify(result.body));
 }
 
-async function handleRequest(req, res, handler) {
+async function handleRequest(req, res, handler, routeName = 'api') {
   try {
     const payload = await readJsonBody(req);
-    console.log('[TTS DEBUG] payload keys:', Object.keys(payload), 'text length:', (payload.text || '').length, 'voiceId:', payload.voiceId || '(none)');
     const result = await handler(payload, process.env);
-    console.log('[TTS DEBUG] result status:', result.status, 'isBinary:', result.isBinary);
+    if (!result.isBinary && result.status >= 400) {
+      console.warn('[MAYA API]', routeName, result.status, result.body?.code || '(no code)', result.body?.error || '(no detail)');
+    }
     writeResult(res, result);
   } catch (error) {
-    console.error('[TTS DEBUG] handleRequest caught error:', error.message);
+    console.error('[MAYA API]', routeName, 'request failed:', error.message);
     writeResult(res, {
       status: 400,
       body: { error: error.message || 'Request failed' },
@@ -67,12 +68,12 @@ export function mayaApiDevPlugin() {
         const pathname = req.url?.split('?')[0];
 
         if (req.method === 'POST' && pathname === '/api/tts') {
-          await handleRequest(req, res, handleTextToSpeechRequest);
+          await handleRequest(req, res, handleTextToSpeechRequest, 'tts');
           return;
         }
 
         if (req.method === 'POST' && pathname === '/api/remove-background') {
-          await handleRequest(req, res, handleRemoveBackgroundRequest);
+          await handleRequest(req, res, handleRemoveBackgroundRequest, 'remove-background');
           return;
         }
 

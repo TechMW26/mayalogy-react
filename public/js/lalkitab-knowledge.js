@@ -1,5 +1,5 @@
 // Lal Kitab Knowledge Base - extracted from Jyotish Lal Kitab by B.M. Goswami
-// Used as AI context for richer Vedic astrology readings
+// Used as AI context for richer Vedic timing context
 const LAL_KITAB_KNOWLEDGE = `LAL KITAB QUICK REFERENCE FOR AI READING
 ==================================================
 
@@ -54,7 +54,7 @@ JUPITER H6: illPITER 329 HNo. 7 has some planet Good education, high degree. in 
 JUPITER H7: JUPITER 331 4. Venus with Jupiter or Will destroy his wife or items Venus in H.No. 2,5,9,12. relating to Venus. at age of 13 or 15. A dark night full of dust storm will rock the boat of fortune. Mercury with Jupiter or Items relating to Mercury will 
 JUPITER H8: WPITER 333 Planet H.No. Effect Saturn 10 A serpent keeping ears closed, silent with his gaze fixed. Sun 1 Sun is like a monkey who does no evil. Keeps gasping for Jupiter's air. Rahu 12 The elephant ofRahu alongwith Ketu in H .No. 6 will keep its ear
 JUPITER H9: JUPITER 6. H.No. 8 blank and one among Sun-Moon, Saturn Rahu or Mercury H.No.6. 7. Rahu benefic but not dormant 8. Jupiter H.No. 2 unpolluted and alone and H.No. 9 is neither malefic nor presence ofMercury, Venus & Rahu therein 9. Mars H.No. 8 10. Ma
-JUPITER H10: Treat Saturn when Mercury or Rahu in lOth as malefic. Treat Moon when Venus in H.No. 10. 337 6. Whenever Saturn comes to H.No. 2 in transit, give milk to serpents. JUPITER IN HOUSE N0.3 (Roaring Lion, Family Guru, Astrologer, full jJf Blessing) ' Lor
+JUPITER H10: Treat Saturn when Mercury or Rahu in lOth as malefic. Treat Moon when Venus in H.No. 10. 337 6. Whenever Saturn comes to H.No. 2 in transit, give milk to serpents. JUPITER IN HOUSE N0.3 (Roaring Lion, Family Guru, Advisor, full jJf Blessing) ' Lor
 JUPITER H11: 338 4. 5. 6. 7. Jupiter unpolluted and alive Mars benefic. in H.No. 2 exalted. Or Sun, Moon, Mars (friendly planets) H.No. 2. and Jupiter in annual chart is in 3rd. Jupiter unpolluted. i) Some planet in lith. ii) Some planet in 9th iii) Friendly plan
 JUPITER H12: 2. Moon H.No. 12 3. Mars negative or Mars malefic JUPITER Saturn H.No. 4 and malefic Mercury. Given to listening self praise which will destroy him. 339 Coward, all round unhappiness poor luck, fond of talking with females (malefic effects of Mercury
 

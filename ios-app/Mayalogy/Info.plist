@@ -17,9 +17,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>1.0.1</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>4</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSAppTransportSecurity</key>
@@ -32,15 +32,13 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Mayalogy uses the camera so you can capture photos for Vastu room scanning, profile pictures, and palm/face analysis.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Mayalogy uses your location to personalize Vastu and astrology results based on your geographical position.</string>
+	<string>Mayalogy uses your location to personalize timing, Vastu, and location-aware guidance.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Mayalogy uses the microphone for voice-based questions to your astrologer.</string>
+	<string>Mayalogy uses the microphone for voice-based questions and coaching with MAYA.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Mayalogy can save generated charts and images to your photo library when you choose to download them.</string>
+	<string>Mayalogy can save generated images and summaries to your photo library when you choose to download them.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Mayalogy needs access to your photo library so you can upload existing pictures for Vastu and astrology features.</string>
-	<key>NSUserTrackingUsageDescription</key>
-	<string>Mayalogy uses this to deliver more relevant horoscope content; you can change this anytime in Settings.</string>
+	<string>Mayalogy needs access to your photo library so you can upload existing pictures for Vastu, profile, and scan features.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -6,7 +6,7 @@
 console.log('🔧 app.js loading...');
 
 // Global function for Android theme sync
-window.syncThemeFromAndroid = function(theme) {
+window.syncThemeFromAndroid = function (theme) {
     console.log('📱 Global syncThemeFromAndroid called with:', theme);
     if (window.MayaApp && typeof MayaApp.syncThemeFromAndroid === 'function') {
         MayaApp.syncThemeFromAndroid(theme);
@@ -20,7 +20,7 @@ window.syncThemeFromAndroid = function(theme) {
 window.isAndroidApp = typeof MayaAndroid !== 'undefined';
 
 // Detect Android WebView (works even without MayaAndroid interface)
-window.isAndroidWebView = (function() {
+window.isAndroidWebView = (function () {
     const ua = navigator.userAgent || '';
     // Check for Android WebView indicators
     const isAndroid = /Android/i.test(ua);
@@ -28,7 +28,7 @@ window.isAndroidWebView = (function() {
     const hasAndroidInterface = typeof MayaAndroid !== 'undefined';
     // Also check for TWA (Trusted Web Activity) 
     const isTWA = document.referrer.includes('android-app://') || (isAndroid && window.matchMedia('(display-mode: standalone)').matches);
-    
+
     return isAndroid && (isWebView || hasAndroidInterface || isTWA);
 })();
 
@@ -90,9 +90,9 @@ const MayaApp = {
      */
     initPreloader() {
         console.log('🎬 initPreloader (splash) called');
-        
+
         let hasStarted = false;
-        
+
         const doStart = () => {
             if (hasStarted) return;
             hasStarted = true;
@@ -100,13 +100,13 @@ const MayaApp = {
             this.hidePreloader();
             this.startApp();
         };
-        
+
         // SAFETY: Always start after max 4 seconds no matter what
         setTimeout(() => {
             console.log('⏰ Safety timeout triggered');
             doStart();
         }, 4000);
-        
+
         // React splash animation handles itself - just wait for it to complete
         // Animation timeline: 500ms start, 2500ms morph, ~3500ms total
         setTimeout(doStart, 3500);
@@ -117,13 +117,13 @@ const MayaApp = {
      */
     async startApp() {
         console.log('🚀 Starting MAYA app...');
-        
+
         // Cleanup old horoscopes in Firebase (keep last 7 days)
         this.cleanupOldHoroscopes();
-        
+
         // Set initial UI visibility based on auth state
         this.updateUIVisibility();
-        
+
         // Check authentication and onboarding
         await this.checkUserState();
     },
@@ -134,7 +134,7 @@ const MayaApp = {
      */
     updateUIVisibility() {
         const isAuthenticated = window.MayaAuth?.isAuthenticated || false;
-        
+
         if (isAuthenticated) {
             // User is logged in - show all UI
             document.body.classList.remove('guest-mode');
@@ -203,7 +203,7 @@ const MayaApp = {
             await MayaPages.render(MayaPages.currentPage);
         }
     },
-    
+
     /**
      * Cleanup old horoscopes from Firebase
      */
@@ -224,19 +224,19 @@ const MayaApp = {
     hidePreloader() {
         const preloader = document.getElementById('preloader');
         const appContainer = document.getElementById('app-container');
-        
+
         if (preloader) {
             preloader.classList.add('hidden');
             setTimeout(() => {
                 preloader.style.display = 'none';
             }, 500);
         }
-        
+
         // Show main app
         if (appContainer) {
             appContainer.classList.remove('d-none');
         }
-        
+
         // Update sidebar user info
         this.updateSidebarUserInfo();
     },
@@ -248,7 +248,7 @@ const MayaApp = {
         const profile = MayaUtils.storage.get('maya_profile') || {};
         const profilePhoto = MayaUtils.storage.get('maya_profile_photo');
         const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
-        
+
         // Update avatar with profile photo or initials
         const avatarEl = document.getElementById('sidebar-avatar');
         if (avatarEl) {
@@ -261,7 +261,7 @@ const MayaApp = {
                 avatarEl.innerHTML = `<i class="bi bi-person"></i>`;
             }
         }
-        
+
         // Update user name
         const userNameEl = document.getElementById('user-name');
         if (userNameEl) {
@@ -272,7 +272,7 @@ const MayaApp = {
                 userNameEl.textContent = window.MayaI18n?.t('Guest') || (isHindi ? 'अतिथि' : 'Guest');
             }
         }
-        
+
         // Update day status
         const dayStatusEl = document.getElementById('user-day-status');
         if (dayStatusEl && profile.birthDate) {
@@ -288,15 +288,15 @@ const MayaApp = {
         const profile = MayaUtils.storage.get('maya_profile') || {};
         const zodiac = window.MayaAstrology ? MayaAstrology.getZodiac(birthDate, profile) : null;
         if (!zodiac) return 'okay';
-        
+
         const today = new Date();
         const dayOfWeek = today.getDay();
         const dayOfMonth = today.getDate();
         const month = today.getMonth() + 1;
-        
+
         // Simple algorithm based on various factors
         let score = 0;
-        
+
         // Lucky day bonus
         const luckyDays = {
             'Aries': 2, 'Taurus': 5, 'Gemini': 3, 'Cancer': 1,
@@ -304,28 +304,28 @@ const MayaApp = {
             'Sagittarius': 4, 'Capricorn': 6, 'Aquarius': 6, 'Pisces': 4
         };
         if (luckyDays[zodiac.name] === dayOfWeek) score += 3;
-        
+
         // Lucky number match
         const luckyNumbers = zodiac.luckyNumbers || [];
         if (luckyNumbers.includes(dayOfMonth) || luckyNumbers.includes(dayOfMonth % 10)) score += 2;
-        
+
         // Moon phase influence (simplified)
         const moonPhase = (dayOfMonth % 15);
         if (moonPhase < 5) score += 1; // Near new/full moon
-        
+
         // Planetary hour bonus (simplified based on hour)
         const hour = today.getHours();
         if ((hour >= 6 && hour <= 9) || (hour >= 17 && hour <= 19)) score += 1;
-        
+
         // Seasonal zodiac alignment
         const currentZodiacMonth = this.getZodiacForMonth(month, dayOfMonth);
         if (currentZodiacMonth === zodiac.name) score += 2;
-        
+
         // Random cosmic factor (seeded by date for consistency)
         const dateSeed = today.getFullYear() * 10000 + month * 100 + dayOfMonth;
         const cosmicBonus = (dateSeed % 3);
         score += cosmicBonus;
-        
+
         // Determine status
         if (score >= 6) return 'good';
         if (score >= 3) return 'okay';
@@ -351,7 +351,7 @@ const MayaApp = {
             { name: 'Sagittarius', end: { month: 12, day: 21 } },
             { name: 'Capricorn', end: { month: 12, day: 31 } }
         ];
-        
+
         for (const sign of signs) {
             if (month < sign.end.month || (month === sign.end.month && day <= sign.end.day)) {
                 return sign.name;
@@ -381,7 +381,7 @@ const MayaApp = {
                 label: isHindi ? 'सावधान रहें' : 'Be Mindful'
             }
         };
-        
+
         const config = statusConfig[status] || statusConfig.okay;
         return `<span class="day-status-pill ${config.class}">
             <i class="bi ${config.icon}"></i>
@@ -394,7 +394,7 @@ const MayaApp = {
      */
     applyTheme(theme) {
         const html = document.documentElement;
-        
+
         if (theme === 'system') {
             // Check if Android app is providing theme
             if (window.MayaAndroid && typeof MayaAndroid.getDeviceTheme === 'function') {
@@ -436,11 +436,11 @@ const MayaApp = {
         const preferredLanguage = profile?.language || MayaUtils.storage.get('maya_language') || 'en';
 
         await this.applyLanguagePreference(preferredLanguage, { force: true });
-        
+
         // Get funnel state
         const funnelComplete = MayaUtils.storage.get('funnel_complete');
         const funnelState = window.MayaOnboarding ? MayaOnboarding.getFunnelState() : null;
-        
+
         // IMPORTANT: Always show funnel if user is NOT logged in (no email/password)
         // Funnel should only be skipped if:
         // 1. User is authenticated (logged in with email/password) AND
@@ -448,9 +448,9 @@ const MayaApp = {
         // 3. Profile exists with birth date
         const shouldShowFunnel = !isAuthenticated || !funnelComplete || !hasProfile;
 
-        console.log('📊 User state check:', { 
-            hasProfile, 
-            isAuthenticated, 
+        console.log('📊 User state check:', {
+            hasProfile,
+            isAuthenticated,
             funnelComplete,
             funnelState,
             shouldShowFunnel
@@ -506,7 +506,7 @@ const MayaApp = {
                 this.closeSidebar();
             });
         }
-        
+
         // Navigation - Sidebar and Bottom Nav
         document.querySelectorAll('.sidebar-nav .nav-link, .bottom-nav .nav-item').forEach(link => {
             link.addEventListener('click', (e) => {
@@ -516,10 +516,10 @@ const MayaApp = {
                     // Update active states
                     document.querySelectorAll('.nav-link, .bottom-nav .nav-item').forEach(l => l.classList.remove('active'));
                     document.querySelectorAll(`[data-page="${page}"]`).forEach(l => l.classList.add('active'));
-                    
+
                     // Render page
                     MayaPages.render(page);
-                    
+
                     // Close sidebar on mobile
                     this.closeSidebar();
                 }
@@ -598,15 +598,15 @@ const MayaApp = {
         if (voiceToggle) {
             voiceToggle.addEventListener('click', () => {
                 const muted = MayaVoice.toggleMute();
-                voiceToggle.innerHTML = muted 
-                    ? '<i class="bi bi-volume-mute"></i>' 
+                voiceToggle.innerHTML = muted
+                    ? '<i class="bi bi-volume-mute"></i>'
                     : '<i class="bi bi-volume-up"></i>';
             });
         }
 
         // Email capture form
         this.setupFunnelListeners();
-        
+
         // Global event delegation for showMaya action and lucky cards
         document.addEventListener('click', (e) => {
             // Handle "Ask MAYA" buttons with data-action="showMaya"
@@ -616,7 +616,7 @@ const MayaApp = {
                 this.showMaya();
                 return;
             }
-            
+
             // Handle Lucky Element cards with event delegation
             const luckyCard = e.target.closest('.maya-lucky-card');
             if (luckyCard && luckyCard.dataset.luckyType) {
@@ -672,7 +672,7 @@ const MayaApp = {
     toggleSidebar() {
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebar-overlay');
-        
+
         sidebar?.classList.toggle('show');
         overlay?.classList.toggle('show');
     },
@@ -691,10 +691,10 @@ const MayaApp = {
     toggleNotifications() {
         const panel = document.getElementById('notifications-panel');
         const overlay = document.getElementById('notifications-overlay');
-        
+
         // Update notifications before showing
         this.updateNotifications();
-        
+
         panel?.classList.toggle('show');
         overlay?.classList.toggle('show');
     },
@@ -708,8 +708,7 @@ const MayaApp = {
     },
 
     /**
-     * Generate dynamic notifications from horoscope data
-     * Call this after horoscope is loaded
+     * Generate dynamic notifications from daily guidance data
      */
     async updateNotifications() {
         const container = document.getElementById('notifications-body');
@@ -718,7 +717,7 @@ const MayaApp = {
         const profile = MayaUtils.storage.get('maya_profile') || {};
         const language = MayaUtils.storage.get('maya_language') || 'en';
         const zodiac = window.MayaAstrology?.getZodiac(profile.birthDate, profile);
-        
+
         // Get today's horoscope data
         let horoscope = null;
         if (window.MayaPages?._horoscopeCache?.data) {
@@ -729,12 +728,12 @@ const MayaApp = {
         const now = new Date();
         const hours = now.getHours();
 
-        // Notification templates based on time of day and horoscope
+        // Notification templates based on time of day and daily guidance
         if (horoscope && horoscope.text) {
             notifications.push({
-                id: 'horoscope-ready',
-                icon: 'bi-stars',
-                text: language === 'hi' ? 'आज का राशिफल तैयार है!' : 'Your daily horoscope is ready!',
+                id: 'daily-plan-ready',
+                icon: 'bi-signpost-split',
+                text: language === 'hi' ? 'आज की योजना तैयार है!' : 'Your daily plan is ready!',
                 time: language === 'hi' ? 'अभी' : 'Just now',
                 unread: true,
                 action: 'horoscope'
@@ -747,9 +746,9 @@ const MayaApp = {
             notifications.push({
                 id: 'time-morning',
                 icon: 'bi-sunrise',
-                text: language === 'hi' 
-                    ? `सुप्रभात ${profile.name || ''}! आज ${zodiac?.name || ''} के लिए शुभ दिन है।` 
-                    : `Good morning ${profile.name || ''}! Auspicious day for ${zodiac?.name || ''}.`,
+                text: language === 'hi'
+                    ? `सुप्रभात ${profile.name || ''}! आज एक स्पष्ट इरादा लिखें।`
+                    : `Good morning ${profile.name || ''}! Write one clear intention for today.`,
                 time: language === 'hi' ? 'सुबह' : 'Morning',
                 unread: false,
                 action: null
@@ -759,8 +758,8 @@ const MayaApp = {
             notifications.push({
                 id: 'time-afternoon',
                 icon: 'bi-sun',
-                text: language === 'hi' 
-                    ? 'दोपहर में धैर्य रखें - ऊर्जा का स्तर बनाए रखें।' 
+                text: language === 'hi'
+                    ? 'दोपहर में धैर्य रखें - ऊर्जा का स्तर बनाए रखें।'
                     : 'Stay patient this afternoon - maintain your energy levels.',
                 time: language === 'hi' ? 'दोपहर' : 'Afternoon',
                 unread: false,
@@ -771,8 +770,8 @@ const MayaApp = {
             notifications.push({
                 id: 'time-evening',
                 icon: 'bi-sunset',
-                text: language === 'hi' 
-                    ? 'शाम का समय - आराम और चिंतन के लिए उत्तम।' 
+                text: language === 'hi'
+                    ? 'शाम का समय - आराम और चिंतन के लिए उत्तम।'
                     : 'Evening time - perfect for relaxation and reflection.',
                 time: language === 'hi' ? 'शाम' : 'Evening',
                 unread: false,
@@ -783,8 +782,8 @@ const MayaApp = {
             notifications.push({
                 id: 'time-night',
                 icon: 'bi-moon-stars',
-                text: language === 'hi' 
-                    ? 'रात्रि का समय - कल के लिए शुभ ऊर्जा का संचय करें।' 
+                text: language === 'hi'
+                    ? 'रात्रि का समय - कल के लिए शुभ ऊर्जा का संचय करें।'
                     : 'Night time - preserve positive energy for tomorrow.',
                 time: language === 'hi' ? 'रात' : 'Night',
                 unread: false,
@@ -818,7 +817,7 @@ const MayaApp = {
             }
         }
 
-        // Lucky color/number reminder
+        // Profile cue reminder
         if (zodiac) {
             const luckyInfo = this._getLuckyInfo(zodiac.name, language);
             if (luckyInfo) {
@@ -891,7 +890,7 @@ const MayaApp = {
     _getLuckyInfo(zodiacName, language) {
         // Get zodiac data from config for accuracy
         const zodiacSign = MAYA_CONFIG?.ZODIAC?.SIGNS?.find(s => s.name === zodiacName);
-        
+
         if (!zodiacSign) {
             // Fallback data if config not found
             const luckyData = {
@@ -910,8 +909,8 @@ const MayaApp = {
             };
             const data = luckyData[zodiacName];
             if (!data) return null;
-            
-            return language === 'hi' 
+
+            return language === 'hi'
                 ? `आज का शुभ रंग: ${data.hi_color} | शुभ अंक: ${data.numbers[0]}`
                 : `Lucky color: ${data.color} | Lucky number: ${data.numbers[0]}`;
         }
@@ -919,19 +918,19 @@ const MayaApp = {
         // Use config data for accurate info
         const colorName = zodiacSign.colorName || 'Indigo';
         const luckyNumber = zodiacSign.luckyNumbers?.[0] || 7;
-        
+
         // Hindi color names mapping
         const hindiColors = {
             'Red': 'लाल', 'Green': 'हरा', 'Yellow': 'पीला', 'White': 'सफेद',
-            'Gold': 'सुनहरा', 'Maroon': 'मैरून', 'Navy Blue': 'गहरा नीला', 
+            'Gold': 'सुनहरा', 'Maroon': 'मैरून', 'Navy Blue': 'गहरा नीला',
             'Blue': 'नीला', 'Pink': 'गुलाबी', 'Purple': 'बैंगनी'
         };
-        
+
         const hiColor = hindiColors[colorName] || colorName;
 
-        return language === 'hi' 
-            ? `आज का शुभ रंग: ${hiColor} | शुभ अंक: ${luckyNumber}`
-            : `Lucky color: ${colorName} | Lucky number: ${luckyNumber}`;
+        return language === 'hi'
+            ? `प्रोफाइल संकेत: ${hiColor} | संख्या संकेत: ${luckyNumber}`
+            : `Profile cue: ${colorName} | Number cue: ${luckyNumber}`;
     },
 
     /**
@@ -939,45 +938,45 @@ const MayaApp = {
      */
     _attachNotificationHandlers(container) {
         const items = container.querySelectorAll('.notification-item');
-        
+
         items.forEach(item => {
             // Click handler for the notification content (not dismiss button)
             item.addEventListener('click', (e) => {
                 // Don't trigger if dismiss button was clicked
                 if (e.target.closest('.notification-dismiss')) return;
-                
+
                 const action = item.dataset.action;
                 const notificationId = item.dataset.notificationId;
-                
+
                 // Mark as read
                 item.classList.remove('unread');
-                
+
                 // Handle navigation based on action
                 if (action && action !== 'null' && action !== '') {
                     this.closeNotifications();
-                    
+
                     // Navigate to the appropriate page
                     if (window.MayaPages && typeof MayaPages.navigateTo === 'function') {
                         MayaPages.navigateTo(action);
                     }
                 }
             });
-            
+
             // Dismiss button handler
             const dismissBtn = item.querySelector('.notification-dismiss');
             if (dismissBtn) {
                 dismissBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const notificationId = item.dataset.notificationId;
-                    
+
                     // Add dismissing animation
                     item.classList.add('dismissing');
-                    
+
                     // After animation, remove and save dismissed state
                     setTimeout(() => {
                         item.classList.add('dismissed');
                         this._dismissNotification(notificationId);
-                        
+
                         // Check if all notifications are dismissed
                         const remaining = container.querySelectorAll('.notification-item:not(.dismissed)');
                         if (remaining.length === 0) {
@@ -989,7 +988,7 @@ const MayaApp = {
                                 </div>
                             `;
                         }
-                        
+
                         // Update badge
                         this._updateNotificationBadge();
                     }, 300);
@@ -1004,15 +1003,15 @@ const MayaApp = {
     _dismissNotification(notificationId) {
         const today = new Date().toDateString();
         let dismissed = MayaUtils.storage.get('maya_dismissed_notifications') || [];
-        
+
         // Filter out old entries (older than today)
         dismissed = dismissed.filter(d => d.date === today);
-        
+
         // Add new dismissed notification
         if (!dismissed.find(d => d.id === notificationId)) {
             dismissed.push({ id: notificationId, date: today });
         }
-        
+
         MayaUtils.storage.set('maya_dismissed_notifications', dismissed);
     },
 
@@ -1022,10 +1021,10 @@ const MayaApp = {
     _updateNotificationBadge() {
         const container = document.getElementById('notifications-body');
         if (!container) return;
-        
+
         const unreadItems = container.querySelectorAll('.notification-item.unread:not(.dismissed)');
         const badge = document.querySelector('.notification-badge');
-        
+
         if (badge) {
             if (unreadItems.length > 0) {
                 badge.textContent = unreadItems.length;
@@ -1045,24 +1044,24 @@ const MayaApp = {
         const inputArea = document.getElementById('maya-input-area');
         const textDisplay = document.getElementById('maya-text-display');
         const blobContainer = document.getElementById('maya-blob-container');
-        
+
         if (overlay) {
             overlay.classList.add('show');
             overlay.classList.remove('funnel-mode');
             overlay.classList.add('maya-overlay--chat');
             console.log('MAYA overlay shown');
-            
+
             // Initialize blob if not already
             if (window.MayaBlob && !MayaBlob.isAnimating) {
                 MayaBlob.init('maya-blob-container');
             }
-            
+
             // Blob at top - chat bubbles fill below
             if (blobContainer) {
                 blobContainer.classList.remove('blob-centered');
                 blobContainer.classList.add('blob-top');
             }
-            
+
             // Set up chat-bubble mode (same as funnel-end chat)
             if (textDisplay) {
                 textDisplay.style.display = 'flex';
@@ -1070,36 +1069,36 @@ const MayaApp = {
                 textDisplay.innerHTML = `<div class="maya-chat-messages" id="maya-chat-messages"></div>`;
                 this.restoreMayaChatHistory();
             }
-            
+
             // Show input area
             if (inputArea) {
                 inputArea.style.display = 'flex';
             }
-            
+
             // Setup chat handlers
             this.setupMayaChatInterface();
         } else {
             console.error('MAYA overlay element not found!');
         }
     },
-    
+
     /**
      * Initialize Gemini Live Voice for live conversation
      * Uses browser speech recognition + Gemini AI + ElevenLabs TTS
      */
     async initRealtimeVoice() {
         if (!window.MayaRealtime) return;
-        
+
         // Only use realtime if user has completed funnel
         if (!MayaRealtime.canUseRealtime()) {
             console.log('📵 Live voice not available - funnel not completed');
             return;
         }
-        
+
         const textElement = document.getElementById('maya-speaking-text');
         const blobContainer = document.getElementById('maya-blob-container');
         const language = MayaUtils.storage.get('maya_language') || 'en';
-        
+
         // Setup realtime callbacks
         MayaRealtime.onStateChange = (state, message) => {
             switch (state) {
@@ -1112,19 +1111,19 @@ const MayaApp = {
                         micBtn.title = 'Live voice active - just speak!';
                     }
                     break;
-                    
+
                 case 'user_speaking':
                     if (blobContainer) {
                         blobContainer.classList.add('blob-listening');
                     }
                     break;
-                    
+
                 case 'user_stopped':
                     if (blobContainer) {
                         blobContainer.classList.remove('blob-listening');
                     }
                     break;
-                    
+
                 case 'ai_speaking':
                     if (blobContainer) {
                         blobContainer.classList.add('blob-speaking');
@@ -1133,7 +1132,7 @@ const MayaApp = {
                         MayaBlob.startSpeaking();
                     }
                     break;
-                    
+
                 case 'ai_stopped':
                     if (blobContainer) {
                         blobContainer.classList.remove('blob-speaking');
@@ -1142,12 +1141,12 @@ const MayaApp = {
                         MayaBlob.stopSpeaking();
                     }
                     break;
-                    
+
                 case 'error':
                     console.error('Realtime error:', message);
                     // Fall back to standard mode
                     break;
-                    
+
                 case 'disconnected':
                     const micBtnDisc = document.getElementById('maya-mic');
                     if (micBtnDisc) {
@@ -1156,16 +1155,16 @@ const MayaApp = {
                     break;
             }
         };
-        
+
         MayaRealtime.onTranscript = (transcript, source) => {
             if (source === 'user' && textElement) {
                 // Show what user said
-                textElement.innerHTML = language === 'hi' 
+                textElement.innerHTML = language === 'hi'
                     ? `<span class="user-transcript">"${transcript}"</span>`
                     : `<span class="user-transcript">"${transcript}"</span>`;
             }
         };
-        
+
         MayaRealtime.onResponse = (text, type) => {
             if (textElement) {
                 if (type === 'delta') {
@@ -1174,16 +1173,16 @@ const MayaApp = {
                 } else if (type === 'done') {
                     // Complete response
                     textElement.textContent = text;
-                    
+
                     // Save to chat history
                     this.saveToChatHistory('Voice conversation', text);
                 }
             }
         };
-        
+
         // Initialize realtime connection
         const success = await MayaRealtime.init();
-        
+
         if (success) {
             // Hide the standard mic button functionality - realtime handles it
             const micBtn = document.getElementById('maya-mic');
@@ -1207,34 +1206,34 @@ const MayaApp = {
         const input = document.getElementById('maya-input');
         const micBtn = document.getElementById('maya-mic');
         const language = MayaUtils.storage.get('maya_language') || 'en';
-        
+
         // Remove old listeners by cloning elements
         if (sendBtn) {
             const newSendBtn = sendBtn.cloneNode(true);
             sendBtn.parentNode.replaceChild(newSendBtn, sendBtn);
-            
+
             newSendBtn.addEventListener('click', () => this.handleMayaChat());
         }
-        
+
         if (input) {
             const newInput = input.cloneNode(true);
             input.parentNode.replaceChild(newInput, input);
-            
+
             newInput.placeholder = language === 'hi' ? 'MAYA से कुछ भी पूछें...' : 'Ask MAYA anything...';
             newInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') this.handleMayaChat();
             });
         }
-        
+
         // Setup mic button
         if (micBtn && window.MayaListener) {
             const newMicBtn = micBtn.cloneNode(true);
             micBtn.parentNode.replaceChild(newMicBtn, micBtn);
-            
+
             // Initialize listener
             MayaListener.init();
             MayaListener.setLanguage(language);
-            
+
             // Handle recognition results
             MayaListener.onResult = (transcript) => {
                 const inputEl = document.getElementById('maya-input');
@@ -1243,7 +1242,7 @@ const MayaApp = {
                     this.handleMayaChat();
                 }
             };
-            
+
             MayaListener.onStart = () => {
                 const btn = document.getElementById('maya-mic');
                 if (btn) {
@@ -1255,7 +1254,7 @@ const MayaApp = {
                     inputEl.placeholder = language === 'hi' ? 'सुन रही हूँ...' : 'Listening...';
                 }
             };
-            
+
             MayaListener.onEnd = () => {
                 const btn = document.getElementById('maya-mic');
                 if (btn) {
@@ -1267,12 +1266,12 @@ const MayaApp = {
                     inputEl.placeholder = language === 'hi' ? 'MAYA से कुछ भी पूछें...' : 'Ask MAYA anything...';
                 }
             };
-            
+
             // Click to toggle listening
             newMicBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 if (MayaVoice && MayaVoice.isPlaying) return;
-                
+
                 if (MayaListener.isListening) {
                     MayaListener.stop();
                 } else {
@@ -1296,8 +1295,8 @@ const MayaApp = {
             this._addChatBubble(
                 'maya',
                 language === 'hi'
-                    ? 'मैं यहाँ हूँ. मुझसे ज्योतिष, अंकशास्त्र, प्रेम, करियर या आज की ऊर्जा के बारे में पूछें.'
-                    : 'I am here. Ask me about astrology, numerology, love, career, or today\'s energy.'
+                    ? 'मैं यहाँ हूँ. मुझसे reflection, timing, रिश्तों, काम, या आज की योजना के बारे में पूछें.'
+                    : 'I am here. Ask me about reflection, timing, relationships, work, or today\'s plan.'
             );
             return;
         }
@@ -1419,9 +1418,9 @@ const MayaApp = {
      */
     saveToChatHistory(question, answer) {
         if (!question || !answer) return;
-        
+
         const chatHistory = MayaUtils.storage.get('maya_chat_history') || [];
-        
+
         // Add new chat
         chatHistory.push({
             id: Date.now().toString(),
@@ -1429,28 +1428,28 @@ const MayaApp = {
             answer: answer,
             timestamp: new Date().toISOString()
         });
-        
+
         // Keep only last 50 chats
         if (chatHistory.length > 50) {
             chatHistory.shift();
         }
-        
+
         MayaUtils.storage.set('maya_chat_history', chatHistory);
     },
 
-            openMayaChatHistory() {
-                this.hideMaya();
+    openMayaChatHistory() {
+        this.hideMaya();
 
-                document.querySelectorAll('.nav-link, .bottom-nav .nav-item').forEach(link => {
-                    link.classList.remove('active');
-                });
-                document.querySelectorAll('[data-page="chat-history"]').forEach(link => {
-                    link.classList.add('active');
-                });
+        document.querySelectorAll('.nav-link, .bottom-nav .nav-item').forEach(link => {
+            link.classList.remove('active');
+        });
+        document.querySelectorAll('[data-page="chat-history"]').forEach(link => {
+            link.classList.add('active');
+        });
 
-                if (window.MayaPages) {
-                    MayaPages.render('chat-history');
-                }
+        if (window.MayaPages) {
+            MayaPages.render('chat-history');
+        }
     },
 
     /**
@@ -1462,24 +1461,24 @@ const MayaApp = {
             overlay.classList.remove('show');
             overlay.classList.remove('maya-overlay--chat');
         }
-        
+
         // Clean up chat-mode on text display
         const textDisplay = document.getElementById('maya-text-display');
         if (textDisplay) {
             textDisplay.classList.remove('maya-chat-mode');
             textDisplay.innerHTML = '<p class="maya-speaking-text" id="maya-speaking-text"></p>';
         }
-        
+
         // Stop voice
         if (window.MayaVoice) {
             MayaVoice.stop();
         }
-        
+
         // Stop realtime connection
         if (window.MayaRealtime && MayaRealtime.isConnected) {
             MayaRealtime.stop();
         }
-        
+
         // Stop listener
         if (window.MayaListener && MayaListener.isListening) {
             MayaListener.stop();
@@ -1499,7 +1498,7 @@ const MayaApp = {
         const textDisplay = document.getElementById('maya-text-display');
         const profile = MayaUtils.storage.get('maya_profile');
         const language = MayaUtils.storage.get('maya_language') || 'en';
-        
+
         if (!profile || !profile.birthDate) {
             if (textElement) {
                 textElement.textContent = "I don't have your birth details yet. Let me help you set them up first.";
@@ -1516,9 +1515,9 @@ const MayaApp = {
         if (window.MayaBlob) {
             MayaBlob.startThinking();
         }
-        
+
         if (textElement) {
-            textElement.textContent = language === 'hi' ? "आपकी कॉस्मिक ऊर्जाओं को पढ़ रही हूँ..." : "Reading your cosmic energies...";
+            textElement.textContent = language === 'hi' ? "आपकी guidance plan बना रही हूँ..." : "Building your guidance plan...";
         }
 
         try {
@@ -1534,9 +1533,9 @@ const MayaApp = {
                 gender: profile.gender,
                 language: language
             };
-            
+
             const reading = await MayaAI.generateInitialReading(userData, true);
-            
+
             if (window.MayaBlob) {
                 MayaBlob.stopThinking();
             }
@@ -1545,7 +1544,7 @@ const MayaApp = {
             if (textElement) {
                 textElement.textContent = reading;
             }
-            
+
             // Speak the reading (if voice is enabled)
             if (window.MayaVoice && !MayaVoice.isMuted) {
                 MayaVoice.speak(reading);
@@ -1553,7 +1552,7 @@ const MayaApp = {
         } catch (error) {
             console.error('Reading generation error:', error);
             if (textElement) {
-                const fallbackMsg = language === 'hi' 
+                const fallbackMsg = language === 'hi'
                     ? 'रीडिंग अभी तैयार नहीं हो सकी। कृपया फिर से कोशिश करें।'
                     : 'The reading could not be generated right now. Please try again.';
                 textElement.textContent = fallbackMsg;
@@ -1570,25 +1569,25 @@ const MayaApp = {
     showOnboarding() {
         console.log('🎭 showOnboarding called');
         this.isOnboardingActive = true;
-        
+
         const modalEl = document.getElementById('onboardingModal');
         console.log('🎭 Modal element:', modalEl);
-        
+
         if (!modalEl) {
             console.error('❌ Onboarding modal element not found!');
             return;
         }
-        
+
         try {
             const modal = new bootstrap.Modal(modalEl, {
                 backdrop: 'static',
                 keyboard: false
             });
-            
+
             console.log('🎭 Bootstrap modal created:', modal);
             modal.show();
             console.log('🎭 Modal.show() called');
-            
+
             // Also add shown event listener
             modalEl.addEventListener('shown.bs.modal', () => {
                 console.log('🎭 Modal shown event fired');
@@ -1598,7 +1597,7 @@ const MayaApp = {
             setTimeout(() => {
                 console.log('🎭 Starting onboarding flow...');
                 console.log('🎭 MayaOnboarding exists:', !!window.MayaOnboarding);
-                
+
                 if (window.MayaOnboarding) {
                     MayaOnboarding.start();
                 } else {
@@ -1638,7 +1637,7 @@ const MayaApp = {
         if (!profile) return;
 
         this.showMaya();
-        
+
         const textElement = document.querySelector('.maya-text');
         const lang = MayaUtils.storage.get('maya_language') || profile.language || 'en';
         const firstName = String(profile.name || '').trim().split(/\s+/)[0] || 'friend';
@@ -1671,7 +1670,7 @@ const MayaApp = {
         } catch (error) {
             console.warn('AI teaser hook failed:', error.message);
         }
-        
+
         if (textElement) {
             if (teaserText && window.MayaVoice) {
                 MayaVoice.speakWithDisplay(teaserText, textElement);
@@ -1709,14 +1708,14 @@ const MayaApp = {
     async showInitialReading() {
         console.log('📖 showInitialReading called');
         this.isOnboardingActive = false;
-        
+
         try {
             // Show main app container
             const appContainer = document.getElementById('app-container');
             if (appContainer) {
                 appContainer.classList.remove('d-none');
             }
-            
+
             // Render home first (with error handling)
             if (window.MayaPages) {
                 console.log('📖 Rendering home page...');
@@ -1726,7 +1725,7 @@ const MayaApp = {
                     console.error('Home page render error:', e);
                 }
             }
-            
+
             // Then show MAYA with reading after delay
             setTimeout(() => {
                 console.log('📖 Showing MAYA overlay for initial reading...');
@@ -1748,7 +1747,7 @@ const MayaApp = {
         // Update active states
         document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
         document.querySelectorAll(`[data-page="${pageId}"]`).forEach(l => l.classList.add('active'));
-        
+
         MayaPages.render(pageId);
     }
 };

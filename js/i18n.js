@@ -6,23 +6,23 @@
 const MayaI18n = {
     // Current language
     currentLang: 'en',
-    
+
     // Initialization flag
     initialized: false,
-    
+
     // Translation cache to avoid repeated API calls
     cache: new Map(),
     cacheEnabled: false,
-    
+
     // DOM elements marked for translation
     observedElements: new Set(),
-    
+
     // Translation dictionary for common UI strings (fallback)
     dictionary: {
         // Navigation
         'Home': { hi: 'होम' },
         'Kundli': { hi: 'कुंडली' },
-        'Horoscope': { hi: 'राशिफल' },
+        'Horoscope': { hi: 'दैनिक योजना' },
         'Match': { hi: 'मिलान' },
         'Chat': { hi: 'चैट' },
         'Profile': { hi: 'प्रोफाइल' },
@@ -36,7 +36,7 @@ const MayaI18n = {
         'Compatibility': { hi: 'अनुकूलता' },
         'Bhakti Music': { hi: 'भक्ति संगीत' },
         'Spiritual Music': { hi: 'आध्यात्मिक संगीत' },
-        
+
         // Common Actions
         'Save': { hi: 'सहेजें' },
         'Cancel': { hi: 'रद्द करें' },
@@ -55,7 +55,7 @@ const MayaI18n = {
         'Success': { hi: 'सफलता' },
         'Warning': { hi: 'चेतावनी' },
         'Retry': { hi: 'पुनः प्रयास' },
-        
+
         // Headers & Titles
         'Good Morning': { hi: 'शुभ प्रभात' },
         'Good Afternoon': { hi: 'शुभ अपराह्न' },
@@ -67,7 +67,7 @@ const MayaI18n = {
         'This Week': { hi: 'इस सप्ताह' },
         'This Month': { hi: 'इस महीने' },
         'This Year': { hi: 'इस वर्ष' },
-        
+
         // Days
         'Sunday': { hi: 'रविवार' },
         'Monday': { hi: 'सोमवार' },
@@ -76,7 +76,7 @@ const MayaI18n = {
         'Thursday': { hi: 'गुरुवार' },
         'Friday': { hi: 'शुक्रवार' },
         'Saturday': { hi: 'शनिवार' },
-        
+
         // Zodiac Signs
         'Aries': { hi: 'मेष' },
         'Taurus': { hi: 'वृषभ' },
@@ -90,7 +90,7 @@ const MayaI18n = {
         'Capricorn': { hi: 'मकर' },
         'Aquarius': { hi: 'कुंभ' },
         'Pisces': { hi: 'मीन' },
-        
+
         // Planets
         'Sun': { hi: 'सूर्य' },
         'Moon': { hi: 'चंद्र' },
@@ -101,9 +101,9 @@ const MayaI18n = {
         'Saturn': { hi: 'शनि' },
         'Rahu': { hi: 'राहु' },
         'Ketu': { hi: 'केतु' },
-        
+
         // Horoscope Categories
-        'Daily Horoscope': { hi: 'दैनिक राशिफल' },
+        'Daily Plan': { hi: 'दैनिक योजना' },
         'Weekly Horoscope': { hi: 'साप्ताहिक राशिफल' },
         'Monthly Horoscope': { hi: 'मासिक राशिफल' },
         'Yearly Horoscope': { hi: 'वार्षिक राशिफल' },
@@ -112,7 +112,7 @@ const MayaI18n = {
         'Health': { hi: 'स्वास्थ्य' },
         'Finance': { hi: 'वित्त' },
         'Family': { hi: 'परिवार' },
-        
+
         // Panchang
         'Tithi': { hi: 'तिथि' },
         'Nakshatra': { hi: 'नक्षत्र' },
@@ -125,7 +125,7 @@ const MayaI18n = {
         'Rahu Kaal': { hi: 'राहु काल' },
         'Auspicious Time': { hi: 'शुभ समय' },
         'Inauspicious Time': { hi: 'अशुभ समय' },
-        
+
         // Muhurat
         'Shubh Muhurat': { hi: 'शुभ मुहूर्त' },
         'Marriage': { hi: 'विवाह' },
@@ -138,7 +138,7 @@ const MayaI18n = {
         'Griha Pravesh': { hi: 'गृह प्रवेश' },
         'Namkaran': { hi: 'नामकरण' },
         'Mundan': { hi: 'मुंडन' },
-        
+
         // Remedies
         'Gemstones': { hi: 'रत्न' },
         'Mantras': { hi: 'मंत्र' },
@@ -147,7 +147,7 @@ const MayaI18n = {
         'Puja': { hi: 'पूजा' },
         'Yantra': { hi: 'यंत्र' },
         'Rudraksha': { hi: 'रुद्राक्ष' },
-        
+
         // Spiritual Music
         'Aarti': { hi: 'आरती' },
         'Bhajan': { hi: 'भजन' },
@@ -157,7 +157,7 @@ const MayaI18n = {
         'Morning Prayers': { hi: 'प्रातः प्रार्थना' },
         'Evening Prayers': { hi: 'संध्या प्रार्थना' },
         'Now Playing': { hi: 'अभी बज रहा है' },
-        
+
         // Vastu
         'Direction': { hi: 'दिशा' },
         'North': { hi: 'उत्तर' },
@@ -175,7 +175,7 @@ const MayaI18n = {
         'Living Room': { hi: 'बैठक' },
         'Pooja Room': { hi: 'पूजा कक्ष' },
         'Study Room': { hi: 'अध्ययन कक्ष' },
-        
+
         // Profile & Settings
         'Name': { hi: 'नाम' },
         'Date of Birth': { hi: 'जन्म तिथि' },
@@ -199,7 +199,7 @@ const MayaI18n = {
         'Close notifications': { hi: 'सूचनाएं बंद करें' },
         'Logout': { hi: 'लॉग आउट' },
         'Log Out': { hi: 'लॉग आउट' },
-        
+
         // Messages
         'Ask MAYA': { hi: 'MAYA से पूछें' },
         'Ask MAYA anything...': { hi: 'MAYA से कुछ भी पूछें...' },
@@ -209,10 +209,10 @@ const MayaI18n = {
         'Something went wrong': { hi: 'कुछ गलत हो गया' },
         'Please try again': { hi: 'कृपया पुनः प्रयास करें' },
         'Are you sure?': { hi: 'क्या आप निश्चित हैं?' },
-        
+
         // Speed Dial
         'Speed Dial': { hi: 'स्पीड डायल' },
-        
+
         // Status
         'Great Day': { hi: 'शुभ दिन' },
         'Mixed Day': { hi: 'सामान्य दिन' },
@@ -220,7 +220,7 @@ const MayaI18n = {
         'Auspicious': { hi: 'शुभ' },
         'Inauspicious': { hi: 'अशुभ' },
         'Neutral': { hi: 'तटस्थ' },
-        
+
         // Compatibility
         'Compatibility Score': { hi: 'अनुकूलता स्कोर' },
         'Gun Milan': { hi: 'गुण मिलान' },
@@ -228,7 +228,7 @@ const MayaI18n = {
         'Good Match': { hi: 'अच्छा मिलान' },
         'Average Match': { hi: 'सामान्य मिलान' },
         'Poor Match': { hi: 'कमजोर मिलान' },
-        
+
         // Numerology
         'Life Path Number': { hi: 'जीवन पथ अंक' },
         'Destiny Number': { hi: 'भाग्य अंक' },
@@ -237,14 +237,14 @@ const MayaI18n = {
         'Lucky Number': { hi: 'भाग्यशाली अंक' },
         'Lucky Color': { hi: 'भाग्यशाली रंग' },
         'Lucky Day': { hi: 'भाग्यशाली दिन' },
-        
+
         // History
         'History': { hi: 'इतिहास' },
         'Chat History': { hi: 'चैट इतिहास' },
         'Recent': { hi: 'हाल ही में' },
         'Clear All': { hi: 'सभी हटाएं' },
         'No history': { hi: 'कोई इतिहास नहीं' },
-        
+
         // Compatibility Page
         'Love Compatibility': { hi: 'प्रेम अनुकूलता' },
         'Discover your cosmic connection with your partner': { hi: 'अपने साथी के साथ अपने ब्रह्मांडीय संबंध की खोज करें' },
@@ -260,34 +260,34 @@ const MayaI18n = {
         'Check Compatibility': { hi: 'अनुकूलता जांचें' },
         'How it works': { hi: 'यह कैसे काम करता है' },
         'Friend': { hi: 'मित्र' },
-        
+
         // Greetings
         'Hello': { hi: 'नमस्ते' },
         'Namaste': { hi: 'नमस्ते' },
-        
+
         // Horoscope Page
         'Listen': { hi: 'सुनें' },
         '(Tap for details)': { hi: '(टैप करें विस्तार के लिए)' },
         'Luck': { hi: 'भाग्य' },
         'Want personalized guidance?': { hi: 'व्यक्तिगत मार्गदर्शन चाहिए?' },
         'Ask MAYA': { hi: 'MAYA से पूछें' },
-        
+
         // Chat History
         'No Conversations Yet': { hi: 'कोई चैट नहीं' },
         'Start chatting with MAYA and your conversations will appear here.': { hi: 'MAYA से बात करें और आपकी बातचीत यहां दिखाई देगी।' },
         'Chat with MAYA': { hi: 'MAYA से बात करें' },
-        
+
         // Panchang
         'Shukla Paksha': { hi: 'शुक्ल पक्ष' },
         'Krishna Paksha': { hi: 'कृष्ण पक्ष' },
         'Vikram Samvat': { hi: 'विक्रम संवत्' },
-        
+
         // Kundli
         'Birth Details Required': { hi: 'जन्म विवरण आवश्यक' },
         'Please add your birth date in profile to view your Kundli.': { hi: 'अपनी कुंडली देखने के लिए कृपया प्रोफाइल में जन्म तिथि जोड़ें।' },
         'North Indian': { hi: 'उत्तर भारतीय' },
         'South Indian': { hi: 'दक्षिण भारतीय' },
-        
+
         // Vastu
         'Upload Floor Plan': { hi: 'फ्लोर प्लान अपलोड करें' },
         'Take Photo': { hi: 'फोटो लें' },
@@ -296,12 +296,12 @@ const MayaI18n = {
         'Direction Analysis': { hi: 'दिशा विश्लेषण' },
         'Vastu Tips': { hi: 'वास्तु टिप्स' },
         'Vastu Remedies': { hi: 'वास्तु उपाय' },
-        
+
         // Palm Reading
         'Upload Palm Image': { hi: 'हथेली की छवि अपलोड करें' },
         'Take Photo of Palm': { hi: 'हथेली की फोटो लें' },
         'Palm Analysis': { hi: 'हस्तरेखा विश्लेषण' },
-        
+
         // Common UI
         'See All': { hi: 'सभी देखें' },
         'View All': { hi: 'सभी देखें' },
@@ -325,7 +325,7 @@ const MayaI18n = {
         'Sort': { hi: 'क्रम' },
         'Copy': { hi: 'कॉपी करें' },
         'Copied!': { hi: 'कॉपी हो गया!' },
-        
+
         // Status Messages
         'Analyzing...': { hi: 'विश्लेषण हो रहा है...' },
         'Processing...': { hi: 'प्रोसेसिंग हो रही है...' },
@@ -339,20 +339,20 @@ const MayaI18n = {
         'Failed': { hi: 'विफल' },
         'Offline': { hi: 'ऑफलाइन' },
         'Online': { hi: 'ऑनलाइन' },
-        
+
         // Complete Sentences - Home Page
         'Daily Devotional Music & Mantras': { hi: 'दैनिक भक्ति संगीत और मंत्र' },
-        'Your personalized cosmic guidance': { hi: 'आपका व्यक्तिगत ज्योतिषीय मार्गदर्शन' },
-        'Explore your destiny through Vedic astrology': { hi: 'वैदिक ज्योतिष से अपनी नियति जानें' },
+        'Your personalized guidance': { hi: 'आपका व्यक्तिगत मार्गदर्शन' },
+        'Build your guidance journal': { hi: 'अपना मार्गदर्शन जर्नल बनाएं' },
         'Start your spiritual journey today': { hi: 'आज ही अपनी आध्यात्मिक यात्रा शुरू करें' },
-        'Discover what the stars have in store for you': { hi: 'जानिए सितारे आपके लिए क्या लेकर आए हैं' },
-        
+        'Create one clear next step for today': { hi: 'आज के लिए एक स्पष्ट अगला कदम बनाएं' },
+
         // Complete Sentences - Horoscope
-        'Your daily cosmic insights': { hi: 'आज का आपका राशिफल' },
-        "Today's cosmic energy for you": { hi: 'आज की ब्रह्मांडीय ऊर्जा आपके लिए' },
-        'Based on your birth chart': { hi: 'आपकी जन्म कुंडली के अनुसार' },
+        'Your daily guidance plan': { hi: 'आज की आपकी मार्गदर्शन योजना' },
+        "Today's practice plan for you": { hi: 'आज की अभ्यास योजना आपके लिए' },
+        'Based on your profile and timing': { hi: 'आपकी प्रोफाइल और timing के अनुसार' },
         'Tap any category for detailed insights': { hi: 'विस्तृत जानकारी के लिए किसी भी श्रेणी पर टैप करें' },
-        
+
         // Complete Sentences - Music Player
         'Now Playing': { hi: 'अभी बज रहा है' },
         'Playing': { hi: 'बज रहा है' },
@@ -369,11 +369,11 @@ const MayaI18n = {
         'Unknown': { hi: 'अज्ञात' },
         'Calculate': { hi: 'गणना करें' },
         'Life Path': { hi: 'जीवन पथ' },
-        "Today's Cosmic Message": { hi: 'आज का ब्रह्मांडीय संदेश' },
-        'Read Full Horoscope': { hi: 'पूरा राशिफल पढ़ें' },
-        'Get Your Full Reading': { hi: 'अपनी पूरी रीडिंग पाएं' },
-        'Discover what the cosmos has in store for your love, career, and destiny.': { hi: 'जानिए प्रेम, करियर और नियति के लिए ब्रह्मांड ने आपके लिए क्या संजोया है।' },
-        'Start Reading': { hi: 'रीडिंग शुरू करें' },
+        "Today's Practice Plan": { hi: 'आज की अभ्यास योजना' },
+        'Open Daily Plan': { hi: 'दैनिक योजना खोलें' },
+        "Build Today's Plan": { hi: 'आज की योजना बनाएं' },
+        'Turn your journal, timing, and profile signals into one practical next step.': { hi: 'अपने जर्नल, timing और profile signals को एक व्यवहारिक अगले कदम में बदलें।' },
+        'Open MAYA': { hi: 'MAYA खोलें' },
         'Your Lucky Elements': { hi: 'आपके शुभ तत्व' },
         'Lucky Numbers': { hi: 'भाग्यशाली अंक' },
         'Gemstone': { hi: 'रत्न' },
@@ -393,51 +393,51 @@ const MayaI18n = {
         'The Visionary': { hi: 'दृष्टा' },
         'The Master Builder': { hi: 'महान निर्माता' },
         'The Master Teacher': { hi: 'महान शिक्षक' },
-        
+
         // Complete Sentences - Chat
         'How can I help you today?': { hi: 'आज मैं आपकी कैसे सहायता कर सकती हूँ?' },
-        'Ask me anything about astrology': { hi: 'ज्योतिष के बारे में कुछ भी पूछें' },
+        'Ask me about reflection and timing': { hi: 'reflection और timing के बारे में पूछें' },
         'Type your question here...': { hi: 'अपना प्रश्न यहां लिखें...' },
         'Thinking about your question...': { hi: 'आपके प्रश्न पर विचार कर रही हूँ...' },
-        
+
         // Complete Sentences - Profile & Settings
-        'Your cosmic profile': { hi: 'आपकी ज्योतिषीय प्रोफाइल' },
-        'Update your birth details for accurate predictions': { hi: 'सटीक भविष्यवाणी के लिए अपना जन्म विवरण अपडेट करें' },
+        'Your guidance profile': { hi: 'आपकी मार्गदर्शन प्रोफाइल' },
+        'Update your birth details for personalized timing': { hi: 'व्यक्तिगत timing के लिए अपना जन्म विवरण अपडेट करें' },
         'Language changed to English': { hi: 'भाषा अंग्रेजी में बदल गई' },
         'Language changed to Hindi': { hi: 'भाषा हिंदी में बदल गई' },
-        
+
         // Complete Sentences - Compatibility
-        'Find your cosmic match': { hi: 'अपना ज्योतिषीय मेल खोजें' },
+        'Relationship check': { hi: 'रिलेशनशिप चेक' },
         'Enter both birth details for accurate matching': { hi: 'सटीक मिलान के लिए दोनों के जन्म विवरण दर्ज करें' },
         'Calculating your compatibility...': { hi: 'आपकी अनुकूलता की गणना हो रही है...' },
-        
+
         // Complete Sentences - Panchang
         'Today\'s Vedic Calendar': { hi: 'आज का वैदिक कैलेंडर' },
         'Auspicious timings for today': { hi: 'आज के शुभ मुहूर्त' },
         'Avoid important activities during this time': { hi: 'इस समय महत्वपूर्ण कार्य न करें' },
-        
+
         // Complete Sentences - Remedies
         'Personalized remedies for you': { hi: 'आपके लिए व्यक्तिगत उपाय' },
         'Based on your planetary positions': { hi: 'आपकी ग्रह स्थिति के अनुसार' },
         'Follow these remedies for better results': { hi: 'बेहतर परिणामों के लिए इन उपायों का पालन करें' },
-        
+
         // Complete Sentences - Muhurat
         'Find the perfect time': { hi: 'सही समय खोजें' },
         'Auspicious timing for your activities': { hi: 'आपके कार्यों के लिए शुभ मुहूर्त' },
         'Best time for important decisions': { hi: 'महत्वपूर्ण निर्णयों के लिए सर्वोत्तम समय' },
-        
+
         // Complete Sentences - Vastu
         'Analyze your space': { hi: 'अपने स्थान का विश्लेषण करें' },
         'Get Vastu recommendations for your home': { hi: 'अपने घर के लिए वास्तु सुझाव प्राप्त करें' },
         'Harmonize your living space': { hi: 'अपने रहने की जगह को संतुलित करें' },
-        
+
         // Complete Sentences - Errors & Empty States
         'Something went wrong. Please try again.': { hi: 'कुछ गलत हो गया। कृपया पुनः प्रयास करें।' },
         'No data available': { hi: 'कोई डेटा उपलब्ध नहीं' },
         'Unable to load content': { hi: 'सामग्री लोड करने में असमर्थ' },
         'Please check your internet connection': { hi: 'कृपया अपना इंटरनेट कनेक्शन जांचें' },
         'Session expired. Please login again.': { hi: 'सत्र समाप्त हो गया। कृपया पुनः लॉगिन करें।' },
-        
+
         // Complete Sentences - Spiritual Music
         'For Today': { hi: 'आज के लिए' },
         'High Energy': { hi: 'उच्च ऊर्जा' },
@@ -452,13 +452,13 @@ const MayaI18n = {
         'Aarti Collection': { hi: 'आरती संग्रह' },
         'Workout Bhakti': { hi: 'वर्कआउट भक्ति' }
     },
-    
+
     /**
      * Initialize the translation service
      */
     init() {
         if (this.initialized) return;
-        
+
         // Get saved language preference
         if (window.MayaUtils) {
             this.currentLang = MayaUtils.storage.get('maya_language') || 'en';
@@ -470,24 +470,24 @@ const MayaI18n = {
                 this.currentLang = 'en';
             }
         }
-        
+
         // Load cache from localStorage
         this.loadCache();
-        
+
         // Set up mutation observer to auto-translate new elements
         if (document.body) {
             this.setupMutationObserver();
         }
-        
+
         this.initialized = true;
         console.log('🌐 MayaI18n initialized, language:', this.currentLang);
-        
+
         // Initial page translation if Hindi is selected
         if (this.currentLang === 'hi') {
             this.translatePage();
         }
     },
-    
+
     /**
      * Load translation cache from localStorage
      */
@@ -500,14 +500,14 @@ const MayaI18n = {
             console.warn('Failed to load translation cache:', e);
         }
     },
-    
+
     /**
      * Save translation cache to localStorage
      */
     saveCache() {
         return;
     },
-    
+
     /**
      * Set current language and translate page
      */
@@ -516,23 +516,23 @@ const MayaI18n = {
         const force = options.force === true;
 
         if (resolvedLang === this.currentLang && !force) return;
-        
+
         this.currentLang = resolvedLang;
         MayaUtils.storage.set('maya_language', resolvedLang);
-        
+
         // Translate all observed elements
         await this.translatePage();
-        
+
         console.log('🌐 Language changed to:', resolvedLang);
     },
-    
+
     /**
      * Get current language
      */
     getLanguage() {
         return this.currentLang;
     },
-    
+
     /**
      * Check if current language is Hindi
      */
@@ -621,60 +621,60 @@ const MayaI18n = {
             });
         }
     },
-    
+
     /**
      * Translate a single string
      */
     t(text, targetLang = null) {
         const lang = targetLang || this.currentLang;
-        
+
         // If English requested or text is empty, return as-is
         if (lang === 'en' || !text || typeof text !== 'string') {
             return text;
         }
-        
+
         // Trim the text for lookup
         const trimmedText = text.trim();
-        
+
         // Check dictionary first (instant)
         if (this.dictionary[trimmedText] && this.dictionary[trimmedText][lang]) {
             return this.dictionary[trimmedText][lang];
         }
-        
+
         // Check cache
         const cacheKey = `${trimmedText}:${lang}`;
         if (this.cacheEnabled && this.cache.has(cacheKey)) {
             return this.cache.get(cacheKey);
         }
-        
+
         // Return original if no translation found
         return text;
     },
-    
+
     /**
      * Translate text asynchronously (with API fallback)
      */
     async translateAsync(text, targetLang = null) {
         const lang = targetLang || this.currentLang;
-        
+
         // If English requested or text is empty, return as-is
         if (lang === 'en' || !text || typeof text !== 'string') {
             return text;
         }
-        
+
         const trimmedText = text.trim();
-        
+
         // Check dictionary first
         if (this.dictionary[trimmedText] && this.dictionary[trimmedText][lang]) {
             return this.dictionary[trimmedText][lang];
         }
-        
+
         // Check cache
         const cacheKey = `${trimmedText}:${lang}`;
         if (this.cacheEnabled && this.cache.has(cacheKey)) {
             return this.cache.get(cacheKey);
         }
-        
+
         // For longer texts, use AI translation via MAYA
         if (trimmedText.length > 5 && window.MayaAI) {
             try {
@@ -690,19 +690,19 @@ const MayaI18n = {
                 console.warn('AI translation failed:', e);
             }
         }
-        
+
         return text;
     },
-    
+
     /**
      * Translate using MAYA AI
      */
     async translateWithAI(text, targetLang) {
         if (!window.MayaAI) return text;
-        
+
         const langName = targetLang === 'hi' ? 'Hindi' : 'English';
         const prompt = `Translate the following UI text to ${langName}. Return ONLY the translated text, nothing else:\n\n"${text}"`;
-        
+
         try {
             const response = await MayaAI.getResponse(prompt, { stream: false });
             // Clean up response - remove quotes and extra whitespace
@@ -711,14 +711,14 @@ const MayaI18n = {
             return text;
         }
     },
-    
+
     /**
      * Batch translate multiple strings
      */
     translateBatch(texts) {
         return texts.map(text => this.t(text));
     },
-    
+
     /**
      * Mark an element for translation observation
      */
@@ -726,7 +726,7 @@ const MayaI18n = {
         if (!element) return;
         this.observedElements.add(element);
     },
-    
+
     /**
      * Translate all text in the page
      */
@@ -741,7 +741,7 @@ const MayaI18n = {
             this.restoreTranslatedAttributes(document);
             return;
         }
-        
+
         // Find all translatable elements
         const translatableSelectors = [
             '.maya-page__title',
@@ -761,19 +761,19 @@ const MayaI18n = {
             '.bottom-nav .nav-item span',
             '[data-i18n]'
         ];
-        
+
         const elements = document.querySelectorAll(translatableSelectors.join(', '));
-        
+
         for (const el of elements) {
             // Use data-i18n attribute if present, otherwise use text content
             const i18nKey = el.dataset.i18n;
             const originalText = el.dataset.i18nOriginal || (i18nKey || el.textContent);
-            
+
             // Store original if not already stored
             if (!el.dataset.i18nOriginal) {
                 el.dataset.i18nOriginal = i18nKey || originalText;
             }
-            
+
             // Translate using key if available
             const textToTranslate = i18nKey || originalText.trim();
             const translated = this.t(textToTranslate);
@@ -784,16 +784,16 @@ const MayaI18n = {
 
         this.translateAttributes(document);
     },
-    
+
     /**
      * Setup mutation observer to auto-translate new elements
      */
     setupMutationObserver() {
         if (this.observer) return;
-        
+
         this.observer = new MutationObserver((mutations) => {
             if (this.currentLang === 'en') return;
-            
+
             for (const mutation of mutations) {
                 if (mutation.type === 'childList') {
                     mutation.addedNodes.forEach(node => {
@@ -805,20 +805,20 @@ const MayaI18n = {
                 }
             }
         });
-        
+
         // Start observing
         this.observer.observe(document.body, {
             childList: true,
             subtree: true
         });
     },
-    
+
     /**
      * Translate a single element and its children
      */
     translateElement(element) {
         if (this.currentLang === 'en') return;
-        
+
         // Check if element has translatable text
         const translatableSelectors = [
             '.maya-page__title',
@@ -828,7 +828,7 @@ const MayaI18n = {
             '.bottom-nav .nav-item span',
             '[data-i18n]'
         ];
-        
+
         // Check the element itself
         for (const selector of translatableSelectors) {
             if (element.matches && element.matches(selector)) {
@@ -843,7 +843,7 @@ const MayaI18n = {
                 }
             }
         }
-        
+
         // Check children
         const children = element.querySelectorAll?.(translatableSelectors.join(', '));
         children?.forEach(child => {
@@ -860,14 +860,14 @@ const MayaI18n = {
 
         this.translateAttributes(element);
     },
-    
+
     /**
      * Helper to create bilingual text
      */
     bilingual(english, hindi) {
         return this.currentLang === 'hi' ? hindi : english;
     },
-    
+
     /**
      * Add translations to dictionary at runtime
      */

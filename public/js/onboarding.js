@@ -61,7 +61,7 @@ const MayaOnboarding = {
         of: { en: 'of', hi: 'में से' },
         back: { en: 'Back', hi: 'वापस' },
         continue: { en: 'Continue', hi: 'आगे बढ़ें' },
-        openMyChart: { en: 'Open My Chart', hi: 'मेरी कुंडली खोलें' },
+        openMyChart: { en: 'Open My Plan', hi: 'मेरी योजना खोलें' },
         unknownBirthTime: { en: "I don't know my birth time", hi: 'मुझे अपना जन्म समय नहीं पता' },
         confirmReveal: { en: 'Yes, tell me!', hi: 'हाँ, बताइए!' },
         existingAccount: { en: 'Already have an account?', hi: 'क्या आपका पहले से खाता है?' },
@@ -96,8 +96,8 @@ const MayaOnboarding = {
         },
         {
             id: 'welcome',
-            question: "What name should I use when I read your chart?",
-            questionHi: "मैं आपकी कुंडली पढ़ते समय आपको किस नाम से बुलाऊँ?",
+            question: "What name should I use for your guidance journal?",
+            questionHi: "आपके मार्गदर्शन जर्नल में मैं आपको किस नाम से बुलाऊँ?",
             field: 'name',
             type: 'name',
             placeholder: 'First name',
@@ -129,8 +129,8 @@ const MayaOnboarding = {
         },
         {
             id: 'birthTime',
-            question: "Do you know your birth time? (Optional but helps accuracy)",
-            questionHi: "क्या आपको अपना जन्म समय पता है? (ज़रूरी नहीं, पर सटीकता बढ़ाता है)",
+            question: "Do you know your birth time? (Optional, used for personalized timing)",
+            questionHi: "क्या आपको अपना जन्म समय पता है? (ज़रूरी नहीं, व्यक्तिगत समय-सुझाव के लिए)",
             field: 'birthTime',
             type: 'time',
             optional: true,
@@ -139,8 +139,8 @@ const MayaOnboarding = {
         },
         {
             id: 'birthPlace',
-            question: "Place matters. It changes how the sky was arranged around you. Where were you born?",
-            questionHi: "जगह मायने रखती है। इससे आसमान की स्थिति बदलती है। आप कहाँ पैदा हुए थे?",
+            question: "Where were you born? This helps personalize timing and location-aware guidance.",
+            questionHi: "आप कहाँ पैदा हुए थे? इससे समय और स्थान आधारित मार्गदर्शन बेहतर होता है।",
             field: 'birthPlace',
             type: 'location',
             placeholder: 'Enter your birth city',
@@ -302,7 +302,7 @@ const MayaOnboarding = {
 
     /**
      * Show pre-funnel landing screen (Screen 1)
-     * Cosmic gradient, headline, subtext, "Begin My Reading" button, voice line
+    * Branded landing screen with headline, subtext, journal CTA, and voice line
      */
     async showLandingScreen() {
         const container = document.getElementById('onboardingContent');
@@ -319,12 +319,12 @@ const MayaOnboarding = {
                     <img src="/images/maya-logo.png" alt="Mayalogy" class="landing-logo-img">
                 </div>
 
-                <h2 class="landing-headline">Open Your Personal<br>Astrology Reading</h2>
-                <p class="landing-subtext">Your birth chart holds patterns most people never see.<br>Your guide will read yours — live, in their own voice.</p>
+                <h2 class="landing-headline">Build Your Personal<br>Guidance Journal</h2>
+                <p class="landing-subtext">Maya combines daily reflection, voice coaching, timing, and mindful routines into one practical plan.</p>
 
                 <div class="landing-actions">
                     <button type="button" class="btn btn-primary btn-lg landing-begin-btn" id="landingBeginBtn">
-                        Begin My Reading
+                        Start My Journal
                     </button>
                     <button type="button" class="landing-login-btn" id="landingLoginBtn">
                         I already have an account
@@ -336,9 +336,9 @@ const MayaOnboarding = {
         // Speak landing voice line
         try {
             if (window.MayaVoice?.speak) {
-                MayaVoice.speak("Your birth chart holds patterns most people never see. Let me read yours.");
+                MayaVoice.speak("Let us build a daily guidance journal around what you want to understand and practice.");
             } else if (window.MayaFunnel?.speak) {
-                MayaFunnel.speak("Your birth chart holds patterns most people never see. Let me read yours.");
+                MayaFunnel.speak("Let us build a daily guidance journal around what you want to understand and practice.");
             }
         } catch (e) {
             console.warn('Landing voice line failed:', e.message);
@@ -1211,22 +1211,22 @@ const MayaOnboarding = {
         const progressPct = Math.round(((stepIndex + 1) / totalSteps) * 100);
 
         const titles = {
-            name:          { en: 'What should we call you?',         hi: 'हम आपको क्या कहकर बुलाएँ?' },
-            gender:        { en: 'Your gender',                       hi: 'आपका लिंग' },
-            birthDate:     { en: 'Your date of birth',                hi: 'आपकी जन्म तिथि' },
-            birthTime:     { en: 'Your time of birth',                hi: 'आपके जन्म का समय' },
-            birthPlace:    { en: 'Where were you born?',              hi: 'आप कहाँ पैदा हुए थे?' },
-            maritalStatus: { en: 'Relationship status',               hi: 'वैवाहिक स्थिति' },
-            agentGender:   { en: 'Choose your guide',                 hi: 'अपना मार्गदर्शक चुनिए' }
+            name: { en: 'What should we call you?', hi: 'हम आपको क्या कहकर बुलाएँ?' },
+            gender: { en: 'Your gender', hi: 'आपका लिंग' },
+            birthDate: { en: 'Your date of birth', hi: 'आपकी जन्म तिथि' },
+            birthTime: { en: 'Your time of birth', hi: 'आपके जन्म का समय' },
+            birthPlace: { en: 'Where were you born?', hi: 'आप कहाँ पैदा हुए थे?' },
+            maritalStatus: { en: 'Relationship status', hi: 'वैवाहिक स्थिति' },
+            agentGender: { en: 'Choose your guide', hi: 'अपना मार्गदर्शक चुनिए' }
         };
         const subtitles = {
-            name:          { en: 'A first name we can use across your readings.',         hi: 'एक नाम जो आपकी रीडिंग में इस्तेमाल होगा।' },
-            gender:        { en: 'Helps tailor predictions to you.',                      hi: 'भविष्यवाणियाँ सटीक करने में मदद करता है।' },
-            birthDate:     { en: 'Required to build your chart.',                         hi: 'कुंडली बनाने के लिए आवश्यक।' },
-            birthTime:     { en: 'Optional, but improves accuracy.',                      hi: 'वैकल्पिक, पर सटीकता बढ़ाता है।' },
-            birthPlace:    { en: 'City of birth so we can compute the right ascendant.',  hi: 'जन्म स्थान सही लग्न के लिए।' },
-            maritalStatus: { en: 'Used in love and family insights.',                     hi: 'रिश्तों के विश्लेषण में मददगार।' },
-            agentGender:   { en: 'Pick the voice that will read your chart.',             hi: 'वह आवाज़ चुनिए जो आपकी कुंडली पढ़ेगी।' }
+            name: { en: 'A first name we can use across your readings.', hi: 'एक नाम जो आपकी रीडिंग में इस्तेमाल होगा।' },
+            gender: { en: 'Helps tailor predictions to you.', hi: 'भविष्यवाणियाँ सटीक करने में मदद करता है।' },
+            birthDate: { en: 'Required to build your chart.', hi: 'कुंडली बनाने के लिए आवश्यक।' },
+            birthTime: { en: 'Optional, but improves accuracy.', hi: 'वैकल्पिक, पर सटीकता बढ़ाता है।' },
+            birthPlace: { en: 'City of birth so we can compute the right ascendant.', hi: 'जन्म स्थान सही लग्न के लिए।' },
+            maritalStatus: { en: 'Used in love and family insights.', hi: 'रिश्तों के विश्लेषण में मददगार।' },
+            agentGender: { en: 'Pick the voice that will read your chart.', hi: 'वह आवाज़ चुनिए जो आपकी कुंडली पढ़ेगी।' }
         };
 
         const backLabel = isHindi ? 'वापस' : 'Back';
@@ -1303,9 +1303,9 @@ const MayaOnboarding = {
             }
             case 'gender': {
                 const opts = [
-                    { v: 'male',   en: 'Male',   hi: 'पुरुष' },
+                    { v: 'male', en: 'Male', hi: 'पुरुष' },
                     { v: 'female', en: 'Female', hi: 'महिला' },
-                    { v: 'other',  en: 'Other',  hi: 'अन्य' }
+                    { v: 'other', en: 'Other', hi: 'अन्य' }
                 ];
                 return `<div class="d-grid gap-2">${opts.map((o) => `
                     <button type="button" class="btn ${ud.gender === o.v ? 'btn-primary' : 'btn-outline-light'} plf-choice" data-field="gender" data-value="${o.v}">
@@ -1337,8 +1337,8 @@ const MayaOnboarding = {
             case 'maritalStatus': {
                 const opts = [
                     { v: 'unmarried', en: 'Unmarried', hi: 'अविवाहित' },
-                    { v: 'married',   en: 'Married',   hi: 'विवाहित' },
-                    { v: 'divorced',  en: 'Divorced',  hi: 'विवाह विच्छेद' }
+                    { v: 'married', en: 'Married', hi: 'विवाहित' },
+                    { v: 'divorced', en: 'Divorced', hi: 'विवाह विच्छेद' }
                 ];
                 return `<div class="d-grid gap-2">${opts.map((o) => `
                     <button type="button" class="btn ${ud.maritalStatus === o.v ? 'btn-primary' : 'btn-outline-light'} plf-choice" data-field="maritalStatus" data-value="${o.v}">
@@ -1347,8 +1347,8 @@ const MayaOnboarding = {
             }
             case 'agentGender': {
                 const opts = [
-                    { v: 'female', en: 'Maya',  desc: { en: 'Your divine guide',  hi: 'आपकी दिव्य मार्गदर्शक' } },
-                    { v: 'male',   en: 'Moksh', desc: { en: 'Your vedic guide',   hi: 'आपके वैदिक मार्गदर्शक' } }
+                    { v: 'female', en: 'Maya', desc: { en: 'Your divine guide', hi: 'आपकी दिव्य मार्गदर्शक' } },
+                    { v: 'male', en: 'Moksh', desc: { en: 'Your vedic guide', hi: 'आपके वैदिक मार्गदर्शक' } }
                 ];
                 return `<div class="d-grid gap-2">${opts.map((o) => `
                     <button type="button" class="btn ${ud.agentGender === o.v ? 'btn-primary' : 'btn-outline-light'} plf-choice text-start" data-field="agentGender" data-value="${o.v}">

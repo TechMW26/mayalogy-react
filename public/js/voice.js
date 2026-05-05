@@ -14,6 +14,8 @@ const MayaVoice = {
     speakingLock: false,  // Prevent overlapping speech
     isInitialized: false, // Track if TTS is pre-warmed
     aborted: false,       // Flag to abort current speech
+    elevenLabsUnavailableUntil: 0,
+    elevenLabsUnavailableReason: '',
 
     /**
      * Initialize voice module - load saved mute preference and pre-warm TTS
@@ -23,27 +25,41 @@ const MayaVoice = {
         if (savedMute !== null) {
             this.isMuted = savedMute;
         }
-        
+
         // Pre-initialize audio context
         this.initAudioContext();
     },
 
+    isElevenLabsUnavailable() {
+        return Date.now() < this.elevenLabsUnavailableUntil;
+    },
+
+    markElevenLabsUnavailable(reason, cooldownMs = 120000) {
+        this.elevenLabsUnavailableReason = reason || 'ElevenLabs is temporarily unavailable';
+        this.elevenLabsUnavailableUntil = Date.now() + cooldownMs;
+        try { this._prefetchCache?.clear?.(); } catch (_error) { }
+    },
+
+    shouldFallbackForTtsError(error) {
+        const status = Number(error?.status || 0);
+        return Boolean(error?.ttsFallback)
+            || this.isElevenLabsUnavailable()
+            || [401, 403, 404, 429, 500, 502, 503].includes(status);
+    },
+
+    buildTtsUnavailableError() {
+        const error = new Error(this.elevenLabsUnavailableReason || 'ElevenLabs is temporarily unavailable');
+        error.ttsFallback = true;
+        return error;
+    },
+
     /**
-     * Pre-warm TTS with a silent request to reduce first-speech latency
+     * Mark voice as ready without sending synthetic provider requests.
      */
     async preWarmTTS() {
-        if (this.isInitialized) return;
-        
-        try {
-            console.log('🔊 Pre-warming TTS for faster response...');
-            // Generate a very short audio to warm up the API connection
-            const warmupText = '.';
-            await this.textToSpeech(warmupText);
-            this.isInitialized = true;
-            console.log('✅ TTS pre-warmed and ready');
-        } catch (e) {
-            console.warn('TTS pre-warm failed:', e.message);
-        }
+        if (this.isInitialized || this.isMuted || this.isElevenLabsUnavailable()) return;
+
+        this.isInitialized = true;
     },
 
     // Number to words mapping for better TTS pronunciation
@@ -309,10 +325,10 @@ const MayaVoice = {
         const lang = isHindi ? 'hi' : 'en';
         const phrases = this.fillerPhrases[lang][type] || this.fillerPhrases[lang].thinking;
         if (!phrases.length) return '';
-        
+
         // Build a key that includes type so ring buffer is per-type
         const key = `${lang}:${type}`;
-        
+
         // Get random index not in recent buffer for this type
         let index;
         let attempts = 0;
@@ -320,13 +336,13 @@ const MayaVoice = {
             index = Math.floor(Math.random() * phrases.length);
             attempts++;
         } while (this._recentFillers.includes(`${key}:${index}`) && attempts < 20 && phrases.length > 1);
-        
+
         // Track in ring buffer
         this._recentFillers.push(`${key}:${index}`);
         if (this._recentFillers.length > this._maxRecentFillers) {
             this._recentFillers.shift();
         }
-        
+
         let phrase = phrases[index];
         // Flip Hindi filler lines to masculine if guide is male
         if (isHindi && this._isGuideMale()) {
@@ -450,12 +466,12 @@ const MayaVoice = {
             window.MayaUtils?.storage?.set('maya_profile', profile);
         } catch (_e) { /* non-fatal */ }
         // Invalidate any cached pre-generated audio so new voice takes effect immediately.
-        try { this.audioCache?.clear?.(); } catch (_e) {}
-        try { this.pendingAudio?.clear?.(); } catch (_e) {}
+        try { this.audioCache?.clear?.(); } catch (_e) { }
+        try { this.pendingAudio?.clear?.(); } catch (_e) { }
         console.log(`🎙️ Guide voice set to ${next}`);
         return next;
     },
-    
+
     // Rate limiting for ElevenLabs API
     rateLimitQueue: [],
     isProcessingQueue: false,
@@ -510,13 +526,13 @@ const MayaVoice = {
         let result = '';
         let i = 0;
         const C = {
-            'shr':'श्र','chh':'छ','ksh':'क्ष',
-            'kh':'ख','gh':'घ','ch':'च','jh':'झ','th':'थ','dh':'ध','ph':'फ','bh':'भ','sh':'श',
-            'pr':'प्र','kr':'क्र','gr':'ग्र','tr':'त्र','br':'ब्र','dr':'द्र','sv':'स्व','sw':'स्व','st':'स्त','sk':'स्क','sp':'स्प','sn':'स्न','sm':'स्म','ny':'न्य',
-            'k':'क','g':'ग','j':'ज','t':'त','d':'द','n':'न','p':'प','b':'ब','m':'म','y':'य','r':'र','l':'ल','v':'व','w':'व','h':'ह','s':'स','f':'फ़','z':'ज़','q':'क़','x':'क्स'
+            'shr': 'श्र', 'chh': 'छ', 'ksh': 'क्ष',
+            'kh': 'ख', 'gh': 'घ', 'ch': 'च', 'jh': 'झ', 'th': 'थ', 'dh': 'ध', 'ph': 'फ', 'bh': 'भ', 'sh': 'श',
+            'pr': 'प्र', 'kr': 'क्र', 'gr': 'ग्र', 'tr': 'त्र', 'br': 'ब्र', 'dr': 'द्र', 'sv': 'स्व', 'sw': 'स्व', 'st': 'स्त', 'sk': 'स्क', 'sp': 'स्प', 'sn': 'स्न', 'sm': 'स्म', 'ny': 'न्य',
+            'k': 'क', 'g': 'ग', 'j': 'ज', 't': 'त', 'd': 'द', 'n': 'न', 'p': 'प', 'b': 'ब', 'm': 'म', 'y': 'य', 'r': 'र', 'l': 'ल', 'v': 'व', 'w': 'व', 'h': 'ह', 's': 'स', 'f': 'फ़', 'z': 'ज़', 'q': 'क़', 'x': 'क्स'
         };
-        const VF = {'aa':'आ','ee':'ई','oo':'ऊ','ai':'ऐ','au':'औ','a':'अ','i':'इ','u':'उ','e':'ए','o':'ओ'};
-        const VM = {'aa':'ा','ee':'ी','oo':'ू','ai':'ै','au':'ौ','a':'','i':'ि','u':'ु','e':'े','o':'ो'};
+        const VF = { 'aa': 'आ', 'ee': 'ई', 'oo': 'ऊ', 'ai': 'ऐ', 'au': 'औ', 'a': 'अ', 'i': 'इ', 'u': 'उ', 'e': 'ए', 'o': 'ओ' };
+        const VM = { 'aa': 'ा', 'ee': 'ी', 'oo': 'ू', 'ai': 'ै', 'au': 'ौ', 'a': '', 'i': 'ि', 'u': 'ु', 'e': 'े', 'o': 'ो' };
         while (i < w.length) {
             let cons = null, cl = 0;
             for (const len of [3, 2, 1]) {
@@ -847,7 +863,7 @@ const MayaVoice = {
     _prefetchCache: new Map(),
 
     prefetchSpeech(text) {
-        if (!text || this.isMuted) return;
+        if (!text || this.isMuted || this.isElevenLabsUnavailable()) return;
         try {
             const prepared = this.prepareForSpeech(text);
             const chunks = this.splitIntoSpeechChunks(prepared);
@@ -855,7 +871,11 @@ const MayaVoice = {
                 const firstChunk = chunks[0];
                 if (!this._prefetchCache.has(firstChunk)) {
                     const options = this.buildChunkSpeechOptions(chunks, 0);
-                    this._prefetchCache.set(firstChunk, this.textToSpeech(firstChunk, options));
+                    const prefetchPromise = this.textToSpeech(firstChunk, options).catch((error) => {
+                        this._prefetchCache.delete(firstChunk);
+                        return { ttsPrefetchError: error };
+                    });
+                    this._prefetchCache.set(firstChunk, prefetchPromise);
                     // Auto-expire after 30s to avoid stale cache
                     setTimeout(() => this._prefetchCache.delete(firstChunk), 30000);
                 }
@@ -896,6 +916,10 @@ const MayaVoice = {
 
                 const audioBlob = await pendingAudio;
 
+                if (audioBlob?.ttsPrefetchError) {
+                    throw audioBlob.ttsPrefetchError;
+                }
+
                 if (this.aborted) {
                     console.log('🛑 Speech aborted');
                     break;
@@ -915,6 +939,17 @@ const MayaVoice = {
             } catch (error) {
                 pendingAudio = null;
                 console.error('Error speaking chunk:', error);
+                if (this.shouldFallbackForTtsError(error)) {
+                    const remainingText = normalizedChunks.slice(index).join(' ').trim();
+                    if (remainingText) {
+                        try {
+                            await this.speakFallback(remainingText);
+                        } catch (fallbackError) {
+                            console.error('Browser TTS fallback failed:', fallbackError);
+                        }
+                    }
+                    break;
+                }
             }
         }
     },
@@ -1111,28 +1146,28 @@ const MayaVoice = {
         // Treat only punctuation dashes as pauses. In-word hyphens are normalized earlier.
         prepared = prepared.replace(/\s[\-–—]\s/g, ', ');
         prepared = prepared.replace(/\.\.\./g, '... ');
-        
+
         // Remove emoji and special characters that TTS struggles with
         prepared = prepared.replace(/[\u{1F600}-\u{1F6FF}]/gu, '');
         prepared = prepared.replace(/[\u{2600}-\u{26FF}]/gu, '');
-        
+
         // Clean up arrows and mathematical symbols
         prepared = prepared.replace(/→/g, ' becomes ');
         prepared = prepared.replace(/=/g, ' equals ');
         prepared = prepared.replace(/\+/g, ' plus ');
-        
+
         // Remove excess punctuation
         prepared = prepared.replace(/[,]{2,}/g, ',');
         prepared = prepared.replace(/[.]{2,}/g, '.');
         prepared = prepared.replace(/\s+([,.!?])/g, '$1');
-        
+
         // Clean up multiple spaces and trim
         prepared = prepared.replace(/\s+/g, ' ').trim();
 
         if (prepared && !/[.!?]$/.test(prepared)) {
             prepared += '.';
         }
-        
+
         return prepared;
     },
 
@@ -1190,7 +1225,7 @@ const MayaVoice = {
      */
     getAmplitude() {
         if (!this.analyser || !this.isPlaying) return 0;
-        
+
         this.analyser.getByteFrequencyData(this.dataArray);
         let sum = 0;
         for (let i = 0; i < this.dataArray.length; i++) {
@@ -1206,13 +1241,46 @@ const MayaVoice = {
      * Convert text to speech using ElevenLabs
      */
     async textToSpeech(text, options = {}) {
+        if (this.isElevenLabsUnavailable()) {
+            throw this.buildTtsUnavailableError();
+        }
+
         return await this.textToSpeechElevenLabs(text, options);
+    },
+
+    async buildElevenLabsError(response) {
+        let errorMessage = `ElevenLabs API error: ${response.status}`;
+        let errorCode = '';
+
+        try {
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const body = await response.json();
+                errorCode = body?.code || body?.detail?.code || '';
+                errorMessage = body?.error?.message || body?.detail?.message || body?.message || body?.error || errorMessage;
+            } else {
+                const bodyText = await response.text();
+                if (bodyText) errorMessage = bodyText;
+            }
+        } catch (_error) {
+            // Keep the generic status message if the error body cannot be read.
+        }
+
+        const error = new Error(errorMessage);
+        error.status = response.status;
+        error.code = errorCode;
+        error.ttsFallback = true;
+        return error;
     },
 
     /**
      * ElevenLabs TTS - high quality voice synthesis with rate limiting
      */
     async textToSpeechElevenLabs(text, options = {}) {
+        if (this.isElevenLabsUnavailable()) {
+            throw this.buildTtsUnavailableError();
+        }
+
         const isHindi = window.MayaUtils?.storage?.get('maya_language') === 'hi';
         const previousText = String(options.previousText || '').trim();
         const nextText = String(options.nextText || '').trim();
@@ -1294,6 +1362,9 @@ const MayaVoice = {
 
                 if (response.status === 429) {
                     // Rate limited - wait and retry with exponential backoff
+                    lastError = new Error('ElevenLabs rate limit');
+                    lastError.status = 429;
+                    lastError.ttsFallback = true;
                     const retryDelay = this.retryBaseDelay * Math.pow(2, attempt);
                     console.warn(`⚠️ ElevenLabs rate limit hit, waiting ${retryDelay}ms before retry ${attempt + 1}/${this.maxRetries}`);
                     await MayaUtils.sleep(retryDelay);
@@ -1301,7 +1372,13 @@ const MayaVoice = {
                 }
 
                 if (!response.ok) {
-                    throw new Error(`ElevenLabs API error: ${response.status}`);
+                    const error = await this.buildElevenLabsError(response);
+                    if ([401, 403, 404, 500, 502, 503].includes(response.status)) {
+                        const cooldownMs = response.status === 503 ? 300000 : 120000;
+                        this.markElevenLabsUnavailable(error.message, cooldownMs);
+                        error.ttsNoRetry = true;
+                    }
+                    throw error;
                 }
 
                 const audioBlob = await response.blob();
@@ -1309,14 +1386,18 @@ const MayaVoice = {
             } catch (error) {
                 lastError = error;
                 console.error(`ElevenLabs TTS error (attempt ${attempt + 1}):`, error);
-                
+
+                if (error?.ttsNoRetry || this.isElevenLabsUnavailable()) {
+                    throw error;
+                }
+
                 if (attempt < this.maxRetries - 1) {
                     const retryDelay = this.retryBaseDelay * Math.pow(2, attempt);
                     await MayaUtils.sleep(retryDelay);
                 }
             }
         }
-        
+
         // All retries failed
         console.error('ElevenLabs TTS failed after all retries:', lastError);
         throw lastError;
@@ -1340,7 +1421,7 @@ const MayaVoice = {
                 const source = this.audioContext.createBufferSource();
                 const gainNode = this.audioContext.createGain();
                 source.buffer = audioBuffer;
-                
+
                 const isHindi = window.MayaUtils?.storage?.get('maya_language') === 'hi';
                 const playbackRate = isHindi
                     ? this.speechProfile.playbackRateHi
@@ -1428,7 +1509,7 @@ const MayaVoice = {
 
         // Wait for any ongoing speech to complete (prevents overlap)
         await this.waitForSpeechComplete();
-        
+
         // Reset abort flag and acquire speaking lock
         this.aborted = false;
         this.speakingLock = true;
@@ -1464,14 +1545,14 @@ const MayaVoice = {
 
         // Wait for any ongoing speech to complete
         await this.waitForSpeechComplete();
-        
+
         this.aborted = false;
         this.speakingLock = true;
 
         try {
             const preparedText = this.prepareForSpeech(text);
             const sentencesArray = this.splitIntoSpeechChunks(preparedText);
-            
+
             if (sentencesArray.length === 0) {
                 this.speakingLock = false;
                 return;
@@ -1479,9 +1560,9 @@ const MayaVoice = {
 
             console.log('⚡ Streaming speech - ' + sentencesArray.length + ' chunks with prefetch');
             await this.speakChunks(sentencesArray, onProgress);
-            
+
             if (onProgress) onProgress(text, true);
-            
+
         } finally {
             this.speakingLock = false;
         }
@@ -1494,7 +1575,7 @@ const MayaVoice = {
         if (!displayElement) return;
 
         displayElement.textContent = '';
-        
+
         // Start speaking
         const speakPromise = this.speak(text, (currentSentence, isComplete) => {
             if (isComplete && onComplete) {
@@ -1505,7 +1586,7 @@ const MayaVoice = {
         // Typing effect
         const words = text.split(' ');
         const avgWordDuration = 200; // Approximate ms per word
-        
+
         for (let i = 0; i < words.length; i++) {
             displayElement.textContent = words.slice(0, i + 1).join(' ');
             await MayaUtils.sleep(avgWordDuration);
@@ -1556,13 +1637,13 @@ const MayaVoice = {
             window.speechSynthesis.cancel();
 
             const utterance = new SpeechSynthesisUtterance(this.prepareForSpeech(text));
-            
+
             // Check language preference - use Hindi voice if selected
             const isHindi = window.MayaUtils?.storage?.get('maya_language') === 'hi';
             utterance.lang = isHindi ? 'hi-IN' : 'en-US';
             utterance.rate = this.speechProfile.fallbackRate;
             utterance.pitch = this.speechProfile.fallbackPitch;
-            
+
             // Try to find appropriate voice based on language
             const voices = window.speechSynthesis.getVoices();
             let preferredVoice = null;
@@ -1574,23 +1655,23 @@ const MayaVoice = {
                 const voiceName = (voice?.name || '').toLowerCase();
                 return hints.some((hint) => voiceName.includes(hint));
             };
-            
+
             if (isHindi) {
                 // Prefer Hindi female or neutral voices so MAYA stays aligned on fallback audio.
-                preferredVoice = voices.find((voice) => 
+                preferredVoice = voices.find((voice) =>
                     voice.lang.startsWith('hi') && hasHint(voice, femaleHints)
-                ) || voices.find((voice) => 
+                ) || voices.find((voice) =>
                     voice.lang.startsWith('hi') && !hasHint(voice, maleHints)
                 ) || voices.find((voice) => voice.lang.startsWith('hi'));
             } else {
                 // Prefer English female or neutral voices and avoid known male-labelled voices.
-                preferredVoice = voices.find((voice) => 
+                preferredVoice = voices.find((voice) =>
                     voice.lang.startsWith('en') && hasHint(voice, femaleHints)
-                ) || voices.find((voice) => 
+                ) || voices.find((voice) =>
                     voice.lang.startsWith('en') && !hasHint(voice, maleHints)
                 ) || voices.find((voice) => voice.lang.startsWith('en'));
             }
-            
+
             if (preferredVoice) {
                 utterance.voice = preferredVoice;
             }
@@ -1615,19 +1696,19 @@ const MayaVoice = {
             }
         } catch (error) {
             console.warn('ElevenLabs failed, using browser TTS:', error);
-            
+
             // Show text immediately
             if (displayElement) {
                 displayElement.textContent = text;
             }
-            
+
             // Try browser TTS
             try {
                 await this.speakFallback(text);
             } catch (fallbackError) {
                 console.error('Browser TTS also failed:', fallbackError);
             }
-            
+
             if (onComplete) onComplete();
         }
     }
@@ -1667,7 +1748,7 @@ const MayaListener = {
         try {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             this.recognition = new SpeechRecognition();
-            
+
             this.recognition.continuous = false;
             this.recognition.interimResults = true;
             this.recognition.lang = 'en-US';
@@ -1700,7 +1781,7 @@ const MayaListener = {
             this.recognition.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
                 this.isListening = false;
-                
+
                 // Handle specific errors with retry
                 if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
                     console.warn('🎤 Microphone permission denied');
@@ -1719,7 +1800,7 @@ const MayaListener = {
                     console.warn('🎤 Recognition error:', event.error, '- will retry');
                     this._retryInit();
                 }
-                
+
                 if (this.onEnd) this.onEnd();
             };
 
@@ -1731,7 +1812,7 @@ const MayaListener = {
 
             console.log('🎤 Speech recognition initialized successfully');
             return true;
-            
+
         } catch (error) {
             console.error('Failed to initialize speech recognition:', error);
             return this._retryInit();
@@ -1750,18 +1831,18 @@ const MayaListener = {
 
         this.initRetryCount++;
         console.log(`🎤 Retrying speech recognition init (attempt ${this.initRetryCount}/${this.maxRetries})...`);
-        
+
         // Clear existing recognition
         if (this.recognition) {
             try {
                 this.recognition.abort();
-            } catch (e) {}
+            } catch (e) { }
             this.recognition = null;
         }
 
         // Wait before retry
         await new Promise(resolve => setTimeout(resolve, this.retryDelay * this.initRetryCount));
-        
+
         return this._initWithRetry();
     },
 
@@ -1801,29 +1882,29 @@ const MayaListener = {
      */
     async _startWithRetry(retryCount = 0) {
         const maxStartRetries = 3;
-        
+
         try {
             this.recognition.start();
             return true;
         } catch (error) {
             console.error('Failed to start recognition:', error);
-            
+
             if (error.message?.includes('already started')) {
                 // Already running, that's fine
                 return true;
             }
-            
+
             if (retryCount < maxStartRetries) {
                 console.log(`🎤 Retrying start (attempt ${retryCount + 1}/${maxStartRetries})...`);
-                
+
                 // Reinitialize and try again
                 this.recognition = null;
                 await this.init();
                 await new Promise(resolve => setTimeout(resolve, 500));
-                
+
                 return this._startWithRetry(retryCount + 1);
             }
-            
+
             console.error('🎤 Failed to start after retries');
             return false;
         }

@@ -758,7 +758,7 @@ const MayaAstrology = {
     },
 
     /**
-     * Get daily horoscope traits
+     * Get daily guidance plan traits
      */
     getDailyTraits(zodiacSign) {
         const traits = {
