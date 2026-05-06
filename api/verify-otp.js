@@ -4,7 +4,7 @@
  * the user record in Firebase RTDB and returns a session token.
  */
 
-import { buildPhoneKey, isValidNormalizedPhone, normalizePhoneInput } from './_phone.js';
+import { buildPhoneKey, getReviewDemoCredentials, isReviewDemoPhone, isValidNormalizedPhone, normalizePhoneInput } from './_phone.js';
 
 export const config = {
     api: {
@@ -19,14 +19,12 @@ export default async function handler(req, res) {
     }
 
     const { phone, countryCode, otp } = req.body || {};
-    const masterOtp = String(process.env.MAYA_MASTER_OTP || '7500');
-    const isMasterOtp = String(otp || '') === masterOtp;
 
     if (!phone || !countryCode || !otp) {
         return res.status(400).json({ error: 'phone, countryCode and otp are required' });
     }
 
-    if (!isMasterOtp && !/^\d{6}$/.test(String(otp))) {
+    if (!/^\d{6}$/.test(String(otp))) {
         return res.status(400).json({ error: 'OTP must be 6 digits' });
     }
 
@@ -38,16 +36,40 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Invalid phone number or country code format' });
     }
 
+    const reviewDemo = getReviewDemoCredentials(process.env);
+    const isReviewDemoOtp = isReviewDemoPhone(normalizedPhone, normalizedCountryCode, process.env)
+        && String(otp) === reviewDemo.otp;
+
     const phoneKey = buildPhoneKey(normalizedPhone, normalizedCountryCode);
     const firebaseUrl = process.env.FIREBASE_DB_URL;
     const firebaseSecret = process.env.FIREBASE_SECRET;
     const authParam = firebaseSecret ? `?auth=${firebaseSecret}` : '';
 
     if (!firebaseUrl) {
+        if (isReviewDemoOtp) {
+            const now = Date.now();
+            const token = `tok_${now}_${Math.random().toString(36).slice(2, 11)}`;
+            const user = buildReviewDemoUser({
+                phoneKey,
+                normalizedPhone,
+                normalizedCountryCode,
+                token,
+                now
+            });
+
+            return res.status(200).json({
+                success: true,
+                isNewUser: false,
+                reviewDemoUsed: true,
+                token,
+                user: buildClientUser(user, now)
+            });
+        }
+
         return res.status(500).json({ error: 'Firebase DB URL not configured' });
     }
 
-    if (!isMasterOtp) {
+    if (!isReviewDemoOtp) {
         // Fetch stored OTP session
         let stored;
         try {
@@ -135,10 +157,32 @@ export default async function handler(req, res) {
     return res.status(200).json({
         success: true,
         isNewUser,
-        masterOtpUsed: isMasterOtp,
+        reviewDemoUsed: isReviewDemoOtp,
         token,
         user: buildClientUser(user, now)
     });
+}
+
+function buildReviewDemoUser({ phoneKey, normalizedPhone, normalizedCountryCode, token, now }) {
+    return {
+        id: phoneKey,
+        phone: `${normalizedCountryCode}${normalizedPhone}`,
+        countryCode: normalizedCountryCode,
+        phoneNumber: normalizedPhone,
+        token,
+        createdAt: now,
+        lastLogin: now,
+        name: 'App Review Demo',
+        birthDate: '1990-01-01',
+        birthTime: '09:00',
+        birthPlace: 'Cupertino, CA',
+        birthLat: 37.323,
+        birthLon: -122.0322,
+        gender: 'not_specified',
+        maritalStatus: 'single',
+        language: 'en',
+        agentGender: 'female'
+    };
 }
 
 function buildClientUser(user, lastLogin) {

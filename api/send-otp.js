@@ -4,7 +4,7 @@
  * and sends it via Interakt WhatsApp API.
  */
 
-import { buildPhoneKey, isValidNormalizedPhone, normalizePhoneInput } from './_phone.js';
+import { buildPhoneKey, isReviewDemoPhone, isValidNormalizedPhone, normalizePhoneInput } from './_phone.js';
 
 export const config = {
     api: {
@@ -30,6 +30,10 @@ export default async function handler(req, res) {
 
     if (!isValidNormalizedPhone(normalizedPhone, normalizedCountryCode)) {
         return res.status(400).json({ error: 'Invalid phone number or country code format' });
+    }
+
+    if (isReviewDemoPhone(normalizedPhone, normalizedCountryCode, process.env)) {
+        return res.status(200).json({ success: true, message: 'Review demo OTP ready' });
     }
 
     // Generate cryptographically random 6-digit OTP

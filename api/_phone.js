@@ -30,6 +30,19 @@ export function buildPhoneKey(phone, countryCode) {
     return `${countryCode}_${phone}`.replace(/[^a-zA-Z0-9_]/g, '_');
 }
 
+export function getReviewDemoCredentials(env = process.env) {
+    const countryCode = normalizeCountryCode(env.APP_REVIEW_DEMO_COUNTRY_CODE || '+1');
+    const phone = String(env.APP_REVIEW_DEMO_PHONE || '5550100').replace(/\D/g, '');
+    const otp = String(env.APP_REVIEW_DEMO_OTP || '123456').replace(/\D/g, '');
+
+    return { countryCode, phone, otp };
+}
+
+export function isReviewDemoPhone(phone, countryCode, env = process.env) {
+    const demo = getReviewDemoCredentials(env);
+    return String(phone || '') === demo.phone && normalizeCountryCode(countryCode) === demo.countryCode;
+}
+
 function normalizeCountryCode(countryCode) {
     const digits = String(countryCode ?? '').replace(/\D/g, '');
     return digits ? `+${digits}` : '';
