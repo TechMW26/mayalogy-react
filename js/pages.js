@@ -420,27 +420,18 @@ const MayaPages = {
             day: 'numeric'
         });
         const zodiacSystem = MayaAstrology?.getZodiacSystem?.() || 'western';
-        const journalEntries = this.getJournalEntries();
-        const todayJournal = this.getTodayJournalEntry();
-        const journalStreak = this.getJournalStreak(journalEntries);
         const dailyPractice = this.getDailyPractice(profile, isHindi);
         const homeLabels = {
             moonSign: zodiacSystem === 'vedic' ? t('Moon Sign') : t('Sun Sign'),
             unknown: t('Unknown'),
             lifePath: t('Life Path'),
             calculate: t('Calculate'),
-            journal: isHindi ? 'जर्नल' : 'Journal',
-            journalDone: isHindi ? 'आज पूरा' : 'Done today',
-            journalOpen: isHindi ? 'आज लिखें' : 'Open today',
-            streak: isHindi ? 'अभ्यास श्रृंखला' : 'Practice Streak',
-            dayUnit: isHindi ? 'दिन' : 'days',
-            todayMessage: isHindi ? 'आज की अभ्यास योजना' : "Today's Practice Plan",
-            openJournal: isHindi ? 'जर्नल खोलें' : 'Open Journal',
-            readFullHoroscope: isHindi ? 'दैनिक योजना देखें' : 'Open Daily Plan',
+            todayMessage: isHindi ? 'दैनिक राशिफल' : 'Daily Horoscope',
+            readFullHoroscope: isHindi ? 'पूरा राशिफल देखें' : 'Open Full Horoscope',
             speedDial: isHindi ? 'कार्य उपकरण' : 'Action Tools',
             askMaya: t('Ask MAYA'),
-            fullReading: isHindi ? 'आज की योजना MAYA से बनवाएं' : "Build Today's Plan with MAYA",
-            fullReadingText: isHindi ? 'अपने जर्नल, समय और प्रोफाइल संकेतों को एक स्पष्ट अगले कदम में बदलें।' : 'Turn your journal, timing, and profile signals into one practical next step.',
+            fullReading: isHindi ? 'आज का मार्गदर्शन MAYA से लें' : 'Get Today\'s Guidance from MAYA',
+            fullReadingText: isHindi ? 'अपने ग्रहों, समय और प्रोफाइल संकेतों को एक स्पष्ट अगले कदम में बदलें।' : 'Turn your planets, timing, and profile signals into one clear next step.',
             startReading: isHindi ? 'MAYA खोलें' : 'Open MAYA',
             luckyElements: isHindi ? 'प्रोफाइल संकेत' : 'Profile Signals',
             luckyColor: isHindi ? 'रंग संकेत' : 'Color Cue',
@@ -486,19 +477,6 @@ const MayaPages = {
                     </div>
                 </div>
 
-                <div class="maya-practice-panel">
-                    ${dailyPractice.steps.map(step => `
-                        <div class="maya-practice-step">
-                            <div class="maya-practice-step__icon"><i class="bi ${step.icon}"></i></div>
-                            <div class="maya-practice-step__body">
-                                <span class="maya-practice-step__label">${step.label}</span>
-                                <strong>${step.title}</strong>
-                                <p>${step.text}</p>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-
                 <!-- Quick Actions Grid (Speed Dial) -->
                 <div class="maya-section">
                     <h3 class="maya-section__title">
@@ -516,49 +494,49 @@ const MayaPages = {
                             <div class="maya-action-tile__icon">
                                 <i class="bi bi-compass"></i>
                             </div>
-                            <span class="maya-action-tile__label">${isHindi ? 'वास्तु स्कैन' : 'Vastu Scan'}</span>
+                            <span class="maya-action-tile__label">${isHindi ? 'वास्तु' : 'Vastu'}</span>
                         </a>
                         <a href="#" class="maya-action-tile" data-page="horoscope">
                             <div class="maya-action-tile__icon">
                                 <i class="bi bi-signpost-split"></i>
                             </div>
-                            <span class="maya-action-tile__label">${isHindi ? 'दैनिक योजना' : 'Daily Plan'}</span>
+                            <span class="maya-action-tile__label">${isHindi ? 'राशिफल' : 'Horoscope'}</span>
                         </a>
                         <a href="#" class="maya-action-tile" data-page="kundli">
                             <div class="maya-action-tile__icon">
                                 <i class="bi bi-diagram-3"></i>
                             </div>
-                            <span class="maya-action-tile__label">${isHindi ? 'लाइफ मैप' : 'Life Map'}</span>
+                            <span class="maya-action-tile__label">${isHindi ? 'कुंडली' : 'Kundli'}</span>
                         </a>
                         <a href="#" class="maya-action-tile" data-page="compatibility">
                             <div class="maya-action-tile__icon">
                                 <i class="bi bi-heart"></i>
                             </div>
-                            <span class="maya-action-tile__label">${isHindi ? 'रिलेशन' : 'Relation'}</span>
+                            <span class="maya-action-tile__label">${isHindi ? 'अनुकूलता' : 'Compatibility'}</span>
                         </a>
                         <a href="#" class="maya-action-tile" data-page="numerology">
                             <div class="maya-action-tile__icon">
                                 <i class="bi bi-123"></i>
                             </div>
-                            <span class="maya-action-tile__label">${isHindi ? 'पैटर्न' : 'Patterns'}</span>
+                            <span class="maya-action-tile__label">${isHindi ? 'अंक ज्योतिष' : 'Numerology'}</span>
                         </a>
                         <a href="#" class="maya-action-tile" data-page="panchang">
                             <div class="maya-action-tile__icon">
                                 <i class="bi bi-calendar-week"></i>
                             </div>
-                            <span class="maya-action-tile__label">${isHindi ? 'समय' : 'Timing'}</span>
+                            <span class="maya-action-tile__label">${isHindi ? 'पंचांग' : 'Panchang'}</span>
                         </a>
                         <a href="#" class="maya-action-tile" data-page="palm-reading">
                             <div class="maya-action-tile__icon">
                                 <i class="bi bi-hand-index"></i>
                             </div>
-                            <span class="maya-action-tile__label">${isHindi ? 'हैंड स्कैन' : 'Hand Scan'}</span>
+                            <span class="maya-action-tile__label">${isHindi ? 'हस्तरेखा' : 'Palm Reading'}</span>
                         </a>
                         <a href="#" class="maya-action-tile" data-page="spiritual-music">
                             <div class="maya-action-tile__icon">
                                 <i class="bi bi-music-note-beamed"></i>
                             </div>
-                            <span class="maya-action-tile__label">${isHindi ? 'संगीत' : 'Music'}</span>
+                            <span class="maya-action-tile__label">${isHindi ? 'आध्यात्मिक संगीत' : 'Spiritual Music'}</span>
                         </a>
                     </div>
                 </div>
@@ -667,7 +645,6 @@ const MayaPages = {
     },
 
     getDailyPractice(profile, isHindi) {
-        const todayJournal = this.getTodayJournalEntry();
         const firstName = profile?.name?.split(' ')[0] || (isHindi ? 'मित्र' : 'Friend');
         const focusLabels = {
             clarity: { en: 'clarity', hi: 'स्पष्टता' },
@@ -676,34 +653,15 @@ const MayaPages = {
             wellness: { en: 'wellness', hi: 'सेहत' },
             home: { en: 'home energy', hi: 'घर की ऊर्जा' }
         };
-        const focus = todayJournal?.focus || 'clarity';
+        const focus = 'clarity';
         const focusLabel = focusLabels[focus] || focusLabels.clarity;
         const localizedFocus = isHindi ? focusLabel.hi : focusLabel.en;
 
         return {
             summary: isHindi
-                ? `${firstName}, आज ${localizedFocus} पर ध्यान दें। एक ईमानदार नोट लिखें, एक छोटा कदम चुनें, और शाम को देखें कि उससे क्या बदला।`
-                : `${firstName}, focus on ${localizedFocus} today. Write one honest note, choose one small next step, and check what changed by evening.`,
-            steps: [
-                {
-                    icon: 'bi-sunrise',
-                    label: isHindi ? 'सुबह' : 'Morning',
-                    title: isHindi ? 'इरादा सेट करें' : 'Set an intention',
-                    text: isHindi ? 'आज किस बात को सरल बनाना है, उसे एक वाक्य में लिखें।' : 'Write the one thing you want to make simpler today.'
-                },
-                {
-                    icon: 'bi-journal-text',
-                    label: isHindi ? 'दिन में' : 'Midday',
-                    title: isHindi ? 'जर्नल चेक-इन' : 'Journal check-in',
-                    text: isHindi ? 'मूड, फोकस और एक व्यवहारिक अगले कदम को सेव करें।' : 'Save your mood, focus, and one practical next action.'
-                },
-                {
-                    icon: 'bi-moon-stars',
-                    label: isHindi ? 'शाम' : 'Evening',
-                    title: isHindi ? 'प्रतिबिंब' : 'Reflect',
-                    text: isHindi ? 'MAYA से पूछें कि आज के नोट से कल की योजना कैसे बने।' : 'Ask MAYA to turn today\'s note into tomorrow\'s plan.'
-                }
-            ]
+                ? `${firstName}, आज के ग्रह आपको ${localizedFocus} की ओर इशारा कर रहे हैं। आपका दैनिक राशिफल कुछ ही पल में तैयार हो रहा है।`
+                : `${firstName}, today's planets are pointing you toward ${localizedFocus}. Your daily horoscope is being prepared.`,
+            steps: []
         };
     },
 
@@ -6289,15 +6247,17 @@ REMEMBER:
 
     /**
      * Call Gemini Vision API with multiple images
-     * Uses the single paid Gemini key to avoid fallback-key rate limit delays.
+     * Uses the primary paid Gemini key + any configured fallback keys
+     * (image-analysis path only -text generation stays on Groq).
      */
     async _callGeminiVisionMulti(prompt, images) {
-        // Use only the primary paid Gemini key.
+        // Primary key first, then any configured fallbacks (rotated on 429 / 5xx).
         const apiKeys = [
-            MAYA_CONFIG.API_KEYS.GEMINI
+            MAYA_CONFIG.API_KEYS.GEMINI,
+            ...(MAYA_CONFIG.API_KEYS.GEMINI_FALLBACKS || [])
         ].filter(Boolean);
 
-        console.log(`Using single Gemini API key: ${apiKeys.length}`);
+        console.log(`Using ${apiKeys.length} Gemini API key(s) for palm vision`);
 
         // Same models as Vastu calibrator
         const models = MAYA_CONFIG.GEMINI_MODELS || [
@@ -8767,18 +8727,20 @@ Rules:
 
     /**
      * Call Gemini Vision API for image analysis
-     * Includes retry logic for rate limits
+     * Uses primary key + configured fallback keys (image-analysis only).
+     * Includes retry logic for rate limits.
      */
     async _callGeminiVision(prompt, imageData) {
-        // Use only the primary paid Gemini key.
+        // Primary key first, then any configured fallbacks (rotated on 429 / 5xx).
         const apiKeys = [
-            MAYA_CONFIG.API_KEYS.GEMINI
+            MAYA_CONFIG.API_KEYS.GEMINI,
+            ...(MAYA_CONFIG.API_KEYS.GEMINI_FALLBACKS || [])
         ].filter(Boolean);
 
-        console.log(`🔑 Using single Gemini API key: ${apiKeys.length}`);
+        console.log(`🔑 Using ${apiKeys.length} Gemini API key(s) for vastu vision`);
 
         // Recommended models for image analysis (multimodal understanding)
-        const models = [
+        const models = MAYA_CONFIG.GEMINI_MODELS || [
             'gemini-2.5-flash-lite'
         ];
 

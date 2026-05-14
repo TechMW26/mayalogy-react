@@ -22,7 +22,8 @@ const MayaI18n = {
         // Navigation
         'Home': { hi: 'होम' },
         'Kundli': { hi: 'कुंडली' },
-        'Horoscope': { hi: 'दैनिक योजना' },
+        'Horoscope': { hi: 'राशिफल' },
+        'Daily Horoscope': { hi: 'दैनिक राशिफल' },
         'Match': { hi: 'मिलान' },
         'Chat': { hi: 'चैट' },
         'Profile': { hi: 'प्रोफाइल' },

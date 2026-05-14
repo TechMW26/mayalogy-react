@@ -12,6 +12,10 @@ const MAYA_CONFIG = {
     // Public browser keys only. Server-side secrets stay in Vercel functions.
     API_KEYS: {
         GROQ: _secrets.GROQ_KEY || '',
+        // Gemini is wired ONLY for Palm Reading + Vastu image analysis.
+        // Text generation still goes through Groq -do not route prose calls here.
+        GEMINI: _secrets.GEMINI_KEY || '',
+        GEMINI_FALLBACKS: Array.isArray(_secrets.GEMINI_FALLBACKS) ? _secrets.GEMINI_FALLBACKS : [],
         ELEVENLABS: '',
         ELEVENLABS_VOICE_ID: _secrets.ELEVENLABS_VOICE || 'P3JECz9WQeXyyodBL3ZD',
         ELEVENLABS_HI_VOICE_ID: _secrets.ELEVENLABS_HI_VOICE || '',
@@ -31,9 +35,19 @@ const MAYA_CONFIG = {
         'llama-3.1-8b-instant'
     ],
 
+    // Vision-capable Gemini models (image analysis ONLY -palm + vastu).
+    // Tried in order; the first one that returns a valid response wins.
+    GEMINI_MODELS: [
+        'gemini-2.5-flash-lite',
+        'gemini-2.5-flash',
+        'gemini-2.0-flash'
+    ],
+
     // API Endpoints
     ENDPOINTS: {
         GROQ: 'https://api.groq.com/openai/v1/chat/completions',
+        // Gemini base URL -used only by the palm + vastu vision callers.
+        GEMINI_BASE: 'https://generativelanguage.googleapis.com/v1beta/models',
         ELEVENLABS: '/api/tts',
         REMOVE_BACKGROUND: '/api/remove-background',
         FIREBASE: _secrets.FIREBASE_DB_URL || ''

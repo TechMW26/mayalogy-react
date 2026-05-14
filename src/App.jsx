@@ -94,6 +94,20 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
 
+    // Inject legacy shell directly into <body> so position:fixed elements
+    // (header, bottom-nav, sidebar, overlays) anchor to the viewport rather
+    // than to a React wrapper element. Mounting inside a React-controlled
+    // <div style="display: contents"> caused the header/footer to scroll
+    // with content on some browsers/WebViews.
+    let shellContainer = document.getElementById('legacy-shell-root');
+    if (!shellContainer) {
+      shellContainer = document.createElement('div');
+      shellContainer.id = 'legacy-shell-root';
+      shellContainer.style.display = 'contents';
+      shellContainer.innerHTML = LEGACY_SHELL_HTML;
+      document.body.appendChild(shellContainer);
+    }
+
     bootLegacyMayalogy().catch((error) => {
       console.error('Failed to boot Mayalogy legacy runtime:', error);
       if (!cancelled) {
@@ -113,8 +127,6 @@ export default function App() {
           <SplashScreen />
         </div>
       </div>
-
-      <div style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: LEGACY_SHELL_HTML }} />
 
       {bootError ? (
         <div className="position-fixed bottom-0 start-50 translate-middle-x p-3" style={{ zIndex: 10000 }}>
