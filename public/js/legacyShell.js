@@ -167,6 +167,19 @@ export const LEGACY_SHELL_HTML = String.raw`
 </div>
 
 <div id="maya-overlay" class="maya-overlay">
+    <div class="maya-overlay-header">
+        <button type="button" class="btn back-btn" id="maya-back" aria-label="Back" data-i18n-aria="Back">
+            <i class="bi bi-arrow-left"></i>
+        </button>
+        <div class="maya-overlay-header__actions">
+            <button type="button" class="btn history-btn" id="maya-history" aria-label="Chat history" data-i18n-aria="Chat history">
+                <i class="bi bi-clock-history"></i>
+            </button>
+            <button type="button" class="btn close-btn" id="maya-close" aria-label="Close" data-i18n-aria="Close">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    </div>
     <div class="maya-blob-container" id="maya-blob-container"></div>
     <div class="maya-text-display" id="maya-text-display">
         <p class="maya-speaking-text" id="maya-speaking-text"></p>

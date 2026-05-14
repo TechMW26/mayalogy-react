@@ -1267,17 +1267,16 @@ p {
     background: rgba(255, 255, 255, 0.12);
     height: 40px;
     display: flex;
-
-    .maya-overlay-header .history-btn:hover,
-    .maya-overlay-header .back-btn:hover {
-        background: rgba(255, 255, 255, 0.1);
-        color: var(--maya-text-primary);
-    }
-
     align-items: center;
     justify-content: center;
     border-radius: 50%;
     transition: all 0.3s ease;
+}
+
+.maya-overlay-header .history-btn:hover,
+.maya-overlay-header .back-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--maya-text-primary);
 }
 
 .maya-overlay-header .close-btn:hover {
