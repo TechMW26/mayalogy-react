@@ -220,94 +220,94 @@ const MayaVoice = {
         hi: {
             thinking: [
                 "अच्छा रुकिए, मैं आपकी कुंडली में कुछ देख रही हूँ।",
-                "एक मिनट, मुझे कुछ interesting दिखा!",
-                "अच्छा, मैं थोड़ा deep dive करती हूँ अब।",
-                "रुकिए, ये pattern अच्छे से trace करना है।",
-                "हम्म, ये तो काफ़ी दिलचस्प है आपकी chart में।",
-                "एक सेकंड, मुझे ये angle ठीक से देखने दीजिए।",
-                "अच्छा, ये वाला हिस्सा ध्यान से देखना पड़ेगा।",
-                "बस, एक चीज़ verify कर लूँ फिर बताती हूँ।",
-                "आपके ग्रह काफ़ी कुछ बोल रहे हैं, सुनिए।",
-                "अरे, ये तो मैंने expect नहीं किया था। देखती हूँ।",
-                "कई चीज़ें एक साथ align हो रही हैं आपकी chart में।",
-                "रुकिए, मैं ये confirm करके बताती हूँ।",
-                "अच्छा, ये काफ़ी clear दिख रहा है अब।",
+                "एक पल, मुझे यहाँ कुछ रोचक दिखा है।",
+                "थोड़ा गहराई से देखती हूँ अब।",
+                "रुकिए, इस ढंग को ध्यान से पकड़ना है।",
+                "हम्म, आपकी कुंडली में यह बात काफ़ी दिलचस्प है।",
+                "एक पल, मुझे यह कोण ठीक से देख लेने दीजिए।",
+                "अच्छा, यह हिस्सा बहुत ध्यान माँगता है।",
+                "बस, एक बात पक्की कर लूँ फिर बताती हूँ।",
+                "आपके ग्रह बहुत कुछ कह रहे हैं, सुनिए।",
+                "अरे, यह तो मुझे अपेक्षित नहीं था, फिर से देखती हूँ।",
+                "कई बातें एक साथ मिल रही हैं आपकी कुंडली में।",
+                "रुकिए, मैं इसे जाँच कर बताती हूँ।",
+                "अच्छा, अब यह काफ़ी साफ़ दिख रहा है।",
                 "एक पल, आपकी कुंडली काफ़ी गहरी है।",
-                "हम्म, मुझे ये बात ठीक से समझ कर बतानी है।"
+                "हम्म, यह बात मुझे ठीक से समझ कर कहनी है।"
             ],
             calculating: [
-                "ग्रहों की positions align हो रही हैं, एक पल।",
-                "आपकी exact birth chart का math चल रहा है।",
-                "भावों की mapping हो रही है, बस थोड़ा और।",
-                "लग्न calculations finalize हो रही हैं।",
-                "दशा periods निकाल रही हूँ, ये important है।",
-                "बस ये calculations पूरी होने वाली हैं।",
-                "जन्म समय और स्थान दोनों factor हो रहे हैं।",
-                "numbers almost ready हैं, बस एक step और।",
-                "ये numbers सिर्फ़ आपके हैं, किसी और के नहीं।",
-                "हर degree यहाँ मायने रखती है।",
-                "transit overlaps देख रही हूँ, थोड़ा सब्र।",
-                "सिडेरियल coordinates set हो रहे हैं।",
-                "ग्रहों के degrees chart हो रहे हैं।",
-                "बस, final step चल रही है।",
-                "ये calculations बहुत precise हैं, एक पल और।"
+                "ग्रहों के स्थान संरेखित हो रहे हैं, एक पल।",
+                "आपकी सटीक जन्म कुंडली की गणना चल रही है।",
+                "भावों का नक्शा बन रहा है, बस थोड़ा और।",
+                "लग्न की गणना अंतिम चरण में है।",
+                "दशा अवधियाँ निकाल रही हूँ, यह बहुत ज़रूरी है।",
+                "बस ये गणनाएँ पूरी होने वाली हैं।",
+                "जन्म समय और स्थान दोनों जोड़ रही हूँ।",
+                "अंक लगभग तैयार हैं, बस एक चरण और।",
+                "ये अंक केवल आपके हैं, और किसी के नहीं।",
+                "हर अंश यहाँ मायने रखता है।",
+                "गोचर के मेल देख रही हूँ, थोड़ा धीरज।",
+                "नक्षत्र निर्देशांक मिलाए जा रहे हैं।",
+                "ग्रहों के अंश मानचित्रित हो रहे हैं।",
+                "बस, अंतिम चरण चल रहा है।",
+                "ये गणनाएँ बहुत सूक्ष्म हैं, एक पल और।"
             ],
             revealing: [
-                "अब ध्यान से सुनिए, ये जरूरी है।",
-                "अच्छा, अब मैं वो बात बोलती हूँ जो असल में दिख रही है।",
-                "ये हिस्सा बहुत personal होने वाला है।",
-                "सुनिए, ये सीधा आपकी कुंडली से आ रहा है।",
-                "अभी कुछ बहुत specific बताने वाली हूँ।",
-                "ये बात मैं हर किसी को नहीं कहती, सुनिए।",
-                "ध्यान दीजिए, ये सिर्फ आपके लिए है।",
-                "ये वो part है जो ज़्यादातर लोग ख़ुद के बारे में नहीं जानते।",
-                "अच्छा, अब important part आ रहा है।",
-                "ये शायद आपको surprise करे, पर chart clear है।",
-                "मुझे ये ध्यान से कहना है, सुनिए।",
-                "ये detail सबकी chart में नहीं होती।",
-                "अब बताती हूँ वो बात जो मुझे सबसे ज़्यादा दिखी।",
-                "रुकिए, ये carefully बोलना है।",
-                "ये आपकी chart का सबसे important signal है।"
+                "अब ध्यान से सुनिए, यह बात बहुत ज़रूरी है।",
+                "अच्छा, अब मैं वही कहती हूँ जो सच में दिख रहा है।",
+                "यह हिस्सा बहुत निजी होने वाला है।",
+                "सुनिए, यह सीधा आपकी कुंडली से आ रहा है।",
+                "अभी कुछ बहुत स्पष्ट बात बताने वाली हूँ।",
+                "यह बात मैं हर किसी को नहीं कहती, सुनिए।",
+                "ध्यान दीजिए, यह केवल आपके लिए है।",
+                "यह वह बात है जो ज़्यादातर लोग ख़ुद के बारे में नहीं जानते।",
+                "अच्छा, अब महत्वपूर्ण हिस्सा आ रहा है।",
+                "यह शायद आपको चौंका दे, पर कुंडली स्पष्ट है।",
+                "मुझे यह बात ध्यान से कहनी है, सुनिए।",
+                "यह बारीकी सबकी कुंडली में नहीं होती।",
+                "अब बताती हूँ वह बात जो मुझे सबसे गहरी दिखी।",
+                "रुकिए, यह सावधानी से कहना है।",
+                "यह आपकी कुंडली का सबसे प्रबल संकेत है।"
             ],
             love: [
-                "अच्छा, आपका शुक्र कुछ बता रहा है मुझे।",
+                "अच्छा, आपका शुक्र मुझे कुछ बता रहा है।",
                 "सातवें भाव में कुछ दिखा, रुकिए।",
-                "आपका relationship pattern काफ़ी clear आ रहा है।",
-                "मुझे दिख रहा है आप कैसे प्यार करते हैं, और क्यों।",
-                "romantic timing में कुछ ख़ास है, बताती हूँ।",
-                "partnership का angle interesting है आपकी chart में।",
-                "आपकी emotional blueprint बहुत unique है।",
-                "love life में कुछ specific दिख रहा है।"
+                "आपके सम्बन्धों का ढंग काफ़ी साफ़ आ रहा है।",
+                "मुझे दिख रहा है आप कैसे प्रेम करते हैं, और क्यों।",
+                "प्रेम के समय में कुछ ख़ास है, बताती हूँ।",
+                "साझेदारी का कोण आपकी कुंडली में बहुत रोचक है।",
+                "आपकी भावनाओं की बनावट बहुत अनूठी है।",
+                "प्रेम जीवन में कुछ विशेष दिख रहा है।"
             ],
             career: [
-                "दसवां भाव clear direction दे रहा है।",
-                "शनि की placement से career पढ़ रही हूँ।",
-                "professional timeline में key moments दिख रहे हैं।",
-                "wealth houses active हैं आपकी chart में।",
-                "आपका work pattern अब clear हो रहा है मुझे।",
-                "career path में unique signature है, देखिए।",
-                "पैसों के ग्रह interesting तरीक़े से बैठे हैं।",
-                "professional destiny पढ़ रही हूँ, एक पल।"
+                "दसवाँ भाव स्पष्ट दिशा दे रहा है।",
+                "शनि की स्थिति से आपका व्यवसाय पढ़ रही हूँ।",
+                "व्यावसायिक यात्रा में मुख्य पल दिख रहे हैं।",
+                "धन के भाव सक्रिय हैं आपकी कुंडली में।",
+                "आपके काम का ढंग अब साफ़ हो रहा है।",
+                "व्यवसाय की राह में अनूठा संकेत है, देखिए।",
+                "धन के ग्रह दिलचस्प तरह से बैठे हैं।",
+                "व्यावसायिक भाग्य पढ़ रही हूँ, एक पल।"
             ],
             year: [
-                "इस साल की transit picture बन रही है।",
-                "आने वाले महीने क्या लाएंगे, बताती हूँ।",
-                "personal year number ने सब बदल दिया है।",
-                "आगे major shifts दिख रहे हैं।",
-                "इस time period की energy बहुत specific है।",
-                "कुछ important dates निकल रही हैं।",
-                "अगले कुछ महीनों का clear theme है, सुनिए।",
-                "near future में कुछ ख़ास दिख रहा है।"
+                "इस वर्ष के गोचर का चित्र बन रहा है।",
+                "आने वाले महीने क्या लाएँगे, बताती हूँ।",
+                "व्यक्तिगत वर्ष अंक ने सब कुछ बदल दिया है।",
+                "आगे बड़े बदलाव दिख रहे हैं।",
+                "इस समय की ऊर्जा बहुत विशेष है।",
+                "कुछ महत्वपूर्ण तिथियाँ निकल रही हैं।",
+                "अगले कुछ महीनों का स्पष्ट सार है, सुनिए।",
+                "निकट भविष्य में कुछ ख़ास दिख रहा है।"
             ],
             kundli: [
-                "आपकी birth chart shape ले रही है अब।",
-                "लग्न सब कुछ की foundation है, देखिए।",
-                "हर भाव आपकी ज़िन्दगी का अलग chapter खोलता है।",
-                "ग्रह कहाँ बैठे हैं, वो map हो रहा है।",
-                "आपकी कुंडली का pattern काफ़ी distinctive है।",
-                "लग्न कुंडली बहुत कुछ reveal कर रही है।",
-                "पहले पूरी picture align होने दीजिए।",
-                "planetary map काफ़ी कुछ कह रहा है आपका।"
+                "आपकी जन्म कुंडली अब आकार ले रही है।",
+                "लग्न सब कुछ की नींव है, देखिए।",
+                "हर भाव आपके जीवन का अलग अध्याय खोलता है।",
+                "ग्रह कहाँ बैठे हैं, यह नक्शा बन रहा है।",
+                "आपकी कुंडली का ढंग काफ़ी विशिष्ट है।",
+                "लग्न कुंडली बहुत कुछ उजागर कर रही है।",
+                "पहले पूरा चित्र संरेखित होने दीजिए।",
+                "ग्रहों का नक्शा आपका बहुत कुछ कह रहा है।"
             ]
         }
     },
@@ -317,12 +317,53 @@ const MayaVoice = {
     _maxRecentFillers: 5,
     fillerTimeout: null,
 
+    // Dynamic AI-generated filler queue (per language+type). Consumed before falling back to static.
+    // Shape: { 'hi:thinking': ['...', '...'], 'en:kundli': [...] }
+    _dynamicFillerQueue: {},
+
     /**
-     * Get a random filler phrase (avoids repeating any of the last N used)
+     * Push AI-generated fillers into the queue. Called by MayaFunnel after pre-warming.
+     */
+    pushDynamicFillers(lang, type, phrases) {
+        if (!Array.isArray(phrases) || !phrases.length) return;
+        const key = `${lang}:${type}`;
+        if (!this._dynamicFillerQueue[key]) this._dynamicFillerQueue[key] = [];
+        // Cap queue at 12 per type to avoid unbounded growth
+        this._dynamicFillerQueue[key] = this._dynamicFillerQueue[key].concat(phrases).slice(-12);
+    },
+
+    /**
+     * Get a random filler phrase (prefers AI-generated dynamic queue, falls back to static)
      */
     getRandomFiller(type = 'thinking') {
         const isHindi = window.MayaUtils?.storage?.get('maya_language') === 'hi';
         const lang = isHindi ? 'hi' : 'en';
+
+        // Prefer dynamic AI-generated filler if available (FIFO)
+        const dynKey = `${lang}:${type}`;
+        const dynQ = this._dynamicFillerQueue[dynKey];
+        if (dynQ && dynQ.length) {
+            let phrase = dynQ.shift();
+            if (isHindi && this._isGuideMale()) {
+                phrase = phrase
+                    .replace(/रही हूँ/g, 'रहा हूँ')
+                    .replace(/सकती हूँ/g, 'सकता हूँ')
+                    .replace(/बताती हूँ/g, 'बताता हूँ')
+                    .replace(/कहती हूँ/g, 'कहता हूँ')
+                    .replace(/वाली हूँ/g, 'वाला हूँ')
+                    .replace(/\bबताऊँगी\b/g, 'बताऊँगा')
+                    .replace(/\bकरूँगी\b/g, 'करूँगा')
+                    .replace(/\bचाहती\b/g, 'चाहता')
+                    .replace(/\bदेखती\b/g, 'देखता')
+                    .replace(/\bकरती\b/g, 'करता');
+            }
+            // Trigger background refill when running low
+            if (dynQ.length <= 1 && window.MayaFunnel?._refillDynamicFillers) {
+                try { window.MayaFunnel._refillDynamicFillers(type); } catch (_e) { }
+            }
+            return phrase;
+        }
+
         const phrases = this.fillerPhrases[lang][type] || this.fillerPhrases[lang].thinking;
         if (!phrases.length) return '';
 
@@ -501,7 +542,7 @@ const MayaVoice = {
         if (!text) return '';
         if (/[\u0900-\u097F]/.test(text)) return text;
 
-        // Common Indian names — exact Devanagari for perfect pronunciation
+        // Common Indian names -exact Devanagari for perfect pronunciation
         const nameMap = {
             'aviraj': 'अविराज', 'avinash': 'अविनाश', 'amit': 'अमित', 'amita': 'अमिता',
             'aarav': 'आरव', 'arjun': 'अर्जुन', 'aditya': 'आदित्य', 'ankit': 'अंकित',
@@ -651,24 +692,24 @@ const MayaVoice = {
     enforceConsistentAstroTerms(text) {
         if (!text) return '';
         const canonical = [
-            // Planet names — always same Devanagari form
+            // Planet names -always same Devanagari form
             [/\bराहू\b/g, 'राहु'], [/\bकेतू\b/g, 'केतु'],
             [/\bशनी\b/g, 'शनि'], [/\bशनिदेव\b/g, 'शनि'],
             [/\bमंगळ\b/g, 'मंगल'], [/\bबृहस्पती\b/g, 'बृहस्पति'],
             [/\bशुक्रा\b/g, 'शुक्र'], [/\bबुद्ध\b/g, 'बुध'],
             [/\bसुर्य\b/g, 'सूर्य'], [/\bचन्द्रमा\b/g, 'चन्द्र'],
-            // Yoga names — consistent spelling
+            // Yoga names -consistent spelling
             [/गजकेसरी\s*योग|गज\s*केसरी\s*योग/g, 'गजकेसरी योग'],
             [/बुधादित्य\s*योग|बुध\s*आदित्य\s*योग/g, 'बुधादित्य योग'],
             [/चन्द्र\s*मंगल\s*योग|चंद्र\s*मंगल\s*योग/g, 'चन्द्र मंगल योग'],
             [/नीचभंग\s*राजयोग|नीच\s*भंग\s*राज\s*योग/g, 'नीचभंग राजयोग'],
             [/काल\s*सर्प\s*दोष|कालसर्प\s*दोष/g, 'काल सर्प दोष'],
             [/मंगल\s*दोष|मांगलिक\s*दोष/g, 'मंगल दोष'],
-            // Dasha — consistent form
+            // Dasha -consistent form
             [/महादशा/g, 'महादशा'], [/अंतरदशा|अन्तर्दशा/g, 'अंतर्दशा'],
-            // Bhav/house — consistent
+            // Bhav/house -consistent
             [/भाव\b/g, 'भाव'],
-            // Kundli — always same
+            // Kundli -always same
             [/कुण्डली|कुन्डली/g, 'कुंडली'],
             // Lagna
             [/लग्ना\b/g, 'लग्न'],
@@ -742,7 +783,7 @@ const MayaVoice = {
 
     removeAdjacentPhraseRepetition(text) {
         let cleaned = String(text || '');
-        const separator = '(?:\\s*[,.!?।;:]\\s*|\\s+)';
+        const separator = '(?:\\s*[,.!?।;:\\-]\\s*|\\s+)';
 
         // Collapse repeated single tokens: "लग्न लग्न" -> "लग्न"
         cleaned = cleaned.replace(
@@ -1248,6 +1289,109 @@ const MayaVoice = {
         return await this.textToSpeechElevenLabs(text, options);
     },
 
+    /**
+     * Inject ElevenLabs v3 audio tags into narration so the model delivers
+     * lines with warmth, soft pauses, gentle smiles, dramatic reveals and
+     * properly intoned questions. Operates at the SENTENCE level so each
+     * beat of the reading gets a tag that fits its mood.
+     *
+     * Supported v3 tags used here (per ElevenLabs v3 docs):
+     *   Emotion       : [warm], [curious], [thoughtful], [intrigued],
+     *                   [excited], [reassuring], [empathetic], [mysterious]
+     *   Delivery      : [softly], [whispers], [gentle smile], [slowly]
+     *   Non-verbal    : [pause], [long pause], [sighs], [exhales]
+     *
+     * Strategy:
+     *  - Preserve any AI-authored tags already present (do not double-tag).
+     *  - Split into sentences and tag each one based on detected sentiment.
+     *  - Every question gets a [pause] beat before it and a [curious] /
+     *    [intrigued] lead so the model lifts its intonation properly.
+     *  - Ellipses become real silence beats.
+     *  - Em-dashes become soft mid-sentence pauses.
+     */
+    _injectExpressionTags(rawText, ctx = {}) {
+        if (!rawText || typeof rawText !== 'string') return rawText;
+
+        const isHindi = !!ctx.isHindi;
+        // Valid v3 tags we know are safe to keep / emit.
+        const validTagPattern = /\[(?:warm|curious|thoughtful|softly|gentle smile|smile|pause|long pause|reassuring|whispers?|excited|empathetic|calm|sighs?|exhales?|laughs?|chuckles|intrigued|mysterious|dramatic|intimate|slowly|quickly|hesitant|confident|gasps?)\]/gi;
+
+        let t = rawText.trim();
+        if (!t) return rawText;
+
+        // Convert long ellipses + em-dashes to v3 pause beats. Keep punctuation
+        // for natural prosody outside the bracket directives.
+        t = t.replace(/\s*…\s*/g, ' [pause] ');
+        t = t.replace(/\s*\.{3,}\s*/g, ' [pause] ');
+        t = t.replace(/\s+\u2014\s+/g, ' [pause] ');
+
+        // Sentiment heuristics (sentence-scoped)
+        const reassuringHi = /(चिंता|चिन्ता|फ़िक्र|घबरा|डर|परेशान|भरोसा|सुरक्षित)/;
+        const reassuringEn = /(don'?t worry|no need to worry|relax|it'?s okay|gentle|safe|trust me|i'?ve got you)/i;
+        const reflectiveHi = /(सोच|समझ|गहरा|गहरी|ध्यान|अंतर|आत्मा|याद|भाव|कर्म)/;
+        const reflectiveEn = /(think|reflect|deep|inside|soul|consider|notice|feel|sense|inner)/i;
+        const revealingHi = /(देख|सुन|बताऊँ|बताती|बताऊँगा|बताऊँगी|प्रकट|खुल|दिख|कह दूँ|आइए|राज़|रहस्य|महत्वपूर्ण|ख़ास|खास|विशेष)/;
+        const revealingEn = /(look at this|listen|here'?s what|let me tell|i see|i can see|reveal|notice this|important|special|key|secret|truth)/i;
+        const excitingHi = /(कमाल|अद्भुत|शानदार|बहुत|वाह|अरे)/;
+        const excitingEn = /(amazing|incredible|wow|fantastic|wonderful|brilliant|powerful)/i;
+        const intimateHi = /(निजी|गहरा|व्यक्तिगत|आपका भीतर|मन के अंदर|दिल|भीतर)/;
+        const intimateEn = /(personal|intimate|private|inner|your heart|between us|just you|only you)/i;
+        const greetingHi = /^(नमस्ते|नमस्कार|स्वागत|प्रणाम|हाँ|सुनिए|देखिए|आइए)/;
+        const greetingEn = /^(hi|hello|hey|welcome|namaste|listen|look|so |okay|alright)/i;
+
+        // Split into sentences while preserving terminators (., !, ?, |, ।)
+        // Hindi danda (।) is treated as a full stop.
+        const sentenceRegex = /[^.!?।]+[.!?।]+|[^.!?।]+$/g;
+        const sentences = t.match(sentenceRegex) || [t];
+
+        const tagged = sentences.map((sentenceRaw, idx) => {
+            let sentence = sentenceRaw.trim();
+            if (!sentence) return '';
+
+            // If sentence already opens with a valid tag, leave it alone.
+            if (/^\[/.test(sentence) && validTagPattern.test(sentence.slice(0, 40))) {
+                return sentence;
+            }
+
+            const lower = sentence.toLowerCase();
+            const isQuestion = /\?/.test(sentence) || (isHindi && /(क्या|कैसे|कब|क्यों|कौन|कहाँ|कितन|किसक|किसे)/.test(sentence));
+            const isExclaim = /!/.test(sentence);
+
+            let tag;
+            if (isQuestion) {
+                // Vary between curious and intrigued so questions don't all sound identical.
+                tag = idx % 2 === 0 ? '[curious]' : '[intrigued]';
+                // A short beat before the question lifts the intonation naturally.
+                sentence = `[pause] ${tag} ${sentence}`;
+                return sentence;
+            }
+
+            if (reassuringHi.test(sentence) || reassuringEn.test(lower)) {
+                tag = '[softly]';
+            } else if (intimateHi.test(sentence) || intimateEn.test(lower)) {
+                tag = idx === 0 ? '[warm]' : '[whispers]';
+            } else if (revealingHi.test(sentence) || revealingEn.test(lower)) {
+                tag = '[intrigued]';
+            } else if (excitingHi.test(sentence) || excitingEn.test(lower) || isExclaim) {
+                tag = '[excited]';
+            } else if (reflectiveHi.test(sentence) || reflectiveEn.test(lower)) {
+                tag = '[thoughtful]';
+            } else if (idx === 0 && (greetingHi.test(sentence) || greetingEn.test(sentence))) {
+                tag = '[gentle smile]';
+            } else if (idx === 0) {
+                tag = '[warm]';
+            } else {
+                // Mid-narration: rotate light tags for variation rather than tagging every sentence.
+                const rotation = ['', '[softly]', '', '[thoughtful]', ''];
+                tag = rotation[idx % rotation.length];
+            }
+
+            return tag ? `${tag} ${sentence}` : sentence;
+        }).filter(Boolean);
+
+        return tagged.join(' ').replace(/\s{2,}/g, ' ').trim();
+    },
+
     async buildElevenLabsError(response) {
         let errorMessage = `ElevenLabs API error: ${response.status}`;
         let errorCode = '';
@@ -1301,32 +1445,57 @@ const MayaVoice = {
                     : (MAYA_CONFIG.API_KEYS.ELEVENLABS_EN_VOICE_ID || MAYA_CONFIG.API_KEYS.ELEVENLABS_VOICE_ID)));
         const url = MAYA_CONFIG.ENDPOINTS.ELEVENLABS;
 
-        const modelId = 'eleven_multilingual_v2';
+        // Prefer ElevenLabs v3 (more expressive, conversational) with v2 as fallback.
+        const modelChain = (this._elevenLabsModelChain && this._elevenLabsModelChain.length)
+            ? this._elevenLabsModelChain
+            : ['eleven_v3', 'eleven_multilingual_v2'];
 
         const latencyOptimization = isMaleGuide ? 3 : 2;
-        const voiceSettings = isHindi
-            ? {
-                stability: isMaleGuide ? 0.42 : 0.48,
-                similarity_boost: 0.84,
-                style: isMaleGuide ? 0.50 : 0.45,
-                use_speaker_boost: true,
-                speed: isMaleGuide ? 1.15 : 1.0
+        // v3 is more expressive -lower stability lets warmth & emotion through,
+        // higher style adds expressive variation, lower similarity_boost gives
+        // the model room to breathe naturally. v2 fallback keeps tuned values.
+        const voiceSettingsByModel = (modelId) => {
+            const isV3 = modelId === 'eleven_v3';
+            if (isHindi) {
+                return {
+                    stability: isV3 ? (isMaleGuide ? 0.40 : 0.42) : (isMaleGuide ? 0.45 : 0.52),
+                    similarity_boost: isV3 ? 0.72 : 0.84,
+                    style: isV3 ? (isMaleGuide ? 0.55 : 0.60) : (isMaleGuide ? 0.42 : 0.38),
+                    use_speaker_boost: true,
+                    // Slowed further for warm, intimate Hindi narration.
+                    speed: isMaleGuide ? 0.92 : 0.85
+                };
             }
-            : {
-                stability: isMaleGuide ? 0.40 : 0.45,
-                similarity_boost: 0.82,
-                style: isMaleGuide ? 0.45 : 0.40,
+            return {
+                stability: isV3 ? (isMaleGuide ? 0.38 : 0.40) : (isMaleGuide ? 0.42 : 0.48),
+                similarity_boost: isV3 ? 0.70 : 0.82,
+                style: isV3 ? (isMaleGuide ? 0.55 : 0.62) : (isMaleGuide ? 0.40 : 0.35),
                 use_speaker_boost: true,
-                speed: isMaleGuide ? 1.15 : 1.0
+                speed: isMaleGuide ? 0.92 : 0.85
             };
-
-        const requestBody = {
-            text,
-            model_id: modelId,
-            voice_settings: voiceSettings,
-            optimize_streaming_latency: latencyOptimization,
-            language_code: isHindi ? 'hi' : 'en'
         };
+        let modelId = modelChain[0];
+        let modelIndex = 0;
+
+        const buildRequestBody = (currentModelId) => {
+            // Inject ElevenLabs v3 expression tags for warmer, more human delivery.
+            const finalText = (currentModelId === 'eleven_v3')
+                ? this._injectExpressionTags(text, { isHindi, isMaleGuide })
+                : text;
+            const body = {
+                text: finalText,
+                model_id: currentModelId,
+                voice_settings: voiceSettingsByModel(currentModelId),
+                optimize_streaming_latency: latencyOptimization
+            };
+            // language_code is only valid on the multilingual v2 model; v3
+            // auto-detects language from the text and rejects this field.
+            if (currentModelId !== 'eleven_v3') {
+                body.language_code = isHindi ? 'hi' : 'en';
+            }
+            return body;
+        };
+        let requestBody = buildRequestBody(modelId);
 
         if (previousText) {
             requestBody.previous_text = previousText.slice(-350);
@@ -1373,6 +1542,22 @@ const MayaVoice = {
 
                 if (!response.ok) {
                     const error = await this.buildElevenLabsError(response);
+                    // If the current model isn't available on this ElevenLabs
+                    // account (typical for v3 alpha access), try the next
+                    // model in the chain instead of giving up.
+                    const message = String(error?.message || '').toLowerCase();
+                    const isModelRejection = (response.status === 400 || response.status === 404 || response.status === 422)
+                        && (message.includes('model') || message.includes('not allowed') || message.includes('access'));
+                    if (isModelRejection && modelIndex < modelChain.length - 1) {
+                        modelIndex += 1;
+                        const nextModel = modelChain[modelIndex];
+                        console.warn(`⚠️ ElevenLabs model "${modelId}" rejected (${response.status}); falling back to "${nextModel}"`);
+                        modelId = nextModel;
+                        requestBody = buildRequestBody(modelId);
+                        if (previousText) requestBody.previous_text = previousText.slice(-350);
+                        if (nextText) requestBody.next_text = nextText.slice(0, 350);
+                        continue;
+                    }
                     if ([401, 403, 404, 500, 502, 503].includes(response.status)) {
                         const cooldownMs = response.status === 503 ? 300000 : 120000;
                         this.markElevenLabsUnavailable(error.message, cooldownMs);

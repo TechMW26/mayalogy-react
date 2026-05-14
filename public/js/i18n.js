@@ -459,17 +459,9 @@ const MayaI18n = {
     init() {
         if (this.initialized) return;
 
-        // Get saved language preference
-        if (window.MayaUtils) {
-            this.currentLang = MayaUtils.storage.get('maya_language') || 'en';
-        } else {
-            // Fallback if MayaUtils not loaded yet
-            try {
-                this.currentLang = localStorage.getItem('maya_language') || 'en';
-            } catch (e) {
-                this.currentLang = 'en';
-            }
-        }
+        // UI is always English. Narration language is stored separately and
+        // does not affect i18n.
+        this.currentLang = 'en';
 
         // Load cache from localStorage
         this.loadCache();
@@ -512,13 +504,15 @@ const MayaI18n = {
      * Set current language and translate page
      */
     async setLanguage(lang, options = {}) {
-        const resolvedLang = lang === 'hi' ? 'hi' : 'en';
+        // UI is locked to English. Ignore requested lang for i18n state.
+        const resolvedLang = 'en';
         const force = options.force === true;
 
         if (resolvedLang === this.currentLang && !force) return;
 
         this.currentLang = resolvedLang;
-        MayaUtils.storage.set('maya_language', resolvedLang);
+        // Do NOT write maya_language here -narration storage is owned by
+        // applyLanguagePreference / onboarding.
 
         // Translate all observed elements
         await this.translatePage();
@@ -884,11 +878,8 @@ window.__ = (text) => MayaI18n.t(text);
 
 // Initialize early - try immediately if possible
 try {
-    // Get language from localStorage directly for early init
-    const savedLang = localStorage.getItem('maya_language');
-    if (savedLang) {
-        MayaI18n.currentLang = savedLang;
-    }
+    // UI is locked to English; do not honor saved language for i18n state.
+    MayaI18n.currentLang = 'en';
     MayaI18n.loadCache();
 } catch (e) {
     // Ignore - will initialize properly on DOMContentLoaded

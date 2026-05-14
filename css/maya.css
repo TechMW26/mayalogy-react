@@ -156,7 +156,7 @@ body {
 }
 
 /* Lock body scroll when modals/popups are open.
-   NOTE: Do NOT use `position: fixed` here — on Android WebView that prevents
+   NOTE: Do NOT use `position: fixed` here -on Android WebView that prevents
    touch-scroll events from propagating to inner scroll containers (e.g. the
    onboarding modal / .onboarding-content), making the whole app un-scrollable.
    `overflow: hidden` is sufficient to lock the underlying page scroll. */
@@ -2081,11 +2081,11 @@ p {
 }
 
 /* ═══════════════════════════════════════════════
-   Agent Selection — Electric Border Card Slider
+   Agent Selection -Electric Border Card Slider
    Exact replica of card.html with gc- prefix
    ═══════════════════════════════════════════════ */
 
-/* Slider viewport — shows one card at a time */
+/* Slider viewport -shows one card at a time */
 .gc-slider-viewport {
     position: relative;
     width: 100%;

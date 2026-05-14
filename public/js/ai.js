@@ -1,11 +1,11 @@
 /**
  * MAYA - AI Module
- * OpenAI-first AI integration with Gemini fallback
+ * Groq is the sole AI provider.
  */
 
 const MayaAI = {
     conversationHistory: [],
-    currentProvider: 'openai',
+    currentProvider: 'groq',
 
     normalizeUserData(userData = {}) {
         const storedProfile = MayaUtils?.storage?.get('maya_profile') || {};
@@ -104,7 +104,7 @@ const MayaAI = {
                 .replace(/\bshe\s+explains\b/gi, 'he explains')
                 .replace(/like a trusted guide who explains what she sees/gi,
                     'like a trusted guide who explains what he sees');
-            systemPrompt += `\n\n## GUIDE GENDER OVERRIDE (HIGHEST PRIORITY)\nMoksh is speaking as a MALE guide in this session. All first-person verbs MUST be masculine.\n- Hindi self-reference: "मैं देख रहा हूँ", "मैं बताता हूँ", "मैं कह रहा हूँ", "मैं सकता हूँ", "मैं बताऊँगा", "मैं करूँगा". Do NOT use feminine forms (रही हूँ, सकती हूँ, बताती हूँ, बताऊँगी, करूँगी).\n- English self-reference: "I see", "I read", "I notice" — no implied-feminine framing, no "sister-like" or "she". Refer to yourself as a male guide.\n- Do NOT describe yourself as female, sister-like, or use any feminine simile.\n- Your name is Moksh, not MAYA. Never call yourself MAYA.`;
+            systemPrompt += `\n\n## GUIDE GENDER OVERRIDE (HIGHEST PRIORITY)\nMoksh is speaking as a MALE guide in this session. All first-person verbs MUST be masculine.\n- Hindi self-reference: "मैं देख रहा हूँ", "मैं बताता हूँ", "मैं कह रहा हूँ", "मैं सकता हूँ", "मैं बताऊँगा", "मैं करूँगा". Do NOT use feminine forms (रही हूँ, सकती हूँ, बताती हूँ, बताऊँगी, करूँगी).\n- English self-reference: "I see", "I read", "I notice" -no implied-feminine framing, no "sister-like" or "she". Refer to yourself as a male guide.\n- Do NOT describe yourself as female, sister-like, or use any feminine simile.\n- Your name is Moksh, not MAYA. Never call yourself MAYA.`;
         }
 
         if (this.userContext) {
@@ -142,12 +142,12 @@ const MayaAI = {
             systemPrompt += `\n17. Make personalization sharper as the reading deepens by combining facts such as sign plus dasha, or number plus timing window, rather than repeating isolated labels.`;
             systemPrompt += `\n18. If you mention a strength, pair it with the cost, pressure, contradiction, or responsibility that makes it feel real.`;
             systemPrompt += `\n19. Write in complete, connected sentences that flow naturally into each other like one spoken paragraph. Each sentence should build on, respond to, or advance the previous one - never drop an isolated observation that has no connection to what came before or after. Avoid bullet-point thinking; think story arc.`;
-            systemPrompt += `\n20. 🚫 WORD REPETITION BAN: Never repeat the same word or phrase in back-to-back sentences. NEVER repeat the same word twice within the SAME sentence (e.g. "rahu dasha rahu dasha", "is samay is samay" = ABSOLUTELY FORBIDDEN). Use synonyms. "energy" → "force/drive/vibe", "pattern" → "cycle/tendency/thread", "strong" → "powerful/deep/solid". Same word in consecutive sentences = BAD. Same word twice in ONE sentence = WORST.`;
+            systemPrompt += `\n20. 🚫 WORD REPETITION BAN (HARD FAILURE): Never write the same word twice in a row, ever. Examples that are FORBIDDEN: "taurus taurus", "वृषभ वृषभ", "rahu rahu", "राहु राहु", "dasha dasha", "दशा दशा", "shani shani", "rashi rashi", "is samay is samay", "you you", "आप आप". If you ever feel the urge to repeat a noun, STOP -use a pronoun ("it", "that one", "वही", "यह", "उसकी"). Do not repeat the same word in back-to-back sentences either. Use synonyms: "energy" → "force/drive/vibe", "pattern" → "cycle/tendency/thread", "strong" → "powerful/deep/solid".`;
             systemPrompt += `\n21. 🚫 NAME REPETITION BAN: Use the user's name MAX 1-2 times in any response. Use "you/your" or "आप/आपके" everywhere else. The name in every sentence is FORBIDDEN.`;
-            systemPrompt += `\n22. 🚫 YOGA/DOSHA/DASHA REPETITION BAN: Do NOT repeatedly name the same yoga, dosha, or dasha across sections. If a specific yoga/dosha/dasha was already mentioned in a previous section, do NOT name it again - use a different angle, a different planetary combination, or reference it indirectly (e.g. "that same cycle" or "वही दशा"). Repeating the same technical term across multiple sections makes the reading feel robotic. WITHIN a single sentence, NEVER say "rahu dasha rahu dasha" or "shani shani" or repeat any technical term — this is a hard failure.`;
+            systemPrompt += `\n22. 🚫 ZODIAC / PLANET / DASHA REPETITION CAP: Within ONE response, name any single zodiac sign (Taurus / वृषभ etc.) AT MOST 2 times. Name any single planet (Rahu / Saturn / राहु / शनि etc.) AT MOST 3 times. After the cap, refer back as "this sign / आपकी राशि / यह ग्रह / वही दशा". NEVER write the proper noun twice in a row, e.g. "Taurus Taurus rashi" or "Rahu Rahu dasha" -this is an instant fail. If you mention a yoga, dosha, or dasha by name in one section, do NOT name it again in the next section -angle it from a different planetary combination instead.`;
             systemPrompt += `\n23. 🚫 ROMANIZED HINDI BAN: NEVER write Hindi words in Roman/Latin script (e.g. "aapka", "kundli", "rashi", "graha", "dasha", "mahadasha", "shani", "mangal"). If a word is Hindi or Sanskrit, write it in Devanagari (आपका, कुंडली, राशि, ग्रह, दशा, महादशा, शनि, मंगल). If it is English, write it in English. No romanized Hindi ever.`;
 
-            // New personality refinements — gender-aware from construction
+            // New personality refinements -gender-aware from construction
             const _isMale = agentGender === 'male';
             const _gn = _isMale ? 'Moksh' : 'MAYA';
             systemPrompt += `\n\n## ${_gn} VOICE & PERSONALITY REFINEMENTS`;
@@ -179,199 +179,110 @@ const MayaAI = {
     },
 
     /**
-     * OpenAI removed - Gemini is the sole AI provider.
-     * callOpenAI kept as a no-op stub so any stale references do not crash.
+     * Stale alias kept so old call sites do not crash. Routes to Groq.
      */
-    async callOpenAI() {
-        throw new Error('OpenAI removed - use callGemini');
+    async callOpenAI(message, options = {}) {
+        return this.callGemini(message, options);
     },
 
     /**
-     * Call Gemini API with model fallback chain
+     * Call the AI. Groq is the sole provider. Public method is still named
+     * `callGemini` for backwards compatibility -every existing caller routes
+     * through this entrypoint.
      */
     async callGemini(message, options = {}) {
         const systemPrompt = this.buildSystemPrompt();
         const includeHistory = options.includeHistory === true;
+        const userMessage = includeHistory
+            ? this.conversationHistory[this.conversationHistory.length - 1]?.content || message
+            : message;
 
-        // Build conversation for Gemini format
-        const contents = [];
-
-        // Add system context as first user message
-        contents.push({
-            role: 'user',
-            parts: [{ text: `System Instructions: ${systemPrompt}` }]
-        });
-        const _agGender = this.userContext?.agentGender
-            || (window.MayaUtils?.storage?.get('maya_profile'))?.agentGender
-            || window.MayaFunnel?.userData?.agentGender
-            || 'female';
-        const _agName = _agGender === 'male' ? 'Moksh' : 'MAYA';
-        const _modelAck = _agGender === 'male'
-            ? `I understand. I am ${_agName}, a male personal guidance coach. I will follow these instructions, use masculine Hindi verb forms (रहा हूँ, सकता हूँ, बताता हूँ), and personalize my responses for the user.`
-            : `I understand. I am ${_agName}, a female personal guidance coach. I will follow these instructions and personalize my responses for the user.`;
-        contents.push({
-            role: 'model',
-            parts: [{ text: _modelAck }]
-        });
-
-        if (includeHistory) {
-            this.conversationHistory.forEach(msg => {
-                contents.push({
-                    role: msg.role === 'assistant' ? 'model' : 'user',
-                    parts: [{ text: msg.content }]
-                });
-            });
-        } else {
-            contents.push({
-                role: 'user',
-                parts: [{ text: message }]
-            });
+        const result = await this._callGroqProvider(systemPrompt, userMessage, includeHistory, options);
+        if (result) {
+            this.currentProvider = 'groq';
+            return result;
         }
 
-        const payload = {
-            contents,
-            generationConfig: {
-                temperature: 0.8,
-                topK: 40,
-                topP: 0.95,
-                maxOutputTokens: 65536
-            },
-            safetySettings: [
-                { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-                { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-                { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-                { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
-            ]
-        };
-
-        // Use only the primary paid Gemini key. Free fallback keys slow requests down when rate-limited.
-        const allGeminiKeys = [
-            MAYA_CONFIG.API_KEYS.GEMINI
-        ].filter(Boolean);
-
-        // Initialize rate limit tracking if not exists
-        if (!this._rateLimitedKeys) this._rateLimitedKeys = new Map();
-
-        // Clean up expired rate limits (60 second cooldown)
-        const now = Date.now();
-        for (const [key, timestamp] of this._rateLimitedKeys) {
-            if (now - timestamp > 60000) {
-                this._rateLimitedKeys.delete(key);
-            }
-        }
-
-        // Try each Gemini model in order
-        const models = MAYA_CONFIG.GEMINI_MODELS || ['gemini-2.5-flash-lite'];
-
-        // Try each API key with retry logic
-        for (let keyIndex = 0; keyIndex < allGeminiKeys.length; keyIndex++) {
-            const apiKey = allGeminiKeys[keyIndex];
-            const keyLabel = keyIndex === 0 ? 'main' : `fallback-${keyIndex}`;
-
-            // Skip if this key is rate-limited (in cooldown)
-            if (this._rateLimitedKeys.has(apiKey)) {
-                console.log(`⏭️ Skipping rate-limited key [${keyLabel}], cooling down...`);
-                continue;
-            }
-
-            // Try each model with this key
-            for (const model of models) {
-                const url = `${MAYA_CONFIG.ENDPOINTS.GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
-
-                // Build model-specific payload: add thinkingConfig for 2.5 models
-                const modelPayload = { ...payload };
-                if (model.includes('2.5')) {
-                    modelPayload.generationConfig = {
-                        ...payload.generationConfig,
-                        thinkingConfig: { thinkingBudget: 2048 }
-                    };
-                }
-
-                // Use retry with exponential backoff for each API call
-                try {
-                    const result = await MayaUtils.retry(
-                        async (attempt) => {
-                            console.log(`🔷 Trying Gemini [${keyLabel}] model: ${model}${attempt > 1 ? ` (attempt ${attempt})` : ''}...`);
-
-                            const response = await MayaUtils.withTimeout(
-                                fetch(url, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json'
-                                    },
-                                    body: JSON.stringify(modelPayload)
-                                }),
-                                30000, // 30 second timeout
-                                `Gemini ${model}`
-                            );
-
-                            if (response.ok) {
-                                const data = await response.json();
-
-                                if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
-                                    console.log(`✅ Gemini succeeded with [${keyLabel}] model: ${model}`);
-                                    return data.candidates[0].content.parts[0].text;
-                                }
-                                throw new Error('Invalid response format');
-                            }
-
-                            // Handle specific error codes
-                            if (response.status === 404) {
-                                const error = new Error(`Model ${model} not found`);
-                                error.skipRetry = true;
-                                error.skipToNextModel = true;
-                                throw error;
-                            }
-
-                            if (response.status === 503) {
-                                throw new Error(`Model ${model} overloaded`);
-                            }
-
-                            if (response.status === 429) {
-                                const error = new Error(`Rate limited on [${keyLabel}]`);
-                                error.skipRetry = true;
-                                error.skipToNextKey = true;
-                                throw error;
-                            }
-
-                            const errorText = await response.text();
-                            throw new Error(`API error ${response.status}: ${errorText.substring(0, 100)}`);
-                        },
-                        {
-                            maxRetries: 2,
-                            baseDelay: 1000,
-                            backoffMultiplier: 2,
-                            label: `Gemini [${keyLabel}] ${model}`,
-                            retryCondition: (error) => {
-                                // Don't retry if explicitly marked
-                                if (error.skipRetry) return false;
-                                return MayaUtils.isRetryableError(error);
-                            }
-                        }
-                    );
-
-                    return result;
-                } catch (error) {
-                    if (error.skipToNextKey) {
-                        console.warn(`⚠️ Gemini rate limited on [${keyLabel}], cooling down for 60s. No fallback keys will be tried.`);
-                        this._rateLimitedKeys.set(apiKey, Date.now()); // Track rate limit
-                        break; // Skip to next API key
-                    }
-                    if (error.skipToNextModel) {
-                        console.warn(`⚠️ Gemini model ${model} not found, trying next model...`);
-                        continue; // Try next model with same key
-                    }
-                    console.warn(`⚠️ Gemini [${keyLabel}] ${model} failed:`, error.message);
-                    // Continue to next model
-                }
-            }
-        }
-
-        throw new Error('All Gemini API keys and models failed');
+        throw new Error('Groq AI provider failed');
     },
 
+
     /**
-    * Send message using OpenAI first, then Gemini fallback
+     * Groq inference -PRIMARY provider. OpenAI-compatible API, very low
+     * latency, llama-3.3-70b quality. Iterates GROQ_MODELS so a single model
+     * outage never blocks generation.
+     */
+    async _callGroqProvider(systemPrompt, userMessage, includeHistory = false, options = {}) {
+        const apiKey = MAYA_CONFIG.API_KEYS.GROQ;
+        if (!apiKey) return null;
+
+        const models = MAYA_CONFIG.GROQ_MODELS || ['llama-3.3-70b-versatile'];
+        const messages = [{ role: 'system', content: systemPrompt }];
+
+        if (includeHistory) {
+            this.conversationHistory.forEach((msg) => {
+                messages.push({ role: msg.role === 'assistant' ? 'assistant' : 'user', content: msg.content });
+            });
+        } else {
+            messages.push({ role: 'user', content: userMessage });
+        }
+
+        for (const model of models) {
+            try {
+                console.log(`⚡ Calling Groq model: ${model}...`);
+                const response = await MayaUtils.withTimeout(
+                    fetch('https://api.groq.com/openai/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model,
+                            messages,
+                            temperature: 0.85,
+                            top_p: 0.95,
+                            max_tokens: options?.maxTokens || 8192
+                        })
+                    }),
+                    25000,
+                    `Groq ${model}`
+                );
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const text = data.choices?.[0]?.message?.content;
+                    if (text) {
+                        console.log(`✅ Groq succeeded with model: ${model}`);
+                        return text;
+                    }
+                    console.warn(`⚠️ Groq ${model} returned empty content, trying next...`);
+                    continue;
+                }
+
+                if (response.status === 429 || response.status === 503) {
+                    console.warn(`⚠️ Groq ${model} rate-limited/overloaded (${response.status}), trying next model...`);
+                    continue;
+                }
+                if (response.status === 400 || response.status === 404) {
+                    const errBody = await response.text();
+                    console.warn(`⚠️ Groq ${model} rejected (${response.status}): ${errBody.substring(0, 160)} -trying next model...`);
+                    continue;
+                }
+
+                const errBody = await response.text();
+                console.warn(`⚠️ Groq ${model} error ${response.status}: ${errBody.substring(0, 160)}`);
+            } catch (err) {
+                console.warn(`⚠️ Groq ${model} threw:`, err.message);
+            }
+        }
+        return null;
+    },
+
+
+
+    /**
+     * Send a chat message via Groq.
      */
     async sendMessage(message) {
         // Add user message to history
@@ -384,10 +295,10 @@ const MayaAI = {
         let response;
 
         try {
-            this.currentProvider = 'gemini';
+            this.currentProvider = 'groq';
             response = await this.callGemini(message, { includeHistory: true });
-        } catch (geminiError) {
-            console.error('Gemini AI failed:', geminiError);
+        } catch (aiError) {
+            console.error('Groq AI failed:', aiError);
             response = "I apologize, but I'm having trouble connecting to my cosmic wisdom right now. Please try again in a moment.";
         }
 

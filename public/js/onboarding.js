@@ -84,13 +84,13 @@ const MayaOnboarding = {
     steps: [
         {
             id: 'language',
-            question: "Welcome! Please choose your preferred language",
-            questionHi: "स्वागत है! कृपया अपनी पसंदीदा भाषा चुनें",
+            question: "Which language should I speak to you in?",
+            questionHi: "Which language should I speak to you in?",
             field: 'language',
             type: 'select',
             options: [
                 { value: 'en', label: 'English', labelHi: 'English' },
-                { value: 'hi', label: 'हिन्दी (Hindi)', labelHi: 'हिन्दी' }
+                { value: 'hi', label: 'हिन्दी (Hindi)', labelHi: 'हिन्दी (Hindi)' }
             ],
             validation: (value) => ['en', 'hi'].includes(value)
         },
@@ -162,8 +162,8 @@ const MayaOnboarding = {
         },
         {
             id: 'agentGender',
-            question: "One last thing — choose your guide",
-            questionHi: "आख़िरी बात — अपना मार्गदर्शक चुनिए",
+            question: "One last thing -choose your guide",
+            questionHi: "आख़िरी बात -अपना मार्गदर्शक चुनिए",
             field: 'agentGender',
             type: 'agentSelect',
             options: [
@@ -178,6 +178,11 @@ const MayaOnboarding = {
      * Initialize onboarding
      */
     init() {
+        // Warm-download the language-choice audio so it's already on-device
+        // by the time the user reaches the language step. Uses HTTP cache via
+        // a hidden <audio preload="auto">; idempotent across calls.
+        this._prefetchLanguageChoiceAudio();
+
         // Check if funnel was already completed
         const funnelComplete = MayaUtils.storage.get(this.STORAGE_KEYS.FUNNEL_COMPLETE);
         if (funnelComplete) {
@@ -202,7 +207,13 @@ const MayaOnboarding = {
         });
     },
 
+    // UI is always English regardless of narration language choice.
     isHindiUI() {
+        return false;
+    },
+
+    // Narration language choice (used only for spoken voice lines).
+    isHindiNarration() {
         return (this.userData.language || MayaUtils.storage.get('maya_language') || 'en') === 'hi';
     },
 
@@ -379,6 +390,84 @@ const MayaOnboarding = {
         // Update UI
         this.updateProgressBar(stepIndex);
         this.showQuestion(question, step);
+
+        // Play the pre-recorded language-choice voice prompt when the first
+        // language-selection step appears. The asset is preloaded at app boot
+        // via <link rel="preload"> + the Cache API, so playback is instant.
+        if (step.id === 'language') {
+            this._playLanguageChoicePrompt();
+        }
+    },
+
+    /**
+     * Eagerly download the language-choice prompt into the browser's HTTP
+     * cache (and Cache Storage where available) so the audio is ready offline
+     * before the user even reaches the language step.
+     */
+    _prefetchLanguageChoiceAudio() {
+        if (this._languageChoicePrefetched) return;
+        this._languageChoicePrefetched = true;
+        const url = '/Language-choice.mp3';
+        try {
+            // 1) Cache Storage -survives reloads, available offline.
+            if (typeof caches !== 'undefined' && caches.open) {
+                caches.open('maya-audio-v1').then(async (cache) => {
+                    const hit = await cache.match(url);
+                    if (!hit) {
+                        try {
+                            await cache.add(url);
+                            console.log('🎙️ Language-choice audio cached on device');
+                        } catch (e) {
+                            console.debug('Language-choice cache add failed:', e?.message);
+                        }
+                    }
+                }).catch(() => { /* non-fatal */ });
+            }
+            // 2) HTTP cache primer via a hidden Audio element.
+            const primer = new Audio(url);
+            primer.preload = 'auto';
+            primer.load();
+            this._languageChoiceAudio = primer;
+        } catch (e) {
+            console.debug('Language-choice prefetch skipped:', e?.message);
+        }
+    },
+
+    /**
+     * Play the pre-recorded language selection prompt audio.
+     * Falls back silently if the browser blocks autoplay or the file is missing.
+     */
+    _playLanguageChoicePrompt() {
+        try {
+            // Cancel any other voice currently speaking so the prompt isn't talked over.
+            if (window.MayaVoice?.cancel) {
+                try { MayaVoice.cancel(); } catch (_e) { /* non-fatal */ }
+            }
+            if (this._languageChoiceAudio) {
+                try { this._languageChoiceAudio.pause(); } catch (_e) { /* non-fatal */ }
+                this._languageChoiceAudio.currentTime = 0;
+            } else {
+                this._languageChoiceAudio = new Audio('/Language-choice.mp3');
+                this._languageChoiceAudio.preload = 'auto';
+            }
+            const audio = this._languageChoiceAudio;
+            const playPromise = audio.play();
+            if (playPromise && typeof playPromise.catch === 'function') {
+                playPromise.catch((err) => {
+                    console.debug('Language-choice audio autoplay blocked:', err?.message);
+                    // If autoplay is blocked, retry once on next user interaction.
+                    const retry = () => {
+                        document.removeEventListener('pointerdown', retry, true);
+                        document.removeEventListener('keydown', retry, true);
+                        audio.play().catch(() => { /* give up silently */ });
+                    };
+                    document.addEventListener('pointerdown', retry, { once: true, capture: true });
+                    document.addEventListener('keydown', retry, { once: true, capture: true });
+                });
+            }
+        } catch (e) {
+            console.warn('Language-choice audio failed:', e?.message);
+        }
     },
 
     /**
@@ -666,7 +755,7 @@ const MayaOnboarding = {
             confirmBtn.addEventListener('click', () => this.completeOnboarding());
         }
 
-        // Guide card slider — swipe to browse, button to select (mobile); click to select (desktop)
+        // Guide card slider -swipe to browse, button to select (mobile); click to select (desktop)
         const gcTrack = document.getElementById('gcSliderTrack');
         if (gcTrack) {
             const gcSlides = gcTrack.querySelectorAll('.gc-slide');
@@ -744,7 +833,14 @@ const MayaOnboarding = {
                 }
 
                 window.setTimeout(() => {
-                    void this.handleSelection(step, value);
+                    // Surface any error from the selection handler so the user
+                    // is never silently dropped onto the dashboard if the
+                    // funnel handoff fails.
+                    this.handleSelection(step, value).catch((err) => {
+                        console.error('❌ Agent selection handoff failed:', err);
+                        // Last-ditch retry: directly start the funnel.
+                        try { this.completeOnboarding(); } catch (_) { /* noop */ }
+                    });
                 }, 180);
             };
 
@@ -808,7 +904,7 @@ const MayaOnboarding = {
                     });
                 });
 
-                // Choose button — explicit mobile CTA for the currently visible guide.
+                // Choose button -explicit mobile CTA for the currently visible guide.
                 if (gcBtn) {
                     gcBindTap(gcBtn, () => gcCommitSelection());
                 }
@@ -883,8 +979,17 @@ const MayaOnboarding = {
                                 <span class="selected-code" id="ob-selected-code">+91</span>
                                 <i class="bi bi-chevron-down country-chevron"></i>
                             </div>
-                            <input type="tel" id="loginPhone" class="form-control form-control-lg phone-number-input"
-                                placeholder="${this.t('enterEmail')}" inputmode="numeric" maxlength="15" autocomplete="tel-national">
+                            <input type="tel" id="loginPhone" name="phone"
+                                class="form-control form-control-lg phone-number-input"
+                                placeholder="${this.t('enterEmail')}"
+                                inputmode="numeric" maxlength="15"
+                                pattern="[0-9]*"
+                                autocomplete="tel"
+                                aria-label="WhatsApp phone number"
+                                data-form-type="other"
+                                data-lpignore="true"
+                                data-1p-ignore="true"
+                                data-bwignore="true">
                             <select id="ob-country-select" class="country-code-hidden-select" aria-label="Country code">
                                 ${countryOptions}
                             </select>
@@ -1087,7 +1192,7 @@ const MayaOnboarding = {
                     const targetPage = MayaUtils.storage.get('maya_current_page') || 'home';
                     MayaPages.render(targetPage);
                 } else {
-                    // New user — collect required details via a simple form,
+                    // New user -collect required details via a simple form,
                     // then enter the app directly (no vocal funnel).
                     this.showPostLoginProfileForm();
                 }
@@ -1149,7 +1254,7 @@ const MayaOnboarding = {
     /**
      * Step-by-step profile form for users who logged in directly (via OTP)
      * but don't yet have a saved astrology profile. Collects the minimum
-     * required birth details, then drops them into the app — no vocal funnel.
+     * required birth details, then drops them into the app -no vocal funnel.
      */
     async showPostLoginProfileForm(startStep = 0) {
         // Make sure the onboarding modal/container is on screen.
@@ -1565,7 +1670,7 @@ const MayaOnboarding = {
             console.warn('applyLanguagePreference failed:', err);
         }
 
-        // Reveal the app chrome and send the user straight to home — no vocal funnel.
+        // Reveal the app chrome and send the user straight to home -no vocal funnel.
         try {
             window.MayaApp?.onUserAuthenticated?.();
         } catch (err) {
@@ -1783,7 +1888,7 @@ const MayaOnboarding = {
      * Speak a ritual micro-confirmation voice line after a step is completed.
      */
     async speakRitualLine(stepId) {
-        const isHindi = this.isHindiUI();
+        const isHindi = this.isHindiNarration();
         const lines = this.ritualVoiceLines[stepId];
         if (!lines) return;
         let line;
@@ -1904,6 +2009,25 @@ const MayaOnboarding = {
     async completeOnboarding() {
         console.log('🎉 Completing onboarding...');
         this.isComplete = true;
+
+        // CRITICAL: clear any stale funnel_complete flag from a previous session.
+        // If this is true, MayaApp.checkUserState routes the user straight to
+        // the dashboard the next render, which is exactly the "after agent
+        // selection it goes to dashboard" bug. The vocal funnel is the next
+        // step -only mark funnel_complete=true when it actually finishes.
+        try {
+            MayaUtils.storage.set(this.STORAGE_KEYS.FUNNEL_COMPLETE, false);
+            MayaUtils.storage.set('funnel_complete', false);
+            MayaUtils.storage.remove?.('funnel_complete');
+        } catch (_) { /* noop */ }
+
+        // Force-show the MAYA overlay immediately so the dashboard underneath
+        // can never flash through while the funnel boots.
+        const _overlay = document.getElementById('maya-overlay');
+        if (_overlay) {
+            _overlay.classList.add('show');
+            _overlay.classList.add('funnel-mode');
+        }
 
         // Validate required data
         if (!this.userData.name || !this.userData.birthDate) {

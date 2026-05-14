@@ -191,7 +191,7 @@ const MayaPages = {
      * Get default horoscope text
      */
     _getDefaultHoroscope(signName) {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = false; // UI always English
         return isHindi
             ? 'आज का AI horoscope अभी उपलब्ध नहीं है। कृपया थोड़ी देर में फिर कोशिश करें।'
             : 'Today\'s AI horoscope is unavailable right now. Please try again in a moment.';
@@ -304,7 +304,7 @@ const MayaPages = {
         content.innerHTML = this.getSkeleton(skeletonType);
 
         const profile = MayaUtils.storage.get('maya_profile') || {};
-        const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
+        const isHindi = false; // UI always English
 
         try {
             let pageContent = '';
@@ -466,26 +466,6 @@ const MayaPages = {
                     </div>
                 </div>
 
-                <!-- Quick Stats Row -->
-                <div class="maya-stats-row">
-                    <div class="maya-stat-card maya-stat-card--journal" data-page="journal" role="button" tabindex="0">
-                        <div class="maya-stat-card__icon">
-                            <i class="bi bi-journal-check"></i>
-                        </div>
-                        <div class="maya-stat-card__content">
-                            <span class="maya-stat-card__label">${homeLabels.journal}</span>
-                            <span class="maya-stat-card__value">${todayJournal ? homeLabels.journalDone : homeLabels.journalOpen}</span>
-                        </div>
-                    </div>
-                    <div class="maya-stat-card maya-stat-card--practice" data-page="journal" role="button" tabindex="0">
-                        <div class="maya-stat-card__icon"><i class="bi bi-calendar2-check"></i></div>
-                        <div class="maya-stat-card__content">
-                            <span class="maya-stat-card__label">${homeLabels.streak}</span>
-                            <span class="maya-stat-card__value">${journalStreak} ${homeLabels.dayUnit}</span>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Today's Message Card -->
                 <div class="maya-insight-card">
                     <div class="maya-insight-card__header">
@@ -499,11 +479,7 @@ const MayaPages = {
                     </div>
                     <p class="maya-insight-card__text" id="dailyInsight" style="display: block;">${this._escapeHtml(dailyPractice.summary)}</p>
                     <div class="maya-insight-card__footer">
-                        <button class="maya-btn maya-btn--primary maya-btn--sm" data-page="journal">
-                            ${homeLabels.openJournal}
-                            <i class="bi bi-arrow-right"></i>
-                        </button>
-                        <button class="maya-btn maya-btn--ghost maya-btn--sm" data-page="horoscope">
+                        <button class="maya-btn maya-btn--primary maya-btn--sm" data-page="horoscope">
                             ${homeLabels.readFullHoroscope}
                             <i class="bi bi-arrow-right"></i>
                         </button>
@@ -521,76 +497,6 @@ const MayaPages = {
                             </div>
                         </div>
                     `).join('')}
-                </div>
-
-                <!-- Quick Actions Grid -->
-                <div class="maya-section">
-                    <h3 class="maya-section__title">
-                        <i class="bi bi-grid-3x3-gap"></i>
-                        ${homeLabels.speedDial}
-                    </h3>
-                    <div class="maya-action-grid">
-                        <a href="#" class="maya-action-tile maya-action-tile--highlight" data-page="journal">
-                            <div class="maya-action-tile__icon">
-                                <i class="bi bi-journal-check"></i>
-                            </div>
-                            <span class="maya-action-tile__label">${isHindi ? 'जर्नल' : 'Journal'}</span>
-                        </a>
-                        <a href="#" class="maya-action-tile maya-action-tile--highlight" data-action="showMaya">
-                            <div class="maya-action-tile__icon">
-                                <i class="bi bi-chat-heart"></i>
-                            </div>
-                            <span class="maya-action-tile__label">${homeLabels.askMaya}</span>
-                        </a>
-                        <a href="#" class="maya-action-tile" data-page="vastu">
-                            <div class="maya-action-tile__icon">
-                                <i class="bi bi-compass"></i>
-                            </div>
-                            <span class="maya-action-tile__label">${isHindi ? 'Vastu Scan' : 'Vastu Scan'}</span>
-                        </a>
-                        <a href="#" class="maya-action-tile" data-page="horoscope">
-                            <div class="maya-action-tile__icon">
-                                <i class="bi bi-signpost-split"></i>
-                            </div>
-                            <span class="maya-action-tile__label">${isHindi ? 'दैनिक योजना' : 'Daily Plan'}</span>
-                        </a>
-                        <a href="#" class="maya-action-tile" data-page="kundli">
-                            <div class="maya-action-tile__icon">
-                                <i class="bi bi-diagram-3"></i>
-                            </div>
-                            <span class="maya-action-tile__label">${isHindi ? 'लाइफ मैप' : 'Life Map'}</span>
-                        </a>
-                        <a href="#" class="maya-action-tile" data-page="compatibility">
-                            <div class="maya-action-tile__icon">
-                                <i class="bi bi-heart"></i>
-                            </div>
-                            <span class="maya-action-tile__label">${isHindi ? 'रिलेशन' : 'Relation'}</span>
-                        </a>
-                        <a href="#" class="maya-action-tile" data-page="numerology">
-                            <div class="maya-action-tile__icon">
-                                <i class="bi bi-123"></i>
-                            </div>
-                            <span class="maya-action-tile__label">${isHindi ? 'पैटर्न' : 'Patterns'}</span>
-                        </a>
-                        <a href="#" class="maya-action-tile" data-page="panchang">
-                            <div class="maya-action-tile__icon">
-                                <i class="bi bi-calendar-week"></i>
-                            </div>
-                            <span class="maya-action-tile__label">${isHindi ? 'समय' : 'Timing'}</span>
-                        </a>
-                        <a href="#" class="maya-action-tile" data-page="palm-reading">
-                            <div class="maya-action-tile__icon">
-                                <i class="bi bi-hand-index"></i>
-                            </div>
-                            <span class="maya-action-tile__label">${isHindi ? 'हैंड स्कैन' : 'Hand Scan'}</span>
-                        </a>
-                        <a href="#" class="maya-action-tile" data-page="spiritual-music">
-                            <div class="maya-action-tile__icon">
-                                <i class="bi bi-music-note-beamed"></i>
-                            </div>
-                            <span class="maya-action-tile__label">${isHindi ? 'संगीत' : 'Music'}</span>
-                        </a>
-                    </div>
                 </div>
 
                 <!-- Featured CTA -->
@@ -878,7 +784,7 @@ const MayaPages = {
      */
     getGreeting() {
         const hour = new Date().getHours();
-        const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
+        const isHindi = false; // UI always English
         if (hour < 12) return isHindi ? 'नमस्ते' : 'Good morning';
         if (hour < 17) return isHindi ? 'नमस्ते' : 'Good afternoon';
         return isHindi ? 'नमस्ते' : 'Good evening';
@@ -3780,7 +3686,7 @@ const MayaPages = {
      * Initialize Spiritual Music page scripts
      */
     initSpiritualMusicPage() {
-        const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
+        const isHindi = false; // UI always English
         const profile = MayaUtils.storage.get('maya_profile') || {};
 
         const API_KEY = MAYA_CONFIG.API_KEYS.YOUTUBE || '';
@@ -5173,7 +5079,7 @@ const MayaPages = {
      * Initialize Muhurat page
      */
     initMuhuratPage() {
-        const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
+        const isHindi = false; // UI always English
 
         document.querySelectorAll('.maya-muhurat__activity-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -5196,7 +5102,7 @@ const MayaPages = {
      * Initialize Palm Reading page
      */
     initPalmReadingPage() {
-        const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
+        const isHindi = false; // UI always English
         console.log(' Initializing Palm Reading Page (Dual Hand Mode)');
 
         // Hide header and footer for fullscreen mode
@@ -6853,7 +6759,7 @@ REMEMBER:
      * Initialize Vastu page (main page with saved analyses)
      */
     initVastuPage() {
-        const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
+        const isHindi = false; // UI always English
         console.log('🏠 Initializing Vastu Page');
 
         // New calibration button
@@ -9477,7 +9383,7 @@ Rules:
      * Initialize Chat History page
      */
     initChatHistoryPage() {
-        const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
+        const isHindi = false; // UI always English
 
         // Delete individual chat
         document.querySelectorAll('[data-delete-chat]').forEach(btn => {
@@ -9750,7 +9656,7 @@ Rules:
      * Show Aspect Detail Modal with AI-generated insights
      */
     async showAspectModal(aspect, rating, zodiac, horoscope, profile) {
-        const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
+        const isHindi = false; // UI always English
 
         const aspectIcons = {
             love: 'bi-heart-fill',
@@ -9907,7 +9813,7 @@ Rules:
         const insightEl = document.getElementById('dailyInsight');
         const profile = MayaUtils.storage.get('maya_profile') || {};
         if (insightEl) {
-            insightEl.textContent = this.getDailyPractice(profile, MayaUtils.storage.get('maya_language') === 'hi').summary;
+            insightEl.textContent = this.getDailyPractice(profile, false).summary;
         }
 
         // Full reading button
@@ -9949,7 +9855,7 @@ Rules:
             const date = document.getElementById('journalDate')?.value || this._getLocalDate();
             const intention = document.getElementById('journalIntention')?.value?.trim() || '';
             const reflection = document.getElementById('journalReflection')?.value?.trim() || '';
-            const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
+            const isHindi = false; // UI always English
 
             if (!intention && !reflection) {
                 MayaUtils.toast?.info(isHindi ? 'एक इरादा या प्रतिबिंब लिखें' : 'Write an intention or reflection first');
@@ -10021,7 +9927,7 @@ Rules:
         const existingModal = document.getElementById('luckyModal');
         if (existingModal) existingModal.remove();
 
-        const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
+        const isHindi = false; // UI always English
 
         const modalData = this.getLuckyModalData(type, value, name, isHindi);
 
@@ -10792,7 +10698,7 @@ Rules:
      * Initialize Profile page
      */
     initProfilePage() {
-        const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
+        const isHindi = false; // UI always English
         this.initPlacesAutocomplete();
 
         // Photo upload handling
@@ -10986,7 +10892,7 @@ Rules:
      * Initialize Settings page
      */
     initSettingsPage() {
-        const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
+        const isHindi = false; // UI always English
 
         // Initialize custom dropdowns
         this._initCustomDropdowns();

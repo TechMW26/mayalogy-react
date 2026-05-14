@@ -991,7 +991,7 @@ const MayaKundli = {
             ? birthChart.planets.filter(p => p.sign.name === seventhHouseSign.name)
             : [];
 
-        // Dasha analysis — needs Moon's nakshatra for accurate Vimshottari
+        // Dasha analysis -needs Moon's nakshatra for accurate Vimshottari
         const moonForMarriage = birthChart.planets.find(p => p.name === 'Moon');
         const dashas = this.getDashaPeriods(birthDate, moonForMarriage?.sign?.name, moonForMarriage?.degree);
         const nowMs = Date.now();
@@ -1150,8 +1150,8 @@ const MayaKundli = {
         if (age < 18) {
             stage = 'minor';
             label = 'Minor / formative years';
-            focusEn = 'studies, parents (especially mother — Matrukaraka), siblings, early identity. Do NOT discuss marriage, career decisions, children, or money responsibilities.';
-            focusHi = 'पढ़ाई, माता-पिता (खासकर माँ — मातृकारक), भाई-बहन, शुरुआती पहचान। शादी, career decisions, संतान, पैसे की जिम्मेदारी पर बात मत कीजिए।';
+            focusEn = 'studies, parents (especially mother -Matrukaraka), siblings, early identity. Do NOT discuss marriage, career decisions, children, or money responsibilities.';
+            focusHi = 'पढ़ाई, माता-पिता (खासकर माँ -मातृकारक), भाई-बहन, शुरुआती पहचान। शादी, career decisions, संतान, पैसे की जिम्मेदारी पर बात मत कीजिए।';
         } else if (age <= 25) {
             stage = 'young_adult';
             label = 'Young adult / identity formation';
@@ -1205,7 +1205,7 @@ const MayaKundli = {
             lines.push(`Ascendant (Lagna): ${birthChart.ascendant.name}`);
         }
 
-        // Dasha timeline — use Moon's nakshatra for accurate Vimshottari calculation
+        // Dasha timeline -use Moon's nakshatra for accurate Vimshottari calculation
         const moonPlanetFacts = birthChart.planets.find(p => p.name === 'Moon');
         const dashas = this.getDashaPeriods(birthDate, moonPlanetFacts?.sign?.name, moonPlanetFacts?.degree);
         const now = Date.now();
@@ -1253,12 +1253,12 @@ const MayaKundli = {
                 return ((sIdx - ascIndex + 12) % 12) + 1;
             };
 
-            lines.push('\n=== CHARA KARAKAS (Jaimini — who/what each planet signifies for THIS user) ===');
+            lines.push('\n=== CHARA KARAKAS (Jaimini -who/what each planet signifies for THIS user) ===');
             lines.push('Use these to talk about the user and their key relatives with specificity.');
             Object.values(karakas).forEach(k => {
                 const h = houseOf(k.sign);
                 const houseStr = h ? ` (in house ${h} from lagna)` : '';
-                lines.push(`${k.code} ${k.hindi}: ${k.planet} in ${k.sign} ${k.degree}°${houseStr} — signifies ${k.signifies}`);
+                lines.push(`${k.code} ${k.hindi}: ${k.planet} in ${k.sign} ${k.degree}°${houseStr} -signifies ${k.signifies}`);
             });
             lines.push('Correlation rule: the sign + house placement of each karaka describes the NATURE of that person/area in the user\'s life. Example: a Darakaraka in a fiery sign = spouse is assertive/independent; Matrukaraka afflicted by Saturn/Rahu = mother faces hardship or emotional distance; Putrakaraka in a strong house = creative/child-related fulfilment.');
         }
@@ -1266,8 +1266,8 @@ const MayaKundli = {
         // Life stage guidance (age-appropriate prediction framing)
         const lifeStage = this.calculateLifeStage(birthDate);
         if (lifeStage.age != null) {
-            lines.push('\n=== LIFE STAGE (age-appropriate framing — CRITICAL) ===');
-            lines.push(`Age: ${lifeStage.age} — Stage: ${lifeStage.label}`);
+            lines.push('\n=== LIFE STAGE (age-appropriate framing -CRITICAL) ===');
+            lines.push(`Age: ${lifeStage.age} -Stage: ${lifeStage.label}`);
             lines.push(`Topic focus (EN): ${lifeStage.focusEn}`);
             lines.push(`विषय-फोकस (HI): ${lifeStage.focusHi}`);
             lines.push('RULE: Every prediction, remedy, and timing statement MUST match this life stage. Do NOT predict events that are biologically/socially implausible for this age (e.g., school admission for a 45-year-old, retirement for a 24-year-old, first child for a 68-year-old).');
@@ -1292,11 +1292,11 @@ const MayaKundli = {
     calculateYogas(planets, ascendantSign) {
         const yogas = [];
         const signs = MAYA_CONFIG.ZODIAC.SIGNS;
-        // IMPORTANT: ZODIAC.SIGNS is an array of objects {name, ...} — must compare by .name
+        // IMPORTANT: ZODIAC.SIGNS is an array of objects {name, ...} -must compare by .name
         const signIndex = (signName) => signs.findIndex(s => s.name === signName);
         const signGap = (a, b) => {
             const ia = signIndex(a), ib = signIndex(b);
-            if (ia < 0 || ib < 0) return -1; // unknown sign — no gap
+            if (ia < 0 || ib < 0) return -1; // unknown sign -no gap
             return (ia - ib + 12) % 12;
         };
 

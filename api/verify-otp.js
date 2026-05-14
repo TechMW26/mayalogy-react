@@ -111,7 +111,7 @@ export default async function handler(req, res) {
             });
         }
 
-        // OTP is valid — delete the session
+        // OTP is valid -delete the session
         await fetch(`${firebaseUrl}/maya_otp_sessions/${phoneKey}.json${authParam}`, { method: 'DELETE' }).catch(() => { });
     }
 

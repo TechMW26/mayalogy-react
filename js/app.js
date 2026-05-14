@@ -157,7 +157,10 @@ const MayaApp = {
     },
 
     async applyLanguagePreference(language = MayaUtils.storage.get('maya_language') || 'en', { rerenderCurrentPage = false, force = false, syncProfile = false } = {}) {
+        // `language` represents the user's NARRATION (voice / AI) language preference.
+        // The visible interface is always English -only narration adapts to Hindi/English.
         const resolvedLanguage = language === 'hi' ? 'hi' : 'en';
+        const interfaceLanguage = 'en';
 
         if (window.MayaDBSync?.set) {
             MayaDBSync.set('maya_language', resolvedLanguage);
@@ -170,8 +173,9 @@ const MayaApp = {
             MayaUtils.storage.set('maya_profile', { ...profile, language: resolvedLanguage });
         }
 
-        document.documentElement.lang = resolvedLanguage === 'hi' ? 'hi' : 'en';
+        document.documentElement.lang = interfaceLanguage;
 
+        // Narration / AI subsystems follow the chosen language.
         if (window.MayaStatements?.setLanguage) {
             MayaStatements.setLanguage(resolvedLanguage);
         }
@@ -184,9 +188,10 @@ const MayaApp = {
             MayaListener.setLanguage(resolvedLanguage);
         }
 
+        // UI strings / i18n are LOCKED to English regardless of narration preference.
         if (window.MayaI18n) {
             MayaI18n.init?.();
-            await MayaI18n.setLanguage(resolvedLanguage, { force });
+            await MayaI18n.setLanguage(interfaceLanguage, { force });
         }
 
         if (syncProfile && window.MayaAuth?.isAuthenticated && typeof MayaAuth.updateProfile === 'function') {
@@ -247,7 +252,8 @@ const MayaApp = {
     updateSidebarUserInfo() {
         const profile = MayaUtils.storage.get('maya_profile') || {};
         const profilePhoto = MayaUtils.storage.get('maya_profile_photo');
-        const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
+        // Sidebar UI is always English regardless of narration language.
+        const isHindi = false;
 
         // Update avatar with profile photo or initials
         const avatarEl = document.getElementById('sidebar-avatar');
@@ -480,7 +486,7 @@ const MayaApp = {
             // Authenticated direct-login user without a saved profile yet —
             // collect their birth details via the simple step-by-step form,
             // then drop them into the app (no vocal funnel).
-            console.log('📊 Authenticated user without profile — showing post-login profile form...');
+            console.log('📊 Authenticated user without profile -showing post-login profile form...');
             this.showOnboarding();
             setTimeout(() => {
                 MayaOnboarding.showPostLoginProfileForm();

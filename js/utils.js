@@ -10,13 +10,22 @@ const MayaUtils = {
      * Now integrates with MayaDBSync for Firebase sync when available
      */
     storage: {
+        // Internal aliasing: `maya_language` is now the NARRATION language.
+        // Reads/writes are transparently routed to `maya_narration_lang` so
+        // that legacy callers in funnel/voice/ai keep working unchanged.
+        // UI shell code (pages.js, app.js, i18n.js, onboarding.js) does not
+        // read this key for layout decisions -it always renders English.
+        _aliasKey(key) {
+            return key === 'maya_language' ? 'maya_narration_lang' : key;
+        },
         set(key, value, options = {}) {
             try {
-                const prefixedKey = MAYA_CONFIG.APP.STORAGE_PREFIX + key;
+                const realKey = this._aliasKey(key);
+                const prefixedKey = MAYA_CONFIG.APP.STORAGE_PREFIX + realKey;
                 localStorage.setItem(prefixedKey, JSON.stringify(value));
                 
                 if (!options.skipSync && window.MayaDBSync?.isInitialized && typeof MayaDBSync.handleStorageMutation === 'function') {
-                    MayaDBSync.handleStorageMutation(key, value, 'SET', options);
+                    MayaDBSync.handleStorageMutation(realKey, value, 'SET', options);
                 }
                 
                 return true;
@@ -28,9 +37,17 @@ const MayaUtils = {
 
         get(key, defaultValue = null) {
             try {
-                const prefixedKey = MAYA_CONFIG.APP.STORAGE_PREFIX + key;
+                const realKey = this._aliasKey(key);
+                const prefixedKey = MAYA_CONFIG.APP.STORAGE_PREFIX + realKey;
                 const item = localStorage.getItem(prefixedKey);
-                return item ? JSON.parse(item) : defaultValue;
+                if (item !== null) return JSON.parse(item);
+                // Backwards-compat: fall back to the legacy un-aliased key
+                // so existing installs upgrade smoothly.
+                if (realKey !== key) {
+                    const legacyItem = localStorage.getItem(MAYA_CONFIG.APP.STORAGE_PREFIX + key);
+                    if (legacyItem !== null) return JSON.parse(legacyItem);
+                }
+                return defaultValue;
             } catch (e) {
                 console.error('Storage get error:', e);
                 return defaultValue;
@@ -39,11 +56,12 @@ const MayaUtils = {
 
         remove(key, options = {}) {
             try {
-                const prefixedKey = MAYA_CONFIG.APP.STORAGE_PREFIX + key;
+                const realKey = this._aliasKey(key);
+                const prefixedKey = MAYA_CONFIG.APP.STORAGE_PREFIX + realKey;
                 localStorage.removeItem(prefixedKey);
                 
                 if (!options.skipSync && window.MayaDBSync?.isInitialized && typeof MayaDBSync.handleStorageMutation === 'function') {
-                    MayaDBSync.handleStorageMutation(key, null, 'DELETE', options);
+                    MayaDBSync.handleStorageMutation(realKey, null, 'DELETE', options);
                 }
                 
                 return true;

@@ -161,16 +161,20 @@ export async function handleTextToSpeechRequest(payload, env = process.env) {
 
   const requestBody = {
     text,
-    model_id: payload?.model_id || 'eleven_multilingual_v2',
+    model_id: payload?.model_id || 'eleven_v3',
     voice_settings: payload?.voice_settings || {
-      stability: 0.5,
-      similarity_boost: 0.8,
-      style: 0.32,
+      stability: 0.55,
+      similarity_boost: 0.78,
+      style: 0.30,
       use_speaker_boost: true,
     },
     optimize_streaming_latency: payload?.optimize_streaming_latency ?? 2,
-    language_code: payload?.language_code || 'en',
   };
+
+  // language_code is only valid for the multilingual v2 model; v3 auto-detects.
+  if (requestBody.model_id !== 'eleven_v3') {
+    requestBody.language_code = payload?.language_code || 'en';
+  }
 
   if (normalizeText(payload?.previous_text)) {
     requestBody.previous_text = String(payload.previous_text).slice(-350);
