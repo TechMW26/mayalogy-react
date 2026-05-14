@@ -1312,84 +1312,28 @@ const MayaVoice = {
     _injectExpressionTags(rawText, ctx = {}) {
         if (!rawText || typeof rawText !== 'string') return rawText;
 
-        const isHindi = !!ctx.isHindi;
-        // Valid v3 tags we know are safe to keep / emit.
-        const validTagPattern = /\[(?:warm|curious|thoughtful|softly|gentle smile|smile|pause|long pause|reassuring|whispers?|excited|empathetic|calm|sighs?|exhales?|laughs?|chuckles|intrigued|mysterious|dramatic|intimate|slowly|quickly|hesitant|confident|gasps?)\]/gi;
+        // Deterministic tagging: per-sentence rotating tags caused each
+        // generation to sound expressively different. Now we only:
+        //  1. Convert long ellipses + em-dashes to v3 [pause] beats.
+        //  2. Add ONE light opening tag if the AI hasn't already provided one.
+        // This keeps prosody natural without creating per-render swings.
+        const validTagPattern = /^\s*\[(?:warm|curious|thoughtful|softly|gentle smile|smile|pause|long pause|reassuring|whispers?|excited|empathetic|calm|sighs?|exhales?|laughs?|chuckles|intrigued|mysterious|dramatic|intimate|slowly|quickly|hesitant|confident|gasps?)\]/i;
 
         let t = rawText.trim();
         if (!t) return rawText;
 
-        // Convert long ellipses + em-dashes to v3 pause beats. Keep punctuation
-        // for natural prosody outside the bracket directives.
         t = t.replace(/\s*…\s*/g, ' [pause] ');
         t = t.replace(/\s*\.{3,}\s*/g, ' [pause] ');
         t = t.replace(/\s+\u2014\s+/g, ' [pause] ');
 
-        // Sentiment heuristics (sentence-scoped)
-        const reassuringHi = /(चिंता|चिन्ता|फ़िक्र|घबरा|डर|परेशान|भरोसा|सुरक्षित)/;
-        const reassuringEn = /(don'?t worry|no need to worry|relax|it'?s okay|gentle|safe|trust me|i'?ve got you)/i;
-        const reflectiveHi = /(सोच|समझ|गहरा|गहरी|ध्यान|अंतर|आत्मा|याद|भाव|कर्म)/;
-        const reflectiveEn = /(think|reflect|deep|inside|soul|consider|notice|feel|sense|inner)/i;
-        const revealingHi = /(देख|सुन|बताऊँ|बताती|बताऊँगा|बताऊँगी|प्रकट|खुल|दिख|कह दूँ|आइए|राज़|रहस्य|महत्वपूर्ण|ख़ास|खास|विशेष)/;
-        const revealingEn = /(look at this|listen|here'?s what|let me tell|i see|i can see|reveal|notice this|important|special|key|secret|truth)/i;
-        const excitingHi = /(कमाल|अद्भुत|शानदार|बहुत|वाह|अरे)/;
-        const excitingEn = /(amazing|incredible|wow|fantastic|wonderful|brilliant|powerful)/i;
-        const intimateHi = /(निजी|गहरा|व्यक्तिगत|आपका भीतर|मन के अंदर|दिल|भीतर)/;
-        const intimateEn = /(personal|intimate|private|inner|your heart|between us|just you|only you)/i;
-        const greetingHi = /^(नमस्ते|नमस्कार|स्वागत|प्रणाम|हाँ|सुनिए|देखिए|आइए)/;
-        const greetingEn = /^(hi|hello|hey|welcome|namaste|listen|look|so |okay|alright)/i;
+        // If the text already opens with a valid tag, leave it alone.
+        if (validTagPattern.test(t)) {
+            return t.replace(/\s{2,}/g, ' ').trim();
+        }
 
-        // Split into sentences while preserving terminators (., !, ?, |, ।)
-        // Hindi danda (।) is treated as a full stop.
-        const sentenceRegex = /[^.!?।]+[.!?।]+|[^.!?।]+$/g;
-        const sentences = t.match(sentenceRegex) || [t];
-
-        const tagged = sentences.map((sentenceRaw, idx) => {
-            let sentence = sentenceRaw.trim();
-            if (!sentence) return '';
-
-            // If sentence already opens with a valid tag, leave it alone.
-            if (/^\[/.test(sentence) && validTagPattern.test(sentence.slice(0, 40))) {
-                return sentence;
-            }
-
-            const lower = sentence.toLowerCase();
-            const isQuestion = /\?/.test(sentence) || (isHindi && /(क्या|कैसे|कब|क्यों|कौन|कहाँ|कितन|किसक|किसे)/.test(sentence));
-            const isExclaim = /!/.test(sentence);
-
-            let tag;
-            if (isQuestion) {
-                // Vary between curious and intrigued so questions don't all sound identical.
-                tag = idx % 2 === 0 ? '[curious]' : '[intrigued]';
-                // A short beat before the question lifts the intonation naturally.
-                sentence = `[pause] ${tag} ${sentence}`;
-                return sentence;
-            }
-
-            if (reassuringHi.test(sentence) || reassuringEn.test(lower)) {
-                tag = '[softly]';
-            } else if (intimateHi.test(sentence) || intimateEn.test(lower)) {
-                tag = idx === 0 ? '[warm]' : '[whispers]';
-            } else if (revealingHi.test(sentence) || revealingEn.test(lower)) {
-                tag = '[intrigued]';
-            } else if (excitingHi.test(sentence) || excitingEn.test(lower) || isExclaim) {
-                tag = '[excited]';
-            } else if (reflectiveHi.test(sentence) || reflectiveEn.test(lower)) {
-                tag = '[thoughtful]';
-            } else if (idx === 0 && (greetingHi.test(sentence) || greetingEn.test(sentence))) {
-                tag = '[gentle smile]';
-            } else if (idx === 0) {
-                tag = '[warm]';
-            } else {
-                // Mid-narration: rotate light tags for variation rather than tagging every sentence.
-                const rotation = ['', '[softly]', '', '[thoughtful]', ''];
-                tag = rotation[idx % rotation.length];
-            }
-
-            return tag ? `${tag} ${sentence}` : sentence;
-        }).filter(Boolean);
-
-        return tagged.join(' ').replace(/\s{2,}/g, ' ').trim();
+        // Single, fixed opening tag so every generation starts with the
+        // same warmth instead of swinging between excited / softly / etc.
+        return `[warm] ${t}`.replace(/\s{2,}/g, ' ').trim();
     },
 
     async buildElevenLabsError(response) {
@@ -1451,27 +1395,26 @@ const MayaVoice = {
             : ['eleven_v3', 'eleven_multilingual_v2'];
 
         const latencyOptimization = isMaleGuide ? 3 : 2;
-        // v3 is more expressive -lower stability lets warmth & emotion through,
-        // higher style adds expressive variation, lower similarity_boost gives
-        // the model room to breathe naturally. v2 fallback keeps tuned values.
+        // Tuned for CONSISTENCY across generations (was: low stability + high style
+        // which made each render swing in speed, tone & volume). Keep speaker_boost on
+        // so volume is normalized identically every time. Pin speed to a single value
+        // so two consecutive replies don't sound paced differently.
         const voiceSettingsByModel = (modelId) => {
             const isV3 = modelId === 'eleven_v3';
-            if (isHindi) {
-                return {
-                    stability: isV3 ? (isMaleGuide ? 0.40 : 0.42) : (isMaleGuide ? 0.45 : 0.52),
-                    similarity_boost: isV3 ? 0.72 : 0.84,
-                    style: isV3 ? (isMaleGuide ? 0.55 : 0.60) : (isMaleGuide ? 0.42 : 0.38),
-                    use_speaker_boost: true,
-                    // Slowed further for warm, intimate Hindi narration.
-                    speed: isMaleGuide ? 0.92 : 0.85
-                };
-            }
+            // Same settings for Hindi and English so the same voice doesn't
+            // shift personality between languages mid-conversation.
             return {
-                stability: isV3 ? (isMaleGuide ? 0.38 : 0.40) : (isMaleGuide ? 0.42 : 0.48),
-                similarity_boost: isV3 ? 0.70 : 0.82,
-                style: isV3 ? (isMaleGuide ? 0.55 : 0.62) : (isMaleGuide ? 0.40 : 0.35),
+                // High stability => far less per-generation drift in pacing & tone.
+                stability: isV3 ? 0.70 : 0.72,
+                // High similarity_boost locks the voice's timbre to the cloned identity.
+                similarity_boost: isV3 ? 0.88 : 0.90,
+                // Low style => calm, predictable expression. v3 amplifies style heavily;
+                // keep it near zero to stop emotion from spiking unevenly.
+                style: isV3 ? 0.20 : 0.18,
                 use_speaker_boost: true,
-                speed: isMaleGuide ? 0.92 : 0.85
+                // Single pinned speed so all replies feel paced the same.
+                // (Slightly slower for warmth, but identical for both genders.)
+                speed: 0.96
             };
         };
         let modelId = modelChain[0];
