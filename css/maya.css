@@ -990,7 +990,7 @@ p {
 .main-content {
     flex: 1;
     margin-top: calc(var(--header-height) + env(safe-area-inset-top, 0px));
-    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--bottom-nav-height) + (env(safe-area-inset-bottom, 0px) * 0.6));
     min-height: calc(100vh - var(--header-height) - env(safe-area-inset-top, 0px));
     background: var(--maya-bg-primary);
 }
@@ -1010,7 +1010,7 @@ p {
     bottom: 0;
     left: 0;
     right: 0;
-    height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+    height: calc(var(--bottom-nav-height) + (env(safe-area-inset-bottom, 0px) * 0.6));
     background: var(--maya-bg-secondary);
     border-top: 1px solid var(--maya-border-light);
     display: flex;
@@ -1018,7 +1018,7 @@ p {
     justify-content: center;
     z-index: 1000;
     padding: 0;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) * 0.6);
 }
 
 .bottom-nav .nav-item {
