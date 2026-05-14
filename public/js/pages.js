@@ -499,6 +499,70 @@ const MayaPages = {
                     `).join('')}
                 </div>
 
+                <!-- Quick Actions Grid (Speed Dial) -->
+                <div class="maya-section">
+                    <h3 class="maya-section__title">
+                        <i class="bi bi-grid-3x3-gap"></i>
+                        ${homeLabels.speedDial}
+                    </h3>
+                    <div class="maya-action-grid">
+                        <a href="#" class="maya-action-tile maya-action-tile--highlight" data-action="showMaya">
+                            <div class="maya-action-tile__icon">
+                                <i class="bi bi-chat-heart"></i>
+                            </div>
+                            <span class="maya-action-tile__label">${homeLabels.askMaya}</span>
+                        </a>
+                        <a href="#" class="maya-action-tile" data-page="vastu">
+                            <div class="maya-action-tile__icon">
+                                <i class="bi bi-compass"></i>
+                            </div>
+                            <span class="maya-action-tile__label">${isHindi ? 'वास्तु स्कैन' : 'Vastu Scan'}</span>
+                        </a>
+                        <a href="#" class="maya-action-tile" data-page="horoscope">
+                            <div class="maya-action-tile__icon">
+                                <i class="bi bi-signpost-split"></i>
+                            </div>
+                            <span class="maya-action-tile__label">${isHindi ? 'दैनिक योजना' : 'Daily Plan'}</span>
+                        </a>
+                        <a href="#" class="maya-action-tile" data-page="kundli">
+                            <div class="maya-action-tile__icon">
+                                <i class="bi bi-diagram-3"></i>
+                            </div>
+                            <span class="maya-action-tile__label">${isHindi ? 'लाइफ मैप' : 'Life Map'}</span>
+                        </a>
+                        <a href="#" class="maya-action-tile" data-page="compatibility">
+                            <div class="maya-action-tile__icon">
+                                <i class="bi bi-heart"></i>
+                            </div>
+                            <span class="maya-action-tile__label">${isHindi ? 'रिलेशन' : 'Relation'}</span>
+                        </a>
+                        <a href="#" class="maya-action-tile" data-page="numerology">
+                            <div class="maya-action-tile__icon">
+                                <i class="bi bi-123"></i>
+                            </div>
+                            <span class="maya-action-tile__label">${isHindi ? 'पैटर्न' : 'Patterns'}</span>
+                        </a>
+                        <a href="#" class="maya-action-tile" data-page="panchang">
+                            <div class="maya-action-tile__icon">
+                                <i class="bi bi-calendar-week"></i>
+                            </div>
+                            <span class="maya-action-tile__label">${isHindi ? 'समय' : 'Timing'}</span>
+                        </a>
+                        <a href="#" class="maya-action-tile" data-page="palm-reading">
+                            <div class="maya-action-tile__icon">
+                                <i class="bi bi-hand-index"></i>
+                            </div>
+                            <span class="maya-action-tile__label">${isHindi ? 'हैंड स्कैन' : 'Hand Scan'}</span>
+                        </a>
+                        <a href="#" class="maya-action-tile" data-page="spiritual-music">
+                            <div class="maya-action-tile__icon">
+                                <i class="bi bi-music-note-beamed"></i>
+                            </div>
+                            <span class="maya-action-tile__label">${isHindi ? 'संगीत' : 'Music'}</span>
+                        </a>
+                    </div>
+                </div>
+
                 <!-- Featured CTA -->
                 <div class="maya-cta-card">
                     <div class="maya-cta-card__bg"></div>
