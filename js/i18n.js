@@ -344,7 +344,7 @@ const MayaI18n = {
         // Complete Sentences - Home Page
         'Daily Devotional Music & Mantras': { hi: 'दैनिक भक्ति संगीत और मंत्र' },
         'Your personalized guidance': { hi: 'आपका व्यक्तिगत मार्गदर्शन' },
-        'Build your guidance journal': { hi: 'अपना मार्गदर्शन जर्नल बनाएं' },
+        'Build your personal astrology reading': { hi: 'अपनी निजी कुंडली रीडिंग बनाएं' },
         'Start your spiritual journey today': { hi: 'आज ही अपनी आध्यात्मिक यात्रा शुरू करें' },
         'Create one clear next step for today': { hi: 'आज के लिए एक स्पष्ट अगला कदम बनाएं' },
 
@@ -373,7 +373,7 @@ const MayaI18n = {
         "Today's Practice Plan": { hi: 'आज की अभ्यास योजना' },
         'Open Daily Plan': { hi: 'दैनिक योजना खोलें' },
         "Build Today's Plan": { hi: 'आज की योजना बनाएं' },
-        'Turn your journal, timing, and profile signals into one practical next step.': { hi: 'अपने जर्नल, timing और profile signals को एक व्यवहारिक अगले कदम में बदलें।' },
+        'Turn your chart, timing, and profile signals into one practical next step.': { hi: 'अपनी कुंडली, timing और profile signals को एक व्यवहारिक अगले कदम में बदलें।' },
         'Open MAYA': { hi: 'MAYA खोलें' },
         'Your Lucky Elements': { hi: 'आपके शुभ तत्व' },
         'Lucky Numbers': { hi: 'भाग्यशाली अंक' },

@@ -204,18 +204,6 @@ export const LEGACY_SHELL_HTML = String.raw`
     <div class="modal-dialog modal-fullscreen-onboarding">
         <div class="modal-content onboarding-modal">
             <div class="modal-body p-0">
-                <div class="onboarding-header">
-                    <div class="onboarding-logo">
-                        <img src="/images/maya-logo.png" alt="Mayalogy" class="logo-icon">
-                        <span class="logo-name">Mayalogy</span>
-                    </div>
-                    <div class="onboarding-progress">
-                        <div class="progress">
-                            <div class="progress-bar onboarding-progress-bar" role="progressbar" style="width: 0%"></div>
-                        </div>
-                        <span class="onboarding-progress-text">Step 1 of 6</span>
-                    </div>
-                </div>
                 <div class="onboarding-main">
                     <div class="onboarding-content" id="onboardingContent">
                         <div class="text-center p-4">

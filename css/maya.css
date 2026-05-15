@@ -1913,7 +1913,7 @@ p {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 100px 2rem 2rem;
+    padding: 1rem 1rem;
     width: 100%;
     max-width: 100vw;
     overflow-x: hidden;
@@ -1986,6 +1986,20 @@ p {
     box-sizing: border-box;
     text-align: center;
     margin: 0 auto;
+}
+
+/* Defensive: keep all funnel page text/labels centered */
+.onboarding-content h1,
+.onboarding-content h2,
+.onboarding-content h3,
+.onboarding-content h4,
+.onboarding-content h5,
+.onboarding-content p,
+.onboarding-content label,
+.onboarding-content .form-text,
+.onboarding-content .lead,
+.onboarding-content small {
+    text-align: center !important;
 }
 
 .onboarding-question {
@@ -2638,7 +2652,7 @@ p {
     }
 
     .onboarding-main {
-        padding: 80px 1rem 1rem;
+        padding: 1rem 1rem;
     }
 
     .onboarding-content {
@@ -8363,14 +8377,8 @@ p {
     color: var(--maya-primary);
 }
 
-.maya-stat-card--journal,
 .maya-stat-card--practice {
     cursor: pointer;
-}
-
-.maya-stat-card--journal .maya-stat-card__icon {
-    background: rgba(34, 197, 94, 0.16);
-    color: #22c55e;
 }
 
 .maya-stat-card--practice .maya-stat-card__icon {
@@ -8511,182 +8519,7 @@ p {
     margin: 0.25rem 0 0;
 }
 
-.maya-journal-summary {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-}
-
-.maya-journal-summary__item,
-.maya-journal-plan,
-.maya-journal-card,
-.maya-journal-entry {
-    background: var(--maya-bg-card);
-    border: 1px solid var(--maya-border-light);
-}
-
-.maya-journal-summary__item {
-    border-radius: 16px;
-    padding: 0.9rem;
-    min-width: 0;
-}
-
-.maya-journal-summary__item span {
-    display: block;
-    color: var(--maya-text-muted);
-    font-size: 0.72rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin-bottom: 0.25rem;
-}
-
-.maya-journal-summary__item strong {
-    color: var(--maya-text-primary);
-    font-size: 0.98rem;
-    line-height: 1.2;
-    overflow-wrap: anywhere;
-}
-
-.maya-journal-plan {
-    display: flex;
-    gap: 1rem;
-    align-items: flex-start;
-    border-radius: 18px;
-    padding: 1rem;
-    margin-bottom: 1rem;
-}
-
-.maya-journal-plan__icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-    background: rgba(96, 165, 250, 0.16);
-    color: #60a5fa;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.maya-journal-plan span {
-    color: var(--maya-primary-light);
-    font-weight: 700;
-    font-size: 0.86rem;
-}
-
-.maya-journal-plan p {
-    color: var(--maya-text-secondary);
-    line-height: 1.55;
-    margin: 0.25rem 0 0;
-}
-
-.maya-journal-card {
-    border-radius: 18px;
-    padding: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.maya-journal-field+.maya-journal-field {
-    margin-top: 1rem;
-}
-
-.maya-journal-field label {
-    display: block;
-    color: var(--maya-text-primary);
-    font-weight: 700;
-    font-size: 0.88rem;
-    margin: 0 0 0.5rem;
-}
-
-.maya-journal-chips {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.5rem;
-}
-
-.maya-journal-chips--wrap {
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-}
-
-.maya-journal-chip {
-    min-height: 42px;
-    border-radius: 12px;
-    border: 1px solid var(--maya-border-light);
-    background: var(--maya-bg-tertiary);
-    color: var(--maya-text-secondary);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    padding: 0.55rem 0.65rem;
-    font-size: 0.82rem;
-    font-weight: 700;
-    transition: all 0.2s ease;
-}
-
-.maya-journal-chip.active {
-    border-color: var(--maya-primary);
-    color: var(--maya-text-primary);
-    background: rgba(199, 154, 58, 0.16);
-}
-
-.maya-journal-textarea {
-    resize: vertical;
-    min-height: 120px;
-}
-
-.maya-journal-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-    margin-top: 1rem;
-}
-
-.maya-journal-history {
-    display: grid;
-    gap: 0.75rem;
-}
-
-.maya-journal-entry {
-    border-radius: 16px;
-    padding: 1rem;
-}
-
-.maya-journal-entry__meta {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.75rem;
-    color: var(--maya-text-muted);
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-bottom: 0.45rem;
-}
-
-.maya-journal-entry strong {
-    display: block;
-    color: var(--maya-text-primary);
-    margin-bottom: 0.35rem;
-}
-
-.maya-journal-entry p {
-    color: var(--maya-text-secondary);
-    line-height: 1.5;
-    margin: 0;
-}
-
 @media (max-width: 480px) {
-    .maya-journal-summary {
-        grid-template-columns: 1fr;
-    }
-
-    .maya-journal-chips,
-    .maya-journal-actions {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .maya-journal-plan,
     .maya-practice-step {
         padding: 0.9rem;
     }
@@ -21962,13 +21795,13 @@ input[type="datetime-local"] {
 .ask-maya-field-wrap::before {
     content: '';
     position: absolute;
-    inset: -22px;
+    inset: -10px;
     border-radius: inherit;
     background: radial-gradient(ellipse at center,
-            rgba(226, 196, 106, 0.45) 0%,
-            rgba(226, 196, 106, 0.18) 35%,
-            transparent 70%);
-    filter: blur(18px);
+            rgba(226, 196, 106, 0.28) 0%,
+            rgba(226, 196, 106, 0.10) 45%,
+            transparent 75%);
+    filter: blur(12px);
     z-index: -2;
     pointer-events: none;
     animation: askMayaGlowPulse 3.4s ease-in-out infinite;
@@ -22000,12 +21833,27 @@ input[type="datetime-local"] {
 }
 
 .ask-maya-input::placeholder {
-    color: rgba(226, 196, 106, 0.7);
+    color: rgba(226, 196, 106, 0.75);
     font-style: italic;
+    transition: opacity 0.3s ease;
 }
 
 .ask-maya-input:focus {
     background: rgba(20, 16, 30, 0.96);
+    box-shadow: inset 0 0 0 1px rgba(226, 196, 106, 0.35);
+}
+
+/* Separator below the Ask Maya input, before the action buttons */
+.landing-separator {
+    width: 100%;
+    max-width: 220px;
+    height: 1px;
+    margin: 1.75rem auto 0.25rem;
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(226, 196, 106, 0.35) 50%,
+            transparent 100%);
+    opacity: 0.7;
 }
 
 .ask-maya-submit {
@@ -22039,66 +21887,50 @@ input[type="datetime-local"] {
 
 .ask-maya-particle {
     position: absolute;
-    width: 6px;
-    height: 6px;
+    width: 3px;
+    height: 3px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(255, 230, 160, 1) 0%, rgba(226, 196, 106, 0.6) 50%, transparent 80%);
-    box-shadow: 0 0 8px rgba(255, 215, 130, 0.9);
+    background: radial-gradient(circle, rgba(255, 230, 160, 0.85) 0%, rgba(226, 196, 106, 0.4) 60%, transparent 90%);
+    box-shadow: 0 0 4px rgba(255, 215, 130, 0.5);
     pointer-events: none;
     z-index: 2;
     top: 50%;
     left: 50%;
-    margin: -3px 0 0 -3px;
-    opacity: 0.85;
+    margin: -1.5px 0 0 -1.5px;
+    opacity: 0.55;
 }
 
 .ask-maya-particle.p1 {
-    animation: askMayaOrbit 5.5s linear infinite;
-    --orbit-x: 165px;
-    --orbit-y: 26px;
+    animation: askMayaOrbit 7s linear infinite;
+    --orbit-x: 92px;
+    --orbit-y: 14px;
 }
 
 .ask-maya-particle.p2 {
-    animation: askMayaOrbit 7s linear infinite;
-    animation-delay: -1.2s;
-    --orbit-x: 150px;
-    --orbit-y: 30px;
-    width: 4px;
-    height: 4px;
+    animation: askMayaOrbit 9s linear infinite;
+    animation-delay: -2s;
+    --orbit-x: 86px;
+    --orbit-y: 16px;
+    width: 2px;
+    height: 2px;
 }
 
 .ask-maya-particle.p3 {
-    animation: askMayaOrbit 6.2s linear infinite;
-    animation-delay: -2.4s;
-    --orbit-x: 170px;
-    --orbit-y: 22px;
-    width: 5px;
-    height: 5px;
+    animation: askMayaOrbit 8s linear infinite reverse;
+    animation-delay: -1s;
+    --orbit-x: 96px;
+    --orbit-y: 12px;
+    width: 2.5px;
+    height: 2.5px;
 }
 
 .ask-maya-particle.p4 {
-    animation: askMayaOrbit 8s linear infinite reverse;
-    animation-delay: -0.8s;
-    --orbit-x: 155px;
-    --orbit-y: 28px;
-}
-
-.ask-maya-particle.p5 {
-    animation: askMayaOrbit 6.8s linear infinite reverse;
-    animation-delay: -3.1s;
-    --orbit-x: 175px;
-    --orbit-y: 24px;
-    width: 3px;
-    height: 3px;
-}
-
-.ask-maya-particle.p6 {
-    animation: askMayaOrbit 5.2s linear infinite reverse;
-    animation-delay: -1.9s;
-    --orbit-x: 160px;
-    --orbit-y: 32px;
-    width: 5px;
-    height: 5px;
+    animation: askMayaOrbit 10s linear infinite reverse;
+    animation-delay: -3.5s;
+    --orbit-x: 88px;
+    --orbit-y: 18px;
+    width: 2px;
+    height: 2px;
 }
 
 @keyframes askMayaBorderSpin {
@@ -22174,27 +22006,19 @@ input[type="datetime-local"] {
 
 @media (max-width: 380px) {
     .ask-maya-particle.p1 {
-        --orbit-x: 135px;
+        --orbit-x: 78px;
     }
 
     .ask-maya-particle.p2 {
-        --orbit-x: 125px;
+        --orbit-x: 72px;
     }
 
     .ask-maya-particle.p3 {
-        --orbit-x: 140px;
+        --orbit-x: 80px;
     }
 
     .ask-maya-particle.p4 {
-        --orbit-x: 130px;
-    }
-
-    .ask-maya-particle.p5 {
-        --orbit-x: 142px;
-    }
-
-    .ask-maya-particle.p6 {
-        --orbit-x: 132px;
+        --orbit-x: 74px;
     }
 }
 

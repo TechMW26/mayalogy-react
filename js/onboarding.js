@@ -96,8 +96,8 @@ const MayaOnboarding = {
         },
         {
             id: 'welcome',
-            question: "What name should I use for your guidance journal?",
-            questionHi: "आपके मार्गदर्शन जर्नल में मैं आपको किस नाम से बुलाऊँ?",
+            question: "What name should I use for your astrology reading?",
+            questionHi: "आपकी कुंडली पढ़ते वक्त मैं आपको किस नाम से बुलाऊँ?",
             field: 'name',
             type: 'name',
             placeholder: 'First name',
@@ -313,7 +313,7 @@ const MayaOnboarding = {
 
     /**
      * Show pre-funnel landing screen (Screen 1)
-    * Branded landing screen with headline, subtext, journal CTA, and voice line
+    * Branded landing screen with headline, subtext, primary CTA, and voice line
      */
     async showLandingScreen() {
         const container = document.getElementById('onboardingContent');
@@ -330,8 +330,8 @@ const MayaOnboarding = {
                     <img src="/images/maya-logo.png" alt="Mayalogy" class="landing-logo-img">
                 </div>
 
-                <h2 class="landing-headline">Build Your Personal<br>Guidance Journal</h2>
-                <p class="landing-subtext">Maya combines daily reflection, voice coaching, timing, and mindful routines into one practical plan.</p>
+                <h2 class="landing-headline">Discover Your Personal<br>Astrology Reading</h2>
+                <p class="landing-subtext">Maya combines your kundli, numerology, Lal Kitab insights, timing, and mindful routines into one practical plan.</p>
 
                 <form class="ask-maya-field-wrap" id="landingAskMayaForm" autocomplete="off" novalidate>
                     <div class="ask-maya-glow"></div>
@@ -339,8 +339,6 @@ const MayaOnboarding = {
                     <span class="ask-maya-particle p2"></span>
                     <span class="ask-maya-particle p3"></span>
                     <span class="ask-maya-particle p4"></span>
-                    <span class="ask-maya-particle p5"></span>
-                    <span class="ask-maya-particle p6"></span>
                     <input
                         type="text"
                         class="ask-maya-input"
@@ -354,12 +352,14 @@ const MayaOnboarding = {
                     </button>
                 </form>
 
+                <div class="landing-separator" aria-hidden="true"></div>
+
                 <div class="landing-actions">
                     <button type="button" class="btn btn-primary btn-lg landing-begin-btn" id="landingBeginBtn">
-                        Start My Journal
+                        Start My Reading
                     </button>
                     <button type="button" class="landing-login-btn" id="landingLoginBtn">
-                        I already have an account
+                        Sign In
                     </button>
                 </div>
             </div>
@@ -368,9 +368,9 @@ const MayaOnboarding = {
         // Speak landing voice line
         try {
             if (window.MayaVoice?.speak) {
-                MayaVoice.speak("Let us build a daily guidance journal around what you want to understand and practice.");
+                MayaVoice.speak("Let us build your personal astrology reading around what you want to understand and practise.");
             } else if (window.MayaFunnel?.speak) {
-                MayaFunnel.speak("Let us build a daily guidance journal around what you want to understand and practice.");
+                MayaFunnel.speak("Let us build your personal astrology reading around what you want to understand and practise.");
             }
         } catch (e) {
             console.warn('Landing voice line failed:', e.message);
@@ -388,6 +388,45 @@ const MayaOnboarding = {
         const askForm = document.getElementById('landingAskMayaForm');
         const askInput = document.getElementById('landingAskMayaInput');
         if (askForm && askInput) {
+            // Cycling placeholder — gentle typewriter that suggests example questions
+            const askPlaceholders = [
+                'Ask Maya anything…',
+                'Will I find love this year?',
+                'When will my career take off?',
+                'Is this the right time to switch jobs?',
+                'What does my kundli say about marriage?',
+                'How will the next 6 months unfold?'
+            ];
+            let askPhIdx = 0;
+            let askPhTimer = null;
+            const animatePlaceholder = (text) => {
+                let i = 0;
+                askInput.placeholder = '';
+                clearInterval(askPhTimer);
+                askPhTimer = setInterval(() => {
+                    if (i <= text.length) {
+                        askInput.placeholder = text.slice(0, i) + (i < text.length ? '▍' : '');
+                        i += 1;
+                    } else {
+                        clearInterval(askPhTimer);
+                        setTimeout(() => {
+                            askPhIdx = (askPhIdx + 1) % askPlaceholders.length;
+                            if (document.activeElement !== askInput) {
+                                animatePlaceholder(askPlaceholders[askPhIdx]);
+                            }
+                        }, 2400);
+                    }
+                }, 55);
+            };
+            animatePlaceholder(askPlaceholders[0]);
+            askInput.addEventListener('focus', () => {
+                clearInterval(askPhTimer);
+                askInput.placeholder = '';
+            });
+            askInput.addEventListener('blur', () => {
+                if (!askInput.value) animatePlaceholder(askPlaceholders[askPhIdx]);
+            });
+
             askForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const question = (askInput.value || '').trim();
@@ -402,6 +441,20 @@ const MayaOnboarding = {
                 try {
                     MayaUtils.storage.set('maya_user_question', question);
                     MayaUtils.storage.set('maya_landing_seen', true);
+                } catch (_e) { /* ignore */ }
+                // FIRST INTERACTION: tell the user immediately that we are
+                // going to find the answer using their kundli. This must
+                // happen BEFORE the funnel/AI opening so they don't wait.
+                try {
+                    const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+                    const introLine = isHindi
+                        ? 'अच्छा! आपकी कुंडली बनाकर आपके सवाल का जवाब ढूँढते हैं।'
+                        : 'Got it. Let me build your kundli and find the answer to your question.';
+                    if (window.MayaVoice?.speak) {
+                        MayaVoice.speak(introLine);
+                    } else if (window.MayaFunnel?.speak) {
+                        MayaFunnel.speak(introLine);
+                    }
                 } catch (_e) { /* ignore */ }
                 if (progressBar) progressBar.style.display = '';
                 // Proceed through the same funnel (DOB, agent choice, etc.).

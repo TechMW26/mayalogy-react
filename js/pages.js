@@ -313,9 +313,6 @@ const MayaPages = {
                 case 'home':
                     pageContent = this.renderHome(profile, isHindi);
                     break;
-                case 'journal':
-                    pageContent = this.renderJournal(profile, isHindi);
-                    break;
                 case 'kundli':
                     pageContent = await MayaKundli.renderKundliPage(profile, isHindi);
                     break;
@@ -621,29 +618,6 @@ const MayaPages = {
         return String(value ?? '').replace(/[&<>"']/g, (char) => entityMap[char]);
     },
 
-    getJournalEntries() {
-        const entries = MayaUtils.storage.get('maya_journal_entries') || [];
-        return Array.isArray(entries) ? entries : [];
-    },
-
-    getTodayJournalEntry() {
-        const today = this._getLocalDate();
-        return this.getJournalEntries().find((entry) => entry.date === today) || null;
-    },
-
-    getJournalStreak(entries = this.getJournalEntries()) {
-        const dateSet = new Set(entries.map((entry) => entry.date).filter(Boolean));
-        const cursor = new Date();
-        let streak = 0;
-
-        while (dateSet.has(this._formatLocalDateKey(cursor))) {
-            streak += 1;
-            cursor.setDate(cursor.getDate() - 1);
-        }
-
-        return streak;
-    },
-
     getDailyPractice(profile, isHindi) {
         const firstName = profile?.name?.split(' ')[0] || (isHindi ? 'मित्र' : 'Friend');
         const focusLabels = {
@@ -663,142 +637,6 @@ const MayaPages = {
                 : `${firstName}, today's planets are pointing you toward ${localizedFocus}. Your daily horoscope is being prepared.`,
             steps: []
         };
-    },
-
-    renderJournal(profile, isHindi) {
-        const today = this._getLocalDate();
-        const entries = this.getJournalEntries();
-        const todayEntry = this.getTodayJournalEntry();
-        const streak = this.getJournalStreak(entries);
-        const practice = this.getDailyPractice(profile, isHindi);
-        const firstName = profile?.name?.split(' ')[0] || (isHindi ? 'मित्र' : 'Friend');
-        const moodOptions = [
-            { value: 'calm', label: isHindi ? 'शांत' : 'Calm', icon: 'bi-water' },
-            { value: 'steady', label: isHindi ? 'स्थिर' : 'Steady', icon: 'bi-activity' },
-            { value: 'heavy', label: isHindi ? 'भारी' : 'Heavy', icon: 'bi-cloud' },
-            { value: 'bright', label: isHindi ? 'उत्साहित' : 'Bright', icon: 'bi-brightness-high' }
-        ];
-        const focusOptions = [
-            { value: 'clarity', label: isHindi ? 'स्पष्टता' : 'Clarity', icon: 'bi-eye' },
-            { value: 'relationships', label: isHindi ? 'रिश्ते' : 'Relationships', icon: 'bi-people' },
-            { value: 'work', label: isHindi ? 'काम' : 'Work', icon: 'bi-briefcase' },
-            { value: 'wellness', label: isHindi ? 'सेहत' : 'Wellness', icon: 'bi-heart-pulse' },
-            { value: 'home', label: isHindi ? 'घर' : 'Home', icon: 'bi-house-heart' }
-        ];
-        const selectedMood = todayEntry?.mood || 'steady';
-        const selectedFocus = todayEntry?.focus || 'clarity';
-        const sortedEntries = [...entries].sort((firstEntry, secondEntry) => (secondEntry.date || '').localeCompare(firstEntry.date || ''));
-        const historyHtml = sortedEntries.length ? sortedEntries.slice(0, 10).map((entry) => {
-            const mood = moodOptions.find((option) => option.value === entry.mood)?.label || entry.mood || '';
-            const focus = focusOptions.find((option) => option.value === entry.focus)?.label || entry.focus || '';
-            return `
-                <div class="maya-journal-entry">
-                    <div class="maya-journal-entry__meta">
-                        <span>${this._escapeHtml(entry.date)}</span>
-                        <span>${this._escapeHtml(mood)} - ${this._escapeHtml(focus)}</span>
-                    </div>
-                    ${entry.intention ? `<strong>${this._escapeHtml(entry.intention)}</strong>` : ''}
-                    ${entry.reflection ? `<p>${this._escapeHtml(entry.reflection)}</p>` : ''}
-                </div>
-            `;
-        }).join('') : `
-            <div class="maya-empty-state maya-empty-state--compact">
-                <div class="maya-empty-state__icon"><i class="bi bi-journal-plus"></i></div>
-                <h4>${isHindi ? 'पहली एंट्री लिखें' : 'Write your first entry'}</h4>
-                <p>${isHindi ? 'आपकी दैनिक योजना और बातचीत यहां से बेहतर होती जाएगी।' : 'Your daily plan and MAYA coaching will become more useful from here.'}</p>
-            </div>
-        `;
-
-        return `
-            <div class="maya-page maya-journal-page">
-                <div class="maya-page__header">
-                    <h2 class="maya-page__title">${isHindi ? 'Maya Journal' : 'Maya Journal'}</h2>
-                    <p class="maya-page__subtitle">${isHindi ? `${firstName}, हर दिन एक छोटा नोट, एक साफ इरादा, और एक व्यवहारिक कदम।` : `${firstName}, one daily note, one clear intention, and one practical step.`}</p>
-                </div>
-
-                <div class="maya-journal-summary">
-                    <div class="maya-journal-summary__item">
-                        <span>${isHindi ? 'आज' : 'Today'}</span>
-                        <strong>${todayEntry ? (isHindi ? 'पूरा' : 'Complete') : (isHindi ? 'बाकी' : 'Open')}</strong>
-                    </div>
-                    <div class="maya-journal-summary__item">
-                        <span>${isHindi ? 'श्रृंखला' : 'Streak'}</span>
-                        <strong>${streak} ${isHindi ? 'दिन' : 'days'}</strong>
-                    </div>
-                    <div class="maya-journal-summary__item">
-                        <span>${isHindi ? 'फोकस' : 'Focus'}</span>
-                        <strong>${focusOptions.find((option) => option.value === selectedFocus)?.label || 'Clarity'}</strong>
-                    </div>
-                </div>
-
-                <div class="maya-journal-plan">
-                    <div class="maya-journal-plan__icon"><i class="bi bi-signpost-split"></i></div>
-                    <div>
-                        <span>${isHindi ? 'आज की योजना' : "Today's Plan"}</span>
-                        <p>${this._escapeHtml(practice.summary)}</p>
-                    </div>
-                </div>
-
-                <div class="maya-journal-card">
-                    <input type="hidden" id="journalDate" value="${today}">
-
-                    <div class="maya-journal-field">
-                        <label>${isHindi ? 'मूड' : 'Mood'}</label>
-                        <div class="maya-journal-chips" id="journalMoodChips">
-                            ${moodOptions.map((option) => `
-                                <button type="button" class="maya-journal-chip ${option.value === selectedMood ? 'active' : ''}" data-journal-mood="${option.value}">
-                                    <i class="bi ${option.icon}"></i>
-                                    <span>${option.label}</span>
-                                </button>
-                            `).join('')}
-                        </div>
-                    </div>
-
-                    <div class="maya-journal-field">
-                        <label>${isHindi ? 'फोकस' : 'Focus'}</label>
-                        <div class="maya-journal-chips maya-journal-chips--wrap" id="journalFocusChips">
-                            ${focusOptions.map((option) => `
-                                <button type="button" class="maya-journal-chip ${option.value === selectedFocus ? 'active' : ''}" data-journal-focus="${option.value}">
-                                    <i class="bi ${option.icon}"></i>
-                                    <span>${option.label}</span>
-                                </button>
-                            `).join('')}
-                        </div>
-                    </div>
-
-                    <div class="maya-journal-field">
-                        <label for="journalIntention">${isHindi ? 'आज का इरादा' : "Today's intention"}</label>
-                        <input type="text" class="maya-input" id="journalIntention" value="${this._escapeHtml(todayEntry?.intention || '')}" placeholder="${isHindi ? 'एक छोटा व्यवहारिक कदम' : 'One small practical step'}">
-                    </div>
-
-                    <div class="maya-journal-field">
-                        <label for="journalReflection">${isHindi ? 'प्रतिबिंब' : 'Reflection'}</label>
-                        <textarea class="maya-input maya-journal-textarea" id="journalReflection" rows="5" placeholder="${isHindi ? 'आज मन में क्या चल रहा है?' : 'What is moving through your mind today?'}">${this._escapeHtml(todayEntry?.reflection || '')}</textarea>
-                    </div>
-
-                    <div class="maya-journal-actions">
-                        <button type="button" class="maya-btn maya-btn--primary" id="saveJournalEntry">
-                            <i class="bi bi-check2-circle"></i>
-                            <span>${isHindi ? 'जर्नल सेव करें' : 'Save Journal'}</span>
-                        </button>
-                        <button type="button" class="maya-btn maya-btn--outline" id="coachJournalBtn">
-                            <i class="bi bi-chat-heart"></i>
-                            <span>${isHindi ? 'MAYA से कोचिंग लें' : 'Coach with MAYA'}</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="maya-section">
-                    <h3 class="maya-section__title">
-                        <i class="bi bi-clock-history"></i>
-                        ${isHindi ? 'जर्नल इतिहास' : 'Journal History'}
-                    </h3>
-                    <div class="maya-journal-history">
-                        ${historyHtml}
-                    </div>
-                </div>
-            </div>
-        `;
     },
 
     /**
@@ -1152,16 +990,16 @@ const MayaPages = {
                                 </div>
                             </div>
                             <h4>Hi, I'm MAYA</h4>
-                            <p>Your journal and voice guide for reflection, timing, relationships, work, and practical next steps.</p>
+                            <p>Your astrology guide for kundli, timing, relationships, work, and practical next steps.</p>
                             <div class="maya-chat__suggestions">
-                                <button class="maya-chip" data-question="Help me turn today's journal into one relationship action.">
+                                <button class="maya-chip" data-question="What does my kundli say about my relationships right now?">
                                     <i class="bi bi-heart"></i> Relationship
                                 </button>
                                 <button class="maya-chip" data-question="Help me choose one focused work step for today.">
                                     <i class="bi bi-briefcase"></i> Work
                                 </button>
-                                <button class="maya-chip" data-question="What should I write in my journal tonight?">
-                                    <i class="bi bi-journal-text"></i> Journal Prompt
+                                <button class="maya-chip" data-question="What is one practical reading from my chart for today?">
+                                    <i class="bi bi-stars"></i> Today's Reading
                                 </button>
                             </div>
                         </div>
@@ -2704,7 +2542,7 @@ const MayaPages = {
                 ],
                 dailyRituals: [
                     { title: isHindi ? 'अध्ययन' : 'Study', description: isHindi ? 'नई चीजें सीखें' : 'Learn new things', icon: 'bi-book-fill', color: '#22c55e', time: isHindi ? 'प्रातः' : 'Morning', timeIcon: 'bi-sunrise-fill', benefit: isHindi ? 'बुद्धि वृद्धि' : 'Enhanced intellect' },
-                    { title: isHindi ? 'लेखन' : 'Writing', description: isHindi ? 'डायरी लिखें' : 'Journal daily', icon: 'bi-pencil-fill', color: '#10b981', time: isHindi ? 'शाम' : 'Evening', timeIcon: 'bi-sunset', benefit: isHindi ? 'संवाद कुशलता' : 'Communication skills' },
+                    { title: isHindi ? 'लेखन' : 'Writing', description: isHindi ? 'अपने विचार लिखें' : 'Write reflections daily', icon: 'bi-pencil-fill', color: '#10b981', time: isHindi ? 'शाम' : 'Evening', timeIcon: 'bi-sunset', benefit: isHindi ? 'संवाद कुशलता' : 'Communication skills' },
                     { title: isHindi ? 'तुलसी पूजा' : 'Tulsi Worship', description: isHindi ? 'तुलसी को जल दें' : 'Water tulsi plant', icon: 'bi-flower2', color: '#84cc16', time: isHindi ? 'प्रातः' : 'Morning', timeIcon: 'bi-sunrise', benefit: isHindi ? 'बुध ग्रह शांति' : 'Mercury peace' }
                 ],
                 dos: isHindi ? ['नई चीजें सीखें', 'संवाद करें', 'हरे रंग पहनें', 'पुस्तकें पढ़ें'] : ['Learn new things', 'Communicate clearly', 'Wear green colors', 'Read books'],
@@ -5016,9 +4854,6 @@ const MayaPages = {
         switch (pageId) {
             case 'home':
                 this.initHomePage();
-                break;
-            case 'journal':
-                this.initJournalPage();
                 break;
             case 'horoscope':
                 this.initHoroscopePage();
@@ -9856,79 +9691,6 @@ Rules:
         this.initLuckyCards();
     },
 
-    initJournalPage() {
-        let selectedMood = document.querySelector('[data-journal-mood].active')?.dataset.journalMood || 'steady';
-        let selectedFocus = document.querySelector('[data-journal-focus].active')?.dataset.journalFocus || 'clarity';
-
-        const bindChipGroup = (selector, dataKey, onSelect) => {
-            document.querySelectorAll(selector).forEach((chip) => {
-                chip.addEventListener('click', () => {
-                    document.querySelectorAll(selector).forEach((item) => item.classList.remove('active'));
-                    chip.classList.add('active');
-                    onSelect(chip.dataset[dataKey]);
-                });
-            });
-        };
-
-        bindChipGroup('[data-journal-mood]', 'journalMood', (value) => {
-            selectedMood = value || selectedMood;
-        });
-        bindChipGroup('[data-journal-focus]', 'journalFocus', (value) => {
-            selectedFocus = value || selectedFocus;
-        });
-
-        document.getElementById('saveJournalEntry')?.addEventListener('click', () => {
-            const date = document.getElementById('journalDate')?.value || this._getLocalDate();
-            const intention = document.getElementById('journalIntention')?.value?.trim() || '';
-            const reflection = document.getElementById('journalReflection')?.value?.trim() || '';
-            const isHindi = false; // UI always English
-
-            if (!intention && !reflection) {
-                MayaUtils.toast?.info(isHindi ? 'एक इरादा या प्रतिबिंब लिखें' : 'Write an intention or reflection first');
-                return;
-            }
-
-            const entries = this.getJournalEntries();
-            const entry = {
-                id: date,
-                date,
-                mood: selectedMood,
-                focus: selectedFocus,
-                intention,
-                reflection,
-                updatedAt: new Date().toISOString()
-            };
-            const existingIndex = entries.findIndex((item) => item.date === date);
-
-            if (existingIndex >= 0) {
-                entries[existingIndex] = entry;
-            } else {
-                entries.unshift(entry);
-            }
-
-            MayaUtils.storage.set('maya_journal_entries', entries.slice(0, 60));
-            MayaUtils.toast?.success(isHindi ? 'जर्नल सेव हो गया' : 'Journal saved');
-            this.render('journal');
-        });
-
-        document.getElementById('coachJournalBtn')?.addEventListener('click', () => {
-            const intention = document.getElementById('journalIntention')?.value?.trim() || '';
-            const reflection = document.getElementById('journalReflection')?.value?.trim() || '';
-            const prompt = `Use my Mayalogy journal to coach me with one clear next step. Mood: ${selectedMood}. Focus: ${selectedFocus}. Intention: ${intention || 'not set'}. Reflection: ${reflection || 'not written yet'}.`;
-
-            if (window.MayaApp) {
-                MayaApp.showMaya();
-                window.setTimeout(() => {
-                    const input = document.getElementById('maya-input');
-                    if (input) {
-                        input.value = prompt;
-                        input.focus();
-                    }
-                }, 350);
-            }
-        });
-    },
-
     /**
      * Initialize Lucky Element Cards with popup functionality
      */
@@ -10581,7 +10343,7 @@ Rules:
             ctx.fillStyle = '#666';
             ctx.font = '12px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('Generated by Mayalogy - Personal Guidance Journal', centerX, canvas.height - 30);
+            ctx.fillText('Generated by Mayalogy - Personal Astrology Reading', centerX, canvas.height - 30);
             ctx.fillText('mayalogy.com', centerX, canvas.height - 12);
 
             // Convert canvas to blob

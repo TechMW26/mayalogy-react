@@ -2152,16 +2152,78 @@ ${this.getBaseRules(false)}`);
         let userQuestionBlock = '';
         if (userQuestionRaw) {
             const safeQ = userQuestionRaw.replace(/`/g, "'").slice(0, 320);
+            const qTopic = this._classifyUserQuestionTopic(safeQ);
+            const qTopicLabel = this._getAskMayaTopicLabel(qTopic, isHindi);
+            // Build an anti-repetition snippet from previously spoken narrations
+            // so the AI doesn't echo phrases the user has already heard.
+            const recentSpoken = (Array.isArray(this.spokenNarrations) ? this.spokenNarrations : [])
+                .slice(-6)
+                .map(s => (s && s.text) ? String(s.text) : '')
+                .filter(Boolean)
+                .join(' \u2022 ')
+                .slice(0, 900);
             const PRE_AUTH_SECTIONS = new Set(['opening', 'kundli', 'numbersReveal', 'identityTruth', 'emotionalPattern', 'unresolvedThread', 'combinedTeaser', 'accuracyShock', 'suspenseBridge', 'emailGate', 'fomoHook']);
             const isPreAuth = PRE_AUTH_SECTIONS.has(sectionKey);
-            userQuestionBlock = isHindi
-                ? `\n\n## USER'S BURNING QUESTION (HIGHEST PRIORITY -हर section इसी के around बनेगा)\nUser ने शुरुआत में यह सवाल पूछा है: "${safeQ}"\nREGEL:\n- इस पूरी reading का focus इसी सवाल पर रखिए। Generic chart tour मत दीजिए -हर planetary observation, हर dasha reference, हर number इसी सवाल से connect होकर आना चाहिए।\n- User का नाम, sign, और chart facts use करते हुए इसी सवाल के लिए relevant pattern पकड़िए।\n${isPreAuth ? `- यह section PRE-LOGIN है: सवाल को acknowledge कीजिए और chart से एक tantalizing partial insight दीजिए, but पूरा detailed answer अभी मत खोलिए। साफ संकेत दीजिए कि "इसकी पूरी गहराई file save होने के बाद खुलेगी"। Curiosity build करें।` : `- यह section POST-LOGIN है: अब इसी सवाल का COMPLETE, SPECIFIC, और HONEST answer दीजिए। Chart evidence (ग्रह, राशि, घर, दशा, transit) को NAME करके बताइए कि इस सवाल का जवाब क्या है, क्यों है, कब-कब क्या होगा, और क्या practical action / remedy लेना चाहिए। Vague मत रहिए।`}\n- अगर सवाल multi-part है तो हर part को address कीजिए।\n- अगर सवाल user की real life situation या emotion reveal करता है, उसे genuine empathy से acknowledge कीजिए।`\n                : `\n\n## USER'S BURNING QUESTION (HIGHEST PRIORITY -every section bends toward this)\nThe user asked this on the landing screen: "${safeQ}"\nRULES:\n- This entire reading's focus is THIS question. Do NOT give a generic chart tour -every planetary observation, every dasha reference, every number must thread back to this question.\n- Use the user's name, signs, and chart facts to identify the pattern that is most relevant to this exact question.\n${isPreAuth ? `- This section is PRE-LOGIN: acknowledge the question and offer ONE tantalizing partial chart-based insight, but do NOT reveal the full detailed answer yet. Make it clear that "the full depth of this answer opens once your file is saved". Build curiosity.` : `- This section is POST-LOGIN: now give the COMPLETE, SPECIFIC, and HONEST answer to this exact question. NAME the chart evidence (planet, sign, house, dasha, transit) and explain WHAT the answer is, WHY it is so, WHEN things will unfold, and what practical action / remedy to take. Do NOT stay vague.`}\n- If the question has multiple parts, address each part.\n- If the question reveals a real life situation or emotion, acknowledge it with genuine empathy first.`;\n        }\n\n        const commonFactsWithQuestion = userQuestionBlock ? `${userQuestionBlock}\n\n${commonFacts}` : commonFacts;
+            const lines = [];
+            if (isHindi) {
+                lines.push("");
+                lines.push("");
+                lines.push("## USER'S BURNING QUESTION (HIGHEST PRIORITY -हर section इसी के around बनेगा)");
+                lines.push('User ने शुरुआत में यह सवाल पूछा है: "' + safeQ + '"');
+                lines.push('Topic lock: ' + qTopicLabel);
+                lines.push("REGEL:");
+                lines.push("- TOPIC LOCK (CRITICAL): यह पूरी reading केवल '" + qTopicLabel + "' के बारे में है। प्यार/career/पैसा/सेहत/परिवार/शादी/संतान/यात्रा/पढ़ाई जैसे unrelated topics को MENTION भी मत कीजिए, चाहे chart उन्हें कितना भी highlight करे। अगर सवाल '" + qTopicLabel + "' के बारे में है, तो दूसरा कोई topic open करना forbidden है।");
+                lines.push("- LENGTH CAP: इस section में MAX 3-4 छोटे वाक्य। One spoken paragraph, no filler, no preamble। हर वाक्य user के सवाल से directly जुड़ा हो।");
+                lines.push("- सीधे point पर आइए। 'मैं देख रही हूँ', 'चलिए देखते हैं', 'आपकी कुंडली में' जैसे filler openers से बचिए — पहला शब्द ही substance हो।");
+                lines.push("- User का नाम, sign, और chart facts use करते हुए इसी सवाल के लिए relevant pattern पकड़िए।");
+                if (isPreAuth) {
+                    lines.push('- यह section PRE-LOGIN है: सवाल को acknowledge कीजिए, chart से एक tantalizing partial insight दीजिए, but पूरा detailed answer अभी मत खोलिए। साफ संकेत दीजिए कि "इसकी पूरी गहराई file save होने के बाद खुलेगी"।');
+                } else {
+                    lines.push("- यह section POST-LOGIN है: अब इसी सवाल का COMPLETE, SPECIFIC, और HONEST answer दीजिए। Chart evidence (ग्रह, राशि, घर, दशा, transit) को NAME करके बताइए कि इस सवाल का जवाब क्या है, क्यों है, कब-कब क्या होगा, और क्या practical action / remedy लेना चाहिए। Vague मत रहिए।");
+                }
+                if (sectionKey === 'opening' || sectionKey === 'kundli') {
+                    lines.push("- IMPORTANT: इस section का BAHUT FIRST sentence यह होना चाहिए कि आप उनके सवाल — '" + safeQ + "' — का जवाब उनकी कुंडली, numbers और timing से ढूँढने जा रही हैं। यह promise stated होना चाहिए, implied नहीं।");
+                    lines.push("- Kundli के structure की लम्बी व्याख्या मत दीजिए। केवल 1 chart marker name कीजिए और तुरंत user के सवाल की तरफ pivot कीजिए।");
+                }
+                if (recentSpoken) {
+                    lines.push("- ANTI-REPETITION: नीचे दिए previously spoken sentences के words/phrases दोबारा मत use कीजिए। Fresh wording, fresh angle। कोई sentence या phrase दोहराइए मत।");
+                    lines.push("PREVIOUSLY SPOKEN: " + recentSpoken);
+                }
+            } else {
+                lines.push("");
+                lines.push("");
+                lines.push("## USER'S BURNING QUESTION (HIGHEST PRIORITY -every section bends toward this)");
+                lines.push('The user asked this on the landing screen: "' + safeQ + '"');
+                lines.push('Topic lock: ' + qTopicLabel);
+                lines.push("RULES:");
+                lines.push("- TOPIC LOCK (CRITICAL): This entire reading is ONLY about '" + qTopicLabel + "'. Do NOT mention unrelated topics like love/career/money/health/family/marriage/children/travel/education even if the chart highlights them. Opening another topic is FORBIDDEN.");
+                lines.push("- LENGTH CAP: MAX 3-4 short sentences in this section. One spoken paragraph. No preamble, no filler. Every sentence must directly serve the user's question.");
+                lines.push("- Get to the point. Avoid filler openers like 'I can see', 'Let me look', 'In your chart' — the first word should already be substance.");
+                lines.push("- Use the user's name, signs, and chart facts to identify the pattern that is most relevant to this exact question.");
+                if (isPreAuth) {
+                    lines.push('- This section is PRE-LOGIN: acknowledge the question, offer ONE tantalizing partial chart-based insight, but do NOT reveal the full detailed answer yet. Make it clear that "the full depth of this answer opens once your file is saved".');
+                } else {
+                    lines.push("- This section is POST-LOGIN: now give the COMPLETE, SPECIFIC, and HONEST answer to this exact question. NAME the chart evidence (planet, sign, house, dasha, transit) and explain WHAT the answer is, WHY it is so, WHEN things will unfold, and what practical action / remedy to take. Do NOT stay vague.");
+                }
+                if (sectionKey === 'opening' || sectionKey === 'kundli') {
+                    lines.push("- IMPORTANT: The VERY FIRST sentence of this section MUST explicitly tell the user that you are going to find the answer to their question — '" + safeQ + "' — using their kundli, numbers, and timing. State this promise out loud, do not imply it.");
+                    lines.push("- Do NOT spend time describing the kundli's structure. Quote at most ONE chart marker as supporting evidence and immediately pivot to addressing the user's question.");
+                }
+                if (recentSpoken) {
+                    lines.push("- ANTI-REPETITION: Do NOT reuse any words or phrases from the previously spoken lines below. Fresh wording, fresh angle. Never repeat a sentence or signature phrase.");
+                    lines.push("PREVIOUSLY SPOKEN: " + recentSpoken);
+                }
+            }
+            userQuestionBlock = lines.join("\n");
+        }
+
+        const commonFactsWithQuestion = userQuestionBlock ? (userQuestionBlock + "\n\n" + commonFacts) : commonFacts;
 
         const sharedRules = this.getBaseRules(isHindi);
 
         const sectionPrompts = isHindi
             ? {
-                opening: `आप current user के लिए ONE opening narration लिख रही हैं। 5-6 वाक्य। पहली line का shape और register "FRESH OPENING DIRECTIVE" section में दिया गया है -उसी को follow कीजिए। User का नाम पहली या दूसरी line में natural way में आना चाहिए, और "मैं MAYA हूँ" वाली introduction दूसरी या तीसरी line में organically फिट कीजिए (पहली line में नहीं)। Introduction line के बाद एक [[pause-500]] token लगाइए। फिर एक line में कहिए कि उनके timing, numbers, और daily patterns को एक practical plan में बदला जा सकता है। एक line में पहला factual clue दीजिए जो उनकी birth pattern, western sign, moon sign, numbers, या current timing में सबसे ज्यादा standout करता है, लेकिन literal जन्मतिथि को पढ़कर मत सुनाइए। एक real strength और एक quiet tension lightly hold कीजिए। आखिरी line में user को एक journal intention save करने के लिए invite करें, और साफ कहें कि शुरुआत journal और timing से होगी। यह intimate, fresh, और unscripted लगे। generic cosmic filler मत लिखिए।`,
+                opening: `आप current user के लिए ONE opening narration लिख रही हैं। 5-6 वाक्य। पहली line का shape और register "FRESH OPENING DIRECTIVE" section में दिया गया है -उसी को follow कीजिए। User का नाम पहली या दूसरी line में natural way में आना चाहिए, और "मैं MAYA हूँ" वाली introduction दूसरी या तीसरी line में organically फिट कीजिए (पहली line में नहीं)। Introduction line के बाद एक [[pause-500]] token लगाइए। फिर एक line में कहिए कि उनके timing, numbers, और daily patterns को एक practical plan में बदला जा सकता है। एक line में पहला factual clue दीजिए जो उनकी birth pattern, western sign, moon sign, numbers, या current timing में सबसे ज्यादा standout करता है, लेकिन literal जन्मतिथि को पढ़कर मत सुनाइए। एक real strength और एक quiet tension lightly hold कीजिए। आखिरी line में user को साफ कहिए कि उनकी पूरी astrology reading कुंडली, numbers और timing से तैयार हो रही है, और इसे save करना ज़रूरी है। यह intimate, fresh, और unscripted लगे। generic cosmic filler मत लिखिए।`,
                 kundli: `आप current user के लिए ONE kundli formation narration लिख रही हैं। सबसे पहले एक warm, inviting line से शुरू कीजिए जैसे "चलिए, अब हम साथ मिलकर आपकी कुंडली की गहराइयों में उतरते हैं" या "आइए, अब हम साथ में देखते हैं कि आपके ग्रह क्या कह रहे हैं" - यह line natural और exploratory feel होनी चाहिए, पहले से reveal नहीं करनी चाहिए। फिर visible chart markers जैसे ascendant, moon sign, current dasha, dominant element, या chart highlight में से 2-3 facts use कीजिए। Reading को grounded रखिए और end में numbers की तरफ natural transition दीजिए। 5-7 वाक्य। ज्यादा से ज्यादा एक [[pause-250]] token।\n\n� BIG-PREDICTION HYPE (MUST INCLUDE): दूसरे या तीसरे वाक्य में एक intentional teaser डालिए जो FOMO बनाए -जैसे "आपकी कुंडली में एक ऐसा पैटर्न दिख रहा है जिसे numbers के साथ जोड़ने के बाद मैं आपके आने वाले समय की एक बहुत महत्वपूर्ण भविष्यवाणी खोलूँगी" या "रुकिए, यहाँ कुछ ऐसा है जो numbers मिलाते ही आपकी सबसे बड़ी prediction बन जाएगा"। इसे suspense दे, exact prediction अभी मत खोलिए -सिर्फ build-up कीजिए कि numbers reveal के बाद बड़ी भविष्यवाणी आ रही है। Tone confident हो, dramatic ज़रूर पर hollow नहीं।\n\n�🔮 RARE YOGA MYSTICAL COMMENTARY: अगर user की कुंडली में कोई दुर्लभ/rare yoga है (जैसे नीचभंग राजयोग, गजकेसरी योग, हंस योग, महापुरुष योग, पंचमहापुरुष योग, चक्रवर्ती योग, या कोई और unusual combination), तो MYSTICALLY react कीजिए। ऐसा बोलिए जैसे आपने बहुत समय बाद ऐसी कुंडली देखी है -"ऐसी कुंडली बहुत समय बाद देखी है...", "ये combination बहुत कम लोगों की कुंडली में बनता है...", "रुकिए... ये तो कुछ खास है।" इसे genuine wonder और reverence से बोलिए, हल्का dramatic pause रखिए। अगर कोई rare yoga नहीं है, तो यह skip करें।`,
                 numbersReveal: `आप current user के लिए numbers reading लिख रही हैं। तीनों numbers अभी-अभी calculate हुए हैं: Life Path ${this.calculations?.lifePath || ''}, Destiny ${this.calculations?.destiny || ''}, Soul Urge ${this.calculations?.soulUrge || ''}।
 
@@ -2209,7 +2271,7 @@ STRUCTURE (इसी ORDER में लिखिए):
                 completion: `आप current user के लिए ONE short completion message लिख रही हैं। जो reading दी गई है उसे grounded way में close कीजिए और questions invite कीजिए। 2-3 वाक्य। ज्यादा से ज्यादा एक [[pause-250]] token।`
             }
             : {
-                opening: `Write ONE opening narration for the current user. 5-6 sentences. The first line's shape and register are defined in the "FRESH OPENING DIRECTIVE" section -follow that exactly. The user's name should appear naturally in the first or second sentence, and your "I am MAYA" introduction must come organically in the second or third sentence (NOT the very first line). Place a [[pause-500]] token IMMEDIATELY after the introduction sentence so the user has a moment to absorb who is speaking. In one sentence, say that their timing, numbers, and daily patterns can be turned into one practical plan. In one sentence, name the first detail that stands out from their birth pattern, western sign, moon sign, numbers, or current timing, and do not recite the literal birth date unless it is truly necessary. Hold one real strength and one quiet tension lightly. The final sentence should invite them to save one journal intention, while clearly saying the guidance begins through journal and timing. It must sound fresh, intimate, and unscripted. Do not use generic cosmic filler.`,
+                opening: `Write ONE opening narration for the current user. 5-6 sentences. The first line's shape and register are defined in the "FRESH OPENING DIRECTIVE" section -follow that exactly. The user's name should appear naturally in the first or second sentence, and your "I am MAYA" introduction must come organically in the second or third sentence (NOT the very first line). Place a [[pause-500]] token IMMEDIATELY after the introduction sentence so the user has a moment to absorb who is speaking. In one sentence, say that their timing, numbers, and daily patterns can be turned into one practical plan. In one sentence, name the first detail that stands out from their birth pattern, western sign, moon sign, numbers, or current timing, and do not recite the literal birth date unless it is truly necessary. Hold one real strength and one quiet tension lightly. The final sentence should make it clear that their personal astrology reading is being assembled from kundli, numbers and timing, and invite them to save it. It must sound fresh, intimate, and unscripted. Do not use generic cosmic filler.`,
                 kundli: `Write ONE kundli formation narration for the current user. Start with a warm, inviting line like "Let's explore your kundli together" or "Come, let me walk you through what your planets are saying" - make it feel like a shared journey, not a lecture. Then use 2-3 visible chart markers such as ascendant, moon sign, current dasha, dominant element, or chart highlights. Keep it grounded and end with a natural transition toward the numbers. 5-7 sentences. Use at most one [[pause-250]] token.\n\n� BIG-PREDICTION HYPE (MUST INCLUDE): In the second or third sentence, plant a deliberate teaser that creates FOMO -for example "There is one pattern in your chart that I will only fully open once we have your numbers -it points to a very important prediction about what is coming for you" or "Hold on -once your numbers line up with this, your single biggest prediction will surface." Build genuine suspense, do NOT reveal the actual prediction yet -only flag that a major prediction is coming after the kundli + numbers are combined. Confident, mildly dramatic, never hollow.\n\n�🔮 RARE YOGA MYSTICAL COMMENTARY: If the user's chart contains any rare/uncommon yoga (like Neechabhanga Rajayoga, Gajakesari Yoga, Hamsa Yoga, Mahapurusha Yoga, Pancha Mahapurusha Yoga, Chakravarti Yoga, or any unusual combination), react MYSTICALLY -as if you haven't seen such a chart in a long time. Say things like "I haven't seen a chart like this in a very long time...", "This combination is found in very few charts...", "Wait... this is something special." Express genuine wonder and reverence with a slight dramatic pause. If there are no rare yogas, skip this entirely.`,
                 numbersReveal: `Write a numbers reading for the current user. All three numbers just calculated: Life Path ${this.calculations?.lifePath || ''}, Destiny ${this.calculations?.destiny || ''}, Soul Urge ${this.calculations?.soulUrge || ''}.
 
@@ -3331,6 +3393,56 @@ ONLY return the spoken response. Nothing else.`;
         return 'unknown';
     },
 
+    // ────────────────────────────────────────────────────────────────
+    //  ASK-MAYA FLOW HELPERS
+    //  When the user enters via the "Ask Maya anything" landing input,
+    //  the funnel runs in a focused, narrower mode: every question and
+    //  every section stays locked to the user's question topic.
+    // ────────────────────────────────────────────────────────────────
+    _getActiveUserQuestion() {
+        const fromData = (this.userData && this.userData.userQuestion) || '';
+        const fromStorage = (() => {
+            try { return MayaUtils?.storage?.get('maya_user_question') || ''; } catch (_) { return ''; }
+        })();
+        return String(fromData || fromStorage || '').trim();
+    },
+
+    _isAskMayaFlow() {
+        return this._getActiveUserQuestion().length >= 3;
+    },
+
+    _classifyUserQuestionTopic(text) {
+        const q = String(text || '').toLowerCase();
+        if (!q) return 'general';
+        // Order matters — most specific first.
+        if (/\b(marriage|wedding|spouse|husband|wife|shaadi|शादी|पति|पत्नी)\b/.test(q)) return 'marriage';
+        if (/\b(love|partner|relationship|girlfriend|boyfriend|crush|breakup|प्यार|रिश्त|प्रेम|साथी)\b/.test(q)) return 'love';
+        if (/\b(career|job|work|business|promotion|profession|startup|नौकरी|करियर|कैरियर|काम|व्यवसाय)\b/.test(q)) return 'career';
+        if (/\b(money|wealth|income|salary|finance|invest|loan|debt|पैसा|पैसे|धन|कमाई|निवेश)\b/.test(q)) return 'money';
+        if (/\b(health|illness|disease|body|surgery|स्वास्थ्य|बीमार|तबीयत|शरीर)\b/.test(q)) return 'health';
+        if (/\b(study|exam|education|degree|college|पढ़ाई|परीक्षा|शिक्षा)\b/.test(q)) return 'education';
+        if (/\b(child|baby|pregnancy|kid|बच्च|संतान)\b/.test(q)) return 'children';
+        if (/\b(family|parent|mother|father|sibling|परिवार|माँ|पिता|भाई|बहन)\b/.test(q)) return 'family';
+        if (/\b(travel|abroad|foreign|migration|visa|विदेश|यात्रा)\b/.test(q)) return 'travel';
+        if (/\b(when|kab|कब)\b/.test(q)) return 'timing';
+        return 'general';
+    },
+
+    _getAskMayaTopicLabel(topic, isHindi) {
+        const map = isHindi
+            ? {
+                marriage: 'शादी', love: 'रिश्ते', career: 'करियर', money: 'पैसा',
+                health: 'सेहत', education: 'पढ़ाई', children: 'संतान', family: 'परिवार',
+                travel: 'यात्रा/विदेश', timing: 'timing', general: 'इस सवाल'
+            }
+            : {
+                marriage: 'marriage', love: 'relationships', career: 'career', money: 'money',
+                health: 'health', education: 'education', children: 'children', family: 'family',
+                travel: 'travel/relocation', timing: 'timing', general: 'this question'
+            };
+        return map[topic] || map.general;
+    },
+
     filterProfileQuestions(questions = [], askedKeys = new Set()) {
         const maritalStatus = this.normalizeMaritalStatus(this.userData?.maritalStatus);
         const asked = askedKeys instanceof Set ? askedKeys : new Set(askedKeys || []);
@@ -3580,6 +3692,43 @@ ONLY return the spoken response. Nothing else.`;
             return base;
         }
 
+        // Defensive: in Hindi mode, reject options that contain malformed /
+        // half-baked Devanagari tokens (e.g. "थोड़ा भुअन"). A "word" is suspect
+        // when its consonant cluster doesn't resolve to a real Hindi word.
+        // Heuristic: any standalone Devanagari word of length 2-3 chars that is
+        // NOT in a small allow-list of common short words is treated as
+        // gibberish and we fall back. This is a soft guard, not a dictionary.
+        if (isHindi) {
+            const KNOWN_SHORT = new Set([
+                'है', 'हो', 'का', 'की', 'के', 'को', 'से', 'पर', 'या', 'और',
+                'मैं', 'तू', 'वो', 'ये', 'वह', 'यह', 'जो', 'तो', 'भी', 'ही',
+                'न', 'नहीं', 'कभी', 'अभी', 'जब', 'तब', 'कब', 'अब', 'फिर',
+                'हाँ', 'ना', 'बस', 'सब', 'कुछ', 'कौन', 'क्या', 'कहाँ', 'कैसे',
+                'कम', 'ज्यादा', 'थोड़ा', 'बहुत', 'अच्छा', 'बुरा', 'सही',
+                'गलत', 'नया', 'पुराना', 'मन', 'दिल', 'घर', 'काम', 'बात',
+                'दिन', 'रात', 'समय', 'वक्त', 'साथ', 'दूर', 'पास', 'बीच'
+            ]);
+            const looksGibberish = (label) => {
+                const tokens = label.split(/[\s,।.!?-]+/).filter(Boolean);
+                for (const tok of tokens) {
+                    // Only inspect pure Devanagari tokens
+                    if (!/^[\u0900-\u097F]+$/.test(tok)) continue;
+                    // Strip nukta / final virama for length check
+                    const stripped = tok.replace(/[\u093C\u094D]/g, '');
+                    if (stripped.length <= 3 && !KNOWN_SHORT.has(tok) && !KNOWN_SHORT.has(stripped)) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+            for (const opt of dedupedOptions) {
+                if (looksGibberish(opt.label)) {
+                    console.warn('[funnel] Rejecting AI MCQ — suspect Hindi token:', opt.label);
+                    return base;
+                }
+            }
+        }
+
         return {
             key,
             spoken: spokenText,
@@ -3609,6 +3758,72 @@ ONLY return the spoken response. Nothing else.`;
         const moonSign = profile.moonSign || profile.vedic?.name || 'unknown';
         const ascendant = profile.ascendant?.name || 'unknown';
         const lp = this.calculations?.lifePath || 'unknown';
+
+        // ──────────────────────────────────────────────────────────
+        //  ASK-MAYA FOCUS STAGE: question-locked MCQ generation.
+        //  This stage is invoked only when the user entered through
+        //  the "Ask Maya anything" landing input. The MCQ MUST be
+        //  about the user's exact question — never about an
+        //  unrelated life area.
+        // ──────────────────────────────────────────────────────────
+        const isAskMayaStage = stageKey === 'q_ask_maya_focus';
+        if (isAskMayaStage) {
+            const userQ = this._getActiveUserQuestion();
+            const safeUserQ = userQ.replace(/`/g, "'").slice(0, 240);
+            const topic = this._classifyUserQuestionTopic(userQ);
+            const topicLabel = this._getAskMayaTopicLabel(topic, isHindi);
+
+            const askMayaPrompt = isHindi
+                ? `MAYA के लिए एक छोटा MCQ JSON में बनाइए जो SIRF user के नीचे दिए सवाल को precisely answer करने में मदद करे।
+
+USER'S QUESTION: "${safeUserQ}"
+Topic lock: ${topicLabel}
+Marital: ${maritalStatus} | Dasha: ${dasha} | Moon: ${moonSign} | Lagna: ${ascendant} | Life path: ${lp}
+Already asked: ${askedList}
+Previous answers:
+${priorAnswers}
+
+RULES (STRICT):
+- सवाल सीधे user के question के context में हो — '${topicLabel}' से बाहर का कोई topic touch मत कीजिए (relationships अगर question career का है, money अगर question health का है, etc मत पूछिए)।
+- सवाल MAX 12 शब्द, plain conversational Hindi, बिना jyotish jargon के।
+- ऐसा सवाल जो user की actual situation reveal करे ताकि उनके सवाल का जवाब और precise मिले।
+- Exactly 3 options, हर option MAX 5 शब्द, simple, अलग-अलग, real-life।
+- हर option में label, value, और 1-line insight जो chart से connect हो।
+- LANGUAGE INTEGRITY: केवल dictionary-correct हिंदी शब्द। कोई coined / half / broken word नहीं। English loanword Latin script में।
+- BAD: "थोड़ा भुअन", "बहुत खुश-खुश"
+- GOOD: "बिल्कुल नहीं", "थोड़ा-बहुत", "हाँ अक्सर"
+
+Return ONLY JSON:
+{"key":"ask_maya_focus","spoken":"...","question":"...","options":[{"label":"...","value":"...","insight":"..."}]}`
+                : `Build ONE short MCQ for MAYA as JSON whose ONLY purpose is to help precisely answer the user's question below.
+
+USER'S QUESTION: "${safeUserQ}"
+Topic lock: ${topicLabel}
+Marital: ${maritalStatus} | Dasha: ${dasha} | Moon: ${moonSign} | Lagna: ${ascendant} | Life path: ${lp}
+Already asked: ${askedList}
+Previous answers:
+${priorAnswers}
+
+RULES (STRICT):
+- The question MUST sit inside the user's question's topic '${topicLabel}'. Do NOT touch unrelated life areas (no relationships if their question is career, no money if their question is health, etc.).
+- MAX 12 words, plain conversational English, no astrology jargon.
+- Frame it so their answer reveals the real-life detail you need to answer their question precisely.
+- Exactly 3 options. Each MAX 5 words, simple, distinct, real-life.
+- Each option needs label, value, and a 1-line insight that ties to the chart.
+
+Return ONLY JSON:
+{"key":"ask_maya_focus","spoken":"...","question":"...","options":[{"label":"...","value":"...","insight":"..."}]}`;
+
+            try {
+                const aiRaw = await MayaAI.callGemini(askMayaPrompt);
+                const parsed = this._extractFirstJsonObject(aiRaw);
+                return this._sanitizeAdaptiveQuestion(parsed, fallback, askedKeys) || fallback;
+            } catch (error) {
+                console.warn('Ask-Maya focus question generation failed:', error?.message || error);
+                return fallback;
+            }
+        }
+
         const rankedTopics = this.getRankedTopicPoolForStage(stageKey)
             .map(item => `- ${item.topic}: confidence ${item.score} (from ${item.key})`)
             .join('\n') || '- emotional_state: confidence 1';
@@ -3637,6 +3852,9 @@ RULES (STRICT):
 - Top 2 ranked topics में से ही choose करें।
 - Exactly 3 options. हर option MAX 5 शब्द, simple, personal, अलग-अलग।
 - हर option में label, value, insight (insight 1 छोटी line)।
+- LANGUAGE INTEGRITY (CRITICAL): केवल standard, dictionary-correct हिंदी शब्द use कीजिए। कोई भी coined, poetic, regional, या invented शब्द बिल्कुल मत लिखिए। अगर सही हिंदी शब्द याद नहीं तो English loanword (Devanagari में नहीं, Latin script में) use कीजिए -जैसे "job", "relationship", "stress"। हर option grammatically valid और naturally बोला जाने वाला होना चाहिए। Half-words, broken syllables, या आधे-अधूरे tokens जैसे "भुअन", "भअ" बिल्कुल forbidden।
+- BAD examples (कभी मत लिखिए): "थोड़ा भुअन", "बहुत खुश-खुश", "मध्यम तरह"
+- GOOD examples: "बहुत भरोसा है", "थोड़ा-बहुत", "बिल्कुल नहीं", "कभी-कभी"
 
 Return ONLY JSON:
 {"key":"...","spoken":"...","question":"...","options":[{"label":"...","value":"...","insight":"..."}]}`
@@ -4385,33 +4603,55 @@ Return ONLY JSON:
             }
 
             // ═══ STEP 6: Third question -money pattern ═══
-            const transQ3 = isHindi
-                ? 'पैसों से जुड़ा एक pattern दिख रहा है कुंडली में। ये बताइए।'
-                : 'I see a pattern around money in your chart. Tell me this.';
-            if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(transQ3);
-            const q3 = await this.getAdaptiveQuestionForStage('q3_money', askedProfileKeys);
-            if (q3) {
-                console.log('🎯 Q3: adaptive...');
-                await this.speak(transQ3);
-                this.spokenNarrations.push({ stage: 'transition_q3', text: transQ3 });
-                this.recordStepContext('transition_q3', transQ3);
-                await this.askSingleProfileQuestion(q3);
-                if (q3.key) askedProfileKeys.add(q3.key);
-            }
+            const askMayaTopic = this._isAskMayaFlow() ? this._classifyUserQuestionTopic(this._getActiveUserQuestion()) : null;
+            const askMayaActive = !!askMayaTopic;
+            const topicLabel = askMayaActive ? this._getAskMayaTopicLabel(askMayaTopic, isHindi) : '';
 
-            // ═══ STEP 7: Fourth question -relationship status ═══
-            const transQ4 = isHindi
-                ? 'रिश्तों के बारे में भी कुछ दिख रहा है। एक छोटा सवाल और पूछ लूँ?'
-                : 'I can see something about your relationships too. May I ask one more thing?';
-            if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(transQ4);
-            const q4 = await this.getAdaptiveQuestionForStage('q4_relationship', askedProfileKeys);
-            if (q4) {
-                console.log('🎯 Q4: adaptive...');
-                await this.speak(transQ4);
-                this.spokenNarrations.push({ stage: 'transition_q4', text: transQ4 });
-                this.recordStepContext('transition_q4', transQ4);
-                await this.askSingleProfileQuestion(q4);
-                if (q4.key) askedProfileKeys.add(q4.key);
+            // In Ask-Maya flow we DO NOT open unrelated topic doors (money, relationships, etc).
+            // Instead we ask one focused follow-up that stays on the user's question topic, then
+            // skip Q3/Q4/Q5 entirely and head into the teaser + email gate.
+            if (askMayaActive) {
+                const focusedTrans = isHindi
+                    ? `अब ${topicLabel} पर एक छोटा सवाल — जिससे जवाब और सटीक हो जाए।`
+                    : `One quick follow-up about your ${topicLabel} — so the answer lands precisely.`;
+                if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(focusedTrans);
+                const qFocus = await this.getAdaptiveQuestionForStage('q_ask_maya_focus', askedProfileKeys);
+                if (qFocus) {
+                    await this.speak(focusedTrans);
+                    this.spokenNarrations.push({ stage: 'transition_ask_maya_focus', text: focusedTrans });
+                    this.recordStepContext('transition_ask_maya_focus', focusedTrans);
+                    await this.askSingleProfileQuestion(qFocus);
+                    if (qFocus.key) askedProfileKeys.add(qFocus.key);
+                }
+            } else {
+                const transQ3 = isHindi
+                    ? 'पैसों से जुड़ा एक pattern दिख रहा है कुंडली में। ये बताइए।'
+                    : 'I see a pattern around money in your chart. Tell me this.';
+                if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(transQ3);
+                const q3 = await this.getAdaptiveQuestionForStage('q3_money', askedProfileKeys);
+                if (q3) {
+                    console.log('🎯 Q3: adaptive...');
+                    await this.speak(transQ3);
+                    this.spokenNarrations.push({ stage: 'transition_q3', text: transQ3 });
+                    this.recordStepContext('transition_q3', transQ3);
+                    await this.askSingleProfileQuestion(q3);
+                    if (q3.key) askedProfileKeys.add(q3.key);
+                }
+
+                // ═══ STEP 7: Fourth question -relationship status ═══
+                const transQ4 = isHindi
+                    ? 'रिश्तों के बारे में भी कुछ दिख रहा है। एक छोटा सवाल और पूछ लूँ?'
+                    : 'I can see something about your relationships too. May I ask one more thing?';
+                if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(transQ4);
+                const q4 = await this.getAdaptiveQuestionForStage('q4_relationship', askedProfileKeys);
+                if (q4) {
+                    console.log('🎯 Q4: adaptive...');
+                    await this.speak(transQ4);
+                    this.spokenNarrations.push({ stage: 'transition_q4', text: transQ4 });
+                    this.recordStepContext('transition_q4', transQ4);
+                    await this.askSingleProfileQuestion(q4);
+                    if (q4.key) askedProfileKeys.add(q4.key);
+                }
             }
 
             // ═══ STEP 8: Hide overlay ═══
@@ -4431,18 +4671,23 @@ Return ONLY JSON:
             this.advanceProgress('deep_patterns');
 
             // ═══ STEP 11: Fifth question - after teaser (repeating pattern) ═══
-            const transQ5 = isHindi
-                ? 'अब तक जो दिखा वो बस शुरुआत है। एक और बात है जो मुझे बार-बार दिख रही है।'
-                : 'What I have shared so far is just the beginning. There is one more thing I keep seeing.';
-            if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(transQ5);
-            const q5 = await this.getAdaptiveQuestionForStage('q5_pattern', askedProfileKeys);
-            if (q5) {
-                console.log('🎯 Q5 after teaser: adaptive...');
-                await this.speak(transQ5);
-                this.spokenNarrations.push({ stage: 'transition_q5', text: transQ5 });
-                this.recordStepContext('transition_q5', transQ5);
-                await this.askSingleProfileQuestion(q5);
-                if (q5.key) askedProfileKeys.add(q5.key);
+            // In Ask-Maya flow we skip Q5 entirely — the user already gave us their question
+            // plus 2 focused MCQs; another generic "I keep seeing one more thing" would dilute
+            // the answer and risk repetition. Head straight to the email gate.
+            if (!askMayaActive) {
+                const transQ5 = isHindi
+                    ? 'अब तक जो दिखा वो बस शुरुआत है। एक और बात है जो मुझे बार-बार दिख रही है।'
+                    : 'What I have shared so far is just the beginning. There is one more thing I keep seeing.';
+                if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(transQ5);
+                const q5 = await this.getAdaptiveQuestionForStage('q5_pattern', askedProfileKeys);
+                if (q5) {
+                    console.log('🎯 Q5 after teaser: adaptive...');
+                    await this.speak(transQ5);
+                    this.spokenNarrations.push({ stage: 'transition_q5', text: transQ5 });
+                    this.recordStepContext('transition_q5', transQ5);
+                    await this.askSingleProfileQuestion(q5);
+                    if (q5.key) askedProfileKeys.add(q5.key);
+                }
             }
 
             // ═══ STEP 12: Suspense bridge → email gate ═══
