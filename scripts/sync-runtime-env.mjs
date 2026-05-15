@@ -90,9 +90,8 @@ function parseList(rawValue) {
 }
 
 const runtimeSecrets = {
-  GROQ_KEY: env.VITE_PUBLIC_GROQ_KEY || '',
-  // Gemini is restored ONLY for image analysis (Palm Reading + Vastu vision calls).
-  // Groq remains the sole text-generation provider.
+  GROQ_KEY: '',
+  // Gemini is the text and vision AI provider.
   GEMINI_KEY: env.VITE_PUBLIC_GEMINI_KEY || '',
   GEMINI_FALLBACKS: parseList(env.VITE_PUBLIC_GEMINI_FALLBACKS),
   ELEVENLABS_VOICE: env.VITE_PUBLIC_ELEVENLABS_VOICE || 'P3JECz9WQeXyyodBL3ZD',

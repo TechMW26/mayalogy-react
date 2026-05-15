@@ -1,11 +1,11 @@
 /**
  * MAYA - AI Module
- * Groq is the sole AI provider.
+ * Gemini is the sole text AI provider.
  */
 
 const MayaAI = {
     conversationHistory: [],
-    currentProvider: 'groq',
+    currentProvider: 'gemini',
 
     normalizeUserData(userData = {}) {
         const storedProfile = MayaUtils?.storage?.get('maya_profile') || {};
@@ -179,16 +179,14 @@ const MayaAI = {
     },
 
     /**
-     * Stale alias kept so old call sites do not crash. Routes to Groq.
+     * Stale alias kept so old call sites do not crash. Routes to Gemini.
      */
     async callOpenAI(message, options = {}) {
         return this.callGemini(message, options);
     },
 
     /**
-     * Call the AI. Groq is the sole provider. Public method is still named
-     * `callGemini` for backwards compatibility -every existing caller routes
-     * through this entrypoint.
+     * Call the AI through Gemini. Public method name is kept for existing callers.
      */
     async callGemini(message, options = {}) {
         const systemPrompt = this.buildSystemPrompt();
@@ -197,92 +195,130 @@ const MayaAI = {
             ? this.conversationHistory[this.conversationHistory.length - 1]?.content || message
             : message;
 
-        const result = await this._callGroqProvider(systemPrompt, userMessage, includeHistory, options);
+        const result = await this._callGeminiProvider(systemPrompt, userMessage, includeHistory, options);
         if (result) {
-            this.currentProvider = 'groq';
+            this.currentProvider = 'gemini';
             return result;
         }
 
-        throw new Error('Groq AI provider failed');
+        throw new Error('Gemini AI provider failed');
     },
 
+    _getGeminiApiKeys() {
+        const primary = MAYA_CONFIG.API_KEYS.GEMINI;
+        const fallbacks = Array.isArray(MAYA_CONFIG.API_KEYS.GEMINI_FALLBACKS)
+            ? MAYA_CONFIG.API_KEYS.GEMINI_FALLBACKS
+            : [];
+        return [primary, ...fallbacks]
+            .map((key) => String(key || '').trim())
+            .filter(Boolean)
+            .filter((key, index, arr) => arr.indexOf(key) === index);
+    },
 
     /**
-     * Groq inference -PRIMARY provider. OpenAI-compatible API, very low
-     * latency, llama-3.3-70b quality. Iterates GROQ_MODELS so a single model
-     * outage never blocks generation.
+     * Gemini text inference. Iterates configured Gemini models and fallback keys
+     * so one model/key issue does not block generation.
      */
-    async _callGroqProvider(systemPrompt, userMessage, includeHistory = false, options = {}) {
-        const apiKey = MAYA_CONFIG.API_KEYS.GROQ;
-        if (!apiKey) return null;
+    async _callGeminiProvider(systemPrompt, userMessage, includeHistory = false, options = {}) {
+        const apiKeys = this._getGeminiApiKeys();
+        if (!apiKeys.length) return null;
 
-        const models = MAYA_CONFIG.GROQ_MODELS || ['llama-3.3-70b-versatile'];
-        const messages = [{ role: 'system', content: systemPrompt }];
+        const models = MAYA_CONFIG.GEMINI_TEXT_MODELS || MAYA_CONFIG.GEMINI_MODELS || ['gemini-2.5-flash-lite'];
+        const baseUrl = MAYA_CONFIG.ENDPOINTS.GEMINI_BASE || 'https://generativelanguage.googleapis.com/v1beta/models';
+        const contextMessages = Array.isArray(options.contextMessages)
+            ? options.contextMessages
+                .map((msg) => ({
+                    role: msg?.role === 'assistant' || msg?.role === 'model' ? 'model' : 'user',
+                    parts: [{ text: String(msg?.content || msg?.text || '') }]
+                }))
+                .filter((entry) => entry.parts[0].text)
+            : [];
+        const contextText = contextMessages
+            .map((entry) => entry.parts[0].text)
+            .join('\n\n')
+            .trim();
+        const contents = [];
 
         if (includeHistory) {
-            this.conversationHistory.forEach((msg) => {
-                messages.push({ role: msg.role === 'assistant' ? 'assistant' : 'user', content: msg.content });
-            });
+            if (contextText) {
+                contents.push({ role: 'user', parts: [{ text: contextText }] });
+            }
+            contents.push(...this.conversationHistory.map((msg) => ({
+                role: msg.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: String(msg.content || '') }]
+            })).filter((entry) => entry.parts[0].text));
         } else {
-            messages.push({ role: 'user', content: userMessage });
+            const currentText = contextText
+                ? `${contextText}\n\nCURRENT GENERATION REQUEST:\n${String(userMessage || '')}`
+                : String(userMessage || '');
+            contents.push({ role: 'user', parts: [{ text: currentText }] });
         }
 
-        for (const model of models) {
-            try {
-                console.log(`⚡ Calling Groq model: ${model}...`);
-                const response = await MayaUtils.withTimeout(
-                    fetch('https://api.groq.com/openai/v1/chat/completions', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${apiKey}`
-                        },
-                        body: JSON.stringify({
-                            model,
-                            messages,
-                            temperature: 0.85,
-                            top_p: 0.95,
-                            max_tokens: options?.maxTokens || 8192
-                        })
-                    }),
-                    25000,
-                    `Groq ${model}`
-                );
+        if (!contents.length) {
+            contents.push({ role: 'user', parts: [{ text: String(userMessage || '') }] });
+        }
 
-                if (response.ok) {
-                    const data = await response.json();
-                    const text = data.choices?.[0]?.message?.content;
-                    if (text) {
-                        console.log(`✅ Groq succeeded with model: ${model}`);
-                        return text;
+        const generationConfig = {
+            temperature: options?.temperature ?? 0.85,
+            topP: options?.topP ?? 0.95,
+            maxOutputTokens: options?.maxTokens || 8192
+        };
+
+        for (const apiKey of apiKeys) {
+            for (const model of models) {
+                try {
+                    console.log(`⚡ Calling Gemini model: ${model}...`);
+                    const response = await MayaUtils.withTimeout(
+                        fetch(`${baseUrl}/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                systemInstruction: { parts: [{ text: systemPrompt }] },
+                                contents,
+                                generationConfig
+                            })
+                        }),
+                        25000,
+                        `Gemini ${model}`
+                    );
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const parts = data.candidates?.[0]?.content?.parts || [];
+                        const text = parts.map((part) => part.text || '').join('\n').trim();
+                        if (text) {
+                            console.log(`✅ Gemini succeeded with model: ${model}`);
+                            return text;
+                        }
+                        console.warn(`⚠️ Gemini ${model} returned empty content, trying next...`);
+                        continue;
                     }
-                    console.warn(`⚠️ Groq ${model} returned empty content, trying next...`);
-                    continue;
-                }
 
-                if (response.status === 429 || response.status === 503) {
-                    console.warn(`⚠️ Groq ${model} rate-limited/overloaded (${response.status}), trying next model...`);
-                    continue;
-                }
-                if (response.status === 400 || response.status === 404) {
+                    if (response.status === 429 || response.status === 503) {
+                        console.warn(`⚠️ Gemini ${model} rate-limited/overloaded (${response.status}), trying next...`);
+                        continue;
+                    }
+                    if (response.status === 400 || response.status === 404) {
+                        const errBody = await response.text();
+                        console.warn(`⚠️ Gemini ${model} rejected (${response.status}): ${errBody.substring(0, 160)} -trying next...`);
+                        continue;
+                    }
+
                     const errBody = await response.text();
-                    console.warn(`⚠️ Groq ${model} rejected (${response.status}): ${errBody.substring(0, 160)} -trying next model...`);
-                    continue;
+                    console.warn(`⚠️ Gemini ${model} error ${response.status}: ${errBody.substring(0, 160)}`);
+                } catch (err) {
+                    console.warn(`⚠️ Gemini ${model} threw:`, err.message);
                 }
-
-                const errBody = await response.text();
-                console.warn(`⚠️ Groq ${model} error ${response.status}: ${errBody.substring(0, 160)}`);
-            } catch (err) {
-                console.warn(`⚠️ Groq ${model} threw:`, err.message);
             }
         }
+
         return null;
     },
 
 
 
     /**
-     * Send a chat message via Groq.
+    * Send a chat message via Gemini.
      */
     async sendMessage(message) {
         // Add user message to history
@@ -295,10 +331,10 @@ const MayaAI = {
         let response;
 
         try {
-            this.currentProvider = 'groq';
+            this.currentProvider = 'gemini';
             response = await this.callGemini(message, { includeHistory: true });
         } catch (aiError) {
-            console.error('Groq AI failed:', aiError);
+            console.error('Gemini AI failed:', aiError);
             response = "I apologize, but I'm having trouble connecting to my cosmic wisdom right now. Please try again in a moment.";
         }
 

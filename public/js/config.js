@@ -11,9 +11,8 @@ const _secrets = window.MAYA_SECRETS || {};
 const MAYA_CONFIG = {
     // Public browser keys only. Server-side secrets stay in Vercel functions.
     API_KEYS: {
-        GROQ: _secrets.GROQ_KEY || '',
-        // Gemini is wired ONLY for Palm Reading + Vastu image analysis.
-        // Text generation still goes through Groq -do not route prose calls here.
+        GROQ: '',
+        // Gemini powers text generation plus Palm Reading + Vastu image analysis.
         GEMINI: _secrets.GEMINI_KEY || '',
         GEMINI_FALLBACKS: Array.isArray(_secrets.GEMINI_FALLBACKS) ? _secrets.GEMINI_FALLBACKS : [],
         ELEVENLABS: '',
@@ -26,16 +25,17 @@ const MAYA_CONFIG = {
         GOOGLE_CLIENT_ID: _secrets.GOOGLE_CLIENT_ID || ''
     },
 
-    // Groq is the SOLE AI provider -OpenAI-compatible, free tier
-    // generous, sub-second latency. Models are tried in order; the first
-    // one to respond wins.
-    GROQ_MODELS: [
-        'llama-3.3-70b-versatile',
-        'meta-llama/llama-4-scout-17b-16e-instruct',
-        'llama-3.1-8b-instant'
+    // Deprecated: Groq is no longer used for text generation.
+    GROQ_MODELS: [],
+
+    // Gemini text models. Tried in order; the first valid response wins.
+    GEMINI_TEXT_MODELS: [
+        'gemini-2.5-flash-lite',
+        'gemini-2.5-flash',
+        'gemini-2.0-flash'
     ],
 
-    // Vision-capable Gemini models (image analysis ONLY -palm + vastu).
+    // Vision-capable Gemini models for palm + vastu image analysis.
     // Tried in order; the first one that returns a valid response wins.
     GEMINI_MODELS: [
         'gemini-2.5-flash-lite',
@@ -45,8 +45,8 @@ const MAYA_CONFIG = {
 
     // API Endpoints
     ENDPOINTS: {
-        GROQ: 'https://api.groq.com/openai/v1/chat/completions',
-        // Gemini base URL -used only by the palm + vastu vision callers.
+        GROQ: '',
+        // Gemini base URL for text and vision callers.
         GEMINI_BASE: 'https://generativelanguage.googleapis.com/v1beta/models',
         ELEVENLABS: '/api/tts',
         REMOVE_BACKGROUND: '/api/remove-background',
@@ -245,6 +245,7 @@ You are operating inside the MAYA app - an interactive astrology reading and voi
 Every multi-part reading inside MAYA must feel like one continuous reveal, not isolated answers.
 - Treat the user's journey like chapters: invitation, first clue, life-map context, quiet tension, practical next move, and deeper unlock.
 - Each new generation must continue the emotional thread already in motion instead of restarting with a generic greeting or summary reset.
+- Only the very first opening may greet. Once a reading/prediction has begun, never say Namaste, Hello, Hi, Welcome back, or reintroduce yourself in the middle of the flow.
 - Open each section with one concrete anchor from the user's real chart, numbers, timing, or birth context, then widen into meaning, then leave one live thread that naturally pulls into the next layer.
 - Build suspense through pattern recognition and selective revelation, not vague mysticism, flattery, or fear.
 - As the reading deepens, personalization must become sharper: move from visible markers to more private contradictions, motives, timing windows, tradeoffs, and recurring life patterns.

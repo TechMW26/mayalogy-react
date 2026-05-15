@@ -345,6 +345,87 @@ const MayaFunnel = {
         }
     },
 
+    _hasKundliReadyAnnouncement() {
+        return (Array.isArray(this.spokenNarrations) ? this.spokenNarrations : [])
+            .some((entry) => entry?.stage === 'postKundliTransition' && this._containsKundliReadyAnnouncement(entry.text));
+    },
+
+    _containsKundliReadyAnnouncement(text = '') {
+        const value = String(text || '').toLowerCase();
+        return /कुंडली\s+(?:बन\s+गई|बन\s+चुकी|तैयार\s+हो\s+गई|तैयार\s+है)/i.test(value)
+            || /(?:kundli|chart)\s+is\s+(?:ready|formed)/i.test(value);
+    },
+
+    _stripKundliReadyAnnouncement(text = '') {
+        return String(text || '')
+            .replace(/(?:बहुत\s+अच्छा(?:\s+[^,।.!?]+)?[,\s]*)?(?:आपकी\s+)?कुंडली\s+(?:बन\s+गई|बन\s+चुकी|तैयार\s+हो\s+गई|तैयार\s+है)\s*(?:है)?[।.!?]?\s*/gi, '')
+            .replace(/(?:wonderful|alright|great|okay)[,\s]*(?:[^,.!?]+,\s*)?(?:your\s+)?(?:kundli|chart)\s+is\s+ready[.!?]?\s*/gi, '')
+            .replace(/(?:your\s+)?(?:kundli|chart)\s+is\s+(?:ready|formed)[.!?]?\s*/gi, '')
+            .replace(/\s+/g, ' ')
+            .replace(/^\s*[,।.!?;-]+\s*/, '')
+            .trim();
+    },
+
+    _cleanNarrationForContext(text = '', maxLength = 520) {
+        return String(text || '')
+            .replace(/\[\[pause-\d+\]\]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, maxLength);
+    },
+
+    _buildContinuationGuard(sectionKey, isHindi) {
+        const hasPriorNarration = (this.spokenNarrations?.length || 0) > 0;
+        if (!hasPriorNarration) return '';
+
+        return isHindi
+            ? `## CONTINUITY GUARD -यह fresh session नहीं है
+Current section: ${sectionKey}
+- User पहले से इस reading में है; greeting या restart forbidden है।
+- Output में कहीं भी "नमस्ते", "नमस्कार", "Hello", "Hi", "Hey", "Welcome back", या अपना introduction मत लिखिए।
+- पहला वाक्य पिछली कही बात से naturally आगे बढ़े; ऐसा लगे कि same prediction जारी है।
+- पिछली बातों को summarize मत कीजिए; उनसे आगे नया chart-based point खोलिए।`
+            : `## CONTINUITY GUARD -this is not a fresh session
+Current section: ${sectionKey}
+- The user is already inside this reading; greetings or restarts are forbidden.
+- Do not write "Namaste", "Hello", "Hi", "Hey", "Welcome back", or introduce yourself anywhere in the output.
+- The first sentence must move forward from what was just said, like the same prediction is continuing.
+- Do not summarize the previous material; build from it into a new chart-based point.`;
+    },
+
+    _buildGenerationContinuityContext(sectionKey, isHindi) {
+        const spokenEntries = Array.isArray(this.spokenNarrations) ? this.spokenNarrations : [];
+        const stepEntries = Array.isArray(this.stepContextLog) ? this.stepContextLog : [];
+        if (!spokenEntries.length && !stepEntries.length) return '';
+
+        const selectedSpoken = spokenEntries.length > 10
+            ? [spokenEntries[0], ...spokenEntries.slice(-9)]
+            : spokenEntries;
+        const spokenDigest = selectedSpoken
+            .map((entry) => {
+                const stage = String(entry?.stage || 'previous').trim();
+                const text = this._cleanNarrationForContext(entry?.text, 380);
+                return text ? `[${stage}] ${text}` : '';
+            })
+            .filter(Boolean)
+            .join('\n')
+            .slice(0, 3200);
+        const stepDigest = stepEntries
+            .slice(-16)
+            .map((entry) => {
+                const stage = String(entry?.stage || '').trim();
+                const summary = this._cleanNarrationForContext(entry?.summary, 220);
+                return stage && summary ? `[${stage}] ${summary}` : '';
+            })
+            .filter(Boolean)
+            .join('\n')
+            .slice(0, 1600);
+
+        return isHindi
+            ? `SESSION SO FAR FOR CONTINUITY ONLY. Current next section: ${sectionKey}. User already heard these generations; continue from them, do not greet, do not introduce yourself, do not reset, and do not repeat them.\n\nSpoken generations:\n${spokenDigest || 'None'}${stepDigest ? `\n\nUser answers / flow events:\n${stepDigest}` : ''}`
+            : `SESSION SO FAR FOR CONTINUITY ONLY. Current next section: ${sectionKey}. The user already heard these generations; continue from them, do not greet, do not introduce yourself, do not reset, and do not repeat them.\n\nSpoken generations:\n${spokenDigest || 'None'}${stepDigest ? `\n\nUser answers / flow events:\n${stepDigest}` : ''}`;
+    },
+
     // ============================================================
     //  MAYA VOICE LIBRARY - 100+ bilingual personality lines
     // ============================================================
@@ -1186,20 +1267,25 @@ const MayaFunnel = {
         }
 
         // Guard continuity: after the opening has been spoken, do not allow
-        // fresh-start greetings like "Namaste <name>" to reappear mid-funnel.
+        // fresh-start greetings like "Namaste <name>" to reappear mid-funnel,
+        // even if the model inserts them after the first sentence.
         if ((this.spokenNarrations?.length || 0) > 0) {
             const escapedName = this.escapeRegExp(this.firstName || '').trim();
-            const namedGreeting = escapedName
-                ? new RegExp(`^(?:नमस्ते|hello|hi|hey|greetings)\\s+${escapedName}\\b[,.!?।-]*\\s*`, 'i')
-                : /^(?:नमस्ते|hello|hi|hey|greetings)\b[,.!?।-]*\s*/i;
-
-            const genericGreeting = /^(?:नमस्ते|hello|hi|hey|greetings)(?:\s+(?:i am maya|i'm maya|i am moksh|i'm moksh|mai(?:n)?\s+(?:maya|moksh)\s+hoon|main\s+(?:maya|moksh)\s+hoon))?\b[,.!?।-]*\s*/i;
+            const greetingWord = '(?:नमस्ते|नमस्कार|प्रणाम|namaste\\b|hello\\b|hi\\b|hey\\b|greetings\\b|welcome(?:\\s+back)?\\b|good\\s+(?:morning|afternoon|evening)\\b)';
+            const optionalName = escapedName ? `(?:\\s*,?\\s*${escapedName}\\b)?` : '';
+            const guideIntro = "(?:\\s*,?\\s*(?:i\\s*(?:am|'m)\\s*(?:maya|moksh)|मैं\\s+(?:माया|मोक्ष)\\s+हूँ|मेरा\\s+नाम\\s+(?:माया|मोक्ष)\\s+है))?";
+            const greetingAtStart = new RegExp(`^\\s*${greetingWord}${optionalName}${guideIntro}[,.!?।:;\\-–—]*\\s*`, 'i');
+            const greetingAfterSentence = new RegExp(`([.!?।]\\s*)${greetingWord}${optionalName}${guideIntro}[,.!?।:;\\-–—]*\\s*`, 'gi');
 
             cleaned = cleaned
-                .replace(namedGreeting, '')
-                .replace(genericGreeting, '')
+                .replace(greetingAtStart, '')
+                .replace(greetingAfterSentence, '$1')
                 .replace(/^\s+/, '');
         }
+
+            if (this._hasKundliReadyAnnouncement()) {
+                cleaned = this._stripKundliReadyAnnouncement(cleaned);
+            }
 
         cleaned = cleaned.replace(/\s+/g, ' ').trim();
 
@@ -1646,7 +1732,7 @@ const MayaFunnel = {
      * narrating instead of jumping ahead in silence.
      */
     _getLocalNarrationFallback(key) {
-        const isHindi = (this.userData?.language || 'en') === 'hi';
+        const isHindi = (MayaUtils?.storage?.get('maya_language') || this.userData?.language || 'en') === 'hi';
         const name = this.firstName || (isHindi ? 'दोस्त' : 'friend');
         const sign = this.personalization?.vedic?.hindi
             || this.personalization?.western?.name
@@ -1656,36 +1742,38 @@ const MayaFunnel = {
         const isAskMaya = safeQ.length >= 3;
 
         if (isAskMaya) {
+            const topic = this._classifyUserQuestionTopic(safeQ);
+            const subjectPhrase = this._getAskMayaSubjectPhrase(topic, isHindi);
             const finding = this._isGuiderMale()
                 ? (isHindi ? 'ढूँढ रहा हूँ' : 'finding')
                 : (isHindi ? 'ढूँढ रही हूँ' : 'finding');
             const askLines = isHindi ? {
-                kundliStageNarrative: `बहुत अच्छा ${name}, कुंडली बन गई है। अब मैं आपकी कुंडली, numbers और timing से आपके सवाल का जवाब ${finding}: "${safeQ}"।`,
-                teaserRevealNarration: `${name}, इस सवाल में एक साफ signal दिख रहा है। पूरा जवाब file save होने के बाद खोलूँगी, लेकिन अभी direction आपके सवाल से ही जुड़ी रहेगी।`,
-                allNumbersNarrative: `numbers भी इसी सवाल की timing को sharpen कर रहे हैं। अब मैं इन्हें कुंडली के साथ जोड़कर answer को precise करूँगी।`,
-                lifePathCalculationNarrative: `Life Path यहाँ आपके सवाल की natural direction दिखाता है।`,
-                destinyCalculationNarrative: `Destiny number बताता है कि इस सवाल में बाहर से कौनसी भूमिका बन रही है।`,
-                soulUrgeCalculationNarrative: `Soul Urge number इस सवाल के पीछे आपकी असली चाहत दिखाता है।`
+                kundliStageNarrative: `ठीक है ${name}, कुंडली का विन्यास अभी बन रहा है। अब मैं ${subjectPhrase} को कुंडली, numbers और timing से ${finding}।`,
+                teaserRevealNarration: `${name}, ${subjectPhrase} में एक साफ signal दिख रहा है। पूरा जवाब file save होने के बाद खुलेगा, लेकिन अभी direction इसी विषय पर locked रहेगी।`,
+                allNumbersNarrative: `numbers भी ${subjectPhrase} को sharpen कर रहे हैं। अब मैं इन्हें कुंडली के साथ जोड़कर answer precise करूँगी।`,
+                lifePathCalculationNarrative: `Life Path यहाँ ${subjectPhrase} की natural direction दिखाता है।`,
+                destinyCalculationNarrative: `Destiny number बताता है कि ${subjectPhrase} में बाहर से कौनसी भूमिका बन रही है।`,
+                soulUrgeCalculationNarrative: `Soul Urge number ${subjectPhrase} के पीछे आपकी असली चाहत दिखाता है।`
             } : {
-                kundliStageNarrative: `Alright ${name}, your chart is ready. Now I am ${finding} the answer to your question through your kundli, numbers, and timing: "${safeQ}".`,
-                teaserRevealNarration: `${name}, one clear signal is showing around this question. I will open the full answer after the file is saved, but the direction stays locked to what you asked.`,
-                allNumbersNarrative: `The numbers are sharpening the timing of this same question. Now I will line them up with the chart to make the answer precise.`,
-                lifePathCalculationNarrative: `Life Path shows the natural direction behind your question.`,
-                destinyCalculationNarrative: `Destiny shows the outer role forming around this question.`,
-                soulUrgeCalculationNarrative: `Soul Urge shows what you truly want underneath this question.`
+                kundliStageNarrative: `Alright ${name}, I am forming your chart now. I am ${finding} your ${subjectPhrase} through kundli, numbers, and timing.`,
+                teaserRevealNarration: `${name}, one clear signal is showing around your ${subjectPhrase}. I will open the full answer after the file is saved, but the direction stays locked here.`,
+                allNumbersNarrative: `The numbers are sharpening your ${subjectPhrase}. Now I will line them up with the chart to make the answer precise.`,
+                lifePathCalculationNarrative: `Life Path shows the natural direction behind your ${subjectPhrase}.`,
+                destinyCalculationNarrative: `Destiny shows the outer role forming around your ${subjectPhrase}.`,
+                soulUrgeCalculationNarrative: `Soul Urge shows what you truly want underneath your ${subjectPhrase}.`
             };
             if (askLines[key]) return askLines[key];
         }
 
         const lines = isHindi ? {
-            kundliStageNarrative: `बहुत अच्छा ${name}, आपकी कुंडली बन गई है। ${sign} का प्रभाव साफ दिख रहा है, और कुछ खास combinations सामने आ रहे हैं -एक-एक करके खोलते हैं।`,
+            kundliStageNarrative: `ठीक है ${name}, आपकी कुंडली का विन्यास अभी बन रहा है। ${sign} का प्रभाव साफ दिख रहा है, और कुछ खास combinations सामने आ रहे हैं -एक-एक करके खोलते हैं।`,
             teaserRevealNarration: `${name}, एक pattern दिख रहा है पिछले कुछ समय का। ज़िंदगी में एक shift चल रहा है -वो हम आगे detail में देखेंगे।`,
             allNumbersNarrative: `numbers ने भी अपनी कहानी कह दी है ${name}। आपके life path और destiny में एक clear theme है -चलिए उसे कुंडली के साथ जोड़ते हैं।`,
             lifePathCalculationNarrative: `आपका life path number आपके होने का core दिखाता है -यही वो रास्ता है जिस पर आप सबसे natural feel करते हैं।`,
             destinyCalculationNarrative: `destiny number बताता है आप क्या बनने वाले हैं -आपका full नाम इसका कारण है।`,
             soulUrgeCalculationNarrative: `soul urge number आपकी अंदर की चाह है -जो आप सच में चाहते हैं, वो यहाँ छुपा है।`
         } : {
-            kundliStageNarrative: `Alright ${name}, your chart is ready. ${sign} energy is showing up clearly, and a few interesting combinations are surfacing -let's open them one by one.`,
+            kundliStageNarrative: `Alright ${name}, I am forming your chart now. ${sign} energy is showing up clearly, and a few interesting combinations are surfacing -let's open them one by one.`,
             teaserRevealNarration: `${name}, there's a pattern visible from the recent past. A real shift is in motion -we'll get into the detail of it next.`,
             allNumbersNarrative: `The numbers have spoken too, ${name}. Your life path and destiny share a clear theme -let's line them up against the chart.`,
             lifePathCalculationNarrative: `Your life path number reveals the core of who you are -the path that feels most natural for you to walk.`,
@@ -1706,35 +1794,39 @@ const MayaFunnel = {
         const isAskMaya = safeQ.length >= 3;
         const topic = isAskMaya ? this._classifyUserQuestionTopic(safeQ) : 'general';
         const topicLabel = this._getAskMayaTopicLabel(topic, isHindi);
+        const subjectPhrase = isAskMaya ? this._getAskMayaSubjectPhrase(topic, isHindi) : topicLabel;
+        const willOpen = this._isGuiderMale() ? 'खोलूँगा' : 'खोलूँगी';
+        const willRead = this._isGuiderMale() ? 'पढ़ूँगा' : 'पढ़ूँगी';
+        const canSaveMore = this._isGuiderMale() ? 'पाऊँगा' : 'पाऊँगी';
         const gateLine = isHindi
-            ? `${name}, इसके आगे बढ़ते हुए मैं इससे ज़्यादा details आपके लिए save नहीं कर पाऊँगी -please save करने के लिए अपना mobile number डाल दीजिए।`
+            ? `${name}, इसके आगे बढ़ते हुए मैं इससे ज़्यादा details आपके लिए save नहीं कर ${canSaveMore} -please save करने के लिए अपना mobile number डाल दीजिए।`
             : `${name}, from here on I won't be able to save any more of these details for you -please drop your mobile number so I can save them.`;
 
         if (isAskMaya) {
             const askFallbacks = isHindi ? {
-                kundli: `मैं आपके सवाल "${safeQ}" का जवाब कुंडली, numbers और timing से ही ढूँढ रही हूँ। ${topicLabel} से जुड़ा एक मुख्य signal दिख रहा है, लेकिन पूरा answer खोलने से पहले मुझे आपकी current situation का एक छोटा detail चाहिए।`,
-                combinedTeaser: `${name}, आपके सवाल "${safeQ}" में chart एक साफ direction दिखा रहा है। यह answer ${topicLabel} से बाहर नहीं जाएगा। [[pause-250]] अभी सिर्फ इतना समझिए कि timing और आपके current phase दोनों इस सवाल में important हैं। [[pause-250]] पूरा answer save होने के बाद exact reason, timing और practical step के साथ खुलेगा।`,
-                identityTruth: `${name}, इस सवाल में आपका सबसे बड़ा pattern clarity माँगना है, approval नहीं। Chart में ${topicLabel} से जुड़ी timing active दिख रही है।`,
-                emotionalPattern: `इस सवाल के पीछे अंदर से बेचैनी है कि सही time निकल न जाए। इसलिए answer में timing और practical next step दोनों चाहिए।`,
-                unresolvedThread: `इसका खुला हुआ thread यही है कि ${topicLabel} में अगला सही move कब लेना है। File save होते ही मैं इसे exact window के साथ खोलूँगी।`,
+                kundli: `मैं ${subjectPhrase} को कुंडली, numbers और timing से ही ${willRead}। ${topicLabel} से जुड़ा एक मुख्य signal दिख रहा है, लेकिन पूरा answer खोलने से पहले मुझे आपकी current situation का एक छोटा detail चाहिए।`,
+                combinedTeaser: `${name}, ${subjectPhrase} में chart एक साफ direction दिखा रहा है। यह answer ${topicLabel} से बाहर नहीं जाएगा। [[pause-250]] अभी सिर्फ इतना समझिए कि timing और आपका current phase दोनों important हैं। [[pause-250]] पूरा answer save होने के बाद exact reason, timing और practical step के साथ खुलेगा।`,
+                identityTruth: `${name}, यहाँ आपका सबसे बड़ा pattern clarity माँगना है, approval नहीं। Chart में ${topicLabel} से जुड़ी timing active दिख रही है।`,
+                emotionalPattern: `${subjectPhrase} के पीछे अंदर से बेचैनी है कि सही time निकल न जाए। इसलिए answer में timing और practical next step दोनों चाहिए।`,
+                unresolvedThread: `इसका खुला हुआ thread यही है कि ${topicLabel} में अगला सही move कब लेना है। File save होते ही मैं इसे exact window के साथ ${willOpen}।`,
                 accuracyShock: `पिछले कुछ समय में इसी सवाल से जुड़ा pressure अचानक बढ़ा है। यह random नहीं है -chart में timing shift इसी area को activate कर रही है।`,
-                suspenseBridge: `आपके सवाल "${safeQ}" में सबसे intense pattern timing और decision का है। इसका पूरा truth यहाँ खोलना ठीक नहीं होगा, क्योंकि exact answer save file में chart, numbers और timing मिलाकर खुलेगा। आपकी पूरी file तैयार है, बस इसे save कर लीजिए।`,
+                suspenseBridge: `${subjectPhrase} में सबसे intense pattern timing और decision का है। इसका पूरा truth यहाँ खोलना ठीक नहीं होगा, क्योंकि exact answer save file में chart, numbers और timing मिलाकर खुलेगा। आपकी पूरी file तैयार है, बस इसे save कर लीजिए।`,
                 emailGate: `Reading का अगला layer तैयार है। ${gateLine}`,
                 fomoHook: `${topicLabel} में एक serious timing signal दिख रहा है। Full details private reading में खुलेंगी, क्योंकि यहाँ half-answer देना सही नहीं होगा।`,
                 returnHook: `${topicLabel} में अगले phase की timing साफ दिख रही है। अगली बार इसे exact month के साथ खोलेंगे।`,
-                completion: `${name}, मैंने आपका सवाल इसी direction में पढ़ा है। अब आप चाहें तो इसी topic पर follow-up पूछ सकते हैं।`
+                completion: `${name}, मैंने ${subjectPhrase} को इसी direction में पढ़ा है। अब आप चाहें तो इसी topic पर follow-up पूछ सकते हैं।`
             } : {
-                kundli: `I am finding the answer to your question "${safeQ}" through your kundli, numbers, and timing. One main signal around ${topicLabel} is visible, but I need one small current-situation detail before opening the full answer.`,
-                combinedTeaser: `${name}, your question "${safeQ}" has a clear chart direction. The answer will stay inside ${topicLabel}, not drift elsewhere. [[pause-250]] For now, know that timing and your current phase both matter here. [[pause-250]] Once saved, I will open the exact reason, timing, and practical next step.`,
-                identityTruth: `${name}, the main pattern in this question is that you need clarity, not reassurance. The chart shows timing active around ${topicLabel}.`,
-                emotionalPattern: `Under this question is the worry that the right time may slip away. So the answer needs both timing and a practical next step.`,
+                kundli: `I am reading your ${subjectPhrase} through kundli, numbers, and timing. One main signal around ${topicLabel} is visible, but I need one small current-situation detail before opening the full answer.`,
+                combinedTeaser: `${name}, your ${subjectPhrase} has a clear chart direction. The answer will stay inside ${topicLabel}, not drift elsewhere. [[pause-250]] For now, know that timing and your current phase both matter here. [[pause-250]] Once saved, I will open the exact reason, timing, and practical next step.`,
+                identityTruth: `${name}, the main pattern here is that you need clarity, not reassurance. The chart shows timing active around ${topicLabel}.`,
+                emotionalPattern: `Under your ${subjectPhrase} is the worry that the right time may slip away. So the answer needs both timing and a practical next step.`,
                 unresolvedThread: `The unresolved thread is when to take the next correct move in ${topicLabel}. Once the file is saved, I will open it with an exact window.`,
                 accuracyShock: `In the recent past, pressure around this same question has increased suddenly. It is not random -the chart's timing shift is activating this area.`,
-                suspenseBridge: `The most intense pattern in your question "${safeQ}" is timing and decision. It would not be right to open the full truth here, because the exact answer needs chart, numbers, and timing together in your saved file. Your full file is ready, just save it.`,
+                suspenseBridge: `The most intense pattern in your ${subjectPhrase} is timing and decision. It would not be right to open the full truth here, because the exact answer needs chart, numbers, and timing together in your saved file. Your full file is ready, just save it.`,
                 emailGate: `The next layer of the reading is ready. ${gateLine}`,
                 fomoHook: `There is a serious timing signal around ${topicLabel}. The full details belong in your private reading, because a half-answer here would not be fair.`,
                 returnHook: `The next phase around ${topicLabel} is visible. Next time, we will open it with the exact month.`,
-                completion: `${name}, I read your question in this direction. You can ask a follow-up on this same topic now.`
+                completion: `${name}, I read your ${subjectPhrase} in this direction. You can ask a follow-up on this same topic now.`
             };
             if (askFallbacks[sectionKey]) return askFallbacks[sectionKey];
         }
@@ -1860,7 +1952,10 @@ ${this.getBaseRules(false)}`);
         const context = extraContext ? { ...baseContext, ...extraContext } : baseContext;
 
         if (stage === 'kundliFormation') {
-            return await this.generateDirectReadingSection('kundli', context);
+            return await this.generateDirectReadingSection('kundli', {
+                ...context,
+                kundliFormationInProgress: true
+            });
         }
 
         return '';
@@ -2233,6 +2328,7 @@ ${this.getBaseRules(false)}`);
             const safeQ = userQuestionRaw.replace(/`/g, "'").slice(0, 320);
             const qTopic = this._classifyUserQuestionTopic(safeQ);
             const qTopicLabel = this._getAskMayaTopicLabel(qTopic, isHindi);
+            const qSubjectPhrase = this._getAskMayaSubjectPhrase(qTopic, isHindi);
             // Build an anti-repetition snippet from previously spoken narrations
             // so the AI doesn't echo phrases the user has already heard.
             const recentSpoken = (Array.isArray(this.spokenNarrations) ? this.spokenNarrations : [])
@@ -2247,9 +2343,11 @@ ${this.getBaseRules(false)}`);
                 lines.push("");
                 lines.push("");
                 lines.push("## USER'S BURNING QUESTION (HIGHEST PRIORITY -हर section इसी के around बनेगा)");
-                lines.push('User ने शुरुआत में यह सवाल पूछा है: "' + safeQ + '"');
+                lines.push('Original user question, INTERNAL CONTEXT ONLY: "' + safeQ + '"');
                 lines.push('Topic lock: ' + qTopicLabel);
+                lines.push('Spoken subject phrase: ' + qSubjectPhrase);
                 lines.push("REGEL:");
+                lines.push("- Original question को spoken output में verbatim quote या repeat मत कीजिए। सिर्फ spoken subject phrase या natural shorthand use कीजिए।");
                 lines.push("- TOPIC LOCK (CRITICAL): यह पूरी reading केवल '" + qTopicLabel + "' के बारे में है। प्यार/career/पैसा/सेहत/परिवार/शादी/संतान/यात्रा/पढ़ाई जैसे unrelated topics को MENTION भी मत कीजिए, चाहे chart उन्हें कितना भी highlight करे। अगर सवाल '" + qTopicLabel + "' के बारे में है, तो दूसरा कोई topic open करना forbidden है।");
                 lines.push("- LENGTH CAP: इस section में MAX 3-4 छोटे वाक्य। One spoken paragraph, no filler, no preamble। हर वाक्य user के सवाल से directly जुड़ा हो।");
                 lines.push("- सीधे point पर आइए। 'मैं देख रही हूँ', 'चलिए देखते हैं', 'आपकी कुंडली में' जैसे filler openers से बचिए — पहला शब्द ही substance हो।");
@@ -2260,7 +2358,7 @@ ${this.getBaseRules(false)}`);
                     lines.push("- यह section POST-LOGIN है: अब इसी सवाल का COMPLETE, SPECIFIC, और HONEST answer दीजिए। Chart evidence (ग्रह, राशि, घर, दशा, transit) को NAME करके बताइए कि इस सवाल का जवाब क्या है, क्यों है, कब-कब क्या होगा, और क्या practical action / remedy लेना चाहिए। Vague मत रहिए।");
                 }
                 if (sectionKey === 'opening' || sectionKey === 'kundli') {
-                    lines.push("- IMPORTANT: इस section का BAHUT FIRST sentence यह होना चाहिए कि आप उनके सवाल — '" + safeQ + "' — का जवाब उनकी कुंडली, numbers और timing से ढूँढने जा रही हैं। यह promise stated होना चाहिए, implied नहीं।");
+                    lines.push("- IMPORTANT: इस section का BAHUT FIRST sentence यह होना चाहिए कि आप " + qSubjectPhrase + " का जवाब उनकी कुंडली, numbers और timing से ढूँढने जा रही हैं। Exact original question quote मत कीजिए।");
                     lines.push("- Kundli के structure की लम्बी व्याख्या मत दीजिए। केवल 1 chart marker name कीजिए और तुरंत user के सवाल की तरफ pivot कीजिए।");
                 }
                 if (recentSpoken) {
@@ -2271,9 +2369,11 @@ ${this.getBaseRules(false)}`);
                 lines.push("");
                 lines.push("");
                 lines.push("## USER'S BURNING QUESTION (HIGHEST PRIORITY -every section bends toward this)");
-                lines.push('The user asked this on the landing screen: "' + safeQ + '"');
+                lines.push('Original user question, INTERNAL CONTEXT ONLY: "' + safeQ + '"');
                 lines.push('Topic lock: ' + qTopicLabel);
+                lines.push('Spoken subject phrase: ' + qSubjectPhrase);
                 lines.push("RULES:");
+                lines.push("- Do NOT quote or repeat the original question verbatim in spoken output. Use the spoken subject phrase or a natural shorthand instead.");
                 lines.push("- TOPIC LOCK (CRITICAL): This entire reading is ONLY about '" + qTopicLabel + "'. Do NOT mention unrelated topics like love/career/money/health/family/marriage/children/travel/education even if the chart highlights them. Opening another topic is FORBIDDEN.");
                 lines.push("- LENGTH CAP: MAX 3-4 short sentences in this section. One spoken paragraph. No preamble, no filler. Every sentence must directly serve the user's question.");
                 lines.push("- Get to the point. Avoid filler openers like 'I can see', 'Let me look', 'In your chart' — the first word should already be substance.");
@@ -2284,7 +2384,7 @@ ${this.getBaseRules(false)}`);
                     lines.push("- This section is POST-LOGIN: now give the COMPLETE, SPECIFIC, and HONEST answer to this exact question. NAME the chart evidence (planet, sign, house, dasha, transit) and explain WHAT the answer is, WHY it is so, WHEN things will unfold, and what practical action / remedy to take. Do NOT stay vague.");
                 }
                 if (sectionKey === 'opening' || sectionKey === 'kundli') {
-                    lines.push("- IMPORTANT: The VERY FIRST sentence of this section MUST explicitly tell the user that you are going to find the answer to their question — '" + safeQ + "' — using their kundli, numbers, and timing. State this promise out loud, do not imply it.");
+                    lines.push("- IMPORTANT: The VERY FIRST sentence of this section MUST explicitly tell the user that you are finding their " + qSubjectPhrase + " using kundli, numbers, and timing. Do not quote the exact original question.");
                     lines.push("- Do NOT spend time describing the kundli's structure. Quote at most ONE chart marker as supporting evidence and immediately pivot to addressing the user's question.");
                 }
                 if (recentSpoken) {
@@ -2318,7 +2418,25 @@ ${this.getBaseRules(false)}`);
         const factsForSection = isQuestionPreAuth ? compactQuestionFacts : commonFacts;
         const commonFactsWithQuestion = userQuestionBlock ? (userQuestionBlock + "\n\n" + factsForSection) : factsForSection;
 
-        const sharedRules = this.getBaseRules(isHindi);
+        const sharedRules = isQuestionPreAuth
+            ? (isHindi
+                ? `Rules:
+- Original question को spoken text में quote/repeat मत करें; short subject phrase use करें।
+- 2-4 छोटे वाक्य, natural spoken Hindi, no bullet points।
+- Topic lock से बाहर कोई area mention मत करें।
+- पिछली बात repeat मत करें; नया angle दें।
+- Greeting/restart forbidden: "नमस्ते", "Hello", "Hi", guide introduction, या fresh-session opener कहीं भी मत लिखिए।
+- Previous spoken context से आगे बढ़िए; ऐसा लगे कि same prediction continue हो रही है।
+- TTS-safe: एक flowing paragraph, no JSON, no headings.`
+                : `Rules:
+- Do not quote/repeat the original question in spoken text; use the short subject phrase.
+- 2-4 short sentences, natural spoken English, no bullets.
+- Do not mention any area outside the topic lock.
+- Do not repeat previous lines; add a fresh angle.
+- Greeting/restart forbidden: do not write Namaste, Hello, Hi, a guide introduction, or any fresh-session opener anywhere.
+- Move forward from the previous spoken context so it feels like the same prediction is continuing.
+- TTS-safe: one flowing paragraph, no JSON, no headings.`)
+            : this.getBaseRules(isHindi);
 
         const sectionPrompts = isHindi
             ? {
@@ -2434,6 +2552,7 @@ All three segments must connect as one flowing story — every segment must cite
                 ? `\n\n## USER SESSION MEMORY (reference naturally, don't quote):\n${memoryContext}`
                 : `\n\n## USER SESSION MEMORY (reference naturally, don't quote):\n${memoryContext}`)
             : '';
+        const isKundliFormationInProgress = sectionKey === 'kundli' && context.kundliFormationInProgress === true;
 
         // Per-session opening freshness directive -guarantees the very first line
         // sounds different every time a user opens MAYA, so two sessions never
@@ -2442,35 +2561,64 @@ All three segments must connect as one flowing story — every segment must cite
             ? `\n\n${this._buildFreshOpeningDirective(isHindi)}`
             : '';
 
-        const activeSectionPrompt = (userQuestionRaw && sectionKey === 'kundli')
+        const activeSectionPrompt = isKundliFormationInProgress
             ? (isHindi
-                ? `Current user के Ask-Maya question funnel के लिए ONE kundli-stage narration। EXACTLY 2-3 short sentences। FIRST sentence में साफ कहिए कि आप user के सवाल का जवाब कुंडली, numbers और timing से ढूँढ रही हैं। "कुंडली की गहराइयों में उतरते हैं", generic chart exploration, और unrelated topics forbidden। सिर्फ ONE chart marker quote करें, फिर immediately user के सवाल की तरफ pivot करें।`
-                : `Write ONE kundli-stage narration for the Ask-Maya question funnel. EXACTLY 2-3 short sentences. The FIRST sentence must clearly say you are finding the answer to the user's question through kundli, numbers, and timing. Generic chart exploration and unrelated topics are forbidden. Quote only ONE chart marker, then immediately pivot back to the user's question.`)
+                ? `Current user के Kundli formation animation के DURING ONE in-progress narration। EXACTLY 2-3 short sentences। CRITICAL: कुंडली अभी बन रही है, इसलिए "कुंडली बन गई है", "कुंडली तैयार है", "बहुत अच्छा", या completion/praise opener मत कहिए। Present progressive language use करें: "विन्यास बन रहा है", "ग्रह अपनी जगह ले रहे हैं", "संकेत उभर रहे हैं"। अगर Ask-Maya question है तो उसी subject की तरफ pivot करें, पर chart complete होने की घोषणा न करें।`
+                : `Write ONE in-progress narration during the Kundli formation animation. EXACTLY 2-3 short sentences. CRITICAL: the chart is still forming, so do NOT say "your kundli is ready", "your chart is ready", "wonderful", or any completion/praise opener. Use present-progressive language: "the chart is forming", "the planets are settling", "markers are emerging". If this is an Ask-Maya question flow, pivot toward that subject, but do not announce completion.`)
+            : (userQuestionRaw && sectionKey === 'kundli')
+            ? (isHindi
+                ? `Current user के Ask-Maya question funnel के लिए ONE kundli-stage narration। EXACTLY 2-3 short sentences। FIRST sentence में साफ कहिए कि आप spoken subject phrase का जवाब कुंडली, numbers और timing से ढूँढ रही हैं; exact original question quote मत कीजिए। "कुंडली की गहराइयों में उतरते हैं", generic chart exploration, और unrelated topics forbidden। सिर्फ ONE chart marker quote करें, फिर immediately उसी विषय पर pivot करें।`
+                : `Write ONE kundli-stage narration for the Ask-Maya question funnel. EXACTLY 2-3 short sentences. The FIRST sentence must clearly say you are finding the spoken subject phrase through kundli, numbers, and timing; do not quote the exact original question. Generic chart exploration and unrelated topics are forbidden. Quote only ONE chart marker, then immediately pivot back to that subject.`)
             : (sectionPrompts[sectionKey] || sectionPrompts.completion);
 
-        return this._genderFlipPrompt(`${activeSectionPrompt}${freshnessBlock}\n\nNarrative arc for this section:\n${narrativeStageGuide}\n\n${commonFactsWithQuestion}\n\n${this._buildAlreadySpokenContext(sectionKey, isHindi)}${memoryBlock}\n\n${sharedRules}\n\nReturn only the spoken text.`);
+        const alreadySpokenForPrompt = this._buildAlreadySpokenContext(sectionKey, isHindi, { compact: isQuestionPreAuth });
+        const continuationGuard = this._buildContinuationGuard(sectionKey, isHindi);
+
+        return this._genderFlipPrompt(`${continuationGuard}${continuationGuard ? '\n\n' : ''}${activeSectionPrompt}${freshnessBlock}\n\nNarrative arc for this section:\n${narrativeStageGuide}\n\n${commonFactsWithQuestion}\n\n${alreadySpokenForPrompt}${memoryBlock}\n\n${sharedRules}\n\nReturn only the spoken text.`);
     },
 
     /**
      * Build a summary of what was already spoken so AI avoids repetition.
      */
-    _buildAlreadySpokenContext(sectionKey, isHindi) {
+    _buildAlreadySpokenContext(sectionKey, isHindi, options = {}) {
         // ALL sections get context from previous narrations (not just deep sections)
         if (!this.spokenNarrations?.length) return '';
         // Skip only for the very first section (opening)
         if (sectionKey === 'opening' && this.spokenNarrations.length === 0) return '';
 
-        // Build a FULL digest of what was already told - no truncation so AI has complete context
-        const digest = this.spokenNarrations
+        const entries = options.compact
+            ? (this.spokenNarrations.length > 8 ? [this.spokenNarrations[0], ...this.spokenNarrations.slice(-7)] : this.spokenNarrations)
+            : this.spokenNarrations;
+        const digest = entries
             .map(n => {
-                const cleaned = (n.text || '').replace(/\[\[pause-\d+\]\]/g, '').trim();
+                const cleaned = this._cleanNarrationForContext(n.text, options.compact ? 320 : 700);
                 return `[${n.stage}]: ${cleaned}`;
             })
-            .join('\n');
+            .join('\n')
+            .slice(0, options.compact ? 1800 : 5000);
+        const stepTrail = Array.isArray(this.stepContextLog) && this.stepContextLog.length
+            ? this.stepContextLog
+                .slice(options.compact ? -8 : -20)
+                .map((entry) => {
+                    const stage = String(entry?.stage || '').trim();
+                    const summary = this._cleanNarrationForContext(entry?.summary, options.compact ? 160 : 260);
+                    return stage && summary ? `[${stage}]: ${summary}` : '';
+                })
+                .filter(Boolean)
+                .join('\n')
+                .slice(0, options.compact ? 900 : 2200)
+            : '';
+        const flowDigest = [digest, stepTrail ? `Flow/user answers:\n${stepTrail}` : ''].filter(Boolean).join('\n');
+
+        if (options.compact) {
+            return isHindi
+                ? `## अब तक कहा गया संक्षेप (repeat मत करें, reset/greeting मत करें)\n${flowDigest}\n`
+                : `## Recent spoken context (do not repeat, do not reset/greet)\n${flowDigest}\n`;
+        }
 
         return isHindi
-            ? `## पहले बताई गई बातें - FULL SESSION CONTEXT (CRITICAL)\nUser को इस session में अब तक ये सब बताया जा चुका है। यह COMPLETE transcript है - इसे ध्यान से पढ़िए:\n${digest}\n\n⚠️ STRICT RULES:\n- ऊपर बताई गई कोई भी बात repeat, rephrase, या summarize मत कीजिए।\n- हर नया section MUST contain completely NEW insights जो ऊपर कहीं नहीं हैं।\n- अगर कोई planet, event, pattern, या time period ऊपर mention हो चुका है, तो उसे दोबारा मत बोलिए - नया angle या नई बात लाइए।\n- इस context को अपनी reading का FOUNDATION बनाइए - पिछली बातों से BUILD करिए, repeat मत करिए।`
-            : `## FULL SESSION CONTEXT (CRITICAL)\nThe user has heard ALL of the following in this session. Read this complete transcript carefully:\n${digest}\n\n⚠️ STRICT RULES:\n- Do NOT repeat, rephrase, or summarize ANY point from above.\n- Every new section MUST contain completely NEW insights not found anywhere above.\n- If a planet, event, pattern, or time period was already mentioned above, do NOT bring it up again - find a new angle or new fact.\n- Use this context as your FOUNDATION - BUILD on previous insights, never repeat them.`;
+            ? `## पहले बताई गई बातें - SESSION CONTEXT (CRITICAL)\nUser को इस session में अब तक ये बताया जा चुका है:\n${flowDigest}\n\n⚠️ STRICT RULES:\n- ऊपर बताई गई कोई भी बात repeat, rephrase, या summarize मत कीजिए।\n- हर नया section MUST contain completely NEW insights जो ऊपर कहीं नहीं हैं।\n- अगर कोई planet, event, pattern, या time period ऊपर mention हो चुका है, तो उसे दोबारा मत बोलिए - नया angle या नई बात लाइए।\n- इस context को अपनी reading का FOUNDATION बनाइए - पिछली बातों से BUILD करिए, repeat मत करिए।\n- Greeting/reset forbidden: नमस्ते, Hello, Hi, Welcome back, या guide introduction कहीं भी मत लिखिए।`
+            : `## SESSION CONTEXT (CRITICAL)\nThe user has heard the following in this session:\n${flowDigest}\n\n⚠️ STRICT RULES:\n- Do NOT repeat, rephrase, or summarize ANY point from above.\n- Every new section MUST contain completely NEW insights not found anywhere above.\n- If a planet, event, pattern, or time period was already mentioned above, do NOT bring it up again - find a new angle or new fact.\n- Use this context as your FOUNDATION - BUILD on previous insights, never repeat them.\n- Greeting/reset forbidden: do not write Namaste, Hello, Hi, Welcome back, or a guide introduction anywhere.`;
     },
 
     /**
@@ -2725,10 +2873,15 @@ All three segments must connect as one flowing story — every segment must cite
             });
 
             const prompt = this.buildDirectSectionPrompt(sectionKey, context);
+            const isHindi = lang === 'hi';
+            const generationContext = this._buildGenerationContinuityContext(sectionKey, isHindi);
+            const aiOptions = generationContext
+                ? { contextMessages: [{ role: 'user', content: generationContext }] }
+                : {};
             const sources = [];
 
             if (window.MayaAI?.callGemini) {
-                sources.push(async () => MayaAI.callGemini(prompt));
+                sources.push(async () => MayaAI.callGemini(prompt, aiOptions));
             }
 
             if (!sources.length && window.MayaAI?.sendMessage) {
@@ -2740,7 +2893,7 @@ All three segments must connect as one flowing story — every segment must cite
             }
 
             const generated = await MayaUtils.retryWithFallbacks(sources, {
-                retriesPerFunction: 2,
+                retriesPerFunction: this._isAskMayaFlow() ? 1 : 2,
                 baseDelay: 800,
                 label: `${sectionKey} direct reading`
             });
@@ -3187,6 +3340,30 @@ All three segments must connect as one flowing story — every segment must cite
      * Gives a meaningful, warm, forward-looking response tied to the user's chart.
      * Falls back to a static pool if AI fails.
      */
+    _getLocalMcqAck(question, answerLabel, answerValue, isHindi) {
+        const profile = this.personalization || {};
+        const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
+        const moonSign = profile.moonSign || profile.vedic?.name || '';
+        const ascendant = profile.ascendant?.name || '';
+        const marker = dasha || moonSign || ascendant;
+        const answer = String(answerLabel || answerValue || '').trim();
+        const isAskMaya = this._isAskMayaFlow();
+
+        if (isAskMaya) {
+            const topic = this._classifyUserQuestionTopic(this._getActiveUserQuestion());
+            const subjectPhrase = this._getAskMayaSubjectPhrase(topic, isHindi);
+            if (isHindi) {
+                return `${answer ? `ठीक है, "${answer}" से ` : 'ठीक है, इससे '} ${subjectPhrase} की तस्वीर ज्यादा साफ हो रही है। ${marker ? `${marker} का signal अब इस real-life detail से जुड़ रहा है, इसलिए आगे answer बिना भटके इसी दिशा में खुलेगा।` : 'अब आगे answer बिना भटके इसी दिशा में खुलेगा।'}`;
+            }
+            return `${answer ? `Got it, "${answer}" makes ` : 'Got it, that makes '}your ${subjectPhrase} clearer. ${marker ? `The ${marker} signal now has a real-life anchor, so the next layer can stay precise instead of drifting.` : 'The next layer can stay precise instead of drifting.'}`;
+        }
+
+        if (isHindi) {
+            return `${answer ? `ठीक है, "${answer}" note कर लिया।` : 'ठीक है, यह note कर लिया।'} ${marker ? `${marker} के साथ यह जवाब reading को ज्यादा personal बना रहा है, इसलिए अगली बात सीधे आपके pattern से जुड़ेगी।` : 'यह जवाब reading को ज्यादा personal बना रहा है, इसलिए अगली बात सीधे आपके pattern से जुड़ेगी।'}`;
+        }
+        return `${answer ? `Got it, I have noted "${answer}".` : 'Got it, I have noted that.'} ${marker ? `With ${marker} in view, this makes the reading more personal, so the next part can connect directly to your pattern.` : 'This makes the reading more personal, so the next part can connect directly to your pattern.'}`;
+    },
+
     async _generateMcqAck(question, answerLabel, answerValue, isHindi) {
         const profile = this.personalization || {};
         const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
@@ -3196,6 +3373,11 @@ All three segments must connect as one flowing story — every segment must cite
         const yogas = (profile.yogaNames || []).slice(0, 2).join(', ');
         const gender = this.userData?.gender === 'female' ? 'female' : 'male';
         const genderHi = gender === 'female' ? 'स्त्री' : 'पुरुष';
+        const localAck = this._getLocalMcqAck(question, answerLabel, answerValue, isHindi);
+
+        if (this._isAskMayaFlow()) {
+            return localAck;
+        }
 
         let ack = '';
         try {
@@ -3249,8 +3431,8 @@ FORBIDDEN: bullet points, generic phrases like "the picture is getting clear", r
 ONLY return the spoken response. Nothing else.`;
 
             if (window.MayaAI?.callGemini) {
-                // Try up to 2 attempts -no static fallbacks
-                for (let attempt = 0; attempt < 2 && !ack; attempt++) {
+                // Try once, then keep the flow moving with a local bridge.
+                for (let attempt = 0; attempt < 1 && !ack; attempt++) {
                     try {
                         const result = await MayaAI.callGemini(ackPrompt);
                         if (result && result.length > 10 && result.length < 350) {
@@ -3265,8 +3447,7 @@ ONLY return the spoken response. Nothing else.`;
             console.warn('AI ack failed:', e.message);
         }
 
-        // No static fallbacks -return whatever AI generated (or empty)
-        return ack;
+        return ack || localAck;
     },
 
     /**
@@ -3538,6 +3719,7 @@ ONLY return the spoken response. Nothing else.`;
         if (/\b(marriage|wedding|spouse|husband|wife|shaadi|शादी|पति|पत्नी)\b/.test(q)) return 'marriage';
         if (/\b(love|partner|relationship|girlfriend|boyfriend|crush|breakup|प्यार|रिश्त|प्रेम|साथी)\b/.test(q)) return 'love';
         if (/\b(career|job|work|business|promotion|profession|startup|नौकरी|करियर|कैरियर|काम|व्यवसाय)\b/.test(q)) return 'career';
+        if (/\b(car|vehicle|bike|scooter|motorcycle|automobile|driving|drive|porsche|porche|gadi|gaadi)\b|गाड़ी|गाड़ी|कार|वाहन|बाइक|स्कूटर/.test(q)) return 'vehicle';
         if (/\b(money|wealth|income|salary|finance|invest|loan|debt|पैसा|पैसे|धन|कमाई|निवेश)\b/.test(q)) return 'money';
         if (/\b(health|illness|disease|body|surgery|स्वास्थ्य|बीमार|तबीयत|शरीर)\b/.test(q)) return 'health';
         if (/\b(study|exam|education|degree|college|पढ़ाई|परीक्षा|शिक्षा)\b/.test(q)) return 'education';
@@ -3553,15 +3735,58 @@ ONLY return the spoken response. Nothing else.`;
             ? {
                 marriage: 'शादी', love: 'रिश्ते', career: 'करियर', money: 'पैसा',
                 health: 'सेहत', education: 'पढ़ाई', children: 'संतान', family: 'परिवार',
-                travel: 'यात्रा/विदेश', timing: 'timing', general: 'इस सवाल'
+                travel: 'यात्रा/विदेश', vehicle: 'पहली गाड़ी/वाहन', timing: 'timing', general: 'इस सवाल'
             }
             : {
                 marriage: 'marriage', love: 'relationships', career: 'career', money: 'money',
                 health: 'health', education: 'education', children: 'children', family: 'family',
-                travel: 'travel/relocation', timing: 'timing', general: 'this question'
+                travel: 'travel/relocation', vehicle: 'car/vehicle', timing: 'timing', general: 'this question'
             };
         return map[topic] || map.general;
     },
+
+        _getAskMayaSubjectPhrase(topic, isHindi) {
+            const q = String(this._getActiveUserQuestion() || '').toLowerCase();
+            const hasPorsche = /\b(porsche|porche)\b/.test(q);
+            const hasBike = /\b(bike|motorcycle)\b|बाइक/.test(q);
+            const hasScooter = /\b(scooter)\b|स्कूटर/.test(q);
+
+            const hi = {
+                marriage: 'शादी की timing',
+                love: 'रिश्ते की direction',
+                career: 'career direction',
+                money: 'धन और timing',
+                health: 'सेहत की सावधानी',
+                education: 'पढ़ाई की direction',
+                children: 'संतान से जुड़े संकेत',
+                family: 'परिवार वाला विषय',
+                travel: 'यात्रा या विदेश की timing',
+                timing: 'timing वाला सवाल',
+                general: 'आपका सवाल'
+            };
+            const en = {
+                marriage: 'marriage timing',
+                love: 'relationship direction',
+                career: 'career direction',
+                money: 'money timing',
+                health: 'health pattern',
+                education: 'study direction',
+                children: 'child-related timing',
+                family: 'family matter',
+                travel: 'travel or relocation timing',
+                timing: 'timing question',
+                general: 'your question'
+            };
+
+            if (topic === 'vehicle') {
+                if (hasPorsche) return isHindi ? 'पहली Porsche की timing' : 'first Porsche timing';
+                if (hasBike) return isHindi ? 'पहली bike की timing' : 'first bike timing';
+                if (hasScooter) return isHindi ? 'पहले scooter की timing' : 'first scooter timing';
+                return isHindi ? 'पहली गाड़ी की timing' : 'first car timing';
+            }
+
+            return (isHindi ? hi : en)[topic] || (isHindi ? hi.general : en.general);
+        },
 
     _getAskMayaFocusQuestionFallback(askedKeys = new Set()) {
         const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
@@ -3625,6 +3850,11 @@ ONLY return the spoken response. Nothing else.`;
                 { label: 'Visa delay है', value: 'visa_delay', insight: 'User needs delay/approval window.' },
                 { label: 'Travel timing चाहिए', value: 'travel_timing', insight: 'User needs travel timing.' }
             ], 'विदेश या travel वाले सवाल को सटीक करने के लिए ये बताइए।'),
+            vehicle: make('पहली गाड़ी के लिए अभी आपकी स्थिति क्या है?', [
+                { label: 'Budget बन रहा', value: 'budget_building', insight: 'User is preparing finances for vehicle purchase timing.' },
+                { label: 'Loan planning चल रही', value: 'loan_planning', insight: 'User needs purchase timing with loan or approval context.' },
+                { label: 'Family decision बाकी', value: 'family_decision_pending', insight: 'User needs timing with family approval or shared decision context.' }
+            ], 'आपके पहली गाड़ी वाले सवाल को exact करने के लिए एक बात बताइए।'),
             timing: make('Timing वाले सवाल में किस चीज़ का समय चाहिए?', [
                 { label: 'Career का time', value: 'career_timing', insight: 'User needs work timing.' },
                 { label: 'Relationship का time', value: 'relationship_timing', insight: 'User needs relationship timing.' },
@@ -3683,6 +3913,11 @@ ONLY return the spoken response. Nothing else.`;
                 { label: 'Visa delay', value: 'visa_delay', insight: 'User needs delay/approval window.' },
                 { label: 'Travel timing', value: 'travel_timing', insight: 'User needs travel timing.' }
             ], 'To make the travel or abroad answer precise, tell me this.'),
+            vehicle: make('Where are you with your first car plan?', [
+                { label: 'Saving right now', value: 'saving_right_now', insight: 'User is preparing finances for vehicle purchase timing.' },
+                { label: 'Loan planning', value: 'loan_planning', insight: 'User needs purchase timing with loan or approval context.' },
+                { label: 'Family decision pending', value: 'family_decision_pending', insight: 'User needs timing with family approval or shared decision context.' }
+            ], 'To answer your first car question precisely, tell me this.'),
             timing: make('What do you need timing for?', [
                 { label: 'Career timing', value: 'career_timing', insight: 'User needs work timing.' },
                 { label: 'Relationship timing', value: 'relationship_timing', insight: 'User needs relationship timing.' },
@@ -4033,6 +4268,20 @@ ONLY return the spoken response. Nothing else.`;
             const safeUserQ = userQ.replace(/`/g, "'").slice(0, 240);
             const topic = this._classifyUserQuestionTopic(userQ);
             const topicLabel = this._getAskMayaTopicLabel(topic, isHindi);
+            const recentSpoken = (Array.isArray(this.spokenNarrations) ? this.spokenNarrations : [])
+                .slice(-5)
+                .map((entry) => {
+                    const stage = entry?.stage || 'previous';
+                    const text = String(entry?.text || '').replace(/\[\[pause-\d+\]\]/g, '').trim();
+                    return text ? `- ${stage}: ${text}` : '';
+                })
+                .filter(Boolean)
+                .join('\n') || '- none yet';
+            const concreteTopicRule = ['timing', 'general'].includes(topic)
+                ? ''
+                : (isHindi
+                    ? `\n- Topic already known है: ${topicLabel}. User से area/category मत पूछिए; इसी exact subject के अंदर एक practical detail पूछिए।`
+                    : `\n- The subject is already known: ${topicLabel}. Do not ask which area/category they mean; ask one practical detail inside this exact subject.`);
 
             const askMayaPrompt = isHindi
                 ? `MAYA के लिए एक छोटा MCQ JSON में बनाइए जो SIRF user के नीचे दिए सवाल को precisely answer करने में मदद करे।
@@ -4043,9 +4292,12 @@ Marital: ${maritalStatus} | Dasha: ${dasha} | Moon: ${moonSign} | Lagna: ${ascen
 Already asked: ${askedList}
 Previous answers:
 ${priorAnswers}
+Recent MAYA context already spoken:
+${recentSpoken}
 
 RULES (STRICT):
 - सवाल सीधे user के question के context में हो — '${topicLabel}' से बाहर का कोई topic touch मत कीजिए (relationships अगर question career का है, money अगर question health का है, etc मत पूछिए)।
+- Recent MAYA context को पढ़कर अगला सवाल पिछली बातों पर build करे; repeat/reset मत करे।${concreteTopicRule}
 - सवाल MAX 12 शब्द, plain conversational Hindi, बिना jyotish jargon के।
 - ऐसा सवाल जो user की actual situation reveal करे ताकि उनके सवाल का जवाब और precise मिले।
 - Exactly 3 options, हर option MAX 5 शब्द, simple, अलग-अलग, real-life।
@@ -4064,9 +4316,12 @@ Marital: ${maritalStatus} | Dasha: ${dasha} | Moon: ${moonSign} | Lagna: ${ascen
 Already asked: ${askedList}
 Previous answers:
 ${priorAnswers}
+Recent MAYA context already spoken:
+${recentSpoken}
 
 RULES (STRICT):
 - The question MUST sit inside the user's question's topic '${topicLabel}'. Do NOT touch unrelated life areas (no relationships if their question is career, no money if their question is health, etc.).
+- Read the recent MAYA context and build on it; do not reset, repeat, or ignore what was already said.${concreteTopicRule}
 - MAX 12 words, plain conversational English, no astrology jargon.
 - Frame it so their answer reveals the real-life detail you need to answer their question precisely.
 - Exactly 3 options. Each MAX 5 words, simple, distinct, real-life.
@@ -4160,8 +4415,8 @@ Return ONLY JSON:
 
         // Intro - grounded in the chart
         const introLine = isHindi
-            ? 'कुंडली बन चुकी है। कुछ signals बहुत clear दिख रहे हैं - पर कुछ बातें सिर्फ आप confirm कर सकते हैं। मुझे कुछ सवाल पूछने दीजिए।'
-            : 'Your kundli is formed. Some signals are very clear - but a few things only you can confirm. Let me ask you a few questions.';
+            ? 'अब कुछ signals बहुत clear दिख रहे हैं - पर कुछ बातें सिर्फ आप confirm कर सकते हैं। मुझे कुछ सवाल पूछने दीजिए।'
+            : 'Some signals are very clear now - but a few things only you can confirm. Let me ask you a few questions.';
         await this.speak(introLine);
         await MayaUtils.sleep(300);
 
@@ -4718,16 +4973,20 @@ Return ONLY JSON:
      */
     async askSingleProfileQuestion(q) {
         const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const spokenLead = String(q.spoken || '').trim();
+        const spokenQuestion = spokenLead && spokenLead !== q.question && !/[?؟]$/.test(spokenLead)
+            ? `${spokenLead} ${q.question}`
+            : (spokenLead || q.question);
 
         // Pre-warm TTS so playback starts instantly when question appears
         if (window.MayaVoice && !MayaVoice.isMuted) {
-            MayaVoice.prefetchSpeech(q.spoken || q.question);
+            MayaVoice.prefetchSpeech(spokenQuestion);
         }
 
         const answer = await this.showValidationQuestion(
             q.question,
             q.options.map(o => ({ label: o.label, value: o.value })),
-            q.spoken
+            spokenQuestion
         );
 
         // Store the answer with insight
@@ -4785,11 +5044,13 @@ Return ONLY JSON:
             const askMayaActive = activeUserQuestion.length >= 3;
             const askMayaTopic = askMayaActive ? this._classifyUserQuestionTopic(activeUserQuestion) : null;
             const topicLabel = askMayaActive ? this._getAskMayaTopicLabel(askMayaTopic, isHindi) : '';
-            const safeIntroQuestion = activeUserQuestion.replace(/\s+/g, ' ').trim().slice(0, 180);
+            const askMayaSubject = askMayaActive ? this._getAskMayaSubjectPhrase(askMayaTopic, isHindi) : '';
+            const introSubjectHi = askMayaSubject === 'आपका सवाल' ? 'आपका सवाल' : `${askMayaSubject} वाला सवाल`;
+            const introSubjectEn = askMayaSubject === 'your question' ? 'question' : `${askMayaSubject} question`;
             const fullIntro = askMayaActive
                 ? (isHindi
-                    ? `नमस्ते ${this.firstName}! मैं ${_gn} हूँ, और आपका सवाल मुझे मिल गया है: "${safeIntroQuestion}"। अब मैं आपकी जन्म जानकारी से कुंडली और numbers बनाकर इसी सवाल का जवाब ${_isMale ? 'ढूँढूँगा' : 'ढूँढूँगी'}। पहले chart तैयार करते हैं, फिर सीधे आपके question के answer की तरफ चलते हैं।`
-                    : `Hello ${this.firstName}! I am ${_gn}, and I have your question: "${safeIntroQuestion}". Now I will use your birth details, kundli, numbers, and timing to find the answer to this exact question. First I will prepare the chart, then we will move straight toward your answer.`)
+                    ? `नमस्ते ${this.firstName}! मैं ${_gn} हूँ, और ${introSubjectHi} मुझे मिल गया है। अब मैं आपकी जन्म जानकारी से कुंडली और numbers बनाकर इसी विषय का जवाब ${_isMale ? 'ढूँढूँगा' : 'ढूँढूँगी'}। पहले chart तैयार करते हैं, फिर सीधे answer की तरफ चलते हैं।`
+                    : `Hello ${this.firstName}! I am ${_gn}, and I have your ${introSubjectEn}. Now I will use your birth details, kundli, numbers, and timing to find that answer. First I will prepare the chart, then we will move straight toward it.`)
                 : (isHindi
                     ? `नमस्ते ${this.firstName}! मैं ${_gn} हूँ, बहुत अच्छा लगा आपसे मिलकर। आपने जो जन्म तिथि, समय और जगह दी है, उससे मुझे बहुत कुछ पता चल गया है। मुझे vedic astrology, कुंडली, ग्रहों की दशा, योग, दोष, और numerology, इन सबकी गहरी समझ है। तो चलिए, सबसे पहले आपकी कुंडली बनाते हैं और फिर साथ मिलकर उसमें गहराई से उतरते हैं।`
                     : `Hello ${this.firstName}! I am ${_gn}, it is really nice to meet you. From the birth date, time, and place you shared, I already know quite a lot about you. I have deep understanding of vedic astrology, birth charts, planetary dashas, yogas, doshas, and numerology. So let us start by plotting your kundli, and then we will go deeper into it together.`);
@@ -4825,24 +5086,28 @@ Return ONLY JSON:
             // Pre-generate teaser content in background while questions happen
             const predictionItems = this.buildPredictionItems();
             const aiContext = this.buildBaseAIContext(predictionItems);
-            const teaserPregen = this.getContent('teaserRevealNarration', async () => {
-                const combined = await this.generateDirectReadingSection('combinedTeaser', aiContext);
-                if (combined && combined.length > 40) {
-                    const parts = combined.split(/\[\[pause-250\]\]/i).map(s => s.trim()).filter(Boolean);
-                    if (parts.length >= 3) this.unresolvedThread = parts[parts.length - 1];
-                    return combined;
-                }
-                const segments = [];
-                const identityTruth = await this.generateDirectReadingSection('identityTruth', aiContext);
-                if (identityTruth?.length > 20) segments.push(identityTruth.trim());
-                const emotionalPattern = await this.generateDirectReadingSection('emotionalPattern', aiContext);
-                if (emotionalPattern?.length > 20) segments.push(emotionalPattern.trim());
-                const unresolvedThread = await this.generateDirectReadingSection('unresolvedThread', aiContext);
-                if (unresolvedThread?.length > 20) { segments.push(unresolvedThread.trim()); this.unresolvedThread = unresolvedThread; }
-                return segments.join(' [[pause-250]] ');
-            });
+            if (!askMayaActive) {
+                this.getContent('teaserRevealNarration', async () => {
+                    const combined = await this.generateDirectReadingSection('combinedTeaser', aiContext);
+                    if (combined && combined.length > 40) {
+                        const parts = combined.split(/\[\[pause-250\]\]/i).map(s => s.trim()).filter(Boolean);
+                        if (parts.length >= 3) this.unresolvedThread = parts[parts.length - 1];
+                        return combined;
+                    }
+                    const segments = [];
+                    const identityTruth = await this.generateDirectReadingSection('identityTruth', aiContext);
+                    if (identityTruth?.length > 20) segments.push(identityTruth.trim());
+                    const emotionalPattern = await this.generateDirectReadingSection('emotionalPattern', aiContext);
+                    if (emotionalPattern?.length > 20) segments.push(emotionalPattern.trim());
+                    const unresolvedThread = await this.generateDirectReadingSection('unresolvedThread', aiContext);
+                    if (unresolvedThread?.length > 20) { segments.push(unresolvedThread.trim()); this.unresolvedThread = unresolvedThread; }
+                    return segments.join(' [[pause-250]] ');
+                });
+            }
             // Also pre-generate email gate narration
-            const emailPregen = this.generateDirectReadingSection('emailGate', aiContext);
+            const emailPregen = askMayaActive
+                ? Promise.resolve(this._getLocalDirectSectionFallback('emailGate', aiContext))
+                : this.generateDirectReadingSection('emailGate', aiContext);
             // Store the promise for later use in showSuspenseBridge
             this._emailNarrationPregen = emailPregen;
 
@@ -5651,15 +5916,24 @@ Return ONLY JSON:
             yogaNames: profile.yogaNames,
             dominantElement: profile.dominantElement,
             chartHighlights: profile.highlights,
-            predictionItems: this.buildPredictionItems()
+            predictionItems: this.buildPredictionItems(),
+            kundliFormationInProgress: true
         })), 'kundli');
 
         if (!narrative) {
             narrative = await this.withFiller(() => this.generateDirectReadingSection('kundli', {
                 ...this.buildBaseAIContext(),
                 kundliDisplayFacts: visibleKundliFacts,
-                predictionItems: this.buildPredictionItems()
+                predictionItems: this.buildPredictionItems(),
+                kundliFormationInProgress: true
             }), 'kundli');
+        }
+
+        narrative = this._stripKundliReadyAnnouncement(narrative);
+        if (!narrative) {
+            narrative = isHindi
+                ? `अभी आपकी कुंडली का विन्यास बन रहा है। ग्रहों की स्थिति और दशा साथ-साथ उभर रही हैं, इसलिए मैं पहला संकेत पूरा बनने से पहले ही पकड़ ${this._isGuiderMale() ? 'रहा' : 'रही'} हूँ।`
+                : `Your kundli is still taking shape. The planetary positions and dasha are emerging together, so I am watching the first signal before the full reading opens.`;
         }
 
         if (narrative) this.spokenNarrations.push({ stage: 'kundli', text: narrative });

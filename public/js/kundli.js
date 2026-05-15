@@ -615,6 +615,231 @@ const MayaKundli = {
         `;
     },
 
+    getNorthIndianHousePaths() {
+        return [
+            [{ x: 50, y: 0 }, { x: 75, y: 25 }, { x: 50, y: 50 }, { x: 25, y: 25 }],
+            [{ x: 50, y: 0 }, { x: 100, y: 0 }, { x: 75, y: 25 }],
+            [{ x: 100, y: 0 }, { x: 100, y: 50 }, { x: 75, y: 25 }],
+            [{ x: 75, y: 25 }, { x: 100, y: 50 }, { x: 75, y: 75 }, { x: 50, y: 50 }],
+            [{ x: 75, y: 75 }, { x: 100, y: 50 }, { x: 100, y: 100 }],
+            [{ x: 75, y: 75 }, { x: 100, y: 100 }, { x: 50, y: 100 }],
+            [{ x: 50, y: 50 }, { x: 75, y: 75 }, { x: 50, y: 100 }, { x: 25, y: 75 }],
+            [{ x: 25, y: 75 }, { x: 50, y: 100 }, { x: 0, y: 100 }],
+            [{ x: 0, y: 50 }, { x: 25, y: 75 }, { x: 0, y: 100 }],
+            [{ x: 25, y: 25 }, { x: 50, y: 50 }, { x: 25, y: 75 }, { x: 0, y: 50 }],
+            [{ x: 0, y: 0 }, { x: 25, y: 25 }, { x: 0, y: 50 }],
+            [{ x: 0, y: 0 }, { x: 50, y: 0 }, { x: 25, y: 25 }]
+        ];
+    },
+
+    getNorthIndianLineSegments(mapPoint) {
+        const segments = [];
+        const seen = new Set();
+        const addSegment = (start, end, width = 1.5) => {
+            const points = [`${start.x},${start.y}`, `${end.x},${end.y}`].sort();
+            const key = points.join('|');
+            if (seen.has(key)) return;
+            seen.add(key);
+            const p1 = mapPoint(start.x, start.y);
+            const p2 = mapPoint(end.x, end.y);
+            segments.push({ x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, width });
+        };
+
+        const outerCorners = [
+            { x: 0, y: 0 }, { x: 100, y: 0 },
+            { x: 100, y: 100 }, { x: 0, y: 100 }
+        ];
+        outerCorners.forEach((corner, index) => addSegment(corner, outerCorners[(index + 1) % outerCorners.length], 2.2));
+
+        this.getNorthIndianHousePaths().forEach((path) => {
+            path.forEach((point, index) => addSegment(point, path[(index + 1) % path.length]));
+        });
+
+        return segments;
+    },
+
+    renderNorthIndianCanvasFrame(ctx, data, frameState = {}) {
+        const dpr = window.devicePixelRatio || 1;
+        const canvasWidth = ctx.canvas.width / dpr;
+        const canvasHeight = ctx.canvas.height / dpr;
+        const size = Math.min(canvasWidth, canvasHeight);
+        const lineProgress = this.clamp01(frameState.lineProgress ?? 1);
+        const labelOpacity = this.clamp01(frameState.labelOpacity ?? 1);
+        const planetProgress = this.clamp01(frameState.planetProgress ?? 1);
+
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+        const paperGrad = ctx.createRadialGradient(canvasWidth * 0.35, canvasHeight * 0.3, size * 0.1, canvasWidth / 2, canvasHeight / 2, size * 0.75);
+        paperGrad.addColorStop(0, '#fbeec2');
+        paperGrad.addColorStop(0.55, '#ecd497');
+        paperGrad.addColorStop(1, '#c79a55');
+        ctx.fillStyle = paperGrad;
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+        const seededUnit = (seed) => {
+            const value = Math.sin(seed * 12.9898) * 43758.5453;
+            return value - Math.floor(value);
+        };
+        ctx.save();
+        ctx.globalAlpha = 0.055;
+        for (let index = 0; index < 86; index++) {
+            const speckleX = seededUnit(index + 1) * canvasWidth;
+            const speckleY = seededUnit(index + 17) * canvasHeight;
+            const speckleRadius = seededUnit(index + 33) * 1.25 + 0.25;
+            ctx.fillStyle = seededUnit(index + 49) > 0.5 ? '#5a3b12' : '#3a2408';
+            ctx.beginPath();
+            ctx.arc(speckleX, speckleY, speckleRadius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+
+        const vignette = ctx.createRadialGradient(canvasWidth / 2, canvasHeight / 2, size * 0.3, canvasWidth / 2, canvasHeight / 2, size * 0.7);
+        vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        vignette.addColorStop(1, 'rgba(80, 40, 0, 0.22)');
+        ctx.fillStyle = vignette;
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+        const lineColor = '#5a3a14';
+        const textColor = '#3a2408';
+        const mutedColor = '#7a5320';
+        const ascColor = '#a3590d';
+        const pad = Math.max(16, Math.round(size * 0.07));
+        const innerX = pad;
+        const innerY = pad;
+        const innerW = canvasWidth - pad * 2;
+        const innerH = canvasHeight - pad * 2;
+        const mapPoint = (xp, yp) => ({
+            x: innerX + (xp / 100) * innerW,
+            y: innerY + (yp / 100) * innerH
+        });
+
+        const segments = this.getNorthIndianLineSegments(mapPoint);
+        const segmentCursor = lineProgress * segments.length;
+        segments.forEach((segment, index) => {
+            this.drawAnimatedLineSegment(ctx, segment, segmentCursor - index, lineColor);
+        });
+
+        const housePositions = {
+            1: { x: 50, y: 28 },
+            2: { x: 78, y: 13 },
+            3: { x: 90, y: 29 },
+            4: { x: 78, y: 50 },
+            5: { x: 90, y: 71 },
+            6: { x: 78, y: 85 },
+            7: { x: 50, y: 72 },
+            8: { x: 22, y: 85 },
+            9: { x: 10, y: 71 },
+            10: { x: 22, y: 50 },
+            11: { x: 10, y: 29 },
+            12: { x: 22, y: 13 }
+        };
+
+        const totalPlanetMarkers = Object.values(data.planetsByHouse || {}).reduce((count, planets = []) => {
+            return count + Math.min(planets.length, 2) + (planets.length > 2 ? 1 : 0);
+        }, 0);
+        let planetCursor = 0;
+
+        for (let house = 1; house <= 12; house++) {
+            const pos = housePositions[house];
+            const sign = data.houseToSign[house];
+            if (!pos || !sign) continue;
+
+            const housePlanets = data.planetsByHouse[house] || [];
+            const shortName = data.signShortNames[sign.name] || sign.name.substring(0, 3);
+            const isAsc = house === 1;
+            const point = mapPoint(pos.x, pos.y);
+
+            ctx.save();
+            ctx.globalAlpha = labelOpacity;
+            ctx.fillStyle = isAsc ? ascColor : mutedColor;
+            ctx.font = isAsc ? 'bold 11px Arial' : '10px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${sign.symbol} ${shortName}`, point.x, point.y - 8);
+
+            if (isAsc) {
+                ctx.fillStyle = ascColor;
+                ctx.font = 'bold 8px Arial';
+                ctx.fillText('Asc', point.x, point.y + 2);
+            }
+            ctx.restore();
+
+            const planetBaseOffset = pos.y >= 82 ? -2 : (isAsc ? 12 : 5);
+            let planetY = point.y + planetBaseOffset;
+            housePlanets.slice(0, 2).forEach((planet) => {
+                planetCursor += 1;
+                const reveal = this.clamp01(planetProgress * Math.max(totalPlanetMarkers, 1) - (planetCursor - 1));
+                if (reveal <= 0) return;
+                const info = data.planetInfo[planet.name] || {};
+
+                ctx.save();
+                ctx.globalAlpha = reveal;
+                ctx.fillStyle = info.color || textColor;
+                ctx.font = '9px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${info.symbol || '•'} ${info.vedic || planet.name}`, point.x, planetY);
+                ctx.restore();
+                planetY += 11;
+            });
+
+            if (housePlanets.length > 2) {
+                planetCursor += 1;
+                const reveal = this.clamp01(planetProgress * Math.max(totalPlanetMarkers, 1) - (planetCursor - 1));
+                if (reveal > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = reveal;
+                    ctx.fillStyle = mutedColor;
+                    ctx.font = '8px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`+${housePlanets.length - 2}`, point.x, planetY);
+                    ctx.restore();
+                }
+            }
+        }
+
+        ctx.save();
+        ctx.globalAlpha = 0.25 + labelOpacity * 0.75;
+        ctx.fillStyle = textColor;
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('MAYA', innerX + innerW / 2, innerY + innerH / 2 + 5);
+        ctx.restore();
+    },
+
+    animateNorthIndianCanvas(canvas, data, options = {}) {
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        this._chartAnimationFrames = this._chartAnimationFrames || {};
+        if (this._chartAnimationFrames[canvas.id]) {
+            cancelAnimationFrame(this._chartAnimationFrames[canvas.id]);
+            delete this._chartAnimationFrames[canvas.id];
+        }
+
+        const duration = options.durationMs || 5200;
+        const start = performance.now();
+
+        const renderFrame = (now) => {
+            const progress = this.clamp01((now - start) / duration);
+            const lineProgress = this.easeOutCubic(this.clamp01(progress / 0.42));
+            const labelOpacity = this.easeOutCubic(this.clamp01((progress - 0.25) / 0.25));
+            const planetProgress = this.easeOutCubic(this.clamp01((progress - 0.43) / 0.57));
+
+            this.renderNorthIndianCanvasFrame(ctx, data, {
+                lineProgress,
+                labelOpacity,
+                planetProgress
+            });
+
+            if (progress < 1) {
+                this._chartAnimationFrames[canvas.id] = requestAnimationFrame(renderFrame);
+            } else {
+                delete this._chartAnimationFrames[canvas.id];
+            }
+        };
+
+        this._chartAnimationFrames[canvas.id] = requestAnimationFrame(renderFrame);
+    },
+
     /**
      * Draw North Indian chart on canvas (diamond style from template)
      */
@@ -624,9 +849,9 @@ const MayaKundli = {
             console.log('Canvas not found:', canvasId);
             return false;
         }
-        
+
         console.log('Drawing North Indian chart on:', canvasId);
-        
+
         // Set canvas to full width of container (HiDPI-aware)
         const container = canvas.parentElement;
         const size = container.offsetWidth || 400;
@@ -635,173 +860,27 @@ const MayaKundli = {
         canvas.height = size * dpr;
         canvas.style.width = size + 'px';
         canvas.style.height = size + 'px';
-        
+
         const ctx = canvas.getContext('2d');
+        if (!ctx) return false;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        const w = size;
-        const h = size;
 
-        // ── OLD PAPER (parchment) BACKGROUND ──
-        // Filled inside the canvas itself so the chart always looks like an
-        // aged scroll regardless of the surrounding card.
-        const paperGrad = ctx.createRadialGradient(w * 0.35, h * 0.3, w * 0.1, w / 2, h / 2, w * 0.75);
-        paperGrad.addColorStop(0, '#fbeec2');
-        paperGrad.addColorStop(0.55, '#ecd497');
-        paperGrad.addColorStop(1, '#c79a55');
-        ctx.fillStyle = paperGrad;
-        ctx.fillRect(0, 0, w, h);
-        // Subtle aged speckle
-        ctx.save();
-        ctx.globalAlpha = 0.06;
-        for (let i = 0; i < 80; i++) {
-            const sx = Math.random() * w;
-            const sy = Math.random() * h;
-            const sr = Math.random() * 1.4 + 0.2;
-            ctx.fillStyle = Math.random() > 0.5 ? '#5a3b12' : '#3a2408';
-            ctx.beginPath();
-            ctx.arc(sx, sy, sr, 0, Math.PI * 2);
-            ctx.fill();
+        this._chartAnimationFrames = this._chartAnimationFrames || {};
+        if (this._chartAnimationFrames[canvas.id]) {
+            cancelAnimationFrame(this._chartAnimationFrames[canvas.id]);
+            delete this._chartAnimationFrames[canvas.id];
         }
-        ctx.restore();
-        // Inner vignette to suggest worn edges
-        const vignette = ctx.createRadialGradient(w / 2, h / 2, w * 0.3, w / 2, h / 2, w * 0.7);
-        vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
-        vignette.addColorStop(1, 'rgba(80, 40, 0, 0.22)');
-        ctx.fillStyle = vignette;
-        ctx.fillRect(0, 0, w, h);
 
-        // Ink palette on parchment
-        const lineColor = '#5a3a14';      // dark brown ink
-        const textColor = '#3a2408';
-        const mutedColor = '#7a5320';
-        const ascColor = '#a3590d';
-        
-        // Inset all geometry by `pad` pixels so nothing kisses the canvas edge.
-        // Coordinates below are in 0-100 scale; we map them through the inset rect.
-        const pad = Math.max(8, Math.round(size * 0.05));
-        const innerX = pad;
-        const innerY = pad;
-        const innerW = w - pad * 2;
-        const innerH = h - pad * 2;
-        const px = (xp) => innerX + (xp / 100) * innerW;
-        const py = (yp) => innerY + (yp / 100) * innerH;
-        
-        // Helper function to draw triangle house
-        const drawTriangleHouse = (x1, y1, x2, y2, x3, y3) => {
-            ctx.beginPath();
-            ctx.moveTo(px(x1), py(y1));
-            ctx.lineTo(px(x2), py(y2));
-            ctx.lineTo(px(x3), py(y3));
-            ctx.closePath();
-            ctx.lineWidth = 1.5;
-            ctx.strokeStyle = lineColor;
-            ctx.stroke();
-        };
-        
-        // Helper function to draw square house (diamond)
-        const drawSquareHouse = (x1, y1, x2, y2, x3, y3, x4, y4) => {
-            ctx.beginPath();
-            ctx.moveTo(px(x1), py(y1));
-            ctx.lineTo(px(x2), py(y2));
-            ctx.lineTo(px(x3), py(y3));
-            ctx.lineTo(px(x4), py(y4));
-            ctx.closePath();
-            ctx.lineWidth = 1.5;
-            ctx.strokeStyle = lineColor;
-            ctx.stroke();
-        };
-        
-        // Outer border (inset, so it sits inside the parchment)
-        ctx.strokeStyle = lineColor;
-        ctx.lineWidth = 2.2;
-        ctx.strokeRect(innerX, innerY, innerW, innerH);
-        
-        // Draw all 12 houses (North Indian diamond layout)
-        // House 1 - Top center diamond
-        drawSquareHouse(50, 0, 75, 25, 50, 50, 25, 25);
-        // House 2 - Top right triangle
-        drawTriangleHouse(50, 0, 100, 0, 75, 25);
-        // House 3 - Right top triangle
-        drawTriangleHouse(100, 0, 100, 50, 75, 25);
-        // House 4 - Right center diamond
-        drawSquareHouse(75, 25, 100, 50, 75, 75, 50, 50);
-        // House 5 - Right bottom triangle
-        drawTriangleHouse(75, 75, 100, 50, 100, 100);
-        // House 6 - Bottom right triangle
-        drawTriangleHouse(75, 75, 100, 100, 50, 100);
-        // House 7 - Bottom center diamond
-        drawSquareHouse(50, 50, 75, 75, 50, 100, 25, 75);
-        // House 8 - Bottom left triangle
-        drawTriangleHouse(25, 75, 50, 100, 0, 100);
-        // House 9 - Left bottom triangle
-        drawTriangleHouse(0, 50, 25, 75, 0, 100);
-        // House 10 - Left center diamond
-        drawSquareHouse(25, 25, 50, 50, 25, 75, 0, 50);
-        // House 11 - Left top triangle
-        drawTriangleHouse(0, 0, 25, 25, 0, 50);
-        // House 12 - Top left triangle
-        drawTriangleHouse(0, 0, 50, 0, 25, 25);
-        
-        // House text positions (center of each house)
-        const housePositions = {
-            1: { x: 50, y: 28, align: 'center' },
-            2: { x: 78, y: 12, align: 'center' },
-            3: { x: 90, y: 28, align: 'center' },
-            4: { x: 78, y: 50, align: 'center' },
-            5: { x: 90, y: 72, align: 'center' },
-            6: { x: 78, y: 88, align: 'center' },
-            7: { x: 50, y: 72, align: 'center' },
-            8: { x: 22, y: 88, align: 'center' },
-            9: { x: 10, y: 72, align: 'center' },
-            10: { x: 22, y: 50, align: 'center' },
-            11: { x: 10, y: 28, align: 'center' },
-            12: { x: 22, y: 12, align: 'center' }
-        };
-        
-        // Draw house contents
-        for (let house = 1; house <= 12; house++) {
-            const pos = housePositions[house];
-            const sign = data.houseToSign[house];
-            const housePlanets = data.planetsByHouse[house] || [];
-            const shortName = data.signShortNames[sign.name] || sign.name.substring(0, 3);
-            const isAsc = house === 1;
-            
-            const x = px(pos.x);
-            const y = py(pos.y);
-            
-            // Sign symbol
-            ctx.fillStyle = isAsc ? ascColor : mutedColor;
-            ctx.font = isAsc ? 'bold 11px Arial' : '10px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText(`${sign.symbol} ${shortName}`, x, y - 8);
-            
-            if (isAsc) {
-                ctx.fillStyle = ascColor;
-                ctx.font = 'bold 8px Arial';
-                ctx.fillText('Asc', x, y + 2);
-            }
-            
-            // Planets
-            let planetY = y + (isAsc ? 12 : 4);
-            housePlanets.slice(0, 2).forEach(p => {
-                const info = data.planetInfo[p.name] || {};
-                ctx.fillStyle = info.color || '#3a2408';
-                ctx.font = '9px Arial';
-                ctx.fillText(`${info.symbol || '•'} ${info.vedic || p.name}`, x, planetY);
-                planetY += 11;
+        const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+        if (options.animateFormation && !prefersReducedMotion) {
+            this.animateNorthIndianCanvas(canvas, data, options);
+        } else {
+            this.renderNorthIndianCanvasFrame(ctx, data, {
+                lineProgress: 1,
+                labelOpacity: 1,
+                planetProgress: 1
             });
-            if (housePlanets.length > 2) {
-                ctx.fillStyle = mutedColor;
-                ctx.font = '8px Arial';
-                ctx.fillText(`+${housePlanets.length - 2}`, x, planetY);
-            }
         }
-        
-        // Draw center MAYA text
-        ctx.fillStyle = textColor;
-        ctx.font = 'bold 16px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('MAYA', innerX + innerW / 2, innerY + innerH / 2 + 5);
 
         return true;
     },
@@ -1607,8 +1686,9 @@ const MayaKundli = {
         const currentDasha = this.getCurrentDasha(profile.birthDate, moonForDasha?.sign?.name, moonForDasha?.degree);
         const dashaPeriods = this.getDashaPeriods(profile.birthDate, moonForDasha?.sign?.name, moonForDasha?.degree);
         const yogas = this.calculateYogas(birthChart.planets, birthChart.ascendant.name);
-        const southChart = this.generateChart(birthChart.planets, birthChart.ascendant.name, 'south');
-        const northChart = this.generateChart(birthChart.planets, birthChart.ascendant.name, 'north');
+        const inAppChartOptions = { animateFormation: true, durationMs: 5200 };
+        const southChart = this.generateChart(birthChart.planets, birthChart.ascendant.name, 'south', inAppChartOptions);
+        const northChart = this.generateChart(birthChart.planets, birthChart.ascendant.name, 'north', inAppChartOptions);
 
         // Format birth date
         const birthDateObj = MayaAstrology.parseDate(profile.birthDate);
