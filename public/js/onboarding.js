@@ -333,6 +333,27 @@ const MayaOnboarding = {
                 <h2 class="landing-headline">Build Your Personal<br>Guidance Journal</h2>
                 <p class="landing-subtext">Maya combines daily reflection, voice coaching, timing, and mindful routines into one practical plan.</p>
 
+                <form class="ask-maya-field-wrap" id="landingAskMayaForm" autocomplete="off" novalidate>
+                    <div class="ask-maya-glow"></div>
+                    <span class="ask-maya-particle p1"></span>
+                    <span class="ask-maya-particle p2"></span>
+                    <span class="ask-maya-particle p3"></span>
+                    <span class="ask-maya-particle p4"></span>
+                    <span class="ask-maya-particle p5"></span>
+                    <span class="ask-maya-particle p6"></span>
+                    <input
+                        type="text"
+                        class="ask-maya-input"
+                        id="landingAskMayaInput"
+                        placeholder="Ask Maya anything…"
+                        maxlength="240"
+                        aria-label="Ask Maya anything"
+                    />
+                    <button type="submit" class="ask-maya-submit" id="landingAskMayaSubmit" aria-label="Ask Maya">
+                        <i class="bi bi-arrow-right"></i>
+                    </button>
+                </form>
+
                 <div class="landing-actions">
                     <button type="button" class="btn btn-primary btn-lg landing-begin-btn" id="landingBeginBtn">
                         Start My Journal
@@ -357,10 +378,37 @@ const MayaOnboarding = {
 
         document.getElementById('landingBeginBtn').addEventListener('click', () => {
             MayaUtils.storage.set('maya_landing_seen', true);
+            // Clear any prior ask-maya question so a normal start is unbiased
+            try { MayaUtils.storage.remove('maya_user_question'); } catch (_e) { /* ignore */ }
             // Restore progress bar
             if (progressBar) progressBar.style.display = '';
             this.showStep(0);
         });
+
+        const askForm = document.getElementById('landingAskMayaForm');
+        const askInput = document.getElementById('landingAskMayaInput');
+        if (askForm && askInput) {
+            askForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const question = (askInput.value || '').trim();
+                if (question.length < 3) {
+                    askInput.focus();
+                    askForm.classList.remove('ask-maya-shake');
+                    // Trigger reflow to restart animation
+                    void askForm.offsetWidth;
+                    askForm.classList.add('ask-maya-shake');
+                    return;
+                }
+                try {
+                    MayaUtils.storage.set('maya_user_question', question);
+                    MayaUtils.storage.set('maya_landing_seen', true);
+                } catch (_e) { /* ignore */ }
+                if (progressBar) progressBar.style.display = '';
+                // Proceed through the same funnel (DOB, agent choice, etc.).
+                // funnel.js will pick up maya_user_question and bias narration around it.
+                this.showStep(0);
+            });
+        }
 
         document.getElementById('landingLoginBtn')?.addEventListener('click', () => {
             if (window.MayaApp?.showAuthModal) {

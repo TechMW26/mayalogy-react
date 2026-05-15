@@ -1044,6 +1044,7 @@ const MayaFunnel = {
             lalKitabContext,
             memoryContext,
             validationResponses: this.validationResponses || [],
+            userQuestion: this.userData?.userQuestion || '',
             userData: {
                 gender: this.userData?.gender || '',
                 maritalStatus: this.userData?.maritalStatus || '',
@@ -1414,6 +1415,17 @@ const MayaFunnel = {
         this.stepContextLog = [];
         this.authRequestId = 0;
         this.authPromptedFields = new Set();
+
+        // Pull through any "Ask Maya anything" question captured on the landing screen
+        // so every section can be biased around answering it.
+        try {
+            const storedQuestion = MayaUtils?.storage?.get('maya_user_question');
+            if (storedQuestion && typeof storedQuestion === 'string' && storedQuestion.trim()) {
+                this.userData.userQuestion = storedQuestion.trim();
+            } else if (userData.userQuestion && typeof userData.userQuestion === 'string') {
+                this.userData.userQuestion = userData.userQuestion.trim();
+            }
+        } catch (_e) { /* non-fatal */ }
         
         // Save language preference to storage immediately
         const language = userData.language || MayaUtils.storage.get('maya_language') || 'en';
@@ -2130,6 +2142,21 @@ ${this.getBaseRules(false)}`);
             ? `${temporalRules}\n\nUser gender: ${genderLabel}\nMarital Status: ${maritalLabel}${lifeStageBlock}${karakaBlock}\n\nNumerology:\n- Life Path: ${numbers.lifePath || 'unknown'}\n- Destiny: ${numbers.destiny || 'unknown'}\n- Soul Urge: ${numbers.soulUrge || 'unknown'}\n- Personal Year: ${numbers.personalYear || 'unknown'}\n\n${chartFacts}${timingHints ? `\nTiming hints: ${timingHints}` : ''}${userSelections ? `\n\n## USER RESPONSES (use these to PERSONALISE)\n${userSelections}\nIMPORTANT: User ने ऊपर दिए सवालों के जवाब दिए हैं। इन जवाबों से user की real life situation पता चलती है। Reading इन answers से DIRECTLY influenced होनी चाहिए - अगर user ने कहा "सीधी बात बोलो" तो filterless बोलिए, अगर "not_fully" कहा career में तो career dissatisfaction address कीजिए, अगर "हाँ" कहा repeating mistake पर तो उस pattern को name और explain कीजिए।` : ''}\n\nIMPORTANT: Use the EXACT planetary positions, dasha periods, and house analysis given above to make SPECIFIC predictions. Reference the actual planet names, signs, degrees, and dasha years. For example: "शनि मीन राशि में 14.2° पर है और आपकी राहु दशा 2019 में शुरू हुई - इसका मतलब है कि 2020-2021 में..." This makes predictions feel personally calculated. Do NOT give vague generic predictions. Every claim must trace back to a specific chart fact above.\nIf planet-in-house analysis data is provided above, weave those effects naturally into your reading - reference the remedies (उपाय), benefic/malefic effects, and specific rules for the user's planetary placements. Do NOT mention the source name or any book title - just present these insights as part of your own Vedic reading seamlessly.`
             : `${temporalRules}\n\nUser gender: ${genderLabel}\nMarital Status: ${maritalLabel}${lifeStageBlock}${karakaBlock}\n\nNumerology:\n- Life Path: ${numbers.lifePath || 'unknown'}\n- Destiny: ${numbers.destiny || 'unknown'}\n- Soul Urge: ${numbers.soulUrge || 'unknown'}\n- Personal Year: ${numbers.personalYear || 'unknown'}\n\n${chartFacts}${timingHints ? `\nTiming hints: ${timingHints}` : ''}${userSelections ? `\n\n## USER RESPONSES (use these to PERSONALISE)\n${userSelections}\nIMPORTANT: The user answered the questions above. These reveal their real life situation. Your reading MUST be directly shaped by these answers - if user chose "harder truth", be filterless; if they said "not_fully" about career, address career dissatisfaction; if they confirmed a repeating mistake, name and explain that pattern.` : ''}\n\nIMPORTANT: Use the EXACT planetary positions, dasha periods, and house analysis given above to make SPECIFIC predictions. Reference the actual planet names, signs, degrees, and dasha transition years. For example: "Saturn in Pisces at 14.2° combined with your Rahu dasha starting 2019 means that in 2020-2021..." This makes predictions feel personally calculated. Do NOT give vague generic predictions. Every claim must trace back to a specific chart fact above.\nIf planet-in-house analysis data is provided above, weave those effects naturally into your reading - reference the remedies, benefic/malefic effects, and specific rules for the user's planetary placements. Do NOT mention the source name or any book title - just present these insights as part of your own Vedic reading seamlessly.`;
 
+        // ============================================================
+        //  USER QUESTION DIRECTIVE - if the user asked a specific question
+        //  on the landing screen ("Ask Maya anything"), every section MUST
+        //  bend toward that question. Pre-auth sections tease the answer;
+        //  post-auth deep reveal sections give the full detailed answer.
+        // ============================================================
+        const userQuestionRaw = (this.userData?.userQuestion || context.userQuestion || '').toString().trim();
+        let userQuestionBlock = '';
+        if (userQuestionRaw) {
+            const safeQ = userQuestionRaw.replace(/`/g, "'").slice(0, 320);
+            const PRE_AUTH_SECTIONS = new Set(['opening', 'kundli', 'numbersReveal', 'identityTruth', 'emotionalPattern', 'unresolvedThread', 'combinedTeaser', 'accuracyShock', 'suspenseBridge', 'emailGate', 'fomoHook']);
+            const isPreAuth = PRE_AUTH_SECTIONS.has(sectionKey);
+            userQuestionBlock = isHindi
+                ? `\n\n## USER'S BURNING QUESTION (HIGHEST PRIORITY -हर section इसी के around बनेगा)\nUser ने शुरुआत में यह सवाल पूछा है: "${safeQ}"\nREGEL:\n- इस पूरी reading का focus इसी सवाल पर रखिए। Generic chart tour मत दीजिए -हर planetary observation, हर dasha reference, हर number इसी सवाल से connect होकर आना चाहिए।\n- User का नाम, sign, और chart facts use करते हुए इसी सवाल के लिए relevant pattern पकड़िए।\n${isPreAuth ? `- यह section PRE-LOGIN है: सवाल को acknowledge कीजिए और chart से एक tantalizing partial insight दीजिए, but पूरा detailed answer अभी मत खोलिए। साफ संकेत दीजिए कि "इसकी पूरी गहराई file save होने के बाद खुलेगी"। Curiosity build करें।` : `- यह section POST-LOGIN है: अब इसी सवाल का COMPLETE, SPECIFIC, और HONEST answer दीजिए। Chart evidence (ग्रह, राशि, घर, दशा, transit) को NAME करके बताइए कि इस सवाल का जवाब क्या है, क्यों है, कब-कब क्या होगा, और क्या practical action / remedy लेना चाहिए। Vague मत रहिए।`}\n- अगर सवाल multi-part है तो हर part को address कीजिए।\n- अगर सवाल user की real life situation या emotion reveal करता है, उसे genuine empathy से acknowledge कीजिए।`\n                : `\n\n## USER'S BURNING QUESTION (HIGHEST PRIORITY -every section bends toward this)\nThe user asked this on the landing screen: "${safeQ}"\nRULES:\n- This entire reading's focus is THIS question. Do NOT give a generic chart tour -every planetary observation, every dasha reference, every number must thread back to this question.\n- Use the user's name, signs, and chart facts to identify the pattern that is most relevant to this exact question.\n${isPreAuth ? `- This section is PRE-LOGIN: acknowledge the question and offer ONE tantalizing partial chart-based insight, but do NOT reveal the full detailed answer yet. Make it clear that "the full depth of this answer opens once your file is saved". Build curiosity.` : `- This section is POST-LOGIN: now give the COMPLETE, SPECIFIC, and HONEST answer to this exact question. NAME the chart evidence (planet, sign, house, dasha, transit) and explain WHAT the answer is, WHY it is so, WHEN things will unfold, and what practical action / remedy to take. Do NOT stay vague.`}\n- If the question has multiple parts, address each part.\n- If the question reveals a real life situation or emotion, acknowledge it with genuine empathy first.`;\n        }\n\n        const commonFactsWithQuestion = userQuestionBlock ? `${userQuestionBlock}\n\n${commonFacts}` : commonFacts;
+
         const sharedRules = this.getBaseRules(isHindi);
 
         const sectionPrompts = isHindi
@@ -2244,7 +2271,7 @@ STRUCTURE (follow this ORDER):
             ? `\n\n${this._buildFreshOpeningDirective(isHindi)}`
             : '';
 
-        return this._genderFlipPrompt(`${sectionPrompts[sectionKey] || sectionPrompts.completion}${freshnessBlock}\n\nNarrative arc for this section:\n${narrativeStageGuide}\n\n${commonFacts}\n\n${this._buildAlreadySpokenContext(sectionKey, isHindi)}${memoryBlock}\n\n${sharedRules}\n\nReturn only the spoken text.`);
+        return this._genderFlipPrompt(`${sectionPrompts[sectionKey] || sectionPrompts.completion}${freshnessBlock}\n\nNarrative arc for this section:\n${narrativeStageGuide}\n\n${commonFactsWithQuestion}\n\n${this._buildAlreadySpokenContext(sectionKey, isHindi)}${memoryBlock}\n\n${sharedRules}\n\nReturn only the spoken text.`);
     },
 
     /**

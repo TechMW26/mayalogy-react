@@ -146,9 +146,9 @@ export async function handleTextToSpeechRequest(payload, env = process.env) {
     return jsonResponse(400, { error: 'text is required' });
   }
 
-  const apiKey = getEnvValue(env, 'ELEVENLABS_API_KEY');
+  const apiKeys = collectElevenLabsApiKeys(env);
 
-  if (!apiKey) {
+  if (apiKeys.length === 0) {
     return jsonResponse(503, {
       code: 'ELEVENLABS_API_KEY_MISSING',
       error: 'ELEVENLABS_API_KEY is not configured',
@@ -184,20 +184,31 @@ export async function handleTextToSpeechRequest(payload, env = process.env) {
     requestBody.next_text = String(payload.next_text).slice(0, 350);
   }
 
-  const response = await fetch(`${ELEVENLABS_BASE_URL}/${encodeURIComponent(voiceId)}`, {
-    method: 'POST',
-    headers: {
-      Accept: 'audio/mpeg',
-      'Content-Type': 'application/json',
-      'xi-api-key': apiKey,
-    },
-    body: JSON.stringify(requestBody),
-  });
+  const url = `${ELEVENLABS_BASE_URL}/${encodeURIComponent(voiceId)}`;
+  let lastStatus = 502;
+  let lastErrorBody = 'ElevenLabs request failed';
 
-  if (!response.ok) {
+  for (let i = 0; i < apiKeys.length; i += 1) {
+    const apiKey = apiKeys[i];
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Accept: 'audio/mpeg',
+        'Content-Type': 'application/json',
+        'xi-api-key': apiKey,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (response.ok) {
+      return binaryResponse(200, Buffer.from(await response.arrayBuffer()), {
+        'Cache-Control': 'no-store',
+        'Content-Type': response.headers.get('content-type') || 'audio/mpeg',
+      });
+    }
+
     const errorText = await response.text();
     let errorBody = errorText || `ElevenLabs request failed with status ${response.status}`;
-
     try {
       const parsedError = JSON.parse(errorText);
       errorBody = parsedError?.detail?.message || parsedError?.message || parsedError?.error || errorBody;
@@ -205,16 +216,56 @@ export async function handleTextToSpeechRequest(payload, env = process.env) {
       // Keep the raw upstream text when it is not JSON.
     }
 
-    return jsonResponse(response.status, {
-      code: response.status === 503 ? 'ELEVENLABS_UNAVAILABLE' : 'ELEVENLABS_REQUEST_FAILED',
-      error: errorBody,
-    });
+    lastStatus = response.status;
+    lastErrorBody = errorBody;
+
+    const shouldFallback = i < apiKeys.length - 1 && shouldTryFallbackKey(response.status);
+    if (!shouldFallback) {
+      break;
+    }
+    console.warn(`ElevenLabs key #${i + 1} failed (${response.status}); trying fallback.`);
   }
 
-  return binaryResponse(200, Buffer.from(await response.arrayBuffer()), {
-    'Cache-Control': 'no-store',
-    'Content-Type': response.headers.get('content-type') || 'audio/mpeg',
+  return jsonResponse(lastStatus, {
+    code: lastStatus === 503 ? 'ELEVENLABS_UNAVAILABLE' : 'ELEVENLABS_REQUEST_FAILED',
+    error: lastErrorBody,
   });
+}
+
+function collectElevenLabsApiKeys(env) {
+  const keys = [];
+  const seen = new Set();
+  const push = (value) => {
+    const key = normalizeText(value);
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      keys.push(key);
+    }
+  };
+
+  push(getEnvValue(env, 'ELEVENLABS_API_KEY'));
+
+  const fallbackSources = [
+    getEnvValue(env, 'ELEVENLABS_API_KEY_FALLBACKS'),
+    getEnvValue(env, 'ELEVENLABS_API_KEY_FALLBACK'),
+    getEnvValue(env, 'ELEVENLABS_FALLBACK_KEYS'),
+  ];
+  fallbackSources.forEach((source) => {
+    if (!source) return;
+    source.split(',').forEach(push);
+  });
+
+  for (let i = 1; i <= 5; i += 1) {
+    push(getEnvValue(env, `ELEVENLABS_API_KEY_${i}`));
+  }
+
+  return keys;
+}
+
+function shouldTryFallbackKey(status) {
+  if (status === 401 || status === 403 || status === 429) return true;
+  if (status >= 500 && status <= 599) return true;
+  return false;
 }
 
 export async function handleRemoveBackgroundRequest(payload, env = process.env) {
