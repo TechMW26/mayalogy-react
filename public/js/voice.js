@@ -1389,10 +1389,11 @@ const MayaVoice = {
                     : (MAYA_CONFIG.API_KEYS.ELEVENLABS_EN_VOICE_ID || MAYA_CONFIG.API_KEYS.ELEVENLABS_VOICE_ID)));
         const url = MAYA_CONFIG.ENDPOINTS.ELEVENLABS;
 
-        // Prefer ElevenLabs v3 (more expressive, conversational) with v2 as fallback.
+        // Use only eleven_multilingual_v2 — v3 routinely 400s on this account
+        // and forces a fallback round-trip on every request.
         const modelChain = (this._elevenLabsModelChain && this._elevenLabsModelChain.length)
             ? this._elevenLabsModelChain
-            : ['eleven_v3', 'eleven_multilingual_v2'];
+            : ['eleven_multilingual_v2'];
 
         const latencyOptimization = isMaleGuide ? 3 : 2;
         // Tuned for CONSISTENCY across generations (was: low stability + high style

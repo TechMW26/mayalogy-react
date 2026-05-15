@@ -640,21 +640,58 @@ const MayaKundli = {
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         const w = size;
         const h = size;
+
+        // ── OLD PAPER (parchment) BACKGROUND ──
+        // Filled inside the canvas itself so the chart always looks like an
+        // aged scroll regardless of the surrounding card.
+        const paperGrad = ctx.createRadialGradient(w * 0.35, h * 0.3, w * 0.1, w / 2, h / 2, w * 0.75);
+        paperGrad.addColorStop(0, '#fbeec2');
+        paperGrad.addColorStop(0.55, '#ecd497');
+        paperGrad.addColorStop(1, '#c79a55');
+        ctx.fillStyle = paperGrad;
+        ctx.fillRect(0, 0, w, h);
+        // Subtle aged speckle
+        ctx.save();
+        ctx.globalAlpha = 0.06;
+        for (let i = 0; i < 80; i++) {
+            const sx = Math.random() * w;
+            const sy = Math.random() * h;
+            const sr = Math.random() * 1.4 + 0.2;
+            ctx.fillStyle = Math.random() > 0.5 ? '#5a3b12' : '#3a2408';
+            ctx.beginPath();
+            ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+        // Inner vignette to suggest worn edges
+        const vignette = ctx.createRadialGradient(w / 2, h / 2, w * 0.3, w / 2, h / 2, w * 0.7);
+        vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        vignette.addColorStop(1, 'rgba(80, 40, 0, 0.22)');
+        ctx.fillStyle = vignette;
+        ctx.fillRect(0, 0, w, h);
+
+        // Ink palette on parchment
+        const lineColor = '#5a3a14';      // dark brown ink
+        const textColor = '#3a2408';
+        const mutedColor = '#7a5320';
+        const ascColor = '#a3590d';
         
-        // Use golden/amber color scheme for authentic look
-        const lineColor = '#d4a732'; // Golden amber
-        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--maya-text-primary').trim() || '#ffffff';
-        const mutedColor = getComputedStyle(document.documentElement).getPropertyValue('--maya-text-muted').trim() || '#888888';
-        const ascColor = '#fbbf24';
-        
-        ctx.clearRect(0, 0, w, h);
+        // Inset all geometry by `pad` pixels so nothing kisses the canvas edge.
+        // Coordinates below are in 0-100 scale; we map them through the inset rect.
+        const pad = Math.max(8, Math.round(size * 0.05));
+        const innerX = pad;
+        const innerY = pad;
+        const innerW = w - pad * 2;
+        const innerH = h - pad * 2;
+        const px = (xp) => innerX + (xp / 100) * innerW;
+        const py = (yp) => innerY + (yp / 100) * innerH;
         
         // Helper function to draw triangle house
         const drawTriangleHouse = (x1, y1, x2, y2, x3, y3) => {
             ctx.beginPath();
-            ctx.moveTo(x1 * w / 100, y1 * h / 100);
-            ctx.lineTo(x2 * w / 100, y2 * h / 100);
-            ctx.lineTo(x3 * w / 100, y3 * h / 100);
+            ctx.moveTo(px(x1), py(y1));
+            ctx.lineTo(px(x2), py(y2));
+            ctx.lineTo(px(x3), py(y3));
             ctx.closePath();
             ctx.lineWidth = 1.5;
             ctx.strokeStyle = lineColor;
@@ -664,20 +701,20 @@ const MayaKundli = {
         // Helper function to draw square house (diamond)
         const drawSquareHouse = (x1, y1, x2, y2, x3, y3, x4, y4) => {
             ctx.beginPath();
-            ctx.moveTo(x1 * w / 100, y1 * h / 100);
-            ctx.lineTo(x2 * w / 100, y2 * h / 100);
-            ctx.lineTo(x3 * w / 100, y3 * h / 100);
-            ctx.lineTo(x4 * w / 100, y4 * h / 100);
+            ctx.moveTo(px(x1), py(y1));
+            ctx.lineTo(px(x2), py(y2));
+            ctx.lineTo(px(x3), py(y3));
+            ctx.lineTo(px(x4), py(y4));
             ctx.closePath();
             ctx.lineWidth = 1.5;
             ctx.strokeStyle = lineColor;
             ctx.stroke();
         };
         
-        // Draw outer border
+        // Outer border (inset, so it sits inside the parchment)
         ctx.strokeStyle = lineColor;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(2, 2, w - 4, h - 4);
+        ctx.lineWidth = 2.2;
+        ctx.strokeRect(innerX, innerY, innerW, innerH);
         
         // Draw all 12 houses (North Indian diamond layout)
         // House 1 - Top center diamond
@@ -729,8 +766,8 @@ const MayaKundli = {
             const shortName = data.signShortNames[sign.name] || sign.name.substring(0, 3);
             const isAsc = house === 1;
             
-            const x = pos.x * w / 100;
-            const y = pos.y * h / 100;
+            const x = px(pos.x);
+            const y = py(pos.y);
             
             // Sign symbol
             ctx.fillStyle = isAsc ? ascColor : mutedColor;
@@ -748,7 +785,7 @@ const MayaKundli = {
             let planetY = y + (isAsc ? 12 : 4);
             housePlanets.slice(0, 2).forEach(p => {
                 const info = data.planetInfo[p.name] || {};
-                ctx.fillStyle = info.color || '#6366f1';
+                ctx.fillStyle = info.color || '#3a2408';
                 ctx.font = '9px Arial';
                 ctx.fillText(`${info.symbol || '•'} ${info.vedic || p.name}`, x, planetY);
                 planetY += 11;
@@ -764,7 +801,7 @@ const MayaKundli = {
         ctx.fillStyle = textColor;
         ctx.font = 'bold 16px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('MAYA', w / 2, h / 2 + 5);
+        ctx.fillText('MAYA', innerX + innerW / 2, innerY + innerH / 2 + 5);
 
         return true;
     },

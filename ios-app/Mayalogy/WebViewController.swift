@@ -63,7 +63,13 @@ final class WebViewController: UIViewController {
         webView.allowsBackForwardNavigationGestures = true
         webView.allowsLinkPreview = false
         webView.scrollView.bounces = true
+        // Critical: never let UIKit auto-inset the scroll view — we want the
+        // web content (and `env(safe-area-inset-top)`) to map 1:1 with the
+        // physical notch / Dynamic Island area.
         webView.scrollView.contentInsetAdjustmentBehavior = .never
+        if #available(iOS 13.0, *) {
+            webView.scrollView.automaticallyAdjustsScrollIndicatorInsets = false
+        }
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.customUserAgent = (webView.value(forKey: "userAgent") as? String).map { "\($0) \(userAgentSuffix)" } ?? userAgentSuffix
@@ -79,8 +85,13 @@ final class WebViewController: UIViewController {
         webView.addObserver(self, forKeyPath: "estimatedProgress", options: .new, context: nil)
 
         view.addSubview(webView)
+        // Pin the WebView to the FULL view (not the safe area) so the page
+        // extends behind the notch / Dynamic Island. The web layer reads the
+        // physical inset via `env(safe-area-inset-top)` and pads its own
+        // header (see `.main-header` rule in css/maya.css), giving us a true
+        // edge-to-edge experience without clipping the status bar area.
         NSLayoutConstraint.activate([
-            webView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            webView.topAnchor.constraint(equalTo: view.topAnchor),
             webView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             webView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
