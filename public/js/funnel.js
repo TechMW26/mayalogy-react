@@ -27,6 +27,387 @@ const MayaFunnel = {
     kundliChart: null,
     personalization: null,
 
+
+    // --- Multilingual TTS + complete-sentence safety helpers ---
+    normalizeLanguage(language = 'en') {
+        const raw = String(language || 'en').trim().toLowerCase();
+        if (['hi', 'hin', 'hindi', 'hi-in', 'hinglish', 'hindi-hinglish'].includes(raw) || raw.startsWith('hi')) return 'hi';
+        if (['en', 'eng', 'english', 'en-in', 'en-us', 'en-gb'].includes(raw) || raw.startsWith('en')) return 'en';
+        return raw.includes('hi') ? 'hi' : 'en';
+    },
+
+    getSpeechLocale(language = 'en') {
+        return this.normalizeLanguage(language) === 'hi' ? 'hi-IN' : 'en-IN';
+    },
+
+    _isSpeechEnglish(text = '') {
+        const value = String(text || '').trim();
+        if (!value) return false;
+        const en = (value.match(/[A-Za-z]/g) || []).length;
+        const hi = (value.match(/[\u0900-\u097F]/g) || []).length;
+        return en > 0 && en >= hi;
+    },
+
+    _isSpeechHindi(text = '') {
+        const value = String(text || '').trim();
+        if (!value) return false;
+        const hi = (value.match(/[\u0900-\u097F]/g) || []).length;
+        const en = (value.match(/[A-Za-z]/g) || []).length;
+        return hi > 0 && hi >= en;
+    },
+
+    _getCurrentSpeechLanguage() {
+        return this._resolveCurrentLanguage();
+    },
+
+    /**
+     * Resolve the current app language from the latest saved UI choice.
+     * Storage is intentionally checked before userData, because userData can
+     * carry an old default "en" from earlier onboarding steps while the final
+     * language selector has already saved "hi".
+     */
+    _resolveCurrentLanguage(fallback = 'en') {
+        const profile = window.MayaUtils?.storage?.get?.('maya_profile') || {};
+        const funnelData = window.MayaUtils?.storage?.get?.('funnel_data') || {};
+        const candidates = [
+            window.MayaUtils?.storage?.get?.('maya_language'),
+            this.userData?.language,
+            profile.language,
+            funnelData.language,
+            fallback
+        ];
+
+        for (const candidate of candidates) {
+            const normalized = this.normalizeLanguage(candidate || '');
+            if (normalized === 'hi' || normalized === 'en') return normalized;
+        }
+
+        return this.normalizeLanguage(fallback || 'en');
+    },
+
+    _isHindiMode() {
+        return this._resolveCurrentLanguage() === 'hi';
+    },
+
+    _syncLanguagePreference(language = null) {
+        const resolved = this.normalizeLanguage(language || this._resolveCurrentLanguage());
+
+        if (this.userData) {
+            this.userData.language = resolved;
+        }
+
+        try {
+            window.MayaUtils?.storage?.set?.('maya_language', resolved);
+
+            const profile = window.MayaUtils?.storage?.get?.('maya_profile') || {};
+            if (profile && typeof profile === 'object') {
+                profile.language = resolved;
+                window.MayaUtils?.storage?.set?.('maya_profile', profile);
+            }
+
+            const funnelData = window.MayaUtils?.storage?.get?.('funnel_data') || {};
+            if (funnelData && typeof funnelData === 'object') {
+                funnelData.language = resolved;
+                window.MayaUtils?.storage?.set?.('funnel_data', funnelData);
+            }
+        } catch (error) {
+            console.warn('Language preference sync failed:', error?.message || error);
+        }
+
+        try { window.MayaStatements?.setLanguage?.(resolved); } catch (_error) {}
+        try { window.MayaDynamicContent?.setLanguage?.(resolved); } catch (_error) {}
+        try { window.MayaListener?.setLanguage?.(resolved); } catch (_error) {}
+        try { void window.MayaApp?.applyLanguagePreference?.(resolved, { force: true }); } catch (_error) {}
+
+        return resolved;
+    },
+
+    _isMostlyEnglishText(text = '') {
+        const value = String(text || '');
+        const english = (value.match(/[A-Za-z]/g) || []).length;
+        const hindi = (value.match(/[ऀ-ॿ]/g) || []).length;
+        return english > 30 && english > Math.max(20, hindi * 1.2);
+    },
+
+    _stripCompletionControlText(text = '') {
+        return String(text || '')
+            .replace(/\[\[pause-\d+\]\]/g, '')
+            .replace(/\[(?:warm|curious|thoughtful|softly|gentle smile|smile|pause|long pause|reassuring|whispers?|excited|empathetic|calm|sighs?|exhales?|laughs?|chuckles|intrigued|mysterious|dramatic|intimate|slowly|quickly|hesitant|confident|gasps?)\]\s*/gi, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    },
+
+    async _finalizeGeneratedNarration(sectionKey, rawText, prompt, options = {}, fallback = '', isHindi = this._isHindiMode()) {
+        const rawValue = String(rawText || '').trim();
+        let cleaned = this.sanitizeNarrationText(rawValue);
+        const rawForCheck = this._stripCompletionControlText(rawValue);
+        const needsLanguageRepair = Boolean(isHindi && cleaned && this._isMostlyEnglishText(cleaned));
+        const needsCompletionRepair = Boolean(rawForCheck && this._isLikelyIncompleteNarration(rawForCheck));
+
+        if ((needsLanguageRepair || needsCompletionRepair) && window.MayaAI?.callGemini) {
+            try {
+                const repairPrompt = isHindi
+                    ? `${prompt}
+
+IMPORTANT REPAIR TASK:
+Previous output was ${needsLanguageRepair ? 'in English or mixed too heavily with English' : 'incomplete'}:
+"${rawValue.slice(-700)}"
+
+Regenerate the SAME section as COMPLETE spoken Hindi. Use Devanagari Hindi from the very first word. Do not start in English. Keep only brand/numerology terms like Life Path, Destiny, Soul Urge and Personal Year in English if needed. End with a complete sentence and final punctuation. Return only spoken text.`
+                    : `${prompt}
+
+IMPORTANT REPAIR TASK:
+Previous output ended incomplete:
+"${rawValue.slice(-700)}"
+
+Regenerate the SAME section as complete spoken text. End with a full sentence and final punctuation. Return only spoken text.`;
+
+                const repaired = await this._callNarrationFunnelAI(repairPrompt, {
+                    ...options,
+                    timeoutMs: 0,
+                    requireComplete: true,
+                    temperature: Math.min(Number(options.temperature ?? 0.85), 0.65)
+                });
+
+                const repairedClean = this.sanitizeNarrationText(repaired);
+                const repairedRaw = this._stripCompletionControlText(repaired);
+
+                if (
+                    repairedClean &&
+                    !this._isLikelyIncompleteNarration(repairedRaw) &&
+                    !(isHindi && this._isMostlyEnglishText(repairedClean))
+                ) {
+                    cleaned = repairedClean;
+                }
+            } catch (repairError) {
+                console.warn(`${sectionKey} narration repair failed:`, repairError?.message || repairError);
+            }
+        }
+
+        if (isHindi && cleaned && this._isMostlyEnglishText(cleaned) && fallback) {
+            return this.sanitizeNarrationText(fallback);
+        }
+
+        return cleaned || this.sanitizeNarrationText(fallback);
+    },
+
+    _speechPause(ms = 250) {
+        return new Promise(resolve => setTimeout(resolve, Math.max(80, Math.min(Number(ms) || 250, 1500))));
+    },
+
+    _looksLikeCompleteSentence(text = '') {
+        const value = String(text || '').trim();
+        if (!value) return false;
+        if (/[.!?।…]$/.test(value)) return true;
+        if (/\]$/.test(value) && /\[(?:pause|softly|whispers|curious|warm|thoughtful|intrigued)\]$/i.test(value)) return true;
+        return false;
+    },
+
+    _isLikelyIncompleteNarration(text = '') {
+        const value = String(text || '').replace(/\[\[pause-\d+\]\]/g, '').trim();
+        if (!value) return true;
+        if (value.length < 35) return true;
+        if (this._looksLikeCompleteSentence(value)) return false;
+
+        // Common hanging words that mean Gemini stopped mid-thought.
+        return /(?:and|or|but|because|while|when|where|that|with|from|to|for|so|as|in|on|at|by|की|का|के|से|में|पर|और|लेकिन|क्योंकि|जो|जब|जहाँ|अगर|तो)$/i.test(value)
+            || /[,;:\-–—]$/.test(value)
+            || value.split(/\s+/).length >= 8;
+    },
+
+    _ensureTerminalPunctuation(text = '') {
+        const value = String(text || '').trim();
+        if (!value) return value;
+        return this._looksLikeCompleteSentence(value) ? value : `${value}.`;
+    },
+
+    _splitTextByLanguageForTTS(text = '', preferredLanguage = null) {
+        const baseLang = this.getSpeechLocale(preferredLanguage || this._getCurrentSpeechLanguage());
+        const source = String(text || '').trim();
+        if (!source) return [];
+
+        // Prefer the AI module's central splitter when available.
+        if (window.MayaAI?.splitForMultilingualTTS) {
+            try {
+                const aiSegments = MayaAI.splitForMultilingualTTS(source, preferredLanguage || this._getCurrentSpeechLanguage());
+                if (Array.isArray(aiSegments) && aiSegments.length) return aiSegments;
+            } catch (_error) { /* fallback below */ }
+        }
+
+        const englishPhrasePattern = /\b(?:Life Path Number|Life Path|Destiny Number|Destiny|Soul Urge Number|Soul Urge|Personal Year|Personal Month|Personal Day|Western Zodiac|Vedic moon sign|Ascendant|Current Dasha|Dasha|Kundli|chart|login|email|password|career|relationship|relationships|money|pressure|pattern|energy|timing|coach|voice coach|reading file|app|plan|number|numbers|profile|support|phase|cycle|focus|action step|practical|health|wellness|finance|business|work|love|Saturn|Jupiter|Mars|Venus|Mercury|Sun|Moon|Rahu|Ketu|Aries|Taurus|Gemini|Cancer|Leo|Virgo|Libra|Scorpio|Sagittarius|Capricorn|Aquarius|Pisces)\b/gi;
+        const pausePattern = /\[\[pause-(\d+)\]\]/gi;
+        const segments = [];
+
+        const pushSpeech = (lang, chunk) => {
+            const clean = String(chunk || '').replace(/\s+/g, ' ').trim();
+            if (!clean) return;
+            const last = segments[segments.length - 1];
+            if (last?.type === 'speech' && last.lang === lang) {
+                last.text = `${last.text} ${clean}`.replace(/\s+/g, ' ').trim();
+            } else {
+                segments.push({ type: 'speech', lang, text: clean });
+            }
+        };
+
+        const pushAuto = (chunk) => {
+            const tokens = String(chunk || '').split(/(\s+)/).filter(Boolean);
+            let buffer = '';
+            let bufferLang = null;
+            tokens.forEach(token => {
+                if (/^\s+$/.test(token)) { buffer += token; return; }
+                let lang = baseLang;
+                if (this._isSpeechEnglish(token)) lang = 'en-IN';
+                else if (this._isSpeechHindi(token)) lang = 'hi-IN';
+                if (!bufferLang) { bufferLang = lang; buffer = token; return; }
+                if (lang === bufferLang || /^[.,!?;:()[\]{}'"“”‘’\-–—]+$/.test(token)) {
+                    buffer += token;
+                    return;
+                }
+                pushSpeech(bufferLang, buffer);
+                bufferLang = lang;
+                buffer = token;
+            });
+            if (buffer) pushSpeech(bufferLang || baseLang, buffer);
+        };
+
+        let cursor = 0;
+        let pauseMatch;
+        while ((pauseMatch = pausePattern.exec(source)) !== null) {
+            if (pauseMatch.index > cursor) {
+                let textPart = source.slice(cursor, pauseMatch.index);
+                let lastIndex = 0;
+                let phraseMatch;
+                while ((phraseMatch = englishPhrasePattern.exec(textPart)) !== null) {
+                    if (phraseMatch.index > lastIndex) pushAuto(textPart.slice(lastIndex, phraseMatch.index));
+                    pushSpeech('en-IN', phraseMatch[0]);
+                    lastIndex = englishPhrasePattern.lastIndex;
+                }
+                if (lastIndex < textPart.length) pushAuto(textPart.slice(lastIndex));
+                englishPhrasePattern.lastIndex = 0;
+            }
+            segments.push({ type: 'pause', durationMs: Math.max(100, Math.min(Number(pauseMatch[1]) || 250, 1500)) });
+            cursor = pausePattern.lastIndex;
+        }
+
+        if (cursor < source.length) {
+            let textPart = source.slice(cursor);
+            let lastIndex = 0;
+            let phraseMatch;
+            while ((phraseMatch = englishPhrasePattern.exec(textPart)) !== null) {
+                if (phraseMatch.index > lastIndex) pushAuto(textPart.slice(lastIndex, phraseMatch.index));
+                pushSpeech('en-IN', phraseMatch[0]);
+                lastIndex = englishPhrasePattern.lastIndex;
+            }
+            if (lastIndex < textPart.length) pushAuto(textPart.slice(lastIndex));
+        }
+
+        return segments.filter(seg => seg.type === 'pause' || String(seg.text || '').trim());
+    },
+
+    async _speakOneSegmentWithLocale(text, locale) {
+        if (!window.MayaVoice || MayaVoice.isMuted) return;
+
+        const clean = String(text || '').trim();
+        if (!clean) return;
+
+        // voice.js in this project expects the 2nd argument of speak() to be
+        // onProgress(callback), not an options object. Passing { locale } caused:
+        // TypeError: onProgress is not a function.
+        const noopProgress = () => {};
+
+        const previous = {
+            language: MayaVoice.language,
+            currentLanguage: MayaVoice.currentLanguage,
+            locale: MayaVoice.locale,
+            voiceLocale: MayaVoice.voiceLocale,
+            currentLocale: MayaVoice.currentLocale,
+            selectedLocale: MayaVoice.selectedLocale,
+            speechLocale: MayaVoice.speechLocale,
+            ttsLocale: MayaVoice.ttsLocale
+        };
+
+        const applyLocale = () => {
+            if (typeof MayaVoice.setLanguage === 'function') {
+                MayaVoice.setLanguage(locale);
+            } else if (typeof MayaVoice.setLocale === 'function') {
+                MayaVoice.setLocale(locale);
+            } else if (typeof MayaVoice.setVoiceLocale === 'function') {
+                MayaVoice.setVoiceLocale(locale);
+            }
+
+            // Also write common locale fields used by custom voice modules.
+            MayaVoice.language = locale;
+            MayaVoice.currentLanguage = locale;
+            MayaVoice.locale = locale;
+            MayaVoice.voiceLocale = locale;
+            MayaVoice.currentLocale = locale;
+            MayaVoice.selectedLocale = locale;
+            MayaVoice.speechLocale = locale;
+            MayaVoice.ttsLocale = locale;
+        };
+
+        const restoreLocale = () => {
+            Object.entries(previous).forEach(([key, value]) => {
+                if (value !== undefined) MayaVoice[key] = value;
+            });
+        };
+
+        try {
+            applyLocale();
+
+            // If a dedicated locale method exists, use it first.
+            // If it fails because of signature mismatch, safely fall back to speak().
+            if (typeof MayaVoice.speakWithLocale === 'function') {
+                try {
+                    await MayaVoice.speakWithLocale(clean, locale, noopProgress);
+                    return;
+                } catch (error) {
+                    console.warn('speakWithLocale failed, falling back to speak():', error?.message || error);
+                }
+            }
+
+            if (typeof MayaVoice.speakText === 'function') {
+                try {
+                    await MayaVoice.speakText(clean, noopProgress);
+                    return;
+                } catch (error) {
+                    console.warn('speakText failed, falling back to speak():', error?.message || error);
+                }
+            }
+
+            // IMPORTANT: second argument must be a function, not an object.
+            await MayaVoice.speak(clean, noopProgress);
+        } finally {
+            restoreLocale();
+        }
+    },
+
+    async _speakMultilingualText(text, preferredLanguage = null) {
+        if (!window.MayaVoice || MayaVoice.isMuted) return false;
+        const segments = this._splitTextByLanguageForTTS(text, preferredLanguage);
+        if (!segments.length) return false;
+
+        if (typeof MayaVoice.speakSegments === 'function') {
+            try {
+                await MayaVoice.speakSegments(segments, () => {});
+                return true;
+            } catch (error) {
+                console.warn('speakSegments failed, using manual segment playback:', error?.message || error);
+            }
+        }
+
+        for (const segment of segments) {
+            if (this.isPaused) await this.waitIfPaused();
+            if (segment.type === 'pause') {
+                await this._speechPause(segment.durationMs || 250);
+                continue;
+            }
+            await this._speakOneSegmentWithLocale(segment.text, segment.lang || this.getSpeechLocale(preferredLanguage));
+            await this._speechPause(90);
+        }
+        return true;
+    },
+
     // --- New funnel redesign state ---
     validationResponses: [],
     emotionalAnchor: null,
@@ -714,7 +1095,7 @@ Current section: ${sectionKey}
      * Pick a random line from the voice library for a given category.
      */
     getVoiceLine(category) {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const pool = this.voiceLibrary[category];
         if (!pool) return '';
         const lines = isHindi ? pool.hi : pool.en;
@@ -783,12 +1164,10 @@ Current section: ${sectionKey}
     async waitForNarrationToFinish(bufferMs = 140) {
         if (window.MayaVoice?.waitForSpeechComplete) {
             await MayaVoice.waitForSpeechComplete();
-        }
-
-        let guard = 0;
-        while ((window.MayaVoice?.isPlaying || window.MayaVoice?.speakingLock) && guard < 80) {
-            await MayaUtils.sleep(60);
-            guard++;
+        } else {
+            while (window.MayaVoice?.isPlaying || window.MayaVoice?.speakingLock || window.MayaVoice?.currentAudio) {
+                await MayaUtils.sleep(80);
+            }
         }
 
         if (bufferMs > 0) {
@@ -836,7 +1215,7 @@ Current section: ${sectionKey}
      * These items are fed into AI prompts to create a more “specific” and hooking narrative.
      */
     buildPredictionItems() {
-        const lang = MayaUtils?.storage?.get('maya_language') || this.userData?.language || 'en';
+        const lang = this._resolveCurrentLanguage();
         const isHindi = lang === 'hi';
 
         const reduce = (n) => {
@@ -1079,7 +1458,7 @@ Current section: ${sectionKey}
     buildBaseAIContext(predictionItems = null) {
         const profile = this.personalization || {};
         const items = Array.isArray(predictionItems) ? predictionItems : this.buildPredictionItems();
-        const lang = MayaUtils?.storage?.get('maya_language') || this.userData?.language || 'en';
+        const lang = this._resolveCurrentLanguage();
         const isHindi = lang === 'hi';
 
         // Full kundli planetary data for AI
@@ -1178,12 +1557,33 @@ Current section: ${sectionKey}
             .replace(/रिलेशनशिप/gi, 'relationship')
             .replace(/मनी/gi, 'money')
             .replace(/एनर्जी/gi, 'energy')
+            .replace(/वेस्टर्न\s*जोडिएक/gi, 'Western Zodiac')
+            .replace(/मून\s*साइन/gi, 'Moon Sign')
+            .replace(/करंट\s*दशा/gi, 'Current Dasha')
+            .replace(/असेंडेंट/gi, 'Ascendant')
+            .replace(/सेटर्न/gi, 'Saturn')
+            .replace(/ज्यूपिटर/gi, 'Jupiter')
+            .replace(/मार्स/gi, 'Mars')
+            .replace(/वीनस/gi, 'Venus')
+            .replace(/मरकरी/gi, 'Mercury')
+            .replace(/टॉरस/gi, 'Taurus')
+            .replace(/एरीज/gi, 'Aries')
+            .replace(/जेमिनी/gi, 'Gemini')
+            .replace(/कैंसर/gi, 'Cancer')
+            .replace(/लियो/gi, 'Leo')
+            .replace(/वर्गो/gi, 'Virgo')
+            .replace(/लिब्रा/gi, 'Libra')
+            .replace(/स्कॉर्पियो/gi, 'Scorpio')
+            .replace(/सैजिटेरियस/gi, 'Sagittarius')
+            .replace(/कैप्रिकॉर्न/gi, 'Capricorn')
+            .replace(/एक्वेरियस/gi, 'Aquarius')
+            .replace(/पाइसीज/gi, 'Pisces')
             .replace(/\s+/g, ' ')
             .trim();
     },
 
     sanitizeNarrationText(text) {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const rawName = this.firstName || (isHindi ? 'आप' : 'you');
         const name = rawName || (isHindi ? 'आप' : 'you');
         const guideName = this._guideName();
@@ -1310,20 +1710,29 @@ Current section: ${sectionKey}
 
     _trimDanglingSentence(text) {
         const value = String(text || '').trim();
-        if (!value || /[.!?।]$/.test(value)) return value;
+        if (!value) return value;
+
+        // Do not aggressively cut valid AI output just because the model missed final punctuation.
+        // Earlier this removed useful endings and made narration feel incomplete.
+        if (this._looksLikeCompleteSentence(value)) return value;
 
         const lastBoundary = Math.max(
             value.lastIndexOf('.'),
             value.lastIndexOf('!'),
             value.lastIndexOf('?'),
-            value.lastIndexOf('।')
+            value.lastIndexOf('।'),
+            value.lastIndexOf('…')
         );
 
-        if (lastBoundary >= 45 && value.length - lastBoundary > 10) {
+        const danglingTail = lastBoundary >= 0 ? value.slice(lastBoundary + 1).trim() : value;
+        const danglingWords = danglingTail.split(/\s+/).filter(Boolean).length;
+
+        // Only remove a clearly broken tail. Otherwise keep the thought and add punctuation.
+        if (lastBoundary >= 45 && danglingWords >= 7 && /(?:and|or|but|because|while|when|where|that|with|from|to|for|की|का|के|से|में|पर|और|लेकिन|क्योंकि|जो|जब)$/i.test(danglingTail)) {
             return value.slice(0, lastBoundary + 1).trim();
         }
 
-        return value;
+        return this._ensureTerminalPunctuation(value);
     },
 
     // Collapse back-to-back repeated tokens & 2-4 word phrases (Latin + Devanagari).
@@ -1539,10 +1948,10 @@ Current section: ${sectionKey}
             }
         } catch (_e) { /* non-fatal */ }
         
-        // Save language preference to storage immediately
-        const language = userData.language || MayaUtils.storage.get('maya_language') || 'en';
-        this.userData.language = language;
-        MayaUtils.storage.set('maya_language', language);
+        // Save language preference to storage immediately.
+        // Use the final saved UI choice first, because userData.language may still
+        // contain the earlier default "en" even after the user selected Hindi.
+        const language = this._syncLanguagePreference();
         
         // IMPORTANT: Save ALL user data to localStorage immediately
         // This ensures data persists even before email gate
@@ -2084,7 +2493,7 @@ ${this.getBaseRules(false)}`);
      */
     
     async generateWarmWelcome() {
-        const lang = MayaUtils?.storage?.get('maya_language') || this.userData?.language || 'en';
+        const lang = this._resolveCurrentLanguage();
         const name = this.firstName;
 
         // Ensure MayaStatements uses correct language
@@ -2127,31 +2536,30 @@ ${this.getBaseRules(false)}`);
 
     async _callFastFunnelAI(prompt, options = {}) {
         if (!window.MayaAI) return '';
-        if (typeof MayaAI.callFast === 'function') {
-            return MayaAI.callFast(prompt, options);
-        }
         if (typeof MayaAI.callGemini === 'function') {
-            return MayaAI.callGemini(prompt, options);
+            return MayaAI.callGemini(prompt, { ...options, provider: 'gemini', preferGemini: true, requireComplete: true, timeoutMs: 0 });
         }
         return '';
     },
 
     async _callNarrationFunnelAI(prompt, options = {}) {
         if (!window.MayaAI || typeof MayaAI.callGemini !== 'function') return '';
-        return MayaAI.callGemini(prompt, {
+        const safeOptions = {
             ...options,
             provider: 'gemini',
             preferGemini: true,
             requireComplete: true,
             timeoutMs: 0
-        });
+        };
+        delete safeOptions.maxTokens;
+        return MayaAI.callGemini(prompt, safeOptions);
     },
 
     async _callQuestionFunnelAI(prompt, options = {}) {
         if (!window.MayaAI || typeof MayaAI.callGemini !== 'function') return '';
-        const maxTokens = Math.max(Number(options.maxTokens || 0), 1400);
-        const timeoutMs = 0;
-        return MayaAI.callGemini(prompt, { ...options, provider: 'gemini', maxTokens, timeoutMs });
+        const safeOptions = { ...options, provider: 'gemini', timeoutMs: 0, requireComplete: true };
+        delete safeOptions.maxTokens;
+        return MayaAI.callGemini(prompt, safeOptions);
     },
 
     async _generateAdaptiveQuestionFromGemini(prompt, fallback, askedKeys = new Set(), options = {}) {
@@ -2163,8 +2571,8 @@ ${this.getBaseRules(false)}`);
             {
                 ...options,
                 temperature: Math.min(Number(options.temperature ?? 0.65), 0.45),
-                maxTokens: Math.max(Number(options.maxTokens || 0), 1600),
-                timeoutMs: Math.max(Number(options.timeoutMs || 0), 22000)
+                timeoutMs: 0,
+                requireComplete: true
             }
         ];
 
@@ -2272,9 +2680,10 @@ Return only spoken text.`;
 
         try {
             this._initFastAiContext(lang);
-            const raw = await this._callNarrationFunnelAI(prompt, { temperature: 0.9, topP: 0.95 });
-            const cleaned = this.sanitizeNarrationText(raw);
-            if (cleaned && cleaned.length > 80) return cleaned;
+            const options = { temperature: 0.9, topP: 0.95, timeoutMs: 0, requireComplete: true };
+            const raw = await this._callNarrationFunnelAI(prompt, options);
+            const cleaned = await this._finalizeGeneratedNarration('journeyIntro', raw, prompt, options, fallback, isHindi);
+            if (cleaned && cleaned.length > 40) return cleaned;
         } catch (error) {
             console.warn('Journey intro generation failed:', error?.message || error);
         }
@@ -2338,9 +2747,10 @@ Rules:
 
         try {
             this._initFastAiContext(lang);
-            const raw = await this._callNarrationFunnelAI(prompt, { temperature: 0.82, topP: 0.95 });
-            const cleaned = this.sanitizeNarrationText(raw);
-            if (cleaned && cleaned.length > 60) return cleaned;
+            const options = { temperature: 0.82, topP: 0.95, timeoutMs: 0, requireComplete: true };
+            const raw = await this._callNarrationFunnelAI(prompt, options);
+            const cleaned = await this._finalizeGeneratedNarration('preQuestionBridge', raw, prompt, options, fallback, isHindi);
+            if (cleaned && cleaned.length > 40) return cleaned;
         } catch (error) {
             console.warn('Pre-question bridge generation failed:', error?.message || error);
         }
@@ -2474,7 +2884,7 @@ Rules:
     },
 
     buildDirectSectionPrompt(sectionKey, context = {}) {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const profile = this.personalization || {};
         const numbers = this.calculations || {};
         const predictionItems = Array.isArray(context.predictionItems) ? context.predictionItems : this.buildPredictionItems();
@@ -2932,7 +3342,7 @@ All three segments must connect as one flowing story — every segment must cite
      */
     async _refillDynamicFillers(type = 'thinking', count = 4) {
           if (!window.MayaAI?.callFast && !window.MayaAI?.callGemini) return;
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const lang = isHindi ? 'hi' : 'en';
         const key = `${lang}:${type}`;
 
@@ -2966,7 +3376,7 @@ All three segments must connect as one flowing story — every segment must cite
 
             const prompt = `You are MAYA, a soulful astrologer speaking directly to the user (second person). Generate exactly ${count} short pause-filler phrases (each 6 to 14 words) that MAYA would naturally murmur ${typeContext}. Current phase: ${phaseHint}. These are spoken aloud while she thinks, so they must feel warm, human, intimate, and present-tense — as if she is gazing at the user's chart and talking softly to them.\n\n${langRule}\n${addressRule}\n\nReturn ONLY a JSON array of ${count} strings. No keys, no markdown, no commentary. Example shape: ["...", "...", "...", "..."]`;
 
-            const raw = await this._callFastFunnelAI(prompt, { maxTokens: 400, temperature: 0.85, timeoutMs: 9000 });
+            const raw = await this._callFastFunnelAI(prompt, { temperature: 0.85, timeoutMs: 0, requireComplete: true });
             if (!raw) return;
 
             // Extract JSON array
@@ -3025,7 +3435,7 @@ All three segments must connect as one flowing story — every segment must cite
     _showThinkingIndicator(type = 'thinking') {
         this._hideThinkingIndicator();
 
-        const lang = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const lang = this._isHindiMode();
         const copy = {
             thinking: {
                 badge: lang ? 'विश्लेषण' : 'AI ANALYSIS',
@@ -3110,7 +3520,8 @@ All three segments must connect as one flowing story — every segment must cite
     },
 
     async generateDirectReadingSection(sectionKey, context = {}) {
-        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const lang = this._syncLanguagePreference();
+        const isHindi = lang === 'hi';
         const localFallback = this._getLocalDirectSectionFallback(sectionKey, context);
         if (!window.MayaAI) {
             return localFallback;
@@ -3128,11 +3539,16 @@ All three segments must connect as one flowing story — every segment must cite
             });
 
             const prompt = this.buildDirectSectionPrompt(sectionKey, context);
-            const isHindi = lang === 'hi';
             const generationContext = this._buildGenerationContinuityContext(sectionKey, isHindi);
-            const aiOptions = generationContext
-                ? { contextMessages: [{ role: 'user', content: generationContext }] }
-                : {};
+            const aiOptions = {
+                ...(generationContext ? { contextMessages: [{ role: 'user', content: generationContext }] } : {}),
+                provider: 'gemini',
+                preferGemini: true,
+                requireComplete: true,
+                timeoutMs: 0
+            };
+            delete aiOptions.maxTokens;
+
             const sources = [];
 
             if (window.MayaAI?.callGemini) {
@@ -3153,7 +3569,7 @@ All three segments must connect as one flowing story — every segment must cite
                 label: `${sectionKey} direct reading`
             });
 
-            return this.sanitizeNarrationText(generated) || localFallback;
+            return await this._finalizeGeneratedNarration(sectionKey, generated, prompt, aiOptions, localFallback, isHindi);
         } catch (error) {
             console.warn(`Direct ${sectionKey} reading failed:`, error.message);
             return localFallback;
@@ -3222,6 +3638,10 @@ All three segments must connect as one flowing story — every segment must cite
             // Start background music
             this.startBackgroundMusic();
 
+            // Re-sync language immediately before the first spoken line.
+            // This prevents a stale default English value from controlling the intro.
+            this._syncLanguagePreference();
+
             console.log('🎭 Funnel UI ready, beginning journey...');
             
             // Begin the journey with flowing narrative
@@ -3282,7 +3702,7 @@ All three segments must connect as one flowing story — every segment must cite
             blobContainer.classList.remove('blob-centered', 'blob-top');
             blobContainer.classList.add('blob-small');
         }
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         
         this.calculationOverlay = document.createElement('div');
         this.calculationOverlay.id = 'calculation-overlay';
@@ -3383,7 +3803,7 @@ All three segments must connect as one flowing story — every segment must cite
      * @returns {Promise<string>} selected value
      */
     async showValidationQuestion(question, options, spokenQuestion) {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const safeOptions = (Array.isArray(options) ? options : [])
             .map((opt, index) => ({
                 label: String(opt?.label || '').trim(),
@@ -3501,7 +3921,7 @@ All three segments must connect as one flowing story — every segment must cite
      * Respond to a validation answer with a short AI-aware acknowledgement.
      */
     async respondToValidation(answer, context = '') {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const profile = this.personalization || {};
         const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
         const moonSign = profile.moonSign || profile.vedic?.name || '';
@@ -3728,7 +4148,7 @@ ONLY return the spoken response. Nothing else.`;
      * Used between calculation reveals to give user control over pacing.
      */
     async showContinueGate() {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const overlayActive = !!this.calculationOverlay && document.body.contains(this.calculationOverlay);
         
         // If we're in the calculation overlay, show button inside it
@@ -3776,7 +4196,7 @@ ONLY return the spoken response. Nothing else.`;
     },
 
     async showMiniCheck(checkQuestion) {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const options = isHindi
             ? [
                 { label: 'हाँ, बिल्कुल', value: 'yes' },
@@ -3827,7 +4247,7 @@ ONLY return the spoken response. Nothing else.`;
      * so they feel like MAYA is confirming what the kundli shows.
      */
     getProfileQuestions() {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const profile = this.personalization || {};
         const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
         const moonSign = profile.moonSign || profile.vedic?.name || '';
@@ -4081,7 +4501,7 @@ ONLY return the spoken response. Nothing else.`;
         },
 
     _getAskMayaFocusQuestionFallback(askedKeys = new Set()) {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const userQ = this._getActiveUserQuestion();
         const topic = this._classifyUserQuestionTopic(userQ);
         const topicLabel = this._getAskMayaTopicLabel(topic, isHindi);
@@ -4423,7 +4843,7 @@ ONLY return the spoken response. Nothing else.`;
     },
 
     getEmergencyProfileQuestionForStage(stageKey, askedKeys = new Set()) {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const asked = askedKeys instanceof Set ? askedKeys : new Set(askedKeys || []);
         const key = `profile_${stageKey}_detail`;
         if (asked.has(key)) return null;
@@ -4477,7 +4897,7 @@ ONLY return the spoken response. Nothing else.`;
     },
 
     _sanitizeAdaptiveQuestion(rawQuestion, fallbackQuestion, askedKeys = new Set()) {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         if (!rawQuestion || typeof rawQuestion !== 'object') return fallbackQuestion;
 
         const base = fallbackQuestion || {};
@@ -4566,7 +4986,7 @@ ONLY return the spoken response. Nothing else.`;
     },
 
     async getAdaptiveQuestionForStage(stageKey, askedKeys = new Set()) {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const isAskMayaStage = stageKey === 'q_ask_maya_focus';
         const fallback = isAskMayaStage
             ? this._getAskMayaFocusQuestionFallback(askedKeys)
@@ -4664,7 +5084,7 @@ Return ONLY JSON:
 {"key":"ask_maya_focus","spoken":"...","question":"...","options":[{"label":"...","value":"...","insight":"..."}]}`;
 
             try {
-                return await this._generateAdaptiveQuestionFromGemini(askMayaPrompt, fallback, askedKeys, { maxTokens: 1400, temperature: 0.65, timeoutMs: 18000 });
+                return await this._generateAdaptiveQuestionFromGemini(askMayaPrompt, fallback, askedKeys, { temperature: 0.65, timeoutMs: 0, requireComplete: true });
             } catch (error) {
                 console.warn('Ask-Maya focus question generation failed:', error?.message || error);
                 return fallback;
@@ -4726,7 +5146,7 @@ Return ONLY JSON:
 {"key":"...","spoken":"...","question":"...","options":[{"label":"...","value":"...","insight":"..."}]}`;
 
         try {
-            return await this._generateAdaptiveQuestionFromGemini(prompt, fallback, askedKeys, { maxTokens: 1400, temperature: 0.65, timeoutMs: 18000 });
+            return await this._generateAdaptiveQuestionFromGemini(prompt, fallback, askedKeys, { temperature: 0.65, timeoutMs: 0, requireComplete: true });
         } catch (error) {
             console.warn('Dynamic profile question generation failed:', error?.message || error);
             return fallback;
@@ -4738,7 +5158,7 @@ Return ONLY JSON:
      * Asks questions one by one with chart-aware acknowledgments.
      */
     async runProfileQuestions() {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const stageOrder = ['q1_kundli', 'q2_numbers', 'q3_money', 'q4_relationship', 'q5_pattern'];
         const askedKeys = new Set();
 
@@ -4787,7 +5207,7 @@ Return ONLY JSON:
      * Run the "How does she know?" moment - predict a past event.
      */
     async showAccuracyShockMoment() {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const aiContext = this.buildBaseAIContext();
 
         const shockNarration = await this.withFiller(
@@ -4819,7 +5239,7 @@ Return ONLY JSON:
      */
     async showSuspenseBridge() {
         this.currentPhase = this.PHASES.SUSPENSE_BRIDGE;
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
 
         // If already logged in, skip auth gate entirely and go to deep reveal
         if (this.isUserLoggedIn || window.MayaAuth?.isAuthenticated) {
@@ -4860,7 +5280,7 @@ Return ONLY JSON:
      * @returns {string[]} ordered chapter keys
      */
     async showDeepRevealWithChoice() {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const textDisplay = document.getElementById('maya-text-display');
         const blobContainer = document.getElementById('maya-blob-container');
 
@@ -4962,7 +5382,7 @@ Return ONLY JSON:
      * @returns {Promise<string>}
      */
     async showChapterMicroPrompt(chapterKey) {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const prompts = {
             love: {
                 question: isHindi
@@ -5090,7 +5510,7 @@ Return ONLY JSON:
      * Show the return hook at the end of the session.
      */
     async showReturnHook(extraContext = null) {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const aiContext = {
             ...this.buildBaseAIContext(),
             ...(extraContext || {})
@@ -5140,7 +5560,7 @@ Return ONLY JSON:
      * Build a personalized validation question using actual chart data.
      */
     buildPersonalizedValidation() {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const profile = this.personalization || {};
         const lp = this.calculations?.lifePath;
         const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
@@ -5301,7 +5721,7 @@ Return ONLY JSON:
      * @returns {Promise<string>} the selected value
      */
     async askSingleProfileQuestion(q) {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const spokenLead = String(q.spoken || '').trim();
         const spokenQuestion = spokenLead && spokenLead !== q.question && !/[?؟]$/.test(spokenLead)
             ? `${spokenLead} ${q.question}`
@@ -5348,7 +5768,8 @@ Return ONLY JSON:
      */
     async beginJourney() {
         console.log('🌟 Beginning cosmic journey...');
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        this._syncLanguagePreference();
+        const isHindi = this._isHindiMode();
         this.resetSessionMemory();
 
         try {
@@ -5589,7 +6010,7 @@ Return ONLY JSON:
     // ============================================================
 
     showProgressMeter() {
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const overlay = document.getElementById('maya-overlay');
         if (!overlay) return;
 
@@ -5668,7 +6089,7 @@ Return ONLY JSON:
         const display = document.getElementById('calc-display');
         const resultArea = document.getElementById('calc-result');
 
-        const isHindiLoading = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindiLoading = this._isHindiMode();
         this.showCalcLoading(isHindiLoading ? 'Life Path की गणना हो रही है...' : 'Calculating Life Path...');
         
         // Use consistent date parsing across the app
@@ -5690,7 +6111,7 @@ Return ONLY JSON:
         const total = dayReduced + monthReduced + yearReduced;
 
         // Show visual breakdown with explanation
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const explanationText = isHindi 
             ? 'हर birth date में एक cosmic code छिपा होता है। हम Day, Month, और Year को single digits में reduce करके आपका Life Path निकालते हैं।'
             : 'Every birth date contains a cosmic code. We reduce the Day, Month, and Year to single digits using Pythagorean numerology to reveal your Life Path.';
@@ -5721,7 +6142,7 @@ Return ONLY JSON:
         const spokenDate = this.formatDateSpoken(this.userData.birthDate);
 
         // Keep the narration strictly on the Life Path math and meaning while this stage is on screen.
-        const isHindiLP = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindiLP = this._isHindiMode();
         let narrative = await this.withFiller(() => this.getContent('lifePathCalculationNarrative', async () => {
             if (window.MayaStatements?.getLifePathMeaningAI) {
                 const explanation = await MayaStatements.getLifePathExplanation(
@@ -5778,7 +6199,7 @@ Return ONLY JSON:
         const display = document.getElementById('calc-display');
         const resultArea = document.getElementById('calc-result');
 
-        const isHindiLoadDest = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindiLoadDest = this._isHindiMode();
         this.showCalcLoading(isHindiLoadDest ? 'Destiny Number निकाल रहे हैं...' : 'Calculating Destiny Number...');
         
         const destiny = this.calculations.destiny;
@@ -5790,7 +6211,7 @@ Return ONLY JSON:
         const aiContext = this.buildBaseAIContext();
 
         // Show name breakdown with explanation
-        const isHindiDest = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindiDest = this._isHindiMode();
         const destinyExplanation = isHindiDest
             ? 'आपके नाम का हर letter एक vibration carry करता है। Pythagorean system में values जोड़कर जो total बनता है, वही आपकी long-term direction और public role को reveal करता है।'
             : 'Each letter in your name carries a vibration. When we add those values through the Pythagorean system, the total reveals the direction your life keeps growing toward.';
@@ -5808,7 +6229,7 @@ Return ONLY JSON:
         `;
 
         // Keep this stage focused only on the Destiny calculation and its meaning.
-        const isHindiDN = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindiDN = this._isHindiMode();
         let narrative = await this.withFiller(() => this.getContent('destinyCalculationNarrative', async () => {
             if (window.MayaStatements?.getDestinyMeaningAI) {
                 const explanation = await MayaStatements.getDestinyExplanation(sum, destiny, this.firstName, aiContext);
@@ -5858,7 +6279,7 @@ Return ONLY JSON:
         const display = document.getElementById('calc-display');
         const resultArea = document.getElementById('calc-result');
 
-        const isHindiLoadSU = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindiLoadSU = this._isHindiMode();
         this.showCalcLoading(isHindiLoadSU ? 'Soul Urge Number निकाल रहे हैं...' : 'Calculating Soul Urge...');
         
         const soulUrge = this.calculations.soulUrge;
@@ -5876,7 +6297,7 @@ Return ONLY JSON:
         const aiContext = this.buildBaseAIContext();
 
         // Show vowels breakdown with detailed explanation
-        const isHindiSoul = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindiSoul = this._isHindiMode();
         const soulExplanation = isHindiSoul
             ? 'Vowels (A, E, I, O, U) आपके नाम की "साँस" हैं - ये inner voice carry करते हैं। Consonants outer role दिखाते हैं, पर vowels inner desire और emotional pull reveal करते हैं।'
             : 'Vowels (A, E, I, O, U) are the breath of the name. Consonants show the outer role, but vowels reveal the inner desire and emotional pull beneath it.';
@@ -5891,7 +6312,7 @@ Return ONLY JSON:
         `;
 
         // Keep this stage focused only on the Soul Urge calculation and hidden motivation.
-        const isHindiSU = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindiSU = this._isHindiMode();
         let narrative = await this.withFiller(() => this.getContent('soulUrgeCalculationNarrative', async () => {
             if (window.MayaStatements?.getSoulUrgeMeaningAI) {
                 const explanation = await MayaStatements.getSoulUrgeExplanation(vowelSum, soulUrge, this.firstName, aiContext);
@@ -5948,7 +6369,7 @@ Return ONLY JSON:
         const display = document.getElementById('calc-display');
         if (!display) return;
 
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
 
         // ── Gather all calculation data up front ──
         const date = window.MayaAstrology
@@ -6176,7 +6597,7 @@ Return ONLY JSON:
             return;
         }
 
-        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const isHindi = this._isHindiMode();
         const ascendant = profile.hasReliableAscendant ? (profile.ascendant || birthChart.ascendant || {}) : {};
         const westernSign = profile.western?.name || '';
         const moonSign = profile.moonSign || '';
@@ -6377,7 +6798,7 @@ Return ONLY JSON:
             blobContainer.classList.add('blob-centered');
         }
 
-        const lang = MayaUtils.storage.get('maya_language') || this.userData.language || 'en';
+        const lang = this._resolveCurrentLanguage();
         if (window.MayaStatements) MayaStatements.setLanguage(lang);
         const predictionItems = this.buildPredictionItems();
         const aiContext = this.buildBaseAIContext(predictionItems);
@@ -6422,7 +6843,7 @@ Return ONLY JSON:
      */
     async generateAISummary() {
         // Always get language from storage to ensure consistency
-        const lang = MayaUtils.storage.get('maya_language') || this.userData.language || 'en';
+        const lang = this._resolveCurrentLanguage();
         const isHindi = lang === 'hi';
         
         // Ensure MayaStatements has correct language set
@@ -6475,7 +6896,7 @@ Return ONLY JSON:
             return;
         }
 
-        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const lang = this._resolveCurrentLanguage();
         const isHindi = lang === 'hi';
         const textDisplay = document.getElementById('maya-text-display');
         const blobContainer = document.getElementById('maya-blob-container');
@@ -6607,7 +7028,7 @@ Return ONLY JSON:
      * Get random cosmic search statement
      */
     async getCosmicSearchStatement() {
-        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const lang = this._resolveCurrentLanguage();
         const aiContext = this.buildAuthPromptContext();
 
         if (window.MayaStatements) {
@@ -6621,7 +7042,7 @@ Return ONLY JSON:
      * Get random welcome back statement
      */
     async getWelcomeBackStatement() {
-        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const lang = this._resolveCurrentLanguage();
         const aiContext = this.buildAuthPromptContext();
 
         if (window.MayaStatements) {
@@ -6635,7 +7056,7 @@ Return ONLY JSON:
      * Get random new user statement
      */
     async getNewUserStatement() {
-        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const lang = this._resolveCurrentLanguage();
         const aiContext = this.buildAuthPromptContext();
 
         if (window.MayaStatements) {
@@ -6649,7 +7070,7 @@ Return ONLY JSON:
      * Get random email gate transition statement
      */
     async getEmailGateTransition() {
-        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const lang = this._resolveCurrentLanguage();
         const predictionItems = this.buildPredictionItems();
         const aiContext = this.buildBaseAIContext(predictionItems);
         return await this.generateDirectReadingSection('emailGate', aiContext);
@@ -6667,7 +7088,7 @@ Return ONLY JSON:
      * Get spoken guidance for a specific auth field.
      */
     async getAuthFieldPrompt(fieldType) {
-        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const lang = this._resolveCurrentLanguage();
         const aiContext = this.buildAuthPromptContext();
 
         if (window.MayaStatements) {
@@ -6735,7 +7156,7 @@ Return ONLY JSON:
             return;
         }
 
-        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const lang = this._resolveCurrentLanguage();
         const isHindi = lang === 'hi';
         const submitBtn = document.getElementById('phone-gate-submit');
 
@@ -6761,7 +7182,7 @@ Return ONLY JSON:
     },
 
     async showOTPVerificationFlow(phone, countryCode) {
-        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const lang = this._resolveCurrentLanguage();
         const isHindi = lang === 'hi';
         const textDisplay = document.getElementById('maya-text-display');
 
@@ -6799,7 +7220,7 @@ Return ONLY JSON:
     },
 
     _bindOTPInputs(phone, countryCode) {
-        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const lang = this._resolveCurrentLanguage();
         const isHindi = lang === 'hi';
         const digits = Array.from(document.querySelectorAll('.otp-digit'));
         const verifyBtn = document.getElementById('otp-verify-btn');
@@ -6872,7 +7293,7 @@ Return ONLY JSON:
     },
 
     async _processOTPVerification(phone, countryCode, otp) {
-        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const lang = this._resolveCurrentLanguage();
         const isHindi = lang === 'hi';
         const result = await MayaAuth.verifyOTP(phone, countryCode, otp);
 
@@ -6897,7 +7318,7 @@ Return ONLY JSON:
             MayaApp.onUserAuthenticated();
         }
 
-        const language = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const language = this._resolveCurrentLanguage();
         if (window.MayaStatements) {
             MayaStatements.setLanguage(language);
         }
@@ -6948,7 +7369,7 @@ Return ONLY JSON:
         this.currentPhase = this.PHASES.DEEP_REVEAL;
         const textDisplay = document.getElementById('maya-text-display');
         const blobContainer = document.getElementById('maya-blob-container');
-        const lang = MayaUtils.storage.get('maya_language') || 'en';
+        const lang = this._resolveCurrentLanguage();
         const predictionItems = this.buildPredictionItems();
         const aiContext = this.buildBaseAIContext(predictionItems);
         
@@ -7003,7 +7424,7 @@ Return ONLY JSON:
         }
 
         const numbers = this.calculations || MayaUtils.storage.get('maya_calculations') || {};
-        const lang = MayaUtils.storage.get('maya_language') || 'en';
+        const lang = this._resolveCurrentLanguage();
         const predictionItems = this.buildPredictionItems();
         const aiContext = this.buildBaseAIContext(predictionItems);
         // Pass what was already spoken so AI avoids repetition
@@ -7140,7 +7561,7 @@ Return ONLY JSON:
             blobContainer.classList.add('blob-chat-mini');
         }
         
-        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const lang = this._resolveCurrentLanguage();
         const isHindi = lang === 'hi';
 
         // Build guided conversation chips (Screen 24 completion chips)
@@ -7331,7 +7752,7 @@ Return ONLY JSON:
     },
 
     async handleUserQuestion(question) {
-        const lang = MayaUtils.storage.get('maya_language') || this.userData?.language || 'en';
+        const lang = this._resolveCurrentLanguage();
 
         // Initialize AI if not already done
         if (window.MayaAI && !MayaAI.userContext) {
@@ -7405,25 +7826,36 @@ Return ONLY JSON:
 
         if (window.MayaVoice && !MayaVoice.isMuted) {
             try {
-                // Let speech complete naturally - no hard timeout
-                // The voice module handles its own chunking and completion
-                await MayaVoice.speak(normalizedText);
-                
-                // If speech was aborted (paused), wait for resume then replay
-                if (MayaVoice.aborted && this.isPaused) {
-                    console.log('⏸️ Speech was paused, waiting for resume...');
-                    await this.waitIfPaused();
-                    // Replay the text from beginning after resume
-                    console.log('▶️ Resuming speech...');
-                    await MayaVoice.speak(normalizedText);
-                }
+                // Voice module now handles Hinglish in one stable voice and complete playback.
+                // Do not split into Hindi/English segments here; segmenting caused mid-sentence handoffs.
+                await MayaVoice.speak(normalizedText, () => {});
             } catch (error) {
                 console.error('Voice error:', error);
-                await MayaUtils.sleep(Math.min(Math.max(normalizedText.length * 22, 900), 4000));
+                // Do not jump to the next funnel step if ElevenLabs/chunk playback fails.
+                // Try browser TTS; if that is unavailable, wait for a natural full-read duration
+                // without a short hard cap.
+                try {
+                    if (typeof MayaVoice.speakFallback === 'function') {
+                        await MayaVoice.speakFallback(normalizedText);
+                    } else {
+                        const wordCount = normalizedText.split(/\s+/).filter(Boolean).length;
+                        await MayaUtils.sleep(Math.max(1400, wordCount * 360));
+                    }
+                } catch (fallbackError) {
+                    console.error('Voice fallback error:', fallbackError);
+                    const wordCount = normalizedText.split(/\s+/).filter(Boolean).length;
+                    await MayaUtils.sleep(Math.max(1400, wordCount * 360));
+                }
+            }
+
+            if (window.MayaVoice?.waitForSpeechComplete) {
+                await MayaVoice.waitForSpeechComplete();
             }
         } else {
-            // No voice available, simulate reading time
-            await MayaUtils.sleep(Math.max(1200, Math.min(normalizedText.length * 28, 6000)));
+            // No voice available: simulate full spoken duration without a short cap,
+            // so the next step does not start mid-sentence visually.
+            const wordCount = normalizedText.split(/\s+/).filter(Boolean).length;
+            await MayaUtils.sleep(Math.max(1400, wordCount * 360));
         }
 
         // Restore background music volume after speaking

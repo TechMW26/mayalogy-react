@@ -14,13 +14,91 @@ const MayaVoice = {
     speakingLock: false,  // Prevent overlapping speech
     isInitialized: false, // Track if TTS is pre-warmed
     aborted: false,       // Flag to abort current speech
+    _speechQueue: Promise.resolve(),
+    _speechTurnId: 0,
     elevenLabsUnavailableUntil: 0,
     elevenLabsUnavailableReason: '',
 
     /**
+     * Normalize the selected narration language.
+     * Required by init() and external funnel/onboarding calls.
+     */
+    normalizeLanguage(language = 'en') {
+        const raw = String(language || 'en').trim().toLowerCase();
+
+        if (
+            raw === 'hi' ||
+            raw === 'hin' ||
+            raw === 'hindi' ||
+            raw === 'hi-in' ||
+            raw === 'hinglish' ||
+            raw === 'hindi-hinglish' ||
+            raw.startsWith('hi') ||
+            raw.includes('hindi')
+        ) {
+            return 'hi';
+        }
+
+        if (
+            raw === 'en' ||
+            raw === 'eng' ||
+            raw === 'english' ||
+            raw === 'en-in' ||
+            raw === 'en-us' ||
+            raw === 'en-gb' ||
+            raw.startsWith('en')
+        ) {
+            return 'en';
+        }
+
+        return raw.includes('hi') ? 'hi' : 'en';
+    },
+
+    /**
+     * Read the real narration language. UI language may stay English,
+     * so never depend only on MayaI18n.currentLang for TTS.
+     */
+    getNarrationLanguage() {
+        try {
+            const stored = window.MayaUtils?.storage?.get?.('maya_language');
+            if (stored) return this.normalizeLanguage(stored);
+        } catch (_error) { }
+
+        try {
+            const local = window.localStorage?.getItem?.('maya_language');
+            if (local) return this.normalizeLanguage(local);
+        } catch (_error) { }
+
+        try {
+            const profile = window.MayaUtils?.storage?.get?.('maya_profile') || {};
+            if (profile.language) return this.normalizeLanguage(profile.language);
+        } catch (_error) { }
+
+        try {
+            const funnelData = window.MayaUtils?.storage?.get?.('funnel_data') || {};
+            if (funnelData.language) return this.normalizeLanguage(funnelData.language);
+        } catch (_error) { }
+
+        return 'en';
+    },
+
+    getSpeechLocale(language = null) {
+        return this.normalizeLanguage(language || this.getNarrationLanguage()) === 'hi' ? 'hi-IN' : 'en-IN';
+    },
+
+
+    /**
      * Initialize voice module - load saved mute preference and pre-warm TTS
      */
-    init() {
+    init(language = null) {
+        // Keep a stable narration language on the voice object.
+        // This prevents startup crashes and avoids reading UI language as narration language.
+        const selectedLanguage = this.normalizeLanguage(language || this.getNarrationLanguage());
+        this.language = selectedLanguage;
+        this.currentLanguage = selectedLanguage;
+        this.locale = this.getSpeechLocale(selectedLanguage);
+        this.voiceLocale = this.locale;
+
         const savedMute = window.MayaUtils?.storage?.get('maya_voice_muted');
         if (savedMute !== null) {
             this.isMuted = savedMute;
@@ -891,48 +969,32 @@ const MayaVoice = {
             }, String(text || ''));
     },
 
+    /**
+     * Prepare text for proper Hinglish TTS - KEEPS English words in English, ONLY converts Hindi words to Devanagari.
+     * This fixes pronunciation of English technical terms while preserving Hindi localization.
+    *
+     * CRITICAL FIX for Hinglish mode:
+     * - Keep English words as-is (don't convert to Devanagari - that makes them unpronounceable)
+     * - Convert ONLY known Hindi words to Devanagari
+     * - Preserve technical terms in English for proper ElevenLabs pronunciation
+     */
     forceHindiSpeechDevanagari(text) {
         if (!text) return '';
 
         let result = this.stripTtsControlTags(text);
 
-        const phraseMap = [
-            ['Life Path Number', 'लाइफ पाथ अंक'],
-            ['Life Path', 'लाइफ पाथ'],
-            ['Destiny Number', 'डेस्टिनी अंक'],
-            ['Destiny', 'डेस्टिनी'],
-            ['Soul Urge Number', 'सोल अर्ज अंक'],
-            ['Soul Urge', 'सोल अर्ज'],
-            ['Personal Year Number', 'पर्सनल ईयर अंक'],
-            ['Personal Year', 'पर्सनल ईयर'],
-            ['Ask Maya', 'आस्क माया'],
-            ['WhatsApp', 'व्हाट्सऐप'],
-            ['Gemini AI', 'जेमिनी एआई'],
-            ['Gemini API', 'जेमिनी एपीआई'],
-            ['Gemini model', 'जेमिनी मॉडल'],
-            ['Gemini key', 'जेमिनी key'],
-            ['real life', 'असल जीवन'],
-            ['real-life', 'असल जीवन'],
-            ['current situation', 'मौजूदा स्थिति'],
-            ['follow up', 'फॉलो अप'],
-            ['follow-up', 'फॉलो अप'],
-            ['phone number', 'फोन नंबर'],
-            ['mobile number', 'मोबाइल नंबर'],
-            ['birth chart', 'जन्म कुंडली'],
-            ['chart', 'कुंडली'],
+        // HINGLISH MODE: Translate specific Hindi words/phrases ONLY, keep English technical terms as-is
+        // This is the proper approach for mixed-language TTS where English pronunciation is critical
+        const hindiLocalizationMap = [
+            // === ASTROLOGY/VEDIC TERMS (keep core technical terms in English) ===
+            ['Vedic', 'वैदिक'],
+            ['Kundli', 'कुंडली'],
             ['kundli', 'कुंडली'],
-            ['Aries rashi', 'मेष राशि'],
-            ['Taurus rashi', 'वृषभ राशि'],
-            ['Gemini rashi', 'मिथुन राशि'],
-            ['Cancer rashi', 'कर्क राशि'],
-            ['Leo rashi', 'सिंह राशि'],
-            ['Virgo rashi', 'कन्या राशि'],
-            ['Libra rashi', 'तुला राशि'],
-            ['Scorpio rashi', 'वृश्चिक राशि'],
-            ['Sagittarius rashi', 'धनु राशि'],
-            ['Capricorn rashi', 'मकर राशि'],
-            ['Aquarius rashi', 'कुंभ राशि'],
-            ['Pisces rashi', 'मीन राशि'],
+            ['kundali', 'कुंडली'],
+            ['Rashi', 'राशि'],
+            ['rashi', 'राशि'],
+
+            // Zodiac signs - localized to Hindi
             ['Aries', 'मेष'],
             ['Taurus', 'वृषभ'],
             ['Gemini', 'मिथुन'],
@@ -945,162 +1007,59 @@ const MayaVoice = {
             ['Capricorn', 'मकर'],
             ['Aquarius', 'कुंभ'],
             ['Pisces', 'मीन'],
-            ['reading', 'रीडिंग'],
-            ['numbers', 'अंक'],
-            ['number', 'अंक'],
-            ['ank', 'अंक'],
-            ['timing', 'समय'],
-            ['answer', 'जवाब'],
-            ['question', 'सवाल'],
-            ['focus', 'फोकस'],
+
+            // Planets in Hindi
+            ['Rahu', 'राहु'],
+            ['Ketu', 'केतु'],
+            ['Shani', 'शनि'],
+            ['Mangal', 'मंगल'],
+            ['Budh', 'बुध'],
+            ['Shukra', 'शुक्र'],
+            ['Guru', 'गुरु'],
+            ['Surya', 'सूर्य'],
+            ['Chandra', 'चन्द्र'],
+
+            // Core reading/number terms - Keep key Mayalogy terms in English
+            // These should stay English: "Life Path", "Destiny", "Soul Urge", "Personal Year"
+            // Reason: These are branded Mayalogy terms that should be pronounced distinctly
+
+            // === GENERAL CONTEXT WORDS (can be localized) ===
+            ['timing', 'टाइमिंग'],
             ['pattern', 'पैटर्न'],
-            ['patterns', 'पैटर्न'],
             ['signal', 'संकेत'],
             ['signals', 'संकेत'],
-            ['detail', 'जानकारी'],
-            ['details', 'जानकारी'],
-            ['exact', 'सटीक'],
-            ['confirm', 'कन्फर्म'],
+            ['focus', 'फोकस'],
+
+            // Life areas
             ['career', 'करियर'],
-            ['relationship', 'रिलेशनशिप'],
-            ['relationships', 'रिलेशनशिप्स'],
-            ['money', 'धन'],
-            ['pressure', 'प्रेशर'],
-            ['energy', 'ऊर्जा'],
-            ['profile', 'प्रोफाइल'],
-            ['file', 'फाइल'],
-            ['save', 'सेव'],
-            ['salary hike', 'सैलरी हाइक'],
-            ['salary raise', 'सैलरी रेज़'],
-            ['promotion', 'प्रमोशन'],
-            ['promotions', 'प्रमोशन'],
-            ['promote', 'प्रोमोट'],
-            ['promoted', 'प्रोमोट'],
-            ['for promotion', 'प्रमोशन के लिए'],
-            ['for appraisal', 'अप्रेज़ल के लिए'],
-            ['for career', 'करियर के लिए'],
-            ['for marriage', 'शादी के लिए'],
-            ['appraisal', 'अप्रेज़ल'],
-            ['increment', 'इन्क्रीमेंट'],
-            ['salary', 'सैलरी'],
-            ['raise', 'रेज़'],
-            ['manager', 'मैनेजर'],
-            ['boss', 'बॉस'],
-            ['office', 'ऑफिस'],
-            ['company', 'कंपनी'],
-            ['team', 'टीम'],
-            ['project', 'प्रोजेक्ट'],
-            ['login', 'लॉगिन'],
-            ['password', 'पासवर्ड'],
-            ['email', 'ईमेल'],
-            ['AI', 'एआई'],
-            ['MCQ', 'एमसीक्यू'],
-            ['TTS', 'टीटीएस'],
-            ['OTP', 'ओटीपी'],
-            ['API', 'एपीआई'],
-            ['ElevenLabs', 'इलेवन लैब्स'],
-            ['Mayalogy', 'मायालॉजी'],
-            ['Gemini', 'जेमिनी'],
-            ['Groq', 'ग्रॉक'],
-            ['Google', 'गूगल'],
-            ['YouTube', 'यूट्यूब'],
-            ['Porsche', 'पोर्शा'],
-            ['Appraisal pending', 'अप्रेज़ल पेंडिंग'],
-            ['Manager support', 'मैनेजर सपोर्ट'],
-            ['Performance strong', 'परफॉर्मेंस स्ट्रॉन्ग'],
-            ['Future together', 'फ्यूचर साथ में'],
-            ['Trust issue', 'ट्रस्ट इशू'],
-            ['Ongoing confusion', 'चलती हुई कन्फ्यूज़न'],
-            ['Job growth stuck', 'जॉब ग्रोथ रुकी'],
-            ['Direction unclear', 'डायरेक्शन क्लियर नहीं'],
-            ['Business or job', 'बिज़नेस या जॉब'],
-            ['Income timing', 'इनकम टाइमिंग'],
-            ['Savings leak', 'सेविंग्स लीक'],
-            ['Investment doubt', 'इन्वेस्टमेंट डाउट'],
-            ['Low energy', 'कम ऊर्जा'],
-            ['Stress and sleep', 'स्ट्रेस और नींद'],
-            ['Check-up concern', 'चेकअप कन्सर्न'],
-            ['Exam result', 'एग्ज़ाम रिज़ल्ट'],
-            ['Course confusion', 'कोर्स कन्फ्यूज़न'],
-            ['Family pressure', 'फैमिली प्रेशर'],
-            ['Parents tension', 'पैरेंट्स से टेंशन'],
-            ['Home environment', 'घर का माहौल'],
-            ['Sibling issue', 'सिब्लिंग इशू'],
-            ['Move abroad', 'अब्रॉड जाना'],
-            ['Visa delay', 'वीज़ा डिले'],
-            ['Travel timing', 'ट्रैवल टाइमिंग'],
-            ['Saving right now', 'अभी सेविंग'],
-            ['Loan planning', 'लोन प्लानिंग'],
-            ['Family decision pending', 'फैमिली डिसीज़न पेंडिंग'],
-            ['Career timing', 'करियर टाइमिंग'],
-            ['Relationship timing', 'रिलेशनशिप टाइमिंग'],
-            ['Big change', 'बड़ा बदलाव'],
-            ['Clear timing', 'क्लियर टाइमिंग'],
-            ['Partner nature', 'पार्टनर नेचर'],
-            ['Reason for delay', 'डिले का कारण'],
-            ['pending', 'पेंडिंग'],
-            ['support', 'सपोर्ट'],
-            ['strong', 'स्ट्रॉन्ग'],
-            ['future', 'फ्यूचर'],
-            ['together', 'साथ में'],
-            ['trust', 'ट्रस्ट'],
-            ['issue', 'इशू'],
-            ['growth', 'ग्रोथ'],
-            ['stuck', 'रुका'],
-            ['direction', 'डायरेक्शन'],
-            ['unclear', 'क्लियर नहीं'],
-            ['business', 'बिज़नेस'],
-            ['job', 'जॉब'],
-            ['income', 'इनकम'],
-            ['saving', 'सेविंग'],
-            ['savings', 'सेविंग्स'],
-            ['leak', 'लीक'],
-            ['investment', 'इन्वेस्टमेंट'],
-            ['doubt', 'डाउट'],
-            ['low', 'कम'],
-            ['stress', 'स्ट्रेस'],
-            ['sleep', 'नींद'],
-            ['check-up', 'चेकअप'],
-            ['checkup', 'चेकअप'],
-            ['concern', 'कन्सर्न'],
-            ['exam', 'एग्ज़ाम'],
-            ['result', 'रिज़ल्ट'],
-            ['course', 'कोर्स'],
-            ['delay', 'डिले'],
-            ['parents', 'पैरेंट्स'],
-            ['home', 'घर'],
-            ['environment', 'माहौल'],
-            ['sibling', 'सिब्लिंग'],
-            ['abroad', 'अब्रॉड'],
-            ['visa', 'वीज़ा'],
-            ['travel', 'ट्रैवल'],
-            ['budget', 'बजट'],
-            ['loan', 'लोन'],
-            ['planning', 'प्लानिंग'],
-            ['family', 'फैमिली'],
-            ['decision', 'डिसीज़न'],
-            ['clear', 'क्लियर'],
-            ['nature', 'नेचर'],
-            ['reason', 'कारण'],
-            ['overview', 'ओवरव्यू'],
-            ['needed', 'चाहिए'],
-            ['needs', 'चाहिए'],
-            ['need', 'ज़रूरत'],
-            ['for', 'के लिए'],
-            ['and', 'और'],
-            ['or', 'या'],
-            ['with', 'के साथ'],
-            ['without', 'बिना'],
-            ['to', 'को'],
-            ['in', 'में'],
-            ['on', 'पर']
+            ['relationship', 'रिश्ता'],
+            ['relationships', 'रिश्ते'],
+            ['money', 'पैसा'],
+            ['family', 'परिवार'],
+            ['health', 'स्वास्थ्य'],
+            ['marriage', 'विवाह'],
+
+            // === KEEP MAYALOGY/PLATFORM TERMS IN ENGLISH ===
+            // These need to stay in English for brand recognition and proper TTS
+            // 'Ask Maya', 'Mayalogy', 'Life Path', 'Destiny', 'Soul Urge', 'Personal Year'
+
+            // === COMMON FILLER WORDS ===
+            // Keep these mostly as-is or use natural Hindi equivalents
+            ['very', 'बहुत'],
+            ['much', 'ज़्यादा'],
+            ['quite', 'काफी'],
+            ['really', 'सच में'],
         ];
 
-        for (const [latin, devanagari] of phraseMap.sort((a, b) => b[0].length - a[0].length)) {
-            result = result.replace(new RegExp(`\\b${this.escapeRegExp(latin)}\\b`, 'gi'), devanagari);
+        // Apply phrase mappings (longest first to avoid partial replacements)
+        for (const [english, hindi] of hindiLocalizationMap.sort((a, b) => b[0].length - a[0].length)) {
+            result = result.replace(new RegExp(`\\b${this.escapeRegExp(english)}\\b`, 'gi'), hindi);
         }
 
-        result = result.replace(/\b[A-Za-z][A-Za-z']*\b/g, (word) => this.approximateDevanagari(word));
+        // CRITICAL: DO NOT convert remaining English words to Devanagari approximations
+        // This was the original bug that caused poor pronunciation of English technical terms
+        // Instead, keep remaining English as-is for proper ElevenLabs pronunciation
+        // ElevenLabs v3 is designed to handle mixed-script Hinglish text properly
 
         return result;
     },
@@ -1564,6 +1523,17 @@ const MayaVoice = {
         }
     },
 
+    async waitForCurrentAudioComplete() {
+        let warned = false;
+        while (this.currentAudio || this.isPlaying) {
+            if (!warned) {
+                console.warn('⏳ Waiting for active audio source before starting next block');
+                warned = true;
+            }
+            await MayaUtils.sleep(80);
+        }
+    },
+
     /**
      * Initialize audio context
      */
@@ -1729,7 +1699,7 @@ const MayaVoice = {
         const modelChain = ['eleven_v3'];
         this._elevenLabsModelChain = modelChain;
 
-        const latencyOptimization = isMaleGuide ? 3 : 2;
+        const latencyOptimization = 0;
         // Tuned for CONSISTENCY across generations (was: low stability + high style
         // which made each render swing in speed, tone & volume). Keep speaker_boost on
         // so volume is normalized identically every time. Pin speed to a single value
@@ -1756,7 +1726,8 @@ const MayaVoice = {
         const modelId = modelChain[0];
 
         const buildRequestBody = (currentModelId) => {
-            const finalText = this.stripTtsControlTags(this.stripExpressionTags(text));
+            let finalText = this.stripTtsControlTags(this.stripExpressionTags(text));
+            if (finalText && !/[.!?।…]$/.test(finalText.trim())) finalText = `${finalText.trim()}.`;
             const body = {
                 text: finalText,
                 model_id: currentModelId,
@@ -1851,8 +1822,7 @@ const MayaVoice = {
                 this.init();
                 await this.resumeContext();
 
-                // Stop the previous audio source without aborting the overall narration.
-                this.stopCurrentAudio();
+                await this.waitForCurrentAudioComplete();
 
                 const arrayBuffer = await audioBlob.arrayBuffer();
                 const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
@@ -1899,11 +1869,14 @@ const MayaVoice = {
                         this.onPlaybackStart = null;
                     }
                 } else {
+                    this.isPlaying = false;
+                    this.currentAudio = null;
                     resolve();
                 }
             } catch (error) {
                 console.error('Audio playback error:', error);
                 this.isPlaying = false;
+                this.currentAudio = null;
                 reject(error);
             }
         });
@@ -1918,22 +1891,86 @@ const MayaVoice = {
         return;
     },
 
+
+    /**
+     * Build complete-sentence TTS chunks only when ElevenLabs/proxy text length needs splitting.
+     * This never cuts inside a sentence, so playback cannot stop mid-thought because of chunking.
+     */
+    splitIntoCompleteTtsBlocks(text, maxChars = 1100) {
+        const source = String(text || '').replace(/\s+/g, ' ').trim();
+        if (!source) return [];
+        if (source.length <= maxChars) return [source];
+
+        const sentences = source.match(/[^.!?।…]+[.!?।…]+|[^.!?।…]+$/g) || [source];
+        const blocks = [];
+        let current = '';
+
+        for (const sentenceRaw of sentences) {
+            let sentence = String(sentenceRaw || '').trim();
+            if (!sentence) continue;
+            if (!/[.!?।…]$/.test(sentence)) sentence += '.';
+
+            if (!current) {
+                current = sentence;
+                continue;
+            }
+
+            if ((current + ' ' + sentence).length <= maxChars) {
+                current += ' ' + sentence;
+            } else {
+                blocks.push(current);
+                current = sentence;
+            }
+        }
+
+        if (current) blocks.push(current);
+        return blocks;
+    },
+
+    async speakPreparedTextComplete(preparedText, onProgress = null) {
+        const blocks = this.splitIntoCompleteTtsBlocks(preparedText);
+        if (!blocks.length) return;
+
+        for (let index = 0; index < blocks.length; index++) {
+            if (this.aborted) throw new Error('Speech aborted before completion');
+            const block = blocks[index];
+            if (typeof onProgress === 'function') onProgress(block, false);
+            const audioBlob = await this.textToSpeech(block, { singlePass: true });
+            if (!audioBlob) throw new Error('TTS returned empty audio');
+            await this.playAudio(audioBlob);
+            if (this.aborted) throw new Error('Speech aborted during playback');
+            if (index < blocks.length - 1 && this.speechProfile.interSentencePauseMs > 0) {
+                await MayaUtils.sleep(this.speechProfile.interSentencePauseMs);
+            }
+        }
+    },
+
     /**
      * Wait for any ongoing speech to complete before starting new speech
      * This prevents voice overlap issues
      */
     async waitForSpeechComplete() {
-        // Wait if currently speaking
-        let waitCount = 0;
-        while (this.speakingLock && waitCount < 100) {
-            await MayaUtils.sleep(100);
-            waitCount++;
+        let waitTicks = 0;
+        while (this.speakingLock || this.isPlaying || this.currentAudio) {
+            waitTicks += 1;
+            if (waitTicks === 125) {
+                console.warn('⏳ Waiting for Maya speech to finish naturally; not interrupting audio or TTS generation.');
+            }
+            await MayaUtils.sleep(80);
         }
-        if (waitCount >= 100) {
-            console.warn('⚠️ Speech wait timeout, forcing unlock');
-            this.speakingLock = false;
-            this.stop();
-        }
+    },
+
+    enqueueSpeechTurn(run) {
+        const previousTurn = this._speechQueue || Promise.resolve();
+        const turnId = (this._speechTurnId || 0) + 1;
+        this._speechTurnId = turnId;
+
+        const queuedTurn = previousTurn
+            .catch(() => {})
+            .then(() => run(turnId));
+
+        this._speechQueue = queuedTurn.catch(() => {});
+        return queuedTurn;
     },
 
     /**
@@ -1943,34 +1980,33 @@ const MayaVoice = {
      */
     async speak(text, onProgress = null) {
         if (this.isMuted) {
-            if (onProgress) onProgress(text, true);
+            if (typeof onProgress === 'function') onProgress(text, true);
             return;
         }
 
-        // Wait for any ongoing speech to complete (prevents overlap)
-        await this.waitForSpeechComplete();
+        const safeProgress = typeof onProgress === 'function' ? onProgress : null;
 
-        // Reset abort flag and acquire speaking lock
-        this.aborted = false;
-        this.speakingLock = true;
+        return this.enqueueSpeechTurn(async (turnId) => {
+            await this.waitForSpeechComplete();
 
-        try {
-            // Prepare text for better TTS (convert numbers to words)
-            const preparedText = this.prepareForSpeech(text);
+            this.aborted = false;
+            this.speakingLock = true;
 
-            // Split text into speech chunks without dropping the trailing fragment.
-            const sentencesArray = this.splitIntoSpeechChunks(preparedText);
+            try {
+                const preparedText = this.prepareForSpeech(text);
+                if (!preparedText) return;
 
-            console.log('⚡ Natural speech pipeline - prefetching upcoming chunks');
-            await this.speakChunks(sentencesArray, onProgress);
+                const blocks = this.splitIntoCompleteTtsBlocks(preparedText);
+                console.log(`🎙️ Maya speech turn ${turnId}: ${blocks.length} complete TTS block(s)`);
+                await this.speakPreparedTextComplete(preparedText, safeProgress);
 
-            if (onProgress) {
-                onProgress(text, true);
+                if (safeProgress) {
+                    safeProgress(text, true);
+                }
+            } finally {
+                this.speakingLock = false;
             }
-        } finally {
-            // Always release the speaking lock
-            this.speakingLock = false;
-        }
+        });
     },
 
     /**
@@ -1978,34 +2014,9 @@ const MayaVoice = {
      * Perfect for chat responses where we want instant feedback
      */
     async speakStreaming(text, onProgress = null) {
-        if (this.isMuted) {
-            if (onProgress) onProgress(text, true);
-            return;
-        }
-
-        // Wait for any ongoing speech to complete
-        await this.waitForSpeechComplete();
-
-        this.aborted = false;
-        this.speakingLock = true;
-
-        try {
-            const preparedText = this.prepareForSpeech(text);
-            const sentencesArray = this.splitIntoSpeechChunks(preparedText);
-
-            if (sentencesArray.length === 0) {
-                this.speakingLock = false;
-                return;
-            }
-
-            console.log('⚡ Streaming speech - ' + sentencesArray.length + ' chunks with prefetch');
-            await this.speakChunks(sentencesArray, onProgress);
-
-            if (onProgress) onProgress(text, true);
-
-        } finally {
-            this.speakingLock = false;
-        }
+        // Streaming/chunked speech is disabled for narration reliability.
+        // It now uses the same complete sentence-safe pipeline as speak().
+        return this.speak(text, onProgress);
     },
 
     /**
@@ -2393,3 +2404,274 @@ const MayaListener = {
 // Make globally available
 window.MayaVoice = MayaVoice;
 window.MayaListener = MayaListener;
+/* ============================================================================
+ * MAYA Voice Hinglish Stability Patch
+ * Goal:
+ * 1) Keep Hinglish mode active in Hindi UI.
+ * 2) Do NOT switch accents/voices between English and Hindi chunks.
+ * 3) Preserve English technical/branded terms in Latin script for ElevenLabs.
+ * 4) Convert only romanized Hindi/Sanskrit words to Devanagari.
+ * 5) Guard onProgress so callers can never crash speakChunks/speak().
+ * ============================================================================ */
+(function applyMayaVoiceHinglishPatch() {
+    const V = window.MayaVoice;
+    if (!V || V.__hinglishPatchApplied) return;
+
+    V.__hinglishPatchApplied = true;
+    V.hinglishMode = true;
+    V.accentSwitchingDisabled = true;
+    V.fixedHinglishLocale = 'hi-IN';
+
+    const originalSpeakChunks = typeof V.speakChunks === 'function' ? V.speakChunks.bind(V) : null;
+
+    V._isHindiMode = function () {
+        const stored = window.MayaUtils?.storage?.get?.('maya_language');
+        const funnelLang = window.MayaFunnel?.userData?.language;
+        const lang = String(stored || funnelLang || 'en').toLowerCase();
+        return lang === 'hi' || lang === 'hi-in' || lang === 'hindi' || lang === 'hinglish';
+    };
+
+    V._getHinglishProtectedTerms = function () {
+        return [
+            // Mayalogy / product language
+            'Mayalogy', 'Ask Maya', 'MAYA', 'Maya', 'Moksh',
+            'Life Path Number', 'Life Path', 'Destiny Number', 'Destiny',
+            'Soul Urge Number', 'Soul Urge', 'Personal Year', 'Personal Month', 'Personal Day',
+            'Western Zodiac', 'Vedic moon sign', 'Moon Sign', 'Sun Sign', 'Ascendant',
+            'Current Dasha', 'Dominant Element', 'Birth Chart',
+
+            // App / auth / flow words
+            'WhatsApp', 'OTP', 'email', 'password', 'login', 'profile', 'reading file',
+            'chart', 'timing', 'pattern', 'pressure', 'energy', 'focus', 'signal', 'signals',
+            'career', 'relationship', 'relationships', 'money', 'health', 'wellness',
+            'business', 'work', 'love', 'finance', 'family', 'marriage', 'leadership',
+            'investment', 'legal', 'public life', 'vitality',
+
+            // English planet / zodiac words when AI outputs them in English
+            'Saturn', 'Jupiter', 'Mars', 'Venus', 'Mercury', 'Sun', 'Moon',
+            'Rahu', 'Ketu', 'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+            'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces',
+
+            // Common acronyms / tech terms
+            'AI', 'API', 'TTS', 'UI', 'MCQ', 'CEO', 'EMI', 'KYC'
+        ].sort((a, b) => b.length - a.length);
+    };
+
+    V._protectHinglishEnglishTerms = function (text) {
+        const terms = this._getHinglishProtectedTerms();
+        const protectedValues = [];
+        let result = String(text || '');
+
+        terms.forEach((term) => {
+            const pattern = new RegExp(`\\b${this.escapeRegExp(term)}\\b`, 'gi');
+            result = result.replace(pattern, (match) => {
+                const token = `§§EN${protectedValues.length}§§`;
+                protectedValues.push(match);
+                return token;
+            });
+        });
+
+        return { text: result, protectedValues };
+    };
+
+    V._restoreHinglishEnglishTerms = function (text, protectedValues = []) {
+        let result = String(text || '');
+        protectedValues.forEach((value, index) => {
+            result = result.replace(new RegExp(`§§EN${index}§§`, 'g'), value);
+        });
+        return result;
+    };
+
+    V._normalizeHinglishAcronyms = function (text) {
+        // Do not phoneticize full English words. Only space acronyms that TTS may read as a word.
+        return String(text || '')
+            .replace(/\bOTP\b/g, 'O T P')
+            .replace(/\bAPI\b/g, 'A P I')
+            .replace(/\bTTS\b/g, 'T T S')
+            .replace(/\bMCQ\b/g, 'M C Q')
+            .replace(/\bKYC\b/g, 'K Y C')
+            .replace(/\bEMI\b/g, 'E M I')
+            .replace(/\bAI\b/g, 'A I')
+            .replace(/\bUI\b/g, 'U I');
+    };
+
+    V.normalizeRomanHindiWordsHinglish = function (text) {
+        if (!text) return '';
+
+        // Only romanized Hindi/Sanskrit words go to Devanagari.
+        // English product/app words remain protected outside this function.
+        const map = {
+            'aap': 'आप', 'aapka': 'आपका', 'aapki': 'आपकी', 'aapke': 'आपके', 'aapko': 'आपको',
+            'hai': 'है', 'hain': 'हैं', 'hoon': 'हूँ', 'hu': 'हूँ', 'main': 'मैं', 'mein': 'में',
+            'ye': 'यह', 'yeh': 'यह', 'yahan': 'यहाँ', 'wahan': 'वहाँ', 'abhi': 'अभी',
+            'aur': 'और', 'lekin': 'लेकिन', 'kyunki': 'क्योंकि', 'agar': 'अगर', 'toh': 'तो', 'to': 'तो',
+            'bahut': 'बहुत', 'jyada': 'ज्यादा', 'zyada': 'ज्यादा', 'kuch': 'कुछ', 'saath': 'साथ',
+            'dekhiye': 'देखिए', 'suniye': 'सुनिए', 'chaliye': 'चलिए', 'samajhiye': 'समझिए',
+            'batata': 'बताता', 'batati': 'बताती', 'bataunga': 'बताऊँगा', 'bataungi': 'बताऊँगी',
+            'dekh': 'देख', 'dikh': 'दिख', 'dikh raha': 'दिख रहा', 'dikh rahi': 'दिख रही',
+
+            // Astrology words that are Hindi/Sanskrit, not English app terms
+            'kundli': 'कुंडली', 'kundali': 'कुंडली', 'janam': 'जन्म', 'janma': 'जन्म',
+            'rashi': 'राशि', 'raashi': 'राशि', 'graha': 'ग्रह', 'grahas': 'ग्रह', 'grahon': 'ग्रहों',
+            'nakshatra': 'नक्षत्र', 'nakshatras': 'नक्षत्र', 'bhav': 'भाव', 'bhava': 'भाव',
+            'lagna': 'लग्न', 'dasha': 'दशा', 'mahadasha': 'महादशा', 'antardasha': 'अंतर्दशा',
+            'gochar': 'गोचर', 'yoga': 'योग', 'dosha': 'दोष', 'manglik': 'मांगलिक', 'mangalik': 'मांगलिक',
+            'panchang': 'पंचांग', 'muhurat': 'मुहूर्त', 'muhurt': 'मुहूर्त',
+            'vedic': 'वैदिक', 'jyotish': 'ज्योतिष',
+            'rahu': 'राहु', 'ketu': 'केतु', 'shani': 'शनि', 'mangal': 'मंगल', 'budh': 'बुध',
+            'shukra': 'शुक्र', 'guru': 'गुरु', 'surya': 'सूर्य', 'chandra': 'चन्द्र'
+        };
+
+        let result = String(text || '');
+        Object.entries(map)
+            .sort((a, b) => b[0].length - a[0].length)
+            .forEach(([roman, devanagari]) => {
+                result = result.replace(new RegExp(`\\b${this.escapeRegExp(roman)}\\b`, 'gi'), devanagari);
+            });
+        return result;
+    };
+
+    // Override: Hinglish mode should not turn English words into Hindi words.
+    V.forceHindiSpeechDevanagari = function (text) {
+        if (!text) return '';
+        return this.stripTtsControlTags(String(text || '')).trim();
+    };
+
+    V.prepareForSpeech = function (text) {
+        const isHindiPrep = this._isHindiMode();
+        let prepared = this.stripTtsControlTags(this.normalizeMixedScriptTerms(this.normalizeNameReferences(text)));
+
+        if (isHindiPrep && this.hinglishMode) {
+            const protectedPack = this._protectHinglishEnglishTerms(prepared);
+            prepared = protectedPack.text;
+
+            const { firstName } = this.getCanonicalUserNames();
+            if (firstName && !/[\u0900-\u097F]/.test(firstName)) {
+                const devName = this.approximateDevanagari(firstName);
+                if (devName && devName !== firstName.toLowerCase()) {
+                    prepared = prepared.replace(new RegExp(this.escapeRegExp(firstName), 'gi'), devName);
+                }
+            }
+
+            prepared = this.normalizeRomanHindiWordsHinglish(prepared);
+            prepared = this.replaceUrduWithHindi(prepared);
+            prepared = this.enforceConsistentAstroTerms(prepared);
+            prepared = this.forceHindiSpeechDevanagari(prepared);
+            prepared = this._restoreHinglishEnglishTerms(prepared, protectedPack.protectedValues);
+            prepared = this._normalizeHinglishAcronyms(prepared);
+        } else if (isHindiPrep) {
+            const { firstName } = this.getCanonicalUserNames();
+            if (firstName && !/[\u0900-\u097F]/.test(firstName)) {
+                const devName = this.approximateDevanagari(firstName);
+                if (devName && devName !== firstName.toLowerCase()) {
+                    prepared = prepared.replace(new RegExp(this.escapeRegExp(firstName), 'gi'), devName);
+                }
+            }
+            prepared = this.normalizeRomanHindiWords(prepared);
+            prepared = this.replaceUrduWithHindi(prepared);
+            prepared = this.enforceConsistentAstroTerms(prepared);
+            prepared = this.forceHindiSpeechDevanagari(prepared);
+        }
+
+        prepared = this.normalizeHyphenatedExpressions(prepared);
+        prepared = this.removeAdjacentPhraseRepetition(prepared);
+        prepared = this.limitDashaOverfocus(prepared);
+
+        if (!isHindiPrep) {
+            prepared = this.normalizeEnglishPronunciationTerms(prepared);
+        }
+
+        // Convert authored pause markers into spoken punctuation before number expansion.
+        prepared = prepared.replace(/\[\[pause-?(\d+)\]\]/gi, (_, ms) => Number(ms) >= 500 ? '. ' : ', ');
+        prepared = prepared.replace(/\[\[\s*pause[^\]]*\]\]/gi, ', ');
+        prepared = prepared.replace(/\[pause\]/gi, ', ');
+        prepared = prepared.replace(/\bpause\s*-?\s*\d+\b/gi, ' ');
+        prepared = prepared.replace(/\bपॉज़\s*-?\s*\d+\b/gi, ' ');
+        prepared = prepared.replace(/\bpause\b/gi, ' ');
+        prepared = prepared.replace(/\bपॉज़\b/gi, ' ');
+
+        prepared = this.convertNumbersToWords(prepared);
+
+        prepared = prepared.replace(/।/g, '. ');
+        prepared = prepared.replace(/;/g, '. ');
+        prepared = prepared.replace(/:/g, ', ');
+        prepared = prepared.replace(/[()]/g, ', ');
+        prepared = prepared.replace(/\s[\-–—]\s/g, ', ');
+        prepared = prepared.replace(/\.\.\./g, '... ');
+
+        prepared = prepared.replace(/[\u{1F600}-\u{1F6FF}]/gu, '');
+        prepared = prepared.replace(/[\u{2600}-\u{26FF}]/gu, '');
+        prepared = prepared.replace(/→/g, isHindiPrep ? ' बनता है ' : ' becomes ');
+        prepared = prepared.replace(/=/g, isHindiPrep ? ' बराबर ' : ' equals ');
+        prepared = prepared.replace(/\+/g, isHindiPrep ? ' प्लस ' : ' plus ');
+
+        prepared = this.stripTtsControlTags(prepared);
+        prepared = prepared.replace(/[,]{2,}/g, ',');
+        prepared = prepared.replace(/[.]{2,}/g, '.');
+        prepared = prepared.replace(/\s+([,.!?])/g, '$1');
+        prepared = prepared.replace(/\s+/g, ' ').trim();
+
+        if (prepared && !/[.!?]$/.test(prepared)) {
+            prepared += '.';
+        }
+
+        return prepared;
+    };
+
+    // Guard old callers that accidentally pass an object instead of a function.
+    if (originalSpeakChunks) {
+        V.speakChunks = async function (chunks, onProgress = null) {
+            const safeProgress = typeof onProgress === 'function' ? onProgress : null;
+            return originalSpeakChunks(chunks, safeProgress);
+        };
+    }
+
+    // New API expected by patched funnel files. Locale is intentionally ignored
+    // because user wants one stable Hinglish voice/accent, not per-language switching.
+    V.speakWithLocale = async function (text, _locale = null, onProgress = null) {
+        return this.speak(text, typeof onProgress === 'function' ? onProgress : null);
+    };
+
+    V.speakText = async function (text, options = {}, onProgress = null) {
+        const progress = typeof options === 'function' ? options : onProgress;
+        return this.speak(text, typeof progress === 'function' ? progress : null);
+    };
+
+    V.speakSegments = async function (segments, onProgress = null) {
+        const safeProgress = typeof onProgress === 'function' ? onProgress : null;
+        const joined = (Array.isArray(segments) ? segments : [])
+            .map((segment) => {
+                if (!segment) return '';
+                if (segment.type === 'pause') {
+                    return ` [[pause-${Math.max(100, Math.min(Number(segment.durationMs) || 250, 1500))}]] `;
+                }
+                return String(segment.text || '').trim();
+            })
+            .filter(Boolean)
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        if (!joined) return;
+        return this.speak(joined, safeProgress);
+    };
+
+    // These setters exist only for compatibility. They do not switch accents.
+    V.setLanguage = function (lang) {
+        this.language = lang;
+        this.currentLanguage = lang;
+        return lang;
+    };
+
+    V.setLocale = function (locale) {
+        this.locale = locale;
+        return locale;
+    };
+
+    V.setVoiceLocale = function (locale) {
+        this.voiceLocale = locale;
+        return locale;
+    };
+
+    console.log('✅ MayaVoice Hinglish patch active: mixed Hindi-English uses one stable voice/accent.');
+})();

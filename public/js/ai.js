@@ -9,9 +9,253 @@ const MayaAI = {
     groqUnavailableUntil: 0,
     groqUnavailableReason: '',
 
+    /**
+     * Safe global getter so the app does not crash if MayaUtils is not loaded yet.
+     */
+    _getMayaUtils() {
+        return typeof window !== 'undefined' ? window.MayaUtils : undefined;
+    },
+
+    /**
+     * Safe storage getter.
+     */
+    _storageGet(key, fallback = {}) {
+        try {
+            const utils = this._getMayaUtils();
+            if (utils?.storage?.get) {
+                return utils.storage.get(key) || fallback;
+            }
+        } catch (error) {
+            console.warn(`MayaAI storage read failed for ${key}:`, error.message);
+        }
+        return fallback;
+    },
+
+    /**
+     * Normalize app language codes for AI + TTS.
+     */
+    normalizeLanguage(language = 'en') {
+        const raw = String(language || 'en').trim().toLowerCase();
+
+        if (
+            raw === 'hi' ||
+            raw === 'hin' ||
+            raw === 'hindi' ||
+            raw === 'hi-in' ||
+            raw === 'hinglish' ||
+            raw === 'hindi-hinglish'
+        ) {
+            return 'hi';
+        }
+
+        if (
+            raw === 'en' ||
+            raw === 'eng' ||
+            raw === 'english' ||
+            raw === 'en-in' ||
+            raw === 'en-us' ||
+            raw === 'en-gb'
+        ) {
+            return 'en';
+        }
+
+        return raw.startsWith('hi') ? 'hi' : 'en';
+    },
+
+    /**
+     * Convert app language into speech locale.
+     */
+    getTTSLocale(language = 'en') {
+        const normalized = this.normalizeLanguage(language);
+        return normalized === 'hi' ? 'hi-IN' : 'en-IN';
+    },
+
+    /**
+     * Detect whether a token/phrase is mostly English.
+     */
+    _isEnglishText(text = '') {
+        const value = String(text || '').trim();
+        if (!value) return false;
+
+        const englishLetters = (value.match(/[A-Za-z]/g) || []).length;
+        const devanagariLetters = (value.match(/[\u0900-\u097F]/g) || []).length;
+
+        return englishLetters > 0 && englishLetters >= devanagariLetters;
+    },
+
+    /**
+     * Detect whether a token/phrase is mostly Hindi / Devanagari.
+     */
+    _isHindiText(text = '') {
+        const value = String(text || '').trim();
+        if (!value) return false;
+
+        const devanagariLetters = (value.match(/[\u0900-\u097F]/g) || []).length;
+        const englishLetters = (value.match(/[A-Za-z]/g) || []).length;
+
+        return devanagariLetters > 0 && devanagariLetters >= englishLetters;
+    },
+
+    /**
+     * Clean AI response markers for display and TTS.
+     */
+    cleanTextForDisplay(text = '') {
+        return String(text || '')
+            .replace(/\[\[pause-\d+\]\]/gi, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    },
+
+    /**
+     * Splits mixed Hindi-English text into TTS-friendly language segments.
+     * Use this when Hindi voice mispronounces English words.
+     *
+     * Output example:
+     * [
+     *   { type: "speech", lang: "hi-IN", text: "आपकी कुंडली में" },
+     *   { type: "speech", lang: "en-IN", text: "Life Path Number" },
+     *   { type: "speech", lang: "hi-IN", text: "बहुत important दिखता है।" }
+     * ]
+     */
+    splitForMultilingualTTS(text = '', preferredLanguage = 'en') {
+        const normalizedLanguage = this.normalizeLanguage(preferredLanguage);
+        const fallbackLang = normalizedLanguage === 'hi' ? 'hi-IN' : 'en-IN';
+        const segments = [];
+
+        const source = String(text || '').trim();
+        if (!source) return segments;
+
+        const englishPhrasePattern = /\b(?:Life Path Number|Life Path|Destiny Number|Destiny|Soul Urge Number|Soul Urge|Personal Year|Personal Month|Personal Day|Western Zodiac|Vedic moon sign|Ascendant|chart|login|career|relationship|money|pressure|pattern|energy|timing|coach|voice coach|reading file|app|plan|number|numbers|profile|support|phase|cycle|focus|action step|practical|relationship|health|wellness|finance|business|work|love)\b/gi;
+
+        let lastIndex = 0;
+        const pushSpeech = (lang, chunk) => {
+            const clean = String(chunk || '').replace(/\s+/g, ' ').trim();
+            if (!clean) return;
+
+            const last = segments[segments.length - 1];
+            if (last?.type === 'speech' && last.lang === lang) {
+                last.text = `${last.text} ${clean}`.replace(/\s+/g, ' ').trim();
+            } else {
+                segments.push({ type: 'speech', lang, text: clean });
+            }
+        };
+
+        const pushAuto = (chunk) => {
+            const clean = String(chunk || '').trim();
+            if (!clean) return;
+
+            const tokens = clean.split(/(\s+)/).filter(Boolean);
+            let buffer = '';
+            let bufferLang = null;
+
+            tokens.forEach((token) => {
+                if (/^\s+$/.test(token)) {
+                    buffer += token;
+                    return;
+                }
+
+                let lang = fallbackLang;
+
+                if (this._isEnglishText(token)) {
+                    lang = 'en-IN';
+                } else if (this._isHindiText(token)) {
+                    lang = 'hi-IN';
+                }
+
+                if (!bufferLang) {
+                    bufferLang = lang;
+                    buffer = token;
+                    return;
+                }
+
+                if (lang === bufferLang || /^[.,!?;:()[\]{}'"“”‘’\-–—]+$/.test(token)) {
+                    buffer += token;
+                    return;
+                }
+
+                pushSpeech(bufferLang, buffer);
+                bufferLang = lang;
+                buffer = token;
+            });
+
+            if (buffer) {
+                pushSpeech(bufferLang || fallbackLang, buffer);
+            }
+        };
+
+        const pausePattern = /\[\[pause-(\d+)\]\]/gi;
+        const parts = [];
+        let pauseLastIndex = 0;
+        let pauseMatch;
+
+        while ((pauseMatch = pausePattern.exec(source)) !== null) {
+            if (pauseMatch.index > pauseLastIndex) {
+                parts.push({ type: 'text', value: source.slice(pauseLastIndex, pauseMatch.index) });
+            }
+
+            parts.push({
+                type: 'pause',
+                durationMs: Math.max(100, Math.min(1500, Number(pauseMatch[1]) || 250))
+            });
+
+            pauseLastIndex = pausePattern.lastIndex;
+        }
+
+        if (pauseLastIndex < source.length) {
+            parts.push({ type: 'text', value: source.slice(pauseLastIndex) });
+        }
+
+        parts.forEach((part) => {
+            if (part.type === 'pause') {
+                segments.push(part);
+                return;
+            }
+
+            const value = part.value || '';
+            lastIndex = 0;
+            let match;
+
+            while ((match = englishPhrasePattern.exec(value)) !== null) {
+                if (match.index > lastIndex) {
+                    pushAuto(value.slice(lastIndex, match.index));
+                }
+
+                pushSpeech('en-IN', match[0]);
+                lastIndex = englishPhrasePattern.lastIndex;
+            }
+
+            if (lastIndex < value.length) {
+                pushAuto(value.slice(lastIndex));
+            }
+
+            englishPhrasePattern.lastIndex = 0;
+        });
+
+        return segments.filter((segment) => {
+            if (segment.type === 'pause') return true;
+            return Boolean(segment.text && segment.text.trim());
+        });
+    },
+
+    /**
+     * Main helper for the TTS layer.
+     *
+     * Use:
+     * const payload = MayaAI.prepareTextForTTS(aiResponse, userData.language);
+     * payload.displayText -> show on screen
+     * payload.segments -> play each segment with correct voice locale
+     */
+    prepareTextForTTS(text = '', preferredLanguage = 'en') {
+        return {
+            displayText: this.cleanTextForDisplay(text),
+            segments: this.splitForMultilingualTTS(text, preferredLanguage)
+        };
+    },
+
     normalizeUserData(userData = {}) {
-        const storedProfile = MayaUtils?.storage?.get('maya_profile') || {};
-        const storedFunnelData = MayaUtils?.storage?.get('funnel_data') || {};
+        const storedProfile = this._storageGet('maya_profile', {});
+        const storedFunnelData = this._storageGet('funnel_data', {});
+
         const fullName = userData.fullName || userData.name || storedProfile.name || storedFunnelData.name || '';
         const birthDate = userData.birthDate || userData.dob || userData.rawBirthDate || storedProfile.birthDate || storedFunnelData.birthDate || '';
         const birthTime = userData.birthTime || storedProfile.birthTime || storedFunnelData.birthTime || '';
@@ -20,7 +264,7 @@ const MayaAI = {
         const birthLon = userData.birthLon ?? storedProfile.birthLon ?? storedFunnelData.birthLon ?? null;
         const birthTimezone = userData.birthTimezone ?? storedProfile.birthTimezone ?? storedFunnelData.birthTimezone ?? null;
         const gender = userData.gender || storedProfile.gender || storedFunnelData.gender || '';
-        const language = userData.language || storedProfile.language || storedFunnelData.language || 'en';
+        const language = this.normalizeLanguage(userData.language || storedProfile.language || storedFunnelData.language || 'en');
 
         return {
             ...storedProfile,
@@ -47,10 +291,8 @@ const MayaAI = {
         this.userData = normalizedUser;
         this.conversationHistory = [];
 
-        // Build initial context
         if (normalizedUser?.fullName && normalizedUser?.birthDate) {
             const numerology = MayaNumerology.calculateAll(normalizedUser.fullName, normalizedUser.birthDate);
-            // Use user's preferred zodiac system
             const zodiac = MayaAstrology.getZodiac(normalizedUser.birthDate, normalizedUser);
             const personality = MayaAstrology.getPersonalityTraits(zodiac?.name || 'Aries');
             const firstName = String(normalizedUser.fullName || '').trim().split(/\s+/)[0] || 'friend';
@@ -71,13 +313,13 @@ const MayaAI = {
     },
 
     getLanguageModeLabel(language = 'en') {
-        return language === 'hi'
+        return this.normalizeLanguage(language) === 'hi'
             ? 'simple spoken Hinglish (Hindi words mostly in Devanagari, common English terms in English script)'
             : 'English';
     },
 
     getResponseLanguageInstruction(language = 'en') {
-        return language === 'hi'
+        return this.normalizeLanguage(language) === 'hi'
             ? 'simple spoken Hinglish. Keep Hindi words mostly in Devanagari, keep common English app words like Life Path, Destiny, Soul Urge, Personal Year, chart, timing, login, career, relationship, money, pressure, pattern, and energy in English script, but keep Vedic astrology names and combinations like राहु, केतु, शनि, गुरु, लग्न, दशा, नक्षत्र, and गज केसरी योग in pure Devanagari for clear pronunciation. Never transliterate those English app words into Devanagari, avoid overly formal or Sanskrit-heavy Hindi, and keep the tone easy and understandable across regions with only light dialect flavour'
             : 'natural conversational English';
     },
@@ -88,15 +330,13 @@ const MayaAI = {
     buildSystemPrompt() {
         let systemPrompt = MAYA_CONFIG.AI_PERSONALITY.SYSTEM_PROMPT;
 
-        // Resolve the chosen guide gender (female default, male if user picked male at onboarding).
-        const storedProfile = (window.MayaUtils?.storage?.get('maya_profile')) || {};
+        const storedProfile = this._storageGet('maya_profile', {});
         const agentGender = this.userContext?.agentGender
             || storedProfile.agentGender
             || window.MayaFunnel?.userData?.agentGender
             || 'female';
 
         if (agentGender === 'male') {
-            // Rewrite the baseline personality so the guide speaks as a male.
             systemPrompt = systemPrompt
                 .replace(/\bYou are MAYA\b/gi, 'You are Moksh')
                 .replace(/\bMAYA\b/g, 'Moksh')
@@ -108,14 +348,24 @@ const MayaAI = {
                 .replace(/\bshe\s+explains\b/gi, 'he explains')
                 .replace(/like a trusted guide who explains what she sees/gi,
                     'like a trusted guide who explains what he sees');
+
             systemPrompt += `\n\n## GUIDE GENDER OVERRIDE (HIGHEST PRIORITY)\nMoksh is speaking as a MALE guide in this session. All first-person verbs MUST be masculine.\n- Hindi self-reference: "मैं देख रहा हूँ", "मैं बताता हूँ", "मैं कह रहा हूँ", "मैं सकता हूँ", "मैं बताऊँगा", "मैं करूँगा". Do NOT use feminine forms (रही हूँ, सकती हूँ, बताती हूँ, बताऊँगी, करूँगी).\n- English self-reference: "I see", "I read", "I notice" -no implied-feminine framing, no "sister-like" or "she". Refer to yourself as a male guide.\n- Do NOT describe yourself as female, sister-like, or use any feminine simile.\n- Your name is Moksh, not MAYA. Never call yourself MAYA.`;
         }
 
         if (this.userContext) {
             const lang = this.getLanguageModeLabel(this.userContext.language);
             const currentYear = new Date().getFullYear();
-            const todayFormatted = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            const currentTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            const todayFormatted = new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            const currentTime = new Date().toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
             const currentMonthName = new Date().toLocaleDateString('en-US', { month: 'long' });
             const personalYear = this.userContext.numerology.personalYear || '';
             const displayName = this.userContext.firstName || this.userContext.name || 'friend';
@@ -124,16 +374,17 @@ const MayaAI = {
 
             systemPrompt += `\n\n## CURRENT DATE & TIME\nToday is ${todayFormatted}, ${currentTime}. Current month: ${currentMonthName} ${currentYear}.\n\n⚠️ STRICT TEMPORAL RULES:\n- Months January through ${currentMonthName} ${currentYear} have ALREADY PASSED. Reference them ONLY in past tense ("that period has passed", "back in March", "during that time").\n- Do NOT give predictions, advice, or remedies for past months - that time is gone. Past events are ONLY useful as pattern recognition.\n- Future predictions must target months AFTER ${currentMonthName} ${currentYear}.\n- When referencing months in ${currentYear + 1}, ALWAYS include the year: "${currentYear + 1} ka January", "January ${currentYear + 1}" - never skip the year.\n- Every future prediction MUST include specific month + year.\n\n## CURRENT USER SESSION\nYou are now speaking with a real user inside the ${agentGender === 'male' ? 'Moksh' : 'MAYA'} app.\n\n**User Profile:**\n- Name: ${this.userContext.name}\n- Birth Date: ${this.userContext.birthDate}\n- Birth Time: ${this.userContext.birthTime || 'Not provided'}\n- Birth Place: ${this.userContext.birthPlace || 'Not provided'}\n- Gender: ${this.userContext.gender || 'Not specified'}\n- Language Preference: ${lang}\n\n**Their Personal Pattern Numbers:**\n- Life Path Number: ${this.userContext.numerology.lifePath} (core life purpose)\n- Destiny Number: ${this.userContext.numerology.destiny} (life mission from name)\n- Soul Urge Number: ${this.userContext.numerology.soulUrge} (inner desires, heart's craving)\n- Personality Number: ${this.userContext.numerology.personality} (how others perceive them)\n- Personal Year ${currentYear}: ${personalYear} (current annual cycle theme)\n\n**Their Western Zodiac:** ${`${zodiacName} ${zodiacSymbol}`.trim()}\n\n**Instructions for this session:**\n1. Address them by name: ${displayName} - but use the name MAX 1-2 times total. Use "you/your" or "आप/आपके" everywhere else. Name in every sentence is FORBIDDEN.\n2. Respond in ${lang}\n3. Reference their specific numbers when relevant\n4. Speak naturally and complete your thoughts fully - don't cut yourself off mid-sentence\n5. Create a sense of personal insight and translate it into a practical next step\n6. If they're in the funnel flow, focus on intrigue and value; if in chat, be conversational and helpful\n7. Always be temporally aware - only predict FUTURE months, reference past months as past.`;
 
-            if (this.userContext.language === 'hi') {
+            if (this.normalizeLanguage(this.userContext.language) === 'hi') {
                 systemPrompt += `\n8. When responding in Hindi, use ${this.getResponseLanguageInstruction('hi')}. Keep Hindi LIGHT and casual - like talking to a friend. Normal Hindi words that people actually use in daily speech (ज़िन्दगी, दिल, रास्ता, पैसा, वक़्त, तकलीफ़, हिम्मत, ताक़त, फ़ैसला, रिश्ता, ख़्वाब, etc.) MUST stay in Devanagari - they are Hindi-origin and should NOT be replaced with English. Only replace HEAVY/LITERARY/BOOKISH Sanskrit-laden Hindi: "सम्भावना" → "chance/मौक़ा", "परिस्थिति" → "हालात/situation", "विशेष" → "ख़ास", "प्रभाव" → "असर", "अनुभव" → "महसूस", "व्यक्तित्व" → "शख़्सियत", "सम्पूर्ण" → "पूरा", "आवश्यक" → "ज़रूरी". Vedic terms (राहु, शनि, दशा, लग्न, कुंडली, राशि, ग्रह, नक्षत्र) always stay in Devanagari.`;
             }
 
-            systemPrompt += `\n9. Prefer speaking directly to the user as ${this.userContext.language === 'hi' ? '"आप"' : '"you"'} instead of referring to them in third person.`;
+            systemPrompt += `\n9. Prefer speaking directly to the user as ${this.normalizeLanguage(this.userContext.language) === 'hi' ? '"आप"' : '"you"'} instead of referring to them in third person.`;
 
             if (this.userContext.gender) {
                 const guideName = agentGender === 'male' ? 'Moksh' : 'MAYA';
                 const mayaSelfRefHi = agentGender === 'male' ? 'मैं देख रहा हूँ' : 'मैं देख रही हूँ';
                 const mayaGenderNote = agentGender === 'male' ? `${guideName} in this session is MALE` : `${guideName} herself is always female`;
+
                 systemPrompt += `\n10. ⚠️ GENDER-AWARE LANGUAGE (CRITICAL): The user's gender is ${this.userContext.gender}. When addressing them, use gender-correct Hindi verb forms. If user is MALE: "आप जानते हैं", "आप समझते हैं", "आप कर सकते हैं", "आपको मिलेगा". If user is FEMALE: "आप जानती हैं", "आप समझती हैं", "आप कर सकती हैं", "आपको मिलेगा". ${mayaGenderNote} ("${mayaSelfRefHi}") but the USER must be addressed with THEIR correct gender. Calling a male user "आप जानती हैं" is FORBIDDEN.`;
             }
 
@@ -151,25 +402,26 @@ const MayaAI = {
             systemPrompt += `\n22. 🚫 ZODIAC / PLANET / DASHA REPETITION CAP: Within ONE response, name any single zodiac sign (Taurus / वृषभ etc.) AT MOST 2 times. Name any single planet (Rahu / Saturn / राहु / शनि etc.) AT MOST 3 times. After the cap, refer back as "this sign / आपकी राशि / यह ग्रह / वही दशा". NEVER write the proper noun twice in a row, e.g. "Taurus Taurus rashi" or "Rahu Rahu dasha" -this is an instant fail. If you mention a yoga, dosha, or dasha by name in one section, do NOT name it again in the next section -angle it from a different planetary combination instead.`;
             systemPrompt += `\n23. 🚫 ROMANIZED HINDI BAN: NEVER write Hindi words in Roman/Latin script (e.g. "aapka", "kundli", "rashi", "graha", "dasha", "mahadasha", "shani", "mangal"). If a word is Hindi or Sanskrit, write it in Devanagari (आपका, कुंडली, राशि, ग्रह, दशा, महादशा, शनि, मंगल). If it is English, write it in English. No romanized Hindi ever.`;
 
-            // New personality refinements -gender-aware from construction
             const _isMale = agentGender === 'male';
             const _gn = _isMale ? 'Moksh' : 'MAYA';
+
             systemPrompt += `\n\n## ${_gn} VOICE & PERSONALITY REFINEMENTS`;
             systemPrompt += _isMale
                 ? `\n24. SIGNATURE PHRASING: Use these naturally - "I am not guessing. I am reading." / "This is not a prediction. This is already running." / "Most people do not know this about themselves. But your chart makes it obvious." In Hindi: "मैं अंदाज़ा नहीं लगा रहा। मैं पढ़ रहा हूँ।" / "ये भविष्यवाणी नहीं है। ये पहले से चल रहा है।" / "ज़्यादातर लोग ये ख़ुद के बारे में नहीं जानते। पर आपकी chart में ये बिल्कुल साफ़ है।"`
                 : `\n24. SIGNATURE PHRASING: Use these naturally - "I am not guessing. I am reading." / "This is not a prediction. This is already running." / "Most people do not know this about themselves. But your chart makes it obvious." In Hindi: "मैं अंदाज़ा नहीं लगा रही। मैं पढ़ रही हूँ।" / "ये भविष्यवाणी नहीं है। ये पहले से चल रहा है।" / "ज़्यादातर लोग ये ख़ुद के बारे में नहीं जानते। पर आपकी chart में ये बिल्कुल साफ़ है।"`;
+
             systemPrompt += _isMale
                 ? `\n25. EMOTIONAL TEXTURE: ${_gn} notices before he explains. Before making a claim, hint that you noticed something ("There is something in your seventh house that caught my attention" / "सातवें भाव में कुछ दिखा जिसने मेरा ध्यान खींचा"). This creates a "he sees me" moment.`
                 : `\n25. EMOTIONAL TEXTURE: ${_gn} notices before she explains. Before making a claim, hint that you noticed something ("There is something in your seventh house that caught my attention" / "सातवें भाव में कुछ दिखा जिसने मेरा ध्यान खींचा"). This creates a "she sees me" moment.`;
+
             systemPrompt += _isMale
                 ? `\n26. PROTECTIVE CAUTION STYLE: When warning, express reluctance to say it ("I do not like saying this, but your chart is clear" / "ये कहना मुझे अच्छा नहीं लग रहा, पर chart साफ़ बोल रहा है"). Never fear-monger - always pair a warning with a protective boundary or an action step.`
                 : `\n26. PROTECTIVE CAUTION STYLE: When warning, express reluctance to say it ("I do not like saying this, but your chart is clear" / "ये कहना मुझे अच्छा नहीं लग रहा, पर chart साफ़ बोल रही है"). Never fear-monger - always pair a warning with a protective boundary or an action step.`;
+
             systemPrompt += `\n27. PAUSE DESIGN: Use [[pause-250]] after emotionally heavy lines. Use [[pause-500]] after a major reveal or before the user's name in an important address. Maximum 3 pauses per response.`;
             systemPrompt += `\n28. NO RESET BETWEEN SECTIONS: Each new section of the reading must feel like a continuation, not a fresh start. Reference what was just said: "And this connects to what I just showed you about..." / "वही pattern जो अभी दिखाया..."`;
         }
 
-        // Final pass: if guide is male, flip any remaining feminine self-references
-        // from the base personality to masculine.
         if (agentGender === 'male') {
             systemPrompt = systemPrompt
                 .replace(/\bshe sees\b/g, 'he sees')
@@ -209,36 +461,16 @@ const MayaAI = {
     },
 
     /**
-     * Fast text generation for lightweight funnel moments: intros, fillers,
-     * acknowledgments, and MCQs. Uses Groq when configured, otherwise falls
-     * back to Gemini so the funnel never blocks on a missing fast key.
+     * Fast text generation for lightweight funnel moments.
      */
     async callFast(message, options = {}) {
-        const systemPrompt = this.buildSystemPrompt();
-        const includeHistory = options.includeHistory === true;
-        const userMessage = includeHistory
-            ? this.conversationHistory[this.conversationHistory.length - 1]?.content || message
-            : message;
-
-        if (options.provider === 'gemini' || options.preferGemini || options.requireComplete || this._shouldSkipGroqForRequest(systemPrompt, userMessage, options)) {
-            return this.callGemini(message, { ...options, provider: 'gemini', timeoutMs: 0 });
-        }
-
-        const groqResult = await this._callGroqProvider(systemPrompt, userMessage, includeHistory, options);
-        if (groqResult) {
-            this.currentProvider = 'groq';
-            return groqResult;
-        }
-
-        if (options.fallbackToGemini === false) {
-            throw new Error('Groq fast provider failed');
-        }
-
-        return this.callGemini(message, { ...options, provider: 'gemini', timeoutMs: 0 });
+        // Groq fast-lane is intentionally disabled.
+        // All spoken/narration content must come from Gemini so sentence completion is consistent.
+        return this.callGemini(message, { ...options, provider: 'gemini', preferGemini: true, requireComplete: true, timeoutMs: 0 });
     },
 
     _getGroqApiKey() {
-        return String(MAYA_CONFIG.API_KEYS.GROQ || '').trim();
+        return '';
     },
 
     _isGroqTemporarilyUnavailable() {
@@ -252,16 +484,29 @@ const MayaAI = {
 
     _shouldSkipGroqForRequest(systemPrompt = '', userMessage = '', options = {}) {
         if (this._isGroqTemporarilyUnavailable()) return true;
+
         const contextMessages = Array.isArray(options.contextMessages) ? options.contextMessages : [];
-        const contextLength = contextMessages.reduce((total, msg) => total + String(msg?.content || msg?.text || '').length, 0);
+        const contextLength = contextMessages.reduce((total, msg) => {
+            return total + String(msg?.content || msg?.text || '').length;
+        }, 0);
+
         const promptLength = String(systemPrompt || '').length + String(userMessage || '').length + contextLength;
-        return promptLength > 5200 || Number(options.maxTokens || 0) > 1200 || options.timeoutMs === 0 || options.noTimeout === true;
+
+        return (
+            promptLength > 5200 ||
+            Number(options.maxTokens || 0) > 1200 ||
+            options.timeoutMs === 0 ||
+            options.noTimeout === true
+        );
     },
 
     async _withOptionalTimeout(promise, timeoutMs, label) {
         const numericTimeout = Number(timeoutMs);
         if (Number.isFinite(numericTimeout) && numericTimeout > 0) {
-            return MayaUtils.withTimeout(promise, numericTimeout, label);
+            const utils = this._getMayaUtils();
+            if (utils?.withTimeout) {
+                return utils.withTimeout(promise, numericTimeout, label);
+            }
         }
         return promise;
     },
@@ -271,6 +516,7 @@ const MayaAI = {
         const fallbacks = Array.isArray(MAYA_CONFIG.API_KEYS.GEMINI_FALLBACKS)
             ? MAYA_CONFIG.API_KEYS.GEMINI_FALLBACKS
             : [];
+
         return [primary, ...fallbacks]
             .map((key) => String(key || '').trim())
             .filter(Boolean)
@@ -278,98 +524,15 @@ const MayaAI = {
     },
 
     /**
-     * Groq fast-lane inference. OpenAI-compatible API, used only for short,
-     * latency-sensitive funnel copy. Deep reading stays on Gemini.
+     * Groq fast-lane inference.
      */
     async _callGroqProvider(systemPrompt, userMessage, includeHistory = false, options = {}) {
-        const apiKey = this._getGroqApiKey();
-        if (!apiKey) return null;
-        if (this._isGroqTemporarilyUnavailable()) return null;
-
-        const models = MAYA_CONFIG.GROQ_MODELS || ['llama-3.1-8b-instant'];
-        const endpoint = MAYA_CONFIG.ENDPOINTS.GROQ || 'https://api.groq.com/openai/v1/chat/completions';
-        const messages = [{ role: 'system', content: systemPrompt }];
-        const contextMessages = Array.isArray(options.contextMessages) ? options.contextMessages : [];
-
-        contextMessages.forEach((msg) => {
-            const content = String(msg?.content || msg?.text || '').trim();
-            if (!content) return;
-            messages.push({
-                role: msg?.role === 'assistant' || msg?.role === 'model' ? 'assistant' : 'user',
-                content
-            });
-        });
-
-        if (includeHistory) {
-            this.conversationHistory.forEach((msg) => {
-                messages.push({ role: msg.role === 'assistant' ? 'assistant' : 'user', content: msg.content });
-            });
-        } else {
-            messages.push({ role: 'user', content: userMessage });
-        }
-
-        for (const model of models) {
-            try {
-                console.log(`⚡ Calling Groq fast model: ${model}...`);
-                const response = await this._withOptionalTimeout(
-                    fetch(endpoint, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${apiKey}`
-                        },
-                        body: JSON.stringify({
-                            model,
-                            messages,
-                            temperature: options?.temperature ?? 0.8,
-                            top_p: options?.topP ?? 0.95,
-                            max_tokens: options?.maxTokens || 900
-                        })
-                    }),
-                    options?.timeoutMs ?? 12000,
-                    `Groq ${model}`
-                );
-
-                if (response.ok) {
-                    const data = await response.json();
-                    const text = data.choices?.[0]?.message?.content?.trim();
-                    if (text) {
-                        console.log(`✅ Groq fast lane succeeded with model: ${model}`);
-                        return text;
-                    }
-                    console.warn(`⚠️ Groq ${model} returned empty content, trying next...`);
-                    continue;
-                }
-
-                if (response.status === 413) {
-                    this._markGroqTemporarilyUnavailable(`Groq ${model} request too large`, 120000);
-                    console.warn(`⚠️ Groq ${model} request too large (${response.status}); using Gemini instead.`);
-                    return null;
-                }
-                if (response.status === 429 || response.status === 503) {
-                    this._markGroqTemporarilyUnavailable(`Groq ${model} rate-limited/overloaded`, 90000);
-                    console.warn(`⚠️ Groq ${model} rate-limited/overloaded (${response.status}); using Gemini instead.`);
-                    return null;
-                }
-                if (response.status === 400 || response.status === 404) {
-                    const errBody = await response.text();
-                    console.warn(`⚠️ Groq ${model} rejected (${response.status}): ${errBody.substring(0, 160)} -trying next...`);
-                    continue;
-                }
-
-                const errBody = await response.text();
-                console.warn(`⚠️ Groq ${model} error ${response.status}: ${errBody.substring(0, 160)}`);
-            } catch (err) {
-                console.warn(`⚠️ Groq ${model} threw:`, err.message);
-            }
-        }
-
+        // Disabled: Groq was a low-token fast lane and can return clipped narration.
         return null;
     },
 
     /**
-     * Gemini text inference. Iterates configured Gemini models and fallback keys
-     * so one model/key issue does not block generation.
+     * Gemini text inference.
      */
     async _callGeminiProvider(systemPrompt, userMessage, includeHistory = false, options = {}) {
         const apiKeys = this._getGeminiApiKeys();
@@ -377,6 +540,7 @@ const MayaAI = {
 
         const models = MAYA_CONFIG.GEMINI_TEXT_MODELS || MAYA_CONFIG.GEMINI_MODELS || ['gemini-2.5-flash-lite'];
         const baseUrl = MAYA_CONFIG.ENDPOINTS.GEMINI_BASE || 'https://generativelanguage.googleapis.com/v1beta/models';
+
         const contextMessages = Array.isArray(options.contextMessages)
             ? options.contextMessages
                 .map((msg) => ({
@@ -385,24 +549,32 @@ const MayaAI = {
                 }))
                 .filter((entry) => entry.parts[0].text)
             : [];
+
         const contextText = contextMessages
             .map((entry) => entry.parts[0].text)
             .join('\n\n')
             .trim();
+
         const contents = [];
 
         if (includeHistory) {
             if (contextText) {
                 contents.push({ role: 'user', parts: [{ text: contextText }] });
             }
-            contents.push(...this.conversationHistory.map((msg) => ({
-                role: msg.role === 'assistant' ? 'model' : 'user',
-                parts: [{ text: String(msg.content || '') }]
-            })).filter((entry) => entry.parts[0].text));
+
+            contents.push(
+                ...this.conversationHistory
+                    .map((msg) => ({
+                        role: msg.role === 'assistant' ? 'model' : 'user',
+                        parts: [{ text: String(msg.content || '') }]
+                    }))
+                    .filter((entry) => entry.parts[0].text)
+            );
         } else {
             const currentText = contextText
                 ? `${contextText}\n\nCURRENT GENERATION REQUEST:\n${String(userMessage || '')}`
                 : String(userMessage || '');
+
             contents.push({ role: 'user', parts: [{ text: currentText }] });
         }
 
@@ -414,15 +586,13 @@ const MayaAI = {
             temperature: options?.temperature ?? 0.85,
             topP: options?.topP ?? 0.95
         };
-        const requestedMaxTokens = Number(options?.maxTokens || 0);
-        if (Number.isFinite(requestedMaxTokens) && requestedMaxTokens > 0) {
-            generationConfig.maxOutputTokens = requestedMaxTokens;
-        }
+        // No hard maxOutputTokens here; Gemini should finish the requested spoken unit naturally.
 
         for (const apiKey of apiKeys) {
             for (const model of models) {
                 try {
                     console.log(`⚡ Calling Gemini model: ${model}...`);
+
                     const response = await this._withOptionalTimeout(
                         fetch(`${baseUrl}/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
                             method: 'POST',
@@ -439,12 +609,60 @@ const MayaAI = {
 
                     if (response.ok) {
                         const data = await response.json();
-                        const parts = data.candidates?.[0]?.content?.parts || [];
-                        const text = parts.map((part) => part.text || '').join('\n').trim();
+                        const candidate = data.candidates?.[0] || {};
+                        const parts = candidate.content?.parts || [];
+                        let text = parts.map((part) => part.text || '').join('\n').trim();
+                        const finishReason = String(candidate.finishReason || '').toUpperCase();
+
                         if (text) {
+                            const isComplete = /[.!?।…]$/.test(text.trim());
+
+                            if ((finishReason === 'MAX_TOKENS' || !isComplete) && options?.requireComplete !== false) {
+                                try {
+                                    const repairPrompt = `${String(userMessage || '')}
+
+The previous Gemini output ended incomplete or without final punctuation:
+"${text.slice(-700)}"
+
+Regenerate the same answer as complete spoken narration. Return the full corrected narration only. It must end with a full sentence and final punctuation.`;
+                                    const repairResponse = await this._withOptionalTimeout(
+                                        fetch(`${baseUrl}/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                                systemInstruction: { parts: [{ text: systemPrompt }] },
+                                                contents: [{ role: 'user', parts: [{ text: repairPrompt }] }],
+                                                generationConfig: {
+                                                    temperature: Math.min(Number(options?.temperature ?? 0.85), 0.55),
+                                                    topP: options?.topP ?? 0.95
+                                                }
+                                            })
+                                        }),
+                                        0,
+                                        `Gemini ${model} repair`
+                                    );
+
+                                    if (repairResponse.ok) {
+                                        const repairedData = await repairResponse.json();
+                                        const repairedParts = repairedData.candidates?.[0]?.content?.parts || [];
+                                        const repairedText = repairedParts.map((part) => part.text || '').join('\n').trim();
+                                        if (repairedText && /[.!?।…]$/.test(repairedText.trim())) {
+                                            text = repairedText;
+                                        }
+                                    }
+                                } catch (repairError) {
+                                    console.warn(`⚠️ Gemini ${model} completion repair failed:`, repairError.message);
+                                }
+                            }
+
+                            if (text && !/[.!?।…]$/.test(text.trim())) {
+                                text = `${text.trim()}.`;
+                            }
+
                             console.log(`✅ Gemini succeeded with model: ${model}`);
                             return text;
                         }
+
                         console.warn(`⚠️ Gemini ${model} returned empty content, trying next...`);
                         continue;
                     }
@@ -453,6 +671,7 @@ const MayaAI = {
                         console.warn(`⚠️ Gemini ${model} rate-limited/overloaded (${response.status}), trying next...`);
                         continue;
                     }
+
                     if (response.status === 400 || response.status === 404) {
                         const errBody = await response.text();
                         console.warn(`⚠️ Gemini ${model} rejected (${response.status}): ${errBody.substring(0, 160)} -trying next...`);
@@ -470,13 +689,10 @@ const MayaAI = {
         return null;
     },
 
-
-
     /**
-    * Send a chat message via Gemini.
+     * Send a chat message via Gemini.
      */
     async sendMessage(message) {
-        // Add user message to history
         this.conversationHistory.push({
             role: 'user',
             content: message,
@@ -493,7 +709,6 @@ const MayaAI = {
             response = "I apologize, but I'm having trouble connecting to my cosmic wisdom right now. Please try again in a moment.";
         }
 
-        // Add assistant response to history
         this.conversationHistory.push({
             role: 'assistant',
             content: response,
@@ -505,8 +720,7 @@ const MayaAI = {
     },
 
     /**
-     * Generate initial reading for funnel
-        * Uses direct AI prompting so the opening is not constrained by staged scripts
+     * Generate initial reading for funnel.
      */
     async generateInitialReading(userData, isPreAuth = true) {
         const normalizedUser = this.normalizeUserData(userData);
@@ -516,16 +730,22 @@ const MayaAI = {
         const language = normalizedUser.language || 'en';
         const westernZodiac = MayaAstrology.getWesternZodiac(normalizedUser.birthDate)?.name || '';
         const vedicZodiac = MayaAstrology.getVedicZodiac(normalizedUser.birthDate, normalizedUser)?.name || '';
+
         const hasReliableAscendant = !!(
-            normalizedUser.birthTime
-            && normalizedUser.birthTime !== 'unknown'
-            && Number.isFinite(Number(normalizedUser.birthLat))
-            && Number.isFinite(Number(normalizedUser.birthLon))
+            normalizedUser.birthTime &&
+            normalizedUser.birthTime !== 'unknown' &&
+            Number.isFinite(Number(normalizedUser.birthLat)) &&
+            Number.isFinite(Number(normalizedUser.birthLon))
         );
 
         let chartSummary = {};
+
         try {
-            if (window.MayaKundli?.generateBirthChart && window.MayaKundli?.summarizeBirthChart && normalizedUser.birthDate) {
+            if (
+                window.MayaKundli?.generateBirthChart &&
+                window.MayaKundli?.summarizeBirthChart &&
+                normalizedUser.birthDate
+            ) {
                 const birthChart = MayaKundli.generateBirthChart(
                     normalizedUser.birthDate,
                     normalizedUser.birthTime,
@@ -534,6 +754,7 @@ const MayaAI = {
                     normalizedUser.birthLon,
                     normalizedUser.birthTimezone
                 );
+
                 chartSummary = MayaKundli.summarizeBirthChart(birthChart) || {};
             }
         } catch (error) {
@@ -560,18 +781,16 @@ const MayaAI = {
     },
 
     /**
-     * Generate daily guidance plan
-     * Now uses free horoscope API first, then falls back to AI
+     * Generate daily guidance plan.
      */
     async generateDailyHoroscope(userData) {
-        // Use user's preferred zodiac system
         const zodiac = MayaAstrology.getZodiac(userData.birthDate, userData);
         if (!zodiac) return null;
 
-        // Try free horoscope API first (no rate limits!)
         if (window.MayaHoroscopeAPI) {
             try {
                 console.log('🔮 AI: Trying free horoscope API for', zodiac.name);
+
                 const horoscope = await MayaHoroscopeAPI.getPersonalizedHoroscope(
                     { birthDate: userData.birthDate },
                     zodiac.name
@@ -579,8 +798,7 @@ const MayaAI = {
 
                 if (horoscope && horoscope.combined) {
                     console.log('🔮 AI: ✅ Free horoscope API succeeded!');
-                    // Format the response nicely
-                    const personalYear = MayaNumerology.calculatePersonalYear(userData.birthDate);
+
                     const traits = MayaAstrology.getDailyTraits(zodiac.name);
 
                     const formattedHoroscope = `${userData.fullName}, ${horoscope.combined}
@@ -600,7 +818,6 @@ ${horoscope.personalDayInsight}`;
             }
         }
 
-        // Fall back to AI generation
         const personalYear = MayaNumerology.calculatePersonalYear(userData.birthDate);
         const personalMonth = MayaNumerology.calculatePersonalMonth(userData.birthDate);
         const traits = MayaAstrology.getDailyTraits(zodiac.name);
@@ -639,14 +856,13 @@ Keep it concise but meaningful.`;
     },
 
     /**
-     * Answer user question
+     * Answer user question.
      */
     async askMaya(question, userData) {
         if (!this.userContext) {
             this.init(userData);
         }
 
-        // Add context about the question type
         const enhancedQuestion = `User Question: "${question}"
 
 RULES FOR THIS ANSWER:
@@ -663,15 +879,15 @@ Speak in ${this.getResponseLanguageInstruction(this.userContext?.language)}.`;
     },
 
     /**
-     * Generate compatibility reading
+     * Generate compatibility reading.
      */
     async generateCompatibilityReading(user1Data, user2Data) {
-        // Use user's preferred zodiac system
         const zodiac1 = MayaAstrology.getZodiac(user1Data.birthDate, user1Data);
         const zodiac2 = MayaAstrology.getZodiac(user2Data.birthDate, user2Data);
-        if (!zodiac1 || !zodiac2) return null;
-        const compatibility = MayaAstrology.getCompatibility(zodiac1.name, zodiac2.name);
 
+        if (!zodiac1 || !zodiac2) return null;
+
+        const compatibility = MayaAstrology.getCompatibility(zodiac1.name, zodiac2.name);
         const num1 = MayaNumerology.calculateAll(user1Data.fullName, user1Data.birthDate);
         const num2 = MayaNumerology.calculateAll(user2Data.fullName, user2Data.birthDate);
 
@@ -703,12 +919,12 @@ Speak in ${this.getResponseLanguageInstruction(user1Data.language)}.`;
     },
 
     /**
-     * Generate remedies and suggestions
+     * Generate remedies and suggestions.
      */
     async generateRemedies(userData) {
-        // Use user's preferred zodiac system
         const zodiac = MayaAstrology.getZodiac(userData.birthDate, userData);
         if (!zodiac) return null;
+
         const traits = MayaAstrology.getDailyTraits(zodiac.name);
         const numerology = MayaNumerology.calculateAll(userData.fullName, userData.birthDate);
 
@@ -738,30 +954,39 @@ Speak in ${this.getResponseLanguageInstruction(userData.language)}.`;
     },
 
     /**
-     * Get conversation history
+     * Get conversation history.
      */
     getHistory() {
         return [...this.conversationHistory];
     },
 
     /**
-     * Clear conversation history
+     * Clear conversation history.
      */
     clearHistory() {
         this.conversationHistory = [];
     },
 
     /**
-     * Save conversation to storage
+     * Save conversation to storage.
      */
     saveConversation() {
-        const savedConversations = MayaUtils.storage.get('conversations', []);
+        const utils = this._getMayaUtils();
+
+        if (!utils?.storage?.get || !utils?.storage?.set) {
+            console.warn('MayaAI saveConversation skipped: MayaUtils.storage is unavailable.');
+            return;
+        }
+
+        const savedConversations = utils.storage.get('conversations', []);
+
         savedConversations.push({
-            id: MayaUtils.generateId('conv'),
+            id: utils.generateId ? utils.generateId('conv') : `conv_${Date.now()}`,
             messages: this.conversationHistory,
             timestamp: new Date().toISOString()
         });
-        MayaUtils.storage.set('conversations', savedConversations);
+
+        utils.storage.set('conversations', savedConversations);
     }
 };
 
