@@ -1833,24 +1833,28 @@ const MayaVoice = {
 
                 const isHindi = window.MayaUtils?.storage?.get('maya_language') === 'hi';
                 const isMaleGuide = this.isMaleGuide();
-                const playbackRate = isHindi
+                const requestedRate = isHindi
                     ? this.speechProfile.playbackRateHi
                     : this.speechProfile.playbackRateEn;
-                source.playbackRate.value = isMaleGuide ? playbackRate : Math.min(playbackRate, 0.97);
+                const effectiveRate = isMaleGuide ? requestedRate : Math.min(requestedRate, 0.97);
+                source.playbackRate.value = effectiveRate;
 
                 source.connect(gainNode);
                 gainNode.connect(this.masterGain || this.analyser);
 
                 const now = this.audioContext.currentTime;
-                const duration = audioBuffer.duration / playbackRate;
+                // Use the actual playback rate so the fade-out matches when audio truly ends.
+                // Mismatching this silenced the last ~250 ms of every female-guide narration.
+                const duration = audioBuffer.duration / Math.max(effectiveRate, 0.01);
+                const tailGuard = 0.12; // extra ms kept at full volume past computed end
                 const fadeIn = Math.min(0.045, duration / 3);
                 const fadeOut = Math.min(0.08, duration / 2);
-                const fadeOutStart = Math.max(now + fadeIn, now + duration - fadeOut);
+                const fadeOutStart = Math.max(now + fadeIn, now + duration + tailGuard - fadeOut);
 
                 gainNode.gain.setValueAtTime(0.0001, now);
                 gainNode.gain.linearRampToValueAtTime(1, now + fadeIn);
                 gainNode.gain.setValueAtTime(1, fadeOutStart);
-                gainNode.gain.linearRampToValueAtTime(0.0001, now + duration);
+                gainNode.gain.linearRampToValueAtTime(0.0001, now + duration + tailGuard);
 
                 this.currentAudio = source;
                 this.isPlaying = true;

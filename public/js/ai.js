@@ -615,7 +615,12 @@ const MayaAI = {
                         const finishReason = String(candidate.finishReason || '').toUpperCase();
 
                         if (text) {
-                            const isComplete = /[.!?।…]$/.test(text.trim());
+                            const trimmed = text.trim();
+                            // Trailing '...' / '…' often signal a truncated thought from Gemini,
+                            // so treat them as incomplete and let the repair pass finish the line.
+                            const looksTruncated = /(?:\.\.\.|…)$/.test(trimmed);
+                            const endsCleanly = /[.!?।]$/.test(trimmed);
+                            const isComplete = endsCleanly && !looksTruncated;
 
                             if ((finishReason === 'MAX_TOKENS' || !isComplete) && options?.requireComplete !== false) {
                                 try {
