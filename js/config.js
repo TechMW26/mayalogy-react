@@ -11,8 +11,9 @@ const _secrets = window.MAYA_SECRETS || {};
 const MAYA_CONFIG = {
     // Public browser keys only. Server-side secrets stay in Vercel functions.
     API_KEYS: {
-        GROQ: '',
-        // Gemini powers text generation plus Palm Reading + Vastu image analysis.
+        // Groq is used only as a fast lane for short funnel copy.
+        GROQ: _secrets.GROQ_KEY || '',
+        // Gemini powers deep text generation plus Palm Reading + Vastu image analysis.
         GEMINI: _secrets.GEMINI_KEY || '',
         GEMINI_FALLBACKS: Array.isArray(_secrets.GEMINI_FALLBACKS) ? _secrets.GEMINI_FALLBACKS : [],
         ELEVENLABS: '',
@@ -25,8 +26,12 @@ const MAYA_CONFIG = {
         GOOGLE_CLIENT_ID: _secrets.GOOGLE_CLIENT_ID || ''
     },
 
-    // Deprecated: Groq is no longer used for text generation.
-    GROQ_MODELS: [],
+    // Groq fast-lane models. Used only for short intros, fillers, MCQs, and acks.
+    GROQ_MODELS: [
+        'llama-3.1-8b-instant',
+        'llama-3.3-70b-versatile',
+        'meta-llama/llama-4-scout-17b-16e-instruct'
+    ],
 
     // Gemini text models. Tried in order; the first valid response wins.
     GEMINI_TEXT_MODELS: [
@@ -45,7 +50,7 @@ const MAYA_CONFIG = {
 
     // API Endpoints
     ENDPOINTS: {
-        GROQ: '',
+        GROQ: 'https://api.groq.com/openai/v1/chat/completions',
         // Gemini base URL for text and vision callers.
         GEMINI_BASE: 'https://generativelanguage.googleapis.com/v1beta/models',
         ELEVENLABS: '/api/tts',

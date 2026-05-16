@@ -1069,7 +1069,7 @@ const MayaOnboarding = {
             <div class="direct-login-container">
                 <div class="onboarding-question mb-4">
                     <h4 class="mb-3"><i class="bi bi-whatsapp me-2"></i>${isHindi ? 'WhatsApp से लॉगिन करें' : 'Log in with WhatsApp'}</h4>
-                    <p class="text-muted">${isHindi ? 'अपना WhatsApp नंबर डालें, OTP तुरंत भेजा जाएगा' : 'Enter your WhatsApp number and we will send an OTP instantly'}</p>
+                    <p class="text-muted">${isHindi ? 'अपना व्हाट्सऐप नंबर डालें। ओटीपी आने में कुछ सेकंड लग सकते हैं।' : 'Enter your WhatsApp number. The OTP can take a few seconds to arrive.'}</p>
                 </div>
 
                 <div class="login-form">
@@ -1185,7 +1185,7 @@ const MayaOnboarding = {
                 <div class="onboarding-question mb-4">
                     <i class="bi bi-whatsapp otp-whatsapp-icon d-block mb-2"></i>
                     <h4 class="mb-2">${isHindi ? 'OTP दर्ज करें' : 'Enter OTP'}</h4>
-                    <p class="text-muted small">${isHindi ? `${countryCode} ${phone} पर OTP भेजा गया` : `OTP sent to ${countryCode} ${phone}`}</p>
+                    <p class="text-muted small">${isHindi ? `${countryCode} ${phone} पर व्हाट्सऐप ओटीपी भेजा जा रहा है। कृपया इसके आने तक कुछ सेकंड प्रतीक्षा करें।` : `We are sending a WhatsApp OTP to ${countryCode} ${phone}. Please wait a few seconds for it to arrive.`}</p>
                 </div>
 
                 <div class="otp-input-group mb-3">
@@ -1304,7 +1304,7 @@ const MayaOnboarding = {
             event.preventDefault();
             const result = await MayaAuth.sendOTP(phone, countryCode);
             if (result.success) {
-                MayaUtils.toast.success(isHindi ? 'नया OTP भेजा गया' : 'New OTP sent');
+                MayaUtils.toast.success(isHindi ? 'नया व्हाट्सऐप ओटीपी भेजा जा रहा है। कृपया कुछ सेकंड प्रतीक्षा करें।' : 'A new WhatsApp OTP is being sent. Please wait a few seconds.');
                 digits.forEach((digit) => {
                     digit.value = '';
                     digit.disabled = false;

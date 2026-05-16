@@ -1,6 +1,6 @@
 /**
  * MAYA - AI Module
- * Gemini is the sole text AI provider.
+ * Gemini handles deep text generation; Groq is an optional fast lane.
  */
 
 const MayaAI = {
@@ -204,6 +204,35 @@ const MayaAI = {
         throw new Error('Gemini AI provider failed');
     },
 
+    /**
+     * Fast text generation for lightweight funnel moments: intros, fillers,
+     * acknowledgments, and MCQs. Uses Groq when configured, otherwise falls
+     * back to Gemini so the funnel never blocks on a missing fast key.
+     */
+    async callFast(message, options = {}) {
+        const systemPrompt = this.buildSystemPrompt();
+        const includeHistory = options.includeHistory === true;
+        const userMessage = includeHistory
+            ? this.conversationHistory[this.conversationHistory.length - 1]?.content || message
+            : message;
+
+        const groqResult = await this._callGroqProvider(systemPrompt, userMessage, includeHistory, options);
+        if (groqResult) {
+            this.currentProvider = 'groq';
+            return groqResult;
+        }
+
+        if (options.fallbackToGemini === false) {
+            throw new Error('Groq fast provider failed');
+        }
+
+        return this.callGemini(message, options);
+    },
+
+    _getGroqApiKey() {
+        return String(MAYA_CONFIG.API_KEYS.GROQ || '').trim();
+    },
+
     _getGeminiApiKeys() {
         const primary = MAYA_CONFIG.API_KEYS.GEMINI;
         const fallbacks = Array.isArray(MAYA_CONFIG.API_KEYS.GEMINI_FALLBACKS)
@@ -213,6 +242,89 @@ const MayaAI = {
             .map((key) => String(key || '').trim())
             .filter(Boolean)
             .filter((key, index, arr) => arr.indexOf(key) === index);
+    },
+
+    /**
+     * Groq fast-lane inference. OpenAI-compatible API, used only for short,
+     * latency-sensitive funnel copy. Deep reading stays on Gemini.
+     */
+    async _callGroqProvider(systemPrompt, userMessage, includeHistory = false, options = {}) {
+        const apiKey = this._getGroqApiKey();
+        if (!apiKey) return null;
+
+        const models = MAYA_CONFIG.GROQ_MODELS || ['llama-3.1-8b-instant'];
+        const endpoint = MAYA_CONFIG.ENDPOINTS.GROQ || 'https://api.groq.com/openai/v1/chat/completions';
+        const messages = [{ role: 'system', content: systemPrompt }];
+        const contextMessages = Array.isArray(options.contextMessages) ? options.contextMessages : [];
+
+        contextMessages.forEach((msg) => {
+            const content = String(msg?.content || msg?.text || '').trim();
+            if (!content) return;
+            messages.push({
+                role: msg?.role === 'assistant' || msg?.role === 'model' ? 'assistant' : 'user',
+                content
+            });
+        });
+
+        if (includeHistory) {
+            this.conversationHistory.forEach((msg) => {
+                messages.push({ role: msg.role === 'assistant' ? 'assistant' : 'user', content: msg.content });
+            });
+        } else {
+            messages.push({ role: 'user', content: userMessage });
+        }
+
+        for (const model of models) {
+            try {
+                console.log(`⚡ Calling Groq fast model: ${model}...`);
+                const response = await MayaUtils.withTimeout(
+                    fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model,
+                            messages,
+                            temperature: options?.temperature ?? 0.8,
+                            top_p: options?.topP ?? 0.95,
+                            max_tokens: options?.maxTokens || 900
+                        })
+                    }),
+                    options?.timeoutMs || 12000,
+                    `Groq ${model}`
+                );
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const text = data.choices?.[0]?.message?.content?.trim();
+                    if (text) {
+                        console.log(`✅ Groq fast lane succeeded with model: ${model}`);
+                        return text;
+                    }
+                    console.warn(`⚠️ Groq ${model} returned empty content, trying next...`);
+                    continue;
+                }
+
+                if (response.status === 429 || response.status === 503) {
+                    console.warn(`⚠️ Groq ${model} rate-limited/overloaded (${response.status}), trying next...`);
+                    continue;
+                }
+                if (response.status === 400 || response.status === 404) {
+                    const errBody = await response.text();
+                    console.warn(`⚠️ Groq ${model} rejected (${response.status}): ${errBody.substring(0, 160)} -trying next...`);
+                    continue;
+                }
+
+                const errBody = await response.text();
+                console.warn(`⚠️ Groq ${model} error ${response.status}: ${errBody.substring(0, 160)}`);
+            } catch (err) {
+                console.warn(`⚠️ Groq ${model} threw:`, err.message);
+            }
+        }
+
+        return null;
     },
 
     /**

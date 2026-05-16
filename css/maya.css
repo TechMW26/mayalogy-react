@@ -1318,13 +1318,14 @@ p {
     bottom: 0;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 200;
+    z-index: 10020;
     display: flex;
     gap: 16px;
     align-items: center;
     justify-content: center;
     padding-bottom: max(env(safe-area-inset-bottom, 0px), 24px);
     padding-top: 12px;
+    pointer-events: auto;
 }
 
 .maya-funnel-btn {
@@ -1341,6 +1342,7 @@ p {
     justify-content: center;
     cursor: pointer;
     transition: all 0.3s ease;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.34);
 }
 
 .maya-funnel-btn:hover {

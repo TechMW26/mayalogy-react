@@ -22,7 +22,13 @@ function requireEnv(name) {
 }
 
 function getFirebaseDbUrl() {
-    return requireEnv('FIREBASE_DB_URL').replace(/\/+$/, '');
+    const value = (process.env.FIREBASE_DB_URL || process.env.VITE_PUBLIC_FIREBASE_DB_URL || '').trim();
+
+    if (!value) {
+        return requireEnv('FIREBASE_DB_URL').replace(/\/+$/, '');
+    }
+
+    return value.replace(/\/+$/, '');
 }
 
 function getFirebaseAuthSuffix() {

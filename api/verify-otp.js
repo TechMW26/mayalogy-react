@@ -41,9 +41,9 @@ export default async function handler(req, res) {
         && String(otp) === reviewDemo.otp;
 
     const phoneKey = buildPhoneKey(normalizedPhone, normalizedCountryCode);
-    const firebaseUrl = process.env.FIREBASE_DB_URL;
+    const firebaseUrl = getFirebaseDbUrl();
     const firebaseSecret = process.env.FIREBASE_SECRET;
-    const authParam = firebaseSecret ? `?auth=${firebaseSecret}` : '';
+    const authParam = firebaseSecret ? `?auth=${encodeURIComponent(firebaseSecret)}` : '';
 
     if (!firebaseUrl) {
         if (isReviewDemoOtp) {
@@ -161,6 +161,10 @@ export default async function handler(req, res) {
         token,
         user: buildClientUser(user, now)
     });
+}
+
+function getFirebaseDbUrl() {
+    return (process.env.FIREBASE_DB_URL || process.env.VITE_PUBLIC_FIREBASE_DB_URL || '').trim().replace(/\/+$/, '');
 }
 
 function buildReviewDemoUser({ phoneKey, normalizedPhone, normalizedCountryCode, token, now }) {

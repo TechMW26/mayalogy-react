@@ -802,7 +802,11 @@ Current section: ${sectionKey}
     showFunnelControls(show = true) {
         const controls = document.getElementById('maya-funnel-controls');
         if (controls) {
+            if (show && controls.parentElement !== document.body) {
+                document.body.appendChild(controls);
+            }
             controls.style.display = show ? 'flex' : 'none';
+            controls.setAttribute('aria-hidden', show ? 'false' : 'true');
         }
     },
 
@@ -1797,10 +1801,9 @@ Current section: ${sectionKey}
         const subjectPhrase = isAskMaya ? this._getAskMayaSubjectPhrase(topic, isHindi) : topicLabel;
         const willOpen = this._isGuiderMale() ? 'खोलूँगा' : 'खोलूँगी';
         const willRead = this._isGuiderMale() ? 'पढ़ूँगा' : 'पढ़ूँगी';
-        const canSaveMore = this._isGuiderMale() ? 'पाऊँगा' : 'पाऊँगी';
         const gateLine = isHindi
-            ? `${name}, इसके आगे बढ़ते हुए मैं इससे ज़्यादा details आपके लिए save नहीं कर ${canSaveMore} -please save करने के लिए अपना mobile number डाल दीजिए।`
-            : `${name}, from here on I won't be able to save any more of these details for you -please drop your mobile number so I can save them.`;
+            ? `${name}, आगे की reading सुरक्षित रखने के लिए व्हाट्सऐप verification चाहिए -अपना मोबाइल नंबर डाल दीजिए; ओटीपी आने में कुछ सेकंड लग सकते हैं।`
+            : `${name}, to keep the rest of this reading secure, I need WhatsApp verification -enter your mobile number; the OTP can take a few seconds to arrive.`;
 
         if (isAskMaya) {
             const askFallbacks = isHindi ? {
@@ -1822,7 +1825,7 @@ Current section: ${sectionKey}
                 emotionalPattern: `Under your ${subjectPhrase} is the worry that the right time may slip away. So the answer needs both timing and a practical next step.`,
                 unresolvedThread: `The unresolved thread is when to take the next correct move in ${topicLabel}. Once the file is saved, I will open it with an exact window.`,
                 accuracyShock: `In the recent past, pressure around this same question has increased suddenly. It is not random -the chart's timing shift is activating this area.`,
-                suspenseBridge: `The most intense pattern in your ${subjectPhrase} is timing and decision. It would not be right to open the full truth here, because the exact answer needs chart, numbers, and timing together in your saved file. Your full file is ready, just save it.`,
+                suspenseBridge: `The most intense pattern in your ${subjectPhrase} is timing and decision. It would not be right to open the full truth here, because the exact answer needs chart, numbers, and timing together after verification. The next layer is ready once WhatsApp OTP confirms it is you.`,
                 emailGate: `The next layer of the reading is ready. ${gateLine}`,
                 fomoHook: `There is a serious timing signal around ${topicLabel}. The full details belong in your private reading, because a half-answer here would not be fair.`,
                 returnHook: `The next phase around ${topicLabel} is visible. Next time, we will open it with the exact month.`,
@@ -2093,6 +2096,196 @@ ${this.getBaseRules(false)}`);
         return '';
     },
 
+    _initFastAiContext(lang) {
+        if (!window.MayaAI?.init) return;
+        MayaAI.init({
+            fullName: this.userData?.name || this.firstName,
+            name: this.userData?.name || this.firstName,
+            birthDate: this.userData?.birthDate,
+            birthTime: this.userData?.birthTime || '12:00',
+            birthPlace: this.userData?.birthPlace || '',
+            gender: this.userData?.gender || '',
+            language: lang
+        });
+    },
+
+    async _callFastFunnelAI(prompt, options = {}) {
+        if (!window.MayaAI) return '';
+        if (typeof MayaAI.callFast === 'function') {
+            return MayaAI.callFast(prompt, options);
+        }
+        if (typeof MayaAI.callGemini === 'function') {
+            return MayaAI.callGemini(prompt, options);
+        }
+        return '';
+    },
+
+    _getLocalJourneyIntro({ isHindi, askMayaActive, guideName, isMale, topicLabel, subjectPhrase }) {
+        const profile = this.personalization || {};
+        const moonSign = profile.moonSign || profile.vedic?.name || '';
+        const ascendant = profile.ascendant?.name || '';
+        const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
+        const lp = this.calculations?.lifePath || '';
+        const year = this.calculations?.personalYear || '';
+        const name = this.firstName || (isHindi ? 'आप' : 'you');
+        const markerHi = this.localizeHindiText([ascendant && `${ascendant} लग्न`, moonSign && `${moonSign} चंद्र राशि`, dasha && `${dasha} दशा`, lp && `Life Path ${lp}`, year && `Personal Year ${year}`].filter(Boolean).slice(0, 2).join(' और ')) || 'आपकी जन्म जानकारी';
+        const markerEn = [ascendant && `${ascendant} ascendant`, moonSign && `${moonSign} moon sign`, dasha && `${dasha} dasha`, lp && `Life Path ${lp}`, year && `Personal Year ${year}`].filter(Boolean).slice(0, 2).join(' and ') || 'your birth details';
+        const index = Math.floor((Date.now() + Math.random() * 1000) % 4);
+
+        const askHiSubject = subjectPhrase === 'आपका सवाल' ? 'आपके सवाल' : `${subjectPhrase} वाले सवाल`;
+        const askEnSubject = subjectPhrase === 'your question' ? 'your question' : `your ${subjectPhrase} question`;
+        const hiIntros = askMayaActive
+            ? [
+                `नमस्ते ${name}, मैं ${guideName} हूँ। ${askHiSubject} को मैं सीधे उसी दिशा में पढ़${isMale ? 'ूँगा' : 'ूँगी'}, बिना किसी और विषय में भटके। ${markerHi} अभी पहला संकेत दे रहा है कि answer सिर्फ timing से नहीं, आपकी current situation से भी जुड़ेगा। पहले मैं chart तैयार कर${isMale ? 'ूँगा' : 'ूँगी'}, फिर एक छोटा detail पूछकर बात को और exact कर${isMale ? 'ूँगा' : 'ूँगी'}।`,
+                `${name}, आपका सवाल मुझे मिल गया है। मैं ${guideName} हूँ, और इसे सामान्य reading की तरह नहीं पढ़${isMale ? 'ूँगा' : 'ूँगी'}। ${markerHi} में जो pattern दिख रहा है, वह answer को एक खास दिशा दे रहा है। पहले chart बनेगा, फिर मैं उसी subject पर सीधा follow-up पूछ${isMale ? 'ूँगा' : 'ूँगी'}।`,
+                `नमस्ते ${name}, आज हम सिर्फ ${askHiSubject} पर टिके रहेंगे। मैं ${guideName} हूँ, और ${markerHi} से पहला clue यह है कि इस जवाब में आपकी choice और timing दोनों साथ चलेंगे। पहले कुंडली का विन्यास बनता है, फिर मैं इसे numbers के साथ जोड़कर साफ कर${isMale ? 'ूँगा' : 'ूँगी'}।`,
+                `${name}, मैं ${guideName} हूँ, और आपका सवाल अभी reading का केंद्र है। ${markerHi} मुझे बता रहा है कि answer को जल्दी नहीं खोलना चाहिए; पहले सही जगह देखनी होगी। मैं chart और numbers तैयार कर${isMale ? 'ूँगा' : 'ूँगी'}, फिर उसी रास्ते से बात आगे बढ़ेगी।`
+            ]
+            : [
+                `नमस्ते ${name}, मैं ${guideName} हूँ। ${markerHi} में एक बात तुरंत अलग दिख रही है: आपके फैसले अक्सर बाहर से शांत लगते हैं, लेकिन अंदर बहुत सोच-समझकर बनते हैं। आज मैं पहले आपकी कुंडली और numbers को साथ रख${isMale ? 'ूँगा' : 'ूँगी'}, फिर आपसे कुछ छोटे सवाल पूछ${isMale ? 'ूँगा' : 'ूँगी'} ताकि reading सचमुच आपकी ज़िंदगी से जुड़े।`,
+                `${name}, मैं ${guideName} हूँ, और आपकी जन्म जानकारी में एक साफ rhythm दिख रही है। ${markerHi} बताता है कि आप जल्दी trust नहीं करते, पर जब direction साफ हो जाए तो बहुत deeply commit करते हैं। पहले chart तैयार होगा, फिर मैं दो-तीन real-life details पूछकर इसे generic reading बनने से बचा${isMale ? 'ऊँगा' : 'ऊँगी'}।`,
+                `नमस्ते ${name}, आपकी reading की शुरुआत सिर्फ राशि से नहीं होगी। ${markerHi} मिलकर एक ऐसा pattern बना रहे हैं जहाँ जिम्मेदारी और अंदर की बेचैनी साथ चलती है। मैं पहले इस base को पढ़${isMale ? 'ूँगा' : 'ूँगी'}, फिर सवाल पूछ${isMale ? 'ूँगा' : 'ूँगी'} ताकि हर अगली बात आपकी असली situation पर बैठे।`,
+                `${name}, मैं ${guideName} हूँ। आपकी जन्म जानकारी में पहला संकेत यह है कि आप बाहर से जितने practical दिखते हैं, अंदर उतनी ही private intensity रखते हैं। ${markerHi} इस बात को confirm कर रहा है, इसलिए मैं पहले chart खोल${isMale ? 'ूँगा' : 'ूँगी'} और फिर कुछ direct सवालों से reading को और personal बना${isMale ? 'ऊँगा' : 'ऊँगी'}।`
+            ];
+
+        const enIntros = askMayaActive
+            ? [
+                `Hello ${name}, I am ${guideName}. I have your question, and I am going to stay with ${askEnSubject} instead of drifting into a general reading. ${markerEn} is already giving the first clue: this answer depends on both timing and your current real-life situation. First I will prepare the chart, then I will ask one small detail so the answer can land precisely.`,
+                `${name}, I have your question. I am ${guideName}, and I am not going to treat this like a generic chart reading. ${markerEn} points toward one specific direction, but I need the chart and numbers aligned before I open it. First I will form the kundli, then we will move straight into that subject.`,
+                `Hello ${name}, today we are staying with ${askEnSubject}. I am ${guideName}, and ${markerEn} suggests the answer is not only about timing; it is also about the choice you are standing near. I will prepare the chart first, then ask one focused follow-up to make it exact.`,
+                `${name}, I am ${guideName}, and your question is the centre of this reading. ${markerEn} tells me not to rush the answer, because one practical detail will change the interpretation. I will build the chart and numbers first, then we will go directly toward it.`
+            ]
+            : [
+                `Hello ${name}, I am ${guideName}. The first thing I notice from ${markerEn} is that your decisions may look calm from outside, but internally they carry a lot of private pressure. I will put your kundli and numbers together first, then ask a few small questions so this does not become a generic reading.`,
+                `${name}, I am ${guideName}, and your birth details already show a clear rhythm. ${markerEn} suggests you do not give your trust quickly, but once a direction feels right, you commit deeply. First I will prepare the chart, then I will use a few real-life answers from you to make the reading sharper.`,
+                `Hello ${name}, this reading will not start with only a zodiac label. ${markerEn} is forming a pattern where responsibility and inner restlessness seem to move together. I will read that base first, then ask short questions so every next layer sits on your actual life.`,
+                `${name}, I am ${guideName}. Your birth pattern suggests that you can look practical on the surface while carrying much more intensity privately. ${markerEn} supports that first clue, so I will open the chart and then use a few direct questions to make the reading personal.`
+            ];
+
+        return isHindi ? hiIntros[index] : enIntros[index];
+    },
+
+    async generateJourneyIntro({ isHindi, askMayaActive, guideName, isMale, topicLabel, subjectPhrase }) {
+        const lang = isHindi ? 'hi' : 'en';
+        const fallback = this._getLocalJourneyIntro({ isHindi, askMayaActive, guideName, isMale, topicLabel, subjectPhrase });
+        const profile = this.personalization || {};
+        const seed = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const prompt = isHindi
+            ? `MAYA funnel opening के लिए एक UNIQUE spoken intro लिखिए।
+
+Seed for uniqueness: ${seed}
+Guide name: ${guideName} (${isMale ? 'male' : 'female'} guide)
+User: ${this.firstName}
+Flow: ${askMayaActive ? `Ask-Maya question funnel. Topic: ${topicLabel}. Spoken subject: ${subjectPhrase}. Original question internal only: ${this._getActiveUserQuestion().slice(0, 220)}` : 'Main personal reading funnel'}
+Chart markers: Lagna ${profile.ascendant?.name || 'unknown'}, Moon ${profile.moonSign || profile.vedic?.name || 'unknown'}, Dasha ${profile.currentDasha?.vedic || profile.currentDasha?.planet || 'unknown'}, Life Path ${this.calculations?.lifePath || 'unknown'}, Personal Year ${this.calculations?.personalYear || 'unknown'}.
+
+Rules:
+- Exactly ${askMayaActive ? '4-5' : '5-6'} short spoken sentences.
+- First sentence may greet once and introduce ${guideName}; no later greeting.
+- हर बार अलग first-line shape, अलग metaphor, अलग sentence rhythm. Template मत बनाइए।
+- HARD BAN phrases: "बहुत अच्छा लगा आपसे मिलकर", "मुझे बहुत कुछ पता चल गया है", "गहराई से उतरते हैं", "कुंडली बन गई है", "नमस्ते" को repeat करना।
+- Main funnel: question पूछने से पहले 2 meaningful chart/numbers insights दीजिए; user को लगे कुछ useful बताया गया।
+- Ask-Maya funnel: exact question quote मत कीजिए; subject phrase use कीजिए और साफ कहिए कि reading उसी topic पर locked रहेगी।
+- Chart अभी बनेगा, ready नहीं है। सिर्फ "तैयार कर रही/रहा हूँ" कह सकते हैं।
+- Hindi Devanagari, natural spoken, no bullets, no JSON.
+Return only spoken text.`
+            : `Write a UNIQUE spoken intro for the MAYA funnel.
+
+Seed for uniqueness: ${seed}
+Guide name: ${guideName} (${isMale ? 'male' : 'female'} guide)
+User: ${this.firstName}
+Flow: ${askMayaActive ? `Ask-Maya question funnel. Topic: ${topicLabel}. Spoken subject: ${subjectPhrase}. Original question is internal only: ${this._getActiveUserQuestion().slice(0, 220)}` : 'Main personal reading funnel'}
+Chart markers: Ascendant ${profile.ascendant?.name || 'unknown'}, Moon ${profile.moonSign || profile.vedic?.name || 'unknown'}, Dasha ${profile.currentDasha?.vedic || profile.currentDasha?.planet || 'unknown'}, Life Path ${this.calculations?.lifePath || 'unknown'}, Personal Year ${this.calculations?.personalYear || 'unknown'}.
+
+Rules:
+- Exactly ${askMayaActive ? '4-5' : '5-6'} short spoken sentences.
+- First sentence may greet once and introduce ${guideName}; no later greeting.
+- Use a different first-line shape, image, and sentence rhythm every time. No template feeling.
+- HARD BAN phrases: "really nice to meet you", "I already know a lot", "go deeper into it", "your chart is ready", repeated Hello.
+- Main funnel: before any question, give 2 meaningful chart/number insights so the user receives real value.
+- Ask-Maya funnel: do not quote the exact question; use the spoken subject phrase and say the reading stays locked to that topic.
+- The chart is about to be prepared; it is not ready yet.
+- Natural spoken English, no bullets, no JSON.
+Return only spoken text.`;
+
+        try {
+            this._initFastAiContext(lang);
+            const raw = await this._callFastFunnelAI(prompt, { maxTokens: 700, temperature: 0.95, timeoutMs: 10000 });
+            const cleaned = this.sanitizeNarrationText(raw);
+            if (cleaned && cleaned.length > 80) return cleaned;
+        } catch (error) {
+            console.warn('Fast journey intro failed:', error?.message || error);
+        }
+
+        return fallback;
+    },
+
+    _getLocalPreQuestionBridge({ isHindi, askMayaActive, topicLabel, subjectPhrase }) {
+        const profile = this.personalization || {};
+        const moonSign = profile.moonSign || profile.vedic?.name || '';
+        const ascendant = profile.ascendant?.name || '';
+        const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
+        const lp = this.calculations?.lifePath || '';
+        const markerHi = this.localizeHindiText([ascendant && `${ascendant} लग्न`, moonSign && `${moonSign} चंद्र राशि`, dasha && `${dasha} दशा`, lp && `Life Path ${lp}`].filter(Boolean).slice(0, 2).join(' और ')) || 'आपकी कुंडली';
+        const markerEn = [ascendant && `${ascendant} ascendant`, moonSign && `${moonSign} moon sign`, dasha && `${dasha} dasha`, lp && `Life Path ${lp}`].filter(Boolean).slice(0, 2).join(' and ') || 'your chart';
+
+        if (askMayaActive) {
+            return isHindi
+                ? `${markerHi} से ${subjectPhrase} में एक clear direction बन रही है। अभी मैं पूरा answer नहीं खोल${this._isGuiderMale() ? 'ूँगा' : 'ूँगी'}, क्योंकि एक real-life detail से timing बहुत बदल सकती है। इसलिए अगला छोटा सवाल इसी ${topicLabel} को exact करने के लिए है।`
+                : `${markerEn} is giving your ${subjectPhrase} a clear direction. I will not open the full answer yet, because one real-life detail can change the timing sharply. The next quick question is only to make your ${topicLabel} answer exact.`;
+        }
+
+        return isHindi
+            ? `${markerHi} में एक बात साफ दिखती है: आपके फैसले सिर्फ logic से नहीं, अंदर की बेचैनी और responsibility दोनों से बनते हैं। इसी वजह से आपकी reading में सिर्फ ग्रहों की position काफी नहीं है; मुझे आपकी real situation भी पकड़नी होगी। अगला सवाल छोटा है, पर उससे यह पता चलेगा कि chart का कौन-सा हिस्सा अभी सबसे ज़्यादा active है।`
+            : `${markerEn} shows one thing clearly: your decisions are shaped by both logic and an inner pressure to carry responsibility. That is why planet positions alone are not enough here; I need one real-life anchor from you. The next question is small, but it tells me which part of the chart is most active right now.`;
+    },
+
+    async generatePreQuestionBridge({ isHindi, askMayaActive, topicLabel, subjectPhrase }) {
+        const fallback = this._getLocalPreQuestionBridge({ isHindi, askMayaActive, topicLabel, subjectPhrase });
+        const lang = isHindi ? 'hi' : 'en';
+        const profile = this.personalization || {};
+        const prompt = isHindi
+            ? `पहले question से ठीक पहले MAYA की short meaningful bridge narration लिखिए।
+
+Flow: ${askMayaActive ? `Ask-Maya, topic ${topicLabel}, subject ${subjectPhrase}` : 'Main funnel'}
+Chart markers: Lagna ${profile.ascendant?.name || 'unknown'}, Moon ${profile.moonSign || profile.vedic?.name || 'unknown'}, Dasha ${profile.currentDasha?.vedic || profile.currentDasha?.planet || 'unknown'}, Life Path ${this.calculations?.lifePath || 'unknown'}.
+Already spoken:
+${this._getAlreadyToldDigest().slice(-1200) || 'opening and kundli formation'}
+
+Rules:
+- Exactly ${askMayaActive ? '2-3' : '3-4'} short sentences.
+- Greeting नहीं। "कुंडली बन गई है" या chart ready repeat मत कीजिए।
+- User को real value मिले: एक concrete chart/number pattern + why next question matters.
+- Main funnel में सवाल से पहले थोड़ा useful insight दें, पर बहुत लंबा नहीं।
+- Ask-Maya में original question quote न करें; same topic पर रहें।
+- Return only spoken Hindi text.`
+            : `Write a short meaningful bridge narration right before MAYA asks the first question.
+
+Flow: ${askMayaActive ? `Ask-Maya, topic ${topicLabel}, subject ${subjectPhrase}` : 'Main funnel'}
+Chart markers: Ascendant ${profile.ascendant?.name || 'unknown'}, Moon ${profile.moonSign || profile.vedic?.name || 'unknown'}, Dasha ${profile.currentDasha?.vedic || profile.currentDasha?.planet || 'unknown'}, Life Path ${this.calculations?.lifePath || 'unknown'}.
+Already spoken:
+${this._getAlreadyToldDigest().slice(-1200) || 'opening and kundli formation'}
+
+Rules:
+- Exactly ${askMayaActive ? '2-3' : '3-4'} short sentences.
+- No greeting. Do not repeat "your kundli is ready" or chart-ready wording.
+- Give real value: one concrete chart/number pattern + why the next question matters.
+- In the main funnel, give a useful insight before the question, but keep it concise.
+- In Ask-Maya, do not quote the original question; stay on the same topic.
+- Return only spoken English text.`;
+
+        try {
+            this._initFastAiContext(lang);
+            const raw = await this._callFastFunnelAI(prompt, { maxTokens: 520, temperature: 0.9, timeoutMs: 10000 });
+            const cleaned = this.sanitizeNarrationText(raw);
+            if (cleaned && cleaned.length > 60) return cleaned;
+        } catch (error) {
+            console.warn('Fast pre-question bridge failed:', error?.message || error);
+        }
+
+        return fallback;
+    },
+
     /**
      * Build a per-session "fresh opening" directive that nudges the AI to vary
      * the opening greeting style every single time, so two users (or the same
@@ -2178,7 +2371,7 @@ ${this.getBaseRules(false)}`);
                 year: 'Act 6. Timing layer. आने वाले महीनों को living timeline की तरह बोलिए, और एक window को बाकी से ज्यादा charged feel कराइए।',
                 warningIntro: 'Act 7 transition. पहले trust hold कीजिए, फिर caution खोलिए. Tone protective हो, dramatic नहीं।',
                 warning: 'Act 7. Shadow layer. एक specific trigger, उसका pattern, और protective boundary बताइए. यह same story का honest underside लगे।',
-                emailGate: 'Save gate. ऐसा feel कराइए कि reading save करना जरूरी है - private file जो सिर्फ उनकी है। "Save my file" framing।',
+                emailGate: 'WhatsApp OTP gate. Reading secure रखने के लिए phone verification चाहिए। साफ़ कहिए कि WhatsApp number भरें और OTP आने में कुछ seconds लग सकते हैं। Email/password का ज़िक्र कभी नहीं।',
                 deepRevealPrep: 'Deep reveal threshold. User को feel होना चाहिए कि अब reading deeper और more personal होने वाली है, without sounding salesy.',
                 returnHook: 'Return trigger. एक unresolved timing shift बताइए - "अभी नहीं बता सकती, पर आपकी chart में [month] में कुछ shift है - कल इसके बारे में और बात करते हैं।"',
                 completion: 'Closing beat. Reading को softly settle कराइए, लेकिन curiosity और conversation का दरवाजा खुला रखिए।',
@@ -2205,7 +2398,7 @@ ${this.getBaseRules(false)}`);
                 year: 'Act 6. Timing layer. Speak about the coming months like a living timeline, and make one window feel more charged than the rest.',
                 warningIntro: 'Act 7 transition. Hold trust first, then open the caution. Sound protective, not dramatic.',
                 warning: 'Act 7. Shadow layer. Name one specific trigger, its repeating pattern, and a protective boundary. It must feel like the honest underside of the same story.',
-                emailGate: 'Save gate. Make the user feel the reading deserves to be saved - a private file that belongs only to them. Use "save my file" framing.',
+                emailGate: 'WhatsApp OTP gate. Explain that phone verification keeps the reading secure. Clearly ask for the WhatsApp number and mention the OTP can take a few seconds to arrive. Never mention email or password.',
                 deepRevealPrep: 'Deep reveal threshold. The user should feel that the reading is about to become deeper and more personal without sounding salesy.',
                 returnHook: 'Return trigger. Name one unresolved timing shift - "I cannot tell you yet, but your chart shows a shift in [month] - let us talk about this tomorrow."',
                 completion: 'Closing beat. Let the reading settle softly while leaving the door open for further conversation.',
@@ -2469,7 +2662,7 @@ No padding, no generic praise।`,
                 publicLifeIntro: `Current user के लिए public-life section का ONE transition। 1 sentence। नाम, image, leadership, या visibility की तरफ shift। No pause।`,
                 publicLife: `Current user के लिए ONE neutral public-life & leadership reading। 4-5 sentences। 10th house (status), Sun (authority), Moon (mass appeal), और कोई Raj Yoga / Neechabhanga combinations identify कीजिए। बताइए: chart genuinely public visibility support करती है या नहीं, कौनसी window में नाम/recognition rise करेगा, और कौनसी window में controversy avoid। Politically neutral -किसी party या ideology का pakshpaat नहीं। ONE leadership remedy (Surya Namaskar / Aditya Hridaya Stotra / specific daan)। ज्यादा से ज्यादा एक [[pause-250]]।`,
                 calculationRecovery: `Current user के लिए ONE short recovery line। 1 sentence। Operational tone, mystical sales copy नहीं। No pause।`,
-                emailGate: `Current user के लिए ONE soft phone-gate transition। EXACTLY 2 sentences। FOMO या डर नहीं। Sentence 1: warm continuation -reading का अगला layer तैयार है। Sentence 2 (CORE): "${this.firstName || 'जी'}, इसके आगे बढ़ते हुए मैं इससे ज़्यादा details आपके लिए save नहीं कर पाऊँगी -please save करने के लिए अपना mobile number डाल दीजिए।" दोस्त वाली tone, sales pitch नहीं। No pause।`,
+                emailGate: `Current user के लिए ONE soft WhatsApp OTP gate transition। EXACTLY 2 sentences। FOMO या डर नहीं। Sentence 1: warm continuation -reading का अगला layer तैयार है। Sentence 2 (CORE): "${this.firstName || 'जी'}, आगे की reading सुरक्षित रखने के लिए व्हाट्सऐप verification चाहिए -अपना मोबाइल नंबर डाल दीजिए; ओटीपी आने में कुछ सेकंड लग सकते हैं।" दोस्त वाली tone, sales pitch नहीं। Email/password का ज़िक्र कभी नहीं। No pause।`,
                 fomoHook: `Current user के लिए ONE FOMO hook। 2 sentences। Chart + numbers से ONE concerning या serious pattern बताइए (upcoming challenge / hidden tension / career trap / repeating self-sabotage)। Confident और specific, vague नहीं। डराइए नहीं, urgency बनाइए। End में hint कि full details private reading में हैं। No pause।`,
                 combinedTeaser: `Current user के लिए ONE flowing teaser reading -तीन connected segments, total 6 sentences max।
 
@@ -2522,7 +2715,7 @@ No padding, no generic praise.`,
                 publicLifeIntro: `Write ONE transition into the public-life section. 1 sentence. Shift toward name, image, leadership, or visibility. No pause.`,
                 publicLife: `Write ONE neutral public-life & leadership reading. 4-5 sentences. Identify the 10th house (status), Sun (authority), Moon (mass appeal), and any Raj Yoga or Neechabhanga combinations. Say honestly whether the chart genuinely supports public visibility, in which window name/recognition will rise, and which window calls for avoiding controversy. Stay politically neutral — no party or ideology bias. Offer ONE leadership remedy (Surya Namaskar / Aditya Hridaya Stotra / specific daan). At most one [[pause-250]].`,
                 calculationRecovery: `Write ONE short recovery line. 1 sentence. Operational tone, never mystical or salesy. No pause.`,
-                emailGate: `Write ONE soft phone-gate transition. EXACTLY 2 sentences. Do NOT create FOMO or fear. Sentence 1: warm continuation — say the next layer of the reading is ready. Sentence 2 (CORE): "${this.firstName || 'friend'}, from here on I won't be able to save any more of these details for you — please drop your mobile number so I can save them." Friend tone, never salesperson. No pause.`,
+                emailGate: `Write ONE soft WhatsApp OTP gate transition. EXACTLY 2 sentences. Do NOT create FOMO or fear. Sentence 1: warm continuation — say the next layer of the reading is ready. Sentence 2 (CORE): "${this.firstName || 'friend'}, to keep the rest of this reading secure, I need WhatsApp verification — enter your mobile number; the OTP can take a few seconds to arrive." Friend tone, never salesperson. Never mention email or password. No pause.`,
                 fomoHook: `Write ONE FOMO hook. 2 sentences. From kundli + numbers, reveal ONE concerning or serious pattern (upcoming challenge / hidden tension / career trap / repeating self-sabotage). Confident and specific, never vague. Don't fear-monger; create genuine urgency. End with a hint that full details are in the private reading. No pause.`,
                 combinedTeaser: `Write ONE flowing teaser reading for the current user — three connected segments, total 6 sentences max.
 
@@ -2673,10 +2866,10 @@ All three segments must connect as one flowing story — every segment must cite
 
     /**
      * Refill the AI-generated dynamic filler queue for a given type, in the background.
-     * Uses Groq with low token budget. Pure Devanagari for Hindi.
+      * Uses the fast AI lane with low token budget. Pure Devanagari for Hindi.
      */
     async _refillDynamicFillers(type = 'thinking', count = 4) {
-        if (!window.MayaAI?.callGemini) return;
+          if (!window.MayaAI?.callFast && !window.MayaAI?.callGemini) return;
         const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
         const lang = isHindi ? 'hi' : 'en';
         const key = `${lang}:${type}`;
@@ -2711,7 +2904,7 @@ All three segments must connect as one flowing story — every segment must cite
 
             const prompt = `You are MAYA, a soulful astrologer speaking directly to the user (second person). Generate exactly ${count} short pause-filler phrases (each 6 to 14 words) that MAYA would naturally murmur ${typeContext}. Current phase: ${phaseHint}. These are spoken aloud while she thinks, so they must feel warm, human, intimate, and present-tense — as if she is gazing at the user's chart and talking softly to them.\n\n${langRule}\n${addressRule}\n\nReturn ONLY a JSON array of ${count} strings. No keys, no markdown, no commentary. Example shape: ["...", "...", "...", "..."]`;
 
-            const raw = await window.MayaAI.callGemini(prompt, { maxTokens: 400 });
+            const raw = await this._callFastFunnelAI(prompt, { maxTokens: 400, temperature: 0.85, timeoutMs: 9000 });
             if (!raw) return;
 
             // Extract JSON array
@@ -3430,11 +3623,11 @@ STYLE: Like a caring older ${isMale ? 'brother' : 'sister'}. Natural, warm, conv
 FORBIDDEN: bullet points, generic phrases like "the picture is getting clear", repeating instructions, excessive praise, listing rules.
 ONLY return the spoken response. Nothing else.`;
 
-            if (window.MayaAI?.callGemini) {
+            if (window.MayaAI?.callFast || window.MayaAI?.callGemini) {
                 // Try once, then keep the flow moving with a local bridge.
                 for (let attempt = 0; attempt < 1 && !ack; attempt++) {
                     try {
-                        const result = await MayaAI.callGemini(ackPrompt);
+                        const result = await this._callFastFunnelAI(ackPrompt, { maxTokens: 260, temperature: 0.82, timeoutMs: 9000 });
                         if (result && result.length > 10 && result.length < 350) {
                             ack = this.sanitizeNarrationText(result);
                         }
@@ -4240,7 +4433,7 @@ ONLY return the spoken response. Nothing else.`;
             : this.getFallbackProfileQuestionForStage(stageKey, askedKeys);
         if (!fallback) return null;
 
-        if (!window.MayaAI?.callGemini) {
+        if (!window.MayaAI?.callFast && !window.MayaAI?.callGemini) {
             return fallback;
         }
 
@@ -4331,7 +4524,7 @@ Return ONLY JSON:
 {"key":"ask_maya_focus","spoken":"...","question":"...","options":[{"label":"...","value":"...","insight":"..."}]}`;
 
             try {
-                const aiRaw = await MayaAI.callGemini(askMayaPrompt);
+                const aiRaw = await this._callFastFunnelAI(askMayaPrompt, { maxTokens: 760, temperature: 0.75, timeoutMs: 10000 });
                 const parsed = this._extractFirstJsonObject(aiRaw);
                 return this._sanitizeAdaptiveQuestion(parsed, fallback, askedKeys) || fallback;
             } catch (error) {
@@ -4395,7 +4588,7 @@ Return ONLY JSON:
 {"key":"...","spoken":"...","question":"...","options":[{"label":"...","value":"...","insight":"..."}]}`;
 
         try {
-            const aiRaw = await MayaAI.callGemini(prompt);
+            const aiRaw = await this._callFastFunnelAI(prompt, { maxTokens: 760, temperature: 0.75, timeoutMs: 10000 });
             const parsed = this._extractFirstJsonObject(aiRaw);
             return this._sanitizeAdaptiveQuestion(parsed, fallback, askedKeys);
         } catch (error) {
@@ -4492,13 +4685,13 @@ Return ONLY JSON:
         this.currentPhase = this.PHASES.SUSPENSE_BRIDGE;
         const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
 
-        // If already logged in, skip email gate entirely and go to deep reveal
+        // If already logged in, skip auth gate entirely and go to deep reveal
         if (this.isUserLoggedIn || window.MayaAuth?.isAuthenticated) {
             await this.showDeepReveal();
             return;
         }
 
-        // Speak email gate narration, then go straight to email form - no extra button
+        // Speak auth gate narration, then go straight to the phone form - no extra button
         // Use pre-generated narration if available, otherwise generate fresh
         let emailNarration;
         if (this._emailNarrationPregen) {
@@ -4518,11 +4711,11 @@ Return ONLY JSON:
             this.spokenNarrations.push({ stage: 'emailGate', text: emailNarration });
         }
 
-        // Flow into the save-my-file gate
+        // Flow into the WhatsApp OTP gate
         await this.showEmailGate();
-        const emailInput = document.getElementById('gate-email');
-        if (emailInput && document.body.contains(emailInput)) {
-            this.focusAuthField(emailInput);
+        const phoneInput = document.getElementById('gate-phone');
+        if (phoneInput && document.body.contains(phoneInput)) {
+            this.focusAuthField(phoneInput);
         }
     },
 
@@ -5045,15 +5238,14 @@ Return ONLY JSON:
             const askMayaTopic = askMayaActive ? this._classifyUserQuestionTopic(activeUserQuestion) : null;
             const topicLabel = askMayaActive ? this._getAskMayaTopicLabel(askMayaTopic, isHindi) : '';
             const askMayaSubject = askMayaActive ? this._getAskMayaSubjectPhrase(askMayaTopic, isHindi) : '';
-            const introSubjectHi = askMayaSubject === 'आपका सवाल' ? 'आपका सवाल' : `${askMayaSubject} वाला सवाल`;
-            const introSubjectEn = askMayaSubject === 'your question' ? 'question' : `${askMayaSubject} question`;
-            const fullIntro = askMayaActive
-                ? (isHindi
-                    ? `नमस्ते ${this.firstName}! मैं ${_gn} हूँ, और ${introSubjectHi} मुझे मिल गया है। अब मैं आपकी जन्म जानकारी से कुंडली और numbers बनाकर इसी विषय का जवाब ${_isMale ? 'ढूँढूँगा' : 'ढूँढूँगी'}। पहले chart तैयार करते हैं, फिर सीधे answer की तरफ चलते हैं।`
-                    : `Hello ${this.firstName}! I am ${_gn}, and I have your ${introSubjectEn}. Now I will use your birth details, kundli, numbers, and timing to find that answer. First I will prepare the chart, then we will move straight toward it.`)
-                : (isHindi
-                    ? `नमस्ते ${this.firstName}! मैं ${_gn} हूँ, बहुत अच्छा लगा आपसे मिलकर। आपने जो जन्म तिथि, समय और जगह दी है, उससे मुझे बहुत कुछ पता चल गया है। मुझे vedic astrology, कुंडली, ग्रहों की दशा, योग, दोष, और numerology, इन सबकी गहरी समझ है। तो चलिए, सबसे पहले आपकी कुंडली बनाते हैं और फिर साथ मिलकर उसमें गहराई से उतरते हैं।`
-                    : `Hello ${this.firstName}! I am ${_gn}, it is really nice to meet you. From the birth date, time, and place you shared, I already know quite a lot about you. I have deep understanding of vedic astrology, birth charts, planetary dashas, yogas, doshas, and numerology. So let us start by plotting your kundli, and then we will go deeper into it together.`);
+            const fullIntro = await this.generateJourneyIntro({
+                isHindi,
+                askMayaActive,
+                guideName: _gn,
+                isMale: _isMale,
+                topicLabel,
+                subjectPhrase: askMayaSubject || (isHindi ? 'आपकी reading' : 'your reading')
+            });
             await this.speak(fullIntro);
             this.spokenNarrations.push({ stage: 'opening', text: fullIntro });
             this.recordStepContext('opening', fullIntro);
@@ -5081,6 +5273,18 @@ Return ONLY JSON:
             await this.speak(postKundliLine);
             this.spokenNarrations.push({ stage: 'postKundliTransition', text: postKundliLine });
             this.recordStepContext('postKundliTransition', postKundliLine);
+
+            const preQuestionBridge = await this.generatePreQuestionBridge({
+                isHindi,
+                askMayaActive,
+                topicLabel,
+                subjectPhrase: askMayaSubject || (isHindi ? 'आपकी reading' : 'your reading')
+            });
+            if (preQuestionBridge) {
+                await this.speak(preQuestionBridge);
+                this.spokenNarrations.push({ stage: 'preQuestionBridge', text: preQuestionBridge });
+                this.recordStepContext('preQuestionBridge', preQuestionBridge);
+            }
 
             // ═══ STEP 3: First question - after kundli (recent upheaval) ═══
             // Pre-generate teaser content in background while questions happen
@@ -6187,8 +6391,8 @@ Return ONLY JSON:
         textDisplay.innerHTML = `
             <div class="email-gate-container phone-gate-container">
                 <div class="gate-header">
-                    <h3>${isHindi ? 'अपनी रीडिंग सेव कर लीजिए' : 'Let\'s save your reading'}</h3>
-                    <p class="gate-subtitle">${isHindi ? `${this.firstName}, इसके आगे बढ़ते हुए मैं इससे ज़्यादा details आपके लिए save नहीं कर ${this._isGuiderMale() ? 'पाऊँगा' : 'पाऊँगी'} -please अपना mobile number डाल दीजिए ताकि आपकी reading सुरक्षित रह सके।` : `${this.firstName}, from here on I won't be able to save any more of these details for you -please drop your mobile number so your reading stays safe with you.`}</p>
+                    <h3>${isHindi ? 'व्हाट्सऐप से रीडिंग सुरक्षित करें' : 'Secure your reading with WhatsApp'}</h3>
+                    <p class="gate-subtitle">${isHindi ? `${this.firstName}, आगे की reading आपके साथ सुरक्षित रखने के लिए व्हाट्सऐप verification चाहिए। अपना मोबाइल नंबर डालिए; ओटीपी आने में कुछ सेकंड लग सकते हैं।` : `${this.firstName}, I need WhatsApp verification to keep the rest of your reading secure with you. Enter your mobile number; the OTP can take a few seconds to arrive.`}</p>
                 </div>
                 <div class="gate-benefits">
                     <div class="benefit-item"><i class="bi bi-heart-fill"></i><span>${isHindi ? 'प्रेम और रिश्तों का समय-संकेत' : 'Love and relationship timing'}</span></div>
@@ -6413,6 +6617,7 @@ Return ONLY JSON:
         if (!result.success) {
             // Even if API fails, still show OTP entry so master OTP can be used
             console.warn('OTP send failed, proceeding to OTP entry anyway:', result.error);
+            MayaUtils.toast.error(result.error || (isHindi ? 'OTP नहीं भेजा जा सका' : 'Could not send OTP'));
         }
 
         this.emailSubmissionInProgress = false;
@@ -6432,7 +6637,7 @@ Return ONLY JSON:
                 <div class="auth-header">
                     <i class="bi bi-whatsapp otp-whatsapp-icon"></i>
                     <h3>${isHindi ? 'OTP दर्ज करें' : 'Enter OTP'}</h3>
-                    <p class="auth-phone-hint">${isHindi ? `${countryCode} ${phone} पर OTP भेजा गया है` : `OTP sent to ${countryCode} ${phone}`}</p>
+                    <p class="auth-phone-hint">${isHindi ? `${countryCode} ${phone} पर व्हाट्सऐप ओटीपी भेजा जा रहा है। कृपया इसके आने तक कुछ सेकंड प्रतीक्षा करें।` : `We are sending a WhatsApp OTP to ${countryCode} ${phone}. Please wait a few seconds for it to arrive.`}</p>
                 </div>
                 <div class="otp-input-group" id="otp-input-group">
                     <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
@@ -6512,7 +6717,7 @@ Return ONLY JSON:
             event.preventDefault();
             const resend = await MayaAuth.sendOTP(phone, countryCode);
             if (resend.success) {
-                MayaUtils.toast.success(isHindi ? 'नया OTP भेज दिया गया है' : 'New OTP sent!');
+                MayaUtils.toast.success(isHindi ? 'नया व्हाट्सऐप ओटीपी भेजा जा रहा है। कृपया कुछ सेकंड प्रतीक्षा करें।' : 'A new WhatsApp OTP is being sent. Please wait a few seconds.');
                 digits.forEach((digit) => {
                     digit.value = '';
                     digit.disabled = false;

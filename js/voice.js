@@ -521,13 +521,27 @@ const MayaVoice = {
     maxRetries: 3,
     retryBaseDelay: 1000, // Start with 1 second delay for retries
     speechProfile: {
-        fallbackRate: 1,
+        fallbackRate: 0.92,
         fallbackPitch: 1.04,
-        interSentencePauseMs: 0,
+        interSentencePauseMs: 140,
         maxChunkChars: 420,
         maxSentencesPerChunk: 3,
-        playbackRateEn: 1.04,
-        playbackRateHi: 1.04
+        playbackRateEn: 1,
+        playbackRateHi: 1
+    },
+
+    getAgentGender() {
+        const profile = window.MayaUtils?.storage?.get('maya_profile') || {};
+        const funnelData = window.MayaUtils?.storage?.get('funnel_data') || {};
+        return this.agentGender
+            || profile.agentGender
+            || funnelData.agentGender
+            || window.MayaFunnel?.userData?.agentGender
+            || 'female';
+    },
+
+    isMaleGuide() {
+        return this.getAgentGender() === 'male';
     },
 
     escapeRegExp(value) {
@@ -552,7 +566,7 @@ const MayaVoice = {
             'gaurav': 'गौरव', 'geeta': 'गीता', 'harsh': 'हर्ष', 'harshit': 'हर्षित',
             'isha': 'ईशा', 'ishaan': 'ईशान', 'jay': 'जय', 'jatin': 'जतिन',
             'karan': 'करन', 'kavya': 'काव्या', 'kishan': 'किशन', 'kriti': 'कृति', 'krishna': 'कृष्णा',
-            'lakshmi': 'लक्ष्मी', 'lalit': 'ललित', 'manish': 'मनीष', 'maya': 'माया', 'meera': 'मीरा', 'mohit': 'मोहित', 'mukesh': 'मुकेश',
+            'lakshmi': 'लक्ष्मी', 'lalit': 'ललित', 'manish': 'मनीष', 'maya': 'माया', 'moksh': 'मोक्ष', 'meera': 'मीरा', 'mohit': 'मोहित', 'mukesh': 'मुकेश',
             'naman': 'नमन', 'neha': 'नेहा', 'nikhil': 'निखिल', 'nisha': 'निशा', 'nitin': 'नितिन',
             'pankaj': 'पंकज', 'pooja': 'पूजा', 'priya': 'प्रिया', 'priyanka': 'प्रियंका',
             'rahul': 'राहुल', 'raj': 'राज', 'rajesh': 'राजेश', 'ravi': 'रवि', 'ritika': 'रितिका', 'rohit': 'रोहित', 'rohan': 'रोहन',
@@ -649,6 +663,7 @@ const MayaVoice = {
             'details': 'जानकारी',
             'guide': 'गाइड',
             'astrology': 'ज्योतिष',
+            'ank': 'अंक',
         };
         let result = text;
         for (const [roman, devanagari] of Object.entries(map)) {
@@ -779,6 +794,86 @@ const MayaVoice = {
             .replace(/मनी/gi, 'money')
             .replace(/एनर्जी/gi, 'energy')
             .trim();
+    },
+
+    forceHindiSpeechDevanagari(text) {
+        if (!text) return '';
+
+        const tagPattern = /\[(?:warm|curious|thoughtful|softly|gentle smile|smile|pause|long pause|reassuring|whispers?|excited|empathetic|calm|sighs?|exhales?|laughs?|chuckles|intrigued|mysterious|dramatic|intimate|slowly|quickly|hesitant|confident|gasps?)\]/gi;
+        const protectedTags = [];
+        let result = String(text).replace(tagPattern, (tag) => {
+            const token = `\uE000${protectedTags.length}\uE001`;
+            protectedTags.push(tag);
+            return token;
+        });
+
+        const phraseMap = [
+            ['Life Path Number', 'लाइफ पाथ अंक'],
+            ['Life Path', 'लाइफ पाथ'],
+            ['Destiny Number', 'डेस्टिनी अंक'],
+            ['Destiny', 'डेस्टिनी'],
+            ['Soul Urge Number', 'सोल अर्ज अंक'],
+            ['Soul Urge', 'सोल अर्ज'],
+            ['Personal Year Number', 'पर्सनल ईयर अंक'],
+            ['Personal Year', 'पर्सनल ईयर'],
+            ['Ask Maya', 'आस्क माया'],
+            ['WhatsApp', 'व्हाट्सऐप'],
+            ['real life', 'असल जीवन'],
+            ['real-life', 'असल जीवन'],
+            ['current situation', 'मौजूदा स्थिति'],
+            ['follow up', 'फॉलो अप'],
+            ['follow-up', 'फॉलो अप'],
+            ['phone number', 'फोन नंबर'],
+            ['mobile number', 'मोबाइल नंबर'],
+            ['birth chart', 'जन्म कुंडली'],
+            ['chart', 'कुंडली'],
+            ['kundli', 'कुंडली'],
+            ['reading', 'रीडिंग'],
+            ['numbers', 'अंक'],
+            ['number', 'अंक'],
+            ['ank', 'अंक'],
+            ['timing', 'समय'],
+            ['answer', 'जवाब'],
+            ['question', 'सवाल'],
+            ['focus', 'फोकस'],
+            ['pattern', 'पैटर्न'],
+            ['patterns', 'पैटर्न'],
+            ['signal', 'संकेत'],
+            ['signals', 'संकेत'],
+            ['detail', 'जानकारी'],
+            ['details', 'जानकारी'],
+            ['exact', 'सटीक'],
+            ['confirm', 'कन्फर्म'],
+            ['career', 'करियर'],
+            ['relationship', 'रिलेशनशिप'],
+            ['relationships', 'रिलेशनशिप्स'],
+            ['money', 'धन'],
+            ['pressure', 'प्रेशर'],
+            ['energy', 'ऊर्जा'],
+            ['profile', 'प्रोफाइल'],
+            ['file', 'फाइल'],
+            ['save', 'सेव'],
+            ['login', 'लॉगिन'],
+            ['password', 'पासवर्ड'],
+            ['email', 'ईमेल'],
+            ['AI', 'एआई'],
+            ['MCQ', 'एमसीक्यू'],
+            ['TTS', 'टीटीएस'],
+            ['OTP', 'ओटीपी'],
+            ['API', 'एपीआई']
+        ];
+
+        for (const [latin, devanagari] of phraseMap.sort((a, b) => b[0].length - a[0].length)) {
+            result = result.replace(new RegExp(`\\b${this.escapeRegExp(latin)}\\b`, 'gi'), devanagari);
+        }
+
+        result = result.replace(/\b[A-Za-z][A-Za-z']*\b/g, (word) => this.approximateDevanagari(word));
+
+        protectedTags.forEach((tag, index) => {
+            result = result.replace(new RegExp(`\uE000${index}\uE001`, 'g'), tag);
+        });
+
+        return result;
     },
 
     removeAdjacentPhraseRepetition(text) {
@@ -1160,6 +1255,9 @@ const MayaVoice = {
 
             // Consistent Devanagari for astro terms across all chunks
             prepared = this.enforceConsistentAstroTerms(prepared);
+
+            // Final Hindi TTS safety net: no Roman leftovers such as ANK/ank.
+            prepared = this.forceHindiSpeechDevanagari(prepared);
         }
 
         prepared = this.normalizeHyphenatedExpressions(prepared);
@@ -1312,11 +1410,6 @@ const MayaVoice = {
     _injectExpressionTags(rawText, ctx = {}) {
         if (!rawText || typeof rawText !== 'string') return rawText;
 
-        // Deterministic tagging: per-sentence rotating tags caused each
-        // generation to sound expressively different. Now we only:
-        //  1. Convert long ellipses + em-dashes to v3 [pause] beats.
-        //  2. Add ONE light opening tag if the AI hasn't already provided one.
-        // This keeps prosody natural without creating per-render swings.
         const validTagPattern = /^\s*\[(?:warm|curious|thoughtful|softly|gentle smile|smile|pause|long pause|reassuring|whispers?|excited|empathetic|calm|sighs?|exhales?|laughs?|chuckles|intrigued|mysterious|dramatic|intimate|slowly|quickly|hesitant|confident|gasps?)\]/i;
 
         let t = rawText.trim();
@@ -1326,14 +1419,37 @@ const MayaVoice = {
         t = t.replace(/\s*\.{3,}\s*/g, ' [pause] ');
         t = t.replace(/\s+\u2014\s+/g, ' [pause] ');
 
-        // If the text already opens with a valid tag, leave it alone.
-        if (validTagPattern.test(t)) {
-            return t.replace(/\s{2,}/g, ' ').trim();
-        }
+        const sentences = t.match(/(?:\[[^\]]+\]\s*)?[^.!?।]+[.!?।]?/g) || [t];
+        const tagged = sentences.map((sentence, index) => {
+            const line = String(sentence || '').trim();
+            if (!line) return '';
+            if (validTagPattern.test(line)) return line;
 
-        // Single, fixed opening tag so every generation starts with the
-        // same warmth instead of swinging between excited / softly / etc.
-        return `[warm] ${t}`.replace(/\s{2,}/g, ' ').trim();
+            const lower = line.toLowerCase();
+            const isQuestion = /\?\s*$/.test(line) || /\b(what|why|how|when|which|tell me)\b/i.test(line) || /(क्या|क्यों|कैसे|कब|कौन|बताइए)/.test(line);
+            const isReveal = /(important|listen|look at this|chart is clear|ध्यान|सुनिए|स्पष्ट|गहरी|रहस्य)/i.test(line);
+            const isTender = /(love|relationship|heart|प्रेम|रिश्ता|दिल|भावना)/i.test(line);
+            const isCaution = /(careful|warning|pressure|caution|सावधान|दबाव|चेतावनी)/i.test(line);
+            let tag = ctx.isMaleGuide ? '[warm]' : '[softly]';
+
+            if (isQuestion) tag = '[curious]';
+            else if (isCaution) tag = '[reassuring]';
+            else if (isTender) tag = '[empathetic]';
+            else if (isReveal) tag = ctx.isMaleGuide ? '[thoughtful]' : '[slowly]';
+            else if (index > 0) tag = '[thoughtful]';
+
+            const pausePrefix = index > 0 ? '[pause] ' : '';
+            return `${pausePrefix}${tag} ${line}`;
+        }).filter(Boolean).join(' ');
+
+        return tagged.replace(/\s{2,}/g, ' ').trim();
+    },
+
+    stripExpressionTags(rawText) {
+        return String(rawText || '')
+            .replace(/\[(?:warm|curious|thoughtful|softly|gentle smile|smile|pause|long pause|reassuring|whispers?|excited|empathetic|calm|sighs?|exhales?|laughs?|chuckles|intrigued|mysterious|dramatic|intimate|slowly|quickly|hesitant|confident|gasps?)\]\s*/gi, '')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
     },
 
     async buildElevenLabsError(response) {
@@ -1373,14 +1489,7 @@ const MayaVoice = {
         const previousText = String(options.previousText || '').trim();
         const nextText = String(options.nextText || '').trim();
         // Resolve the guide gender (male / female). Male uses the dedicated male voice id.
-        const profile = window.MayaUtils?.storage?.get('maya_profile') || {};
-        const funnelData = window.MayaUtils?.storage?.get('funnel_data') || {};
-        const agentGender = this.agentGender
-            || profile.agentGender
-            || funnelData.agentGender
-            || (window.MayaFunnel?.userData?.agentGender)
-            || 'female';
-        const isMaleGuide = agentGender === 'male';
+        const isMaleGuide = this.isMaleGuide();
         const voiceId = this.preferredVoiceId
             || (isMaleGuide
                 ? (MAYA_CONFIG.API_KEYS.ELEVENLABS_MALE_VOICE_ID || MAYA_CONFIG.API_KEYS.ELEVENLABS_VOICE_ID)
@@ -1389,11 +1498,11 @@ const MayaVoice = {
                     : (MAYA_CONFIG.API_KEYS.ELEVENLABS_EN_VOICE_ID || MAYA_CONFIG.API_KEYS.ELEVENLABS_VOICE_ID)));
         const url = MAYA_CONFIG.ENDPOINTS.ELEVENLABS;
 
-        // Use only eleven_multilingual_v2 — v3 routinely 400s on this account
-        // and forces a fallback round-trip on every request.
+        // Try v3 first for expression tags; fall back to multilingual v2 if
+        // the account/model rejects it.
         const modelChain = (this._elevenLabsModelChain && this._elevenLabsModelChain.length)
             ? this._elevenLabsModelChain
-            : ['eleven_multilingual_v2'];
+            : ['eleven_v3', 'eleven_multilingual_v2'];
 
         const latencyOptimization = isMaleGuide ? 3 : 2;
         // Tuned for CONSISTENCY across generations (was: low stability + high style
@@ -1402,19 +1511,21 @@ const MayaVoice = {
         // so two consecutive replies don't sound paced differently.
         const voiceSettingsByModel = (modelId) => {
             const isV3 = modelId === 'eleven_v3';
-            // Same settings for Hindi and English so the same voice doesn't
-            // shift personality between languages mid-conversation.
+            if (!isMaleGuide) {
+                return {
+                    stability: isV3 ? 0.58 : 0.62,
+                    similarity_boost: isV3 ? 0.84 : 0.86,
+                    style: isV3 ? 0.62 : 0.46,
+                    use_speaker_boost: true,
+                    speed: isV3 ? 0.86 : 0.90
+                };
+            }
+
             return {
-                // High stability => far less per-generation drift in pacing & tone.
-                stability: isV3 ? 0.70 : 0.72,
-                // High similarity_boost locks the voice's timbre to the cloned identity.
+                stability: isV3 ? 0.68 : 0.70,
                 similarity_boost: isV3 ? 0.88 : 0.90,
-                // Low style => calm, predictable expression. v3 amplifies style heavily;
-                // keep it near zero to stop emotion from spiking unevenly.
-                style: isV3 ? 0.20 : 0.18,
+                style: isV3 ? 0.34 : 0.24,
                 use_speaker_boost: true,
-                // Single pinned speed so all replies feel paced the same.
-                // (Slightly slower for warmth, but identical for both genders.)
                 speed: 0.96
             };
         };
@@ -1425,7 +1536,7 @@ const MayaVoice = {
             // Inject ElevenLabs v3 expression tags for warmer, more human delivery.
             const finalText = (currentModelId === 'eleven_v3')
                 ? this._injectExpressionTags(text, { isHindi, isMaleGuide })
-                : text;
+                : this.stripExpressionTags(text);
             const body = {
                 text: finalText,
                 model_id: currentModelId,
@@ -1497,6 +1608,7 @@ const MayaVoice = {
                         const nextModel = modelChain[modelIndex];
                         console.warn(`⚠️ ElevenLabs model "${modelId}" rejected (${response.status}); falling back to "${nextModel}"`);
                         modelId = nextModel;
+                        this._elevenLabsModelChain = modelChain.slice(modelIndex);
                         requestBody = buildRequestBody(modelId);
                         if (previousText) requestBody.previous_text = previousText.slice(-350);
                         if (nextText) requestBody.next_text = nextText.slice(0, 350);
@@ -1552,10 +1664,11 @@ const MayaVoice = {
                 source.buffer = audioBuffer;
 
                 const isHindi = window.MayaUtils?.storage?.get('maya_language') === 'hi';
+                const isMaleGuide = this.isMaleGuide();
                 const playbackRate = isHindi
                     ? this.speechProfile.playbackRateHi
                     : this.speechProfile.playbackRateEn;
-                source.playbackRate.value = playbackRate;
+                source.playbackRate.value = isMaleGuide ? playbackRate : Math.min(playbackRate, 0.97);
 
                 source.connect(gainNode);
                 gainNode.connect(this.masterGain || this.analyser);
@@ -1770,8 +1883,9 @@ const MayaVoice = {
             // Check language preference - use Hindi voice if selected
             const isHindi = window.MayaUtils?.storage?.get('maya_language') === 'hi';
             utterance.lang = isHindi ? 'hi-IN' : 'en-US';
-            utterance.rate = this.speechProfile.fallbackRate;
-            utterance.pitch = this.speechProfile.fallbackPitch;
+            const isMaleGuide = this.isMaleGuide();
+            utterance.rate = isMaleGuide ? 0.98 : this.speechProfile.fallbackRate;
+            utterance.pitch = isMaleGuide ? 0.98 : this.speechProfile.fallbackPitch;
 
             // Try to find appropriate voice based on language
             const voices = window.speechSynthesis.getVoices();

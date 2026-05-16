@@ -2,7 +2,7 @@ console.log('🔧 statements.js loading (AI prompt edition)...');
 
 const MayaStatements = {
   currentLanguage: "en",
-  cacheVersion: "v6_mixed_script_terms",
+  cacheVersion: "v7_whatsapp_otp_auth",
   cacheEnabled: false,
 
   setLanguage(lang) {
@@ -647,9 +647,9 @@ IMPORTANT: MALE verb forms - हूँ, रहा हूँ, सकता हू
         },
 
         emailGate: {
-      goal: "Explain value of private file + ask email cleanly",
+      goal: "Explain secure WhatsApp verification and ask for phone cleanly",
       en: ({ name, predictionItems = [] }, ctx) => `
-    You are MAYA, a MALE numerology guide. Write ONE email gate transition (3–4 sentences) for ${name}.
+    You are MAYA, a MALE numerology guide. Write ONE WhatsApp OTP gate transition (2-3 sentences) for ${name}.
 
     Available personalization cues:
     ${ctx?.userData?.ascendant ? `- Ascendant: ${ctx.userData.ascendant}` : ''}
@@ -659,14 +659,16 @@ IMPORTANT: MALE verb forms - हूँ, रहा हूँ, सकता हू
 
     Must include:
     - What they get: a life-pattern roadmap, the next 12–18 months of timing windows, kundli timing cues, and clear do/avoid steps.
-    - Privacy framing (kept private, saved).
+    - Privacy framing (kept private, secure).
     - One line that makes it feel like this file is specific to THEIR chart.
-    - CLEARLY instruct the user to type their email in the field that is about to appear on screen - e.g. "You'll see an email field on screen now - just type your email there so this reading stays saved and I can unlock the deeper layer for you." Ask only once, do not repeat or push.
+    - CLEARLY instruct the user to enter their WhatsApp number in the field that is about to appear on screen.
+    - Tell them the OTP can take a few seconds to arrive on WhatsApp.
+    Never mention email or password.
     Include [[pause-250]] once.
     No bullets.
     `,
       hi: ({ name, predictionItems = [] }, ctx) => `
-    आप MAYA हैं, एक MALE numerology guide। ${name} जी के लिए ONE email gate script (3–4 वाक्य)।
+    आप MAYA हैं, एक MALE numerology guide। ${name} जी के लिए ONE WhatsApp OTP gate script (2-3 वाक्य)।
 
     Available cues:
     ${ctx?.userData?.ascendant ? `- Ascendant: ${ctx.userData.ascendant}` : ''}
@@ -676,9 +678,11 @@ IMPORTANT: MALE verb forms - हूँ, रहा हूँ, सकता हू
 
     Include:
     - life-pattern roadmap, अगले 12–18 महीनों की timing windows, kundli timing cues, do/avoid steps।
-    - privacy: private + saved।
+    - privacy: private + secure।
     - एक line जो इसे उनकी personal chart file feel कराए।
-    - CLEARLY कहिए कि screen पर एक email field दिखेगा और उन्हें अपना email address वहाँ type करना है - जैसे "अभी screen पर email field आ रहा है, बस अपना email वहाँ type कर दीजिए ताकि ये reading safe रहे और मैं आगे की deeper layer खोल सकूँ।" सिर्फ एक बार, ज़्यादा push मत करें।
+    - CLEARLY कहिए कि screen पर व्हाट्सऐप नंबर field दिखेगा और उन्हें अपना मोबाइल नंबर भरना है।
+    - कहिए कि ओटीपी WhatsApp पर आएगा और आने में कुछ सेकंड लग सकते हैं।
+    Email या password का ज़िक्र कभी न करें।
     [[pause-250]] एक बार। देवनागरी Hinglish, "आप"।
     IMPORTANT: MALE verb forms - हूँ, रहा हूँ, सकता हूँ, देख रहा हूँ
     `
@@ -699,100 +703,114 @@ IMPORTANT: MALE verb forms - हूँ, रहा हूँ, सकता हू
     },
 
     authWelcomeBack: {
-      goal: "Returning user welcome + password ask",
+      goal: "Returning user welcome + WhatsApp OTP continuation",
       en: ({ name }, ctx) => `
 You are MAYA, a MALE numerology guide. Write ONE spoken script (2–3 sentences) for returning user ${name}.
-Warm recognition + ask for password to continue.
+Warm recognition + saved reading mention + continue through WhatsApp OTP if verification is needed.
+Never mention email or password.
 Include [[pause-250]] once.
 `,
       hi: ({ name }, ctx) => `
 आप MAYA हैं, एक MALE numerology guide। returning user ${name} जी के लिए 2–3 वाक्य।
-Warm recognition + password ask।
+Warm recognition + saved reading mention + ज़रूरत हो तो WhatsApp OTP से continue करने की बात।
+Email या password का ज़िक्र कभी न करें।
 [[pause-250]] एक बार। "आप"।
 IMPORTANT: MALE verb forms - हूँ, रहा हूँ, सकता हूँ, देख रहा हूँ
 `
     },
 
     authNewUser: {
-      goal: "New user registration + password setup",
+      goal: "New user registration + WhatsApp OTP setup",
       en: ({ name }, ctx) => `
 You are MAYA, a MALE numerology guide. Write ONE spoken script (2–3 sentences) for new user ${name}.
-Explain password saves their reading + keeps it private. End with clear ask: create password.
+Explain WhatsApp OTP secures their reading + keeps it private. End with a clear ask to verify with WhatsApp OTP.
+Never mention email or password.
 Include [[pause-250]] once.
 `,
       hi: ({ name }, ctx) => `
 आप MAYA हैं, एक MALE numerology guide। new user ${name} जी के लिए 2–3 वाक्य।
-Password से reading save + private। End: password create करने को कहिए।
+WhatsApp OTP से reading secure + private रहती है। End: WhatsApp OTP से verify करने को कहिए।
+Email या password का ज़िक्र कभी न करें।
 [[pause-250]] एक बार। "आप"।
 IMPORTANT: MALE verb forms - हूँ, रहा हूँ, सकता हूँ, देख रहा हूँ
 `    },
 
         authEmailField: {
-      goal: "Ask the user to enter their email so the personalized reading can be saved and delivered",
+      goal: "Ask the user to enter their WhatsApp number so the personalized reading can be secured",
       en: ({ name }, ctx) => `
     You are MAYA, a MALE numerology guide. Write ONE short spoken prompt (1-2 sentences) for ${name}.
-    Ask them to enter their email so you can save and deliver their personalized reading.
-    Mention privacy briefly.
+    Ask them to enter their WhatsApp number so the personalized reading can stay secure.
+    Mention privacy briefly and say the OTP can take a few seconds to arrive.
+    Never mention email or password.
     Include [[pause-250]] once.
-    End with a direct instruction to fill the email field now.
+    End with a direct instruction to fill the WhatsApp number field now.
     `,
       hi: ({ name }, ctx) => `
     आप MAYA हैं, एक MALE numerology guide। ${name} जी के लिए ONE short spoken prompt (1-2 वाक्य) लिखिए।
-    उन्हें कहिए कि personalized reading save और deliver करने के लिए अपना email भरें।
-    Privacy का छोटा सा संकेत दें।
+    उन्हें कहिए कि personalized reading secure रखने के लिए अपना व्हाट्सऐप नंबर भरें।
+    Privacy का छोटा सा संकेत दें और कहें कि ओटीपी आने में कुछ सेकंड लग सकते हैं।
+    Email या password का ज़िक्र कभी न करें।
     एक [[pause-250]] token रखें।
-    अंत में साफ़ कहिए कि अभी email field भरें।
+    अंत में साफ़ कहिए कि अभी व्हाट्सऐप नंबर field भरें।
     हिंदी मुख्यतः देवनागरी में रखिए, लेकिन natural English terms को English script में ही रखिए।
     `
         },
 
         authPasswordField: {
-      goal: "Ask a returning user to enter the password to restore their reading",
+      goal: "Ask the user to enter the WhatsApp OTP to continue",
       en: ({ name }, ctx) => `
-    You are MAYA, a MALE numerology guide. Write ONE short spoken prompt (1-2 sentences) for returning user ${name}.
-    Ask them to enter their password so their saved personalized reading can be restored.
+    You are MAYA, a MALE numerology guide. Write ONE short spoken prompt (1-2 sentences) for ${name}.
+    Ask them to wait for the WhatsApp OTP and enter the 6 digits once it arrives.
+    Mention that delivery can take a few seconds.
+    Never mention email or password.
     Include [[pause-250]] once.
-    End with a direct instruction to fill the password field now.
+    End with a direct instruction to fill the OTP field once the code arrives.
     `,
       hi: ({ name }, ctx) => `
-    आप MAYA हैं, एक MALE numerology guide। returning user ${name} जी के लिए ONE short spoken prompt (1-2 वाक्य) लिखिए।
-    उन्हें कहिए कि अपनी saved personalized reading restore करने के लिए password भरें।
+    आप MAYA हैं, एक MALE numerology guide। ${name} जी के लिए ONE short spoken prompt (1-2 वाक्य) लिखिए।
+    उन्हें कहिए कि व्हाट्सऐप ओटीपी का इंतज़ार करें और आते ही 6 अंक भरें।
+    कहिए कि delivery में कुछ सेकंड लग सकते हैं।
+    Email या password का ज़िक्र कभी न करें।
     एक [[pause-250]] token रखें।
-    अंत में साफ़ कहिए कि अभी password field भरें।
+    अंत में साफ़ कहिए कि code आते ही OTP field भरें।
     हिंदी पूरी तरह देवनागरी में लिखिए।
     `
         },
 
         authNewPasswordField: {
-      goal: "Ask a new user to create a password to secure the reading",
+      goal: "Legacy fallback: guide user to WhatsApp OTP instead of password",
       en: ({ name }, ctx) => `
     You are MAYA, a MALE numerology guide. Write ONE short spoken prompt (1-2 sentences) for new user ${name}.
-    Ask them to create a password to secure and save their personalized reading.
+    Ask them to use WhatsApp OTP to secure and save their personalized reading.
+    Never mention email or password.
     Include [[pause-250]] once.
-    End with a direct instruction to fill the new password field now.
+    End with a direct instruction to continue with WhatsApp OTP.
     `,
       hi: ({ name }, ctx) => `
     आप MAYA हैं, एक MALE numerology guide। new user ${name} जी के लिए ONE short spoken prompt (1-2 वाक्य) लिखिए।
-    उन्हें कहिए कि personalized reading secure और save करने के लिए नया password बनाएं।
+    उन्हें कहिए कि personalized reading secure और save करने के लिए व्हाट्सऐप ओटीपी use करें।
+    Email या password का ज़िक्र कभी न करें।
     एक [[pause-250]] token रखें।
-    अंत में साफ़ कहिए कि अभी नया password field भरें।
+    अंत में साफ़ कहिए कि WhatsApp OTP से continue करें।
     हिंदी पूरी तरह देवनागरी में लिखिए।
     `
         },
 
         authConfirmPasswordField: {
-      goal: "Ask the user to confirm the same password",
+      goal: "Legacy fallback: guide user to confirm with WhatsApp OTP",
       en: ({ name }, ctx) => `
     You are MAYA, a MALE numerology guide. Write ONE short spoken prompt (1 sentence) for ${name}.
-    Ask them to confirm the same password in the next field so their reading stays protected.
+    Ask them to confirm the WhatsApp OTP so their reading stays protected.
+    Never mention email or password.
     Include [[pause-250]] once.
-    End with a direct instruction to fill the confirm password field now.
+    End with a direct instruction to fill the OTP field.
     `,
       hi: ({ name }, ctx) => `
     आप MAYA हैं, एक MALE numerology guide। ${name} जी के लिए ONE short spoken prompt (1 वाक्य) लिखिए।
-    उन्हें कहिए कि same password अगले field में confirm करें ताकि उनकी reading protected रहे।
+    उन्हें कहिए कि व्हाट्सऐप ओटीपी confirm करें ताकि उनकी reading protected रहे।
+    Email या password का ज़िक्र कभी न करें।
     एक [[pause-250]] token रखें।
-    अंत में साफ़ कहिए कि अभी confirm password field भरें।
+    अंत में साफ़ कहिए कि अभी OTP field भरें।
     हिंदी पूरी तरह देवनागरी में लिखिए।
     `
         },
@@ -1360,7 +1378,7 @@ Rules:
 
     // Ask model for N variants in one go (still not “hardcoded statements”)
     const languageGuard = lang === "hi"
-      ? "\nLANGUAGE OVERRIDE: Write in simple spoken Hinglish. Keep Hindi words mostly in Devanagari, keep natural English terms like Life Path, Destiny, Soul Urge, Personal Year, email, password, chart, timing, career, relationship, money, and energy in English script, avoid overly formal or Sanskrit-heavy Hindi, and keep the flow easy across regions. Prefer addressing the listener as \"आप\", but you may naturally use their first name exactly as provided when it improves the spoken flow. Never output the word json or any code-fence markers."
+      ? "\nLANGUAGE OVERRIDE: Write in simple spoken Hinglish. Keep Hindi words mostly in Devanagari, keep natural English terms like Life Path, Destiny, Soul Urge, Personal Year, chart, timing, career, relationship, money, and energy in English script, use व्हाट्सऐप and ओटीपी for auth, avoid overly formal or Sanskrit-heavy Hindi, and keep the flow easy across regions. Prefer addressing the listener as \"आप\", but you may naturally use their first name exactly as provided when it improves the spoken flow. Never output the word json or any code-fence markers. Never ask for email or password in auth prompts."
       : "";
 
     const bannedPhraseGuard = lang === "hi"

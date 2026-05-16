@@ -90,8 +90,9 @@ function parseList(rawValue) {
 }
 
 const runtimeSecrets = {
-  GROQ_KEY: '',
-  // Gemini is the text and vision AI provider.
+  // Groq is optional and used only for fast funnel copy.
+  GROQ_KEY: env.VITE_PUBLIC_GROQ_KEY || '',
+  // Gemini remains the deep text and vision AI provider.
   GEMINI_KEY: env.VITE_PUBLIC_GEMINI_KEY || '',
   GEMINI_FALLBACKS: parseList(env.VITE_PUBLIC_GEMINI_FALLBACKS),
   ELEVENLABS_VOICE: env.VITE_PUBLIC_ELEVENLABS_VOICE || 'P3JECz9WQeXyyodBL3ZD',

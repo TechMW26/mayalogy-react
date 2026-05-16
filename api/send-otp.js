@@ -42,7 +42,7 @@ export default async function handler(req, res) {
 
     const phoneKey = buildPhoneKey(normalizedPhone, normalizedCountryCode);
 
-    const firebaseUrl = process.env.FIREBASE_DB_URL;
+    const firebaseUrl = getFirebaseDbUrl();
     const firebaseSecret = process.env.FIREBASE_SECRET; // Firebase legacy secret or service account token
 
     if (!firebaseUrl) {
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
     }
 
     // Store OTP in Firebase RTDB
-    const authParam = firebaseSecret ? `?auth=${firebaseSecret}` : '';
+    const authParam = firebaseSecret ? `?auth=${encodeURIComponent(firebaseSecret)}` : '';
     const deleteOtpSession = () => fetch(`${firebaseUrl}/maya_otp_sessions/${phoneKey}.json${authParam}`, {
         method: 'DELETE'
     }).catch(() => { });
@@ -145,6 +145,10 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({ success: true, message: 'OTP sent to WhatsApp' });
+}
+
+function getFirebaseDbUrl() {
+    return (process.env.FIREBASE_DB_URL || process.env.VITE_PUBLIC_FIREBASE_DB_URL || '').trim().replace(/\/+$/, '');
 }
 
 function buildInteraktPayload({ countryCode, phoneNumber, templateName, otp, buttonValues }) {
