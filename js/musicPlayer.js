@@ -37,7 +37,7 @@ const MayaMusicPlayer = {
         // Check if player already exists
         if (document.getElementById('maya-global-player')) return;
         
-        const isHindi = window.MayaUtils?.storage.get('maya_language') === 'hi';
+        const isHindi = false;
         
         const playerHTML = `
             <div class="maya-global-player" id="maya-global-player">
@@ -50,11 +50,11 @@ const MayaMusicPlayer = {
                             </div>
                             <div class="maya-global-player__mini-text">
                                 <span class="maya-global-player__mini-title" id="maya-player-title">
-                                    ${isHindi ? 'भक्ति संगीत' : 'Bhakti Music'}
+                                    Bhakti Music
                                 </span>
                                 <span class="maya-global-player__mini-status">
                                     <span class="maya-global-player__status-dot"></span>
-                                    <span id="maya-player-status">${isHindi ? 'बज रहा है' : 'Playing'}</span>
+                                    <span id="maya-player-status">Playing</span>
                                 </span>
                             </div>
                         </div>
@@ -81,7 +81,7 @@ const MayaMusicPlayer = {
                                 <i class="bi bi-chevron-down"></i>
                             </button>
                             <span class="maya-global-player__now-playing">
-                                ${isHindi ? 'अभी बज रहा है' : 'Now Playing'}
+                                Now Playing
                             </span>
                             <button class="maya-global-player__btn maya-global-player__btn--pip" id="maya-player-pip-expanded" title="Picture-in-Picture">
                                 <i class="bi bi-pip"></i>
@@ -92,7 +92,7 @@ const MayaMusicPlayer = {
                         </div>
                         <div class="maya-global-player__expanded-controls">
                             <h4 class="maya-global-player__track-title" id="maya-player-track-title">
-                                ${isHindi ? 'भक्ति संगीत' : 'Bhakti Music'}
+                                Bhakti Music
                             </h4>
                         </div>
                     </div>
@@ -167,27 +167,27 @@ const MayaMusicPlayer = {
     onPlayerStateChange(event) {
         const playIcon = document.getElementById('maya-play-icon');
         const statusEl = document.getElementById('maya-player-status');
-        const isHindi = window.MayaUtils?.storage.get('maya_language') === 'hi';
+        const isHindi = false;
         
         switch (event.data) {
             case YT.PlayerState.PLAYING:
                 this.isPlaying = true;
                 if (playIcon) playIcon.className = 'bi bi-pause-fill';
-                if (statusEl) statusEl.textContent = isHindi ? 'बज रहा है' : 'Playing';
+                if (statusEl) statusEl.textContent = 'Playing';
                 this.updateMediaSession();
                 break;
             case YT.PlayerState.PAUSED:
                 this.isPlaying = false;
                 if (playIcon) playIcon.className = 'bi bi-play-fill';
-                if (statusEl) statusEl.textContent = isHindi ? 'रुका हुआ' : 'Paused';
+                if (statusEl) statusEl.textContent = 'Paused';
                 break;
             case YT.PlayerState.ENDED:
                 this.isPlaying = false;
                 if (playIcon) playIcon.className = 'bi bi-play-fill';
-                if (statusEl) statusEl.textContent = isHindi ? 'समाप्त' : 'Ended';
+                if (statusEl) statusEl.textContent = 'Ended';
                 break;
             case YT.PlayerState.BUFFERING:
-                if (statusEl) statusEl.textContent = isHindi ? 'लोड हो रहा है...' : 'Buffering...';
+                if (statusEl) statusEl.textContent = 'Buffering...';
                 break;
         }
     },
@@ -198,8 +198,8 @@ const MayaMusicPlayer = {
     onPlayerError(event) {
         console.error('YouTube player error:', event.data);
         const statusEl = document.getElementById('maya-player-status');
-        const isHindi = window.MayaUtils?.storage.get('maya_language') === 'hi';
-        if (statusEl) statusEl.textContent = isHindi ? 'त्रुटि' : 'Error';
+        const isHindi = false;
+        if (statusEl) statusEl.textContent = 'Error';
     },
     
     /**
@@ -367,8 +367,8 @@ const MayaMusicPlayer = {
             console.error('PiP error:', error);
             // Show toast
             if (window.MayaUtils?.toast) {
-                const isHindi = MayaUtils.storage.get('maya_language') === 'hi';
-                MayaUtils.toast.info(isHindi ? 'मिनी प्लेयर के लिए नीचे खींचें' : 'Drag down for mini player');
+                const isHindi = false;
+                MayaUtils.toast.info('Drag down for mini player');
             }
         }
     },
@@ -380,9 +380,9 @@ const MayaMusicPlayer = {
         // Just minimize to the floating mini player
         this.minimize();
         
-        const isHindi = window.MayaUtils?.storage.get('maya_language') === 'hi';
+        const isHindi = false;
         if (window.MayaUtils?.toast) {
-            MayaUtils.toast.success(isHindi ? 'मिनी प्लेयर सक्रिय - संगीत चलता रहेगा' : 'Mini player active - music will continue');
+            MayaUtils.toast.success('Mini player active - music will continue');
         }
     },
     

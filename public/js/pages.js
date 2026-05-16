@@ -3217,10 +3217,10 @@ const MayaPages = {
                         <div class="maya-spiritual-music__title-area">
                             <h1 class="maya-spiritual-music__title">
                                 <i class="bi bi-music-note-beamed"></i>
-                                ${isHindi ? 'आध्यात्मिक संगीत' : 'Spiritual Music'}
+                                Spiritual Music
                             </h1>
                             <p class="maya-spiritual-music__subtitle">
-                                ${isHindi ? 'दैनिक भक्ति संगीत और मंत्र' : 'Daily Devotional Music & Mantras'}
+                                Daily Devotional Music & Mantras
                             </p>
                         </div>
                         <div class="maya-spiritual-music__today-deity">
@@ -3449,7 +3449,7 @@ const MayaPages = {
                         <button class="maya-spiritual-music__player-minimize" id="minimize-player">
                             <i class="bi bi-chevron-down"></i>
                         </button>
-                        <span class="maya-spiritual-music__now-playing">${isHindi ? 'अभी बज रहा है' : 'Now Playing'}</span>
+                        <span class="maya-spiritual-music__now-playing">Now Playing</span>
                         <button class="maya-spiritual-music__player-close" id="close-player">
                             <i class="bi bi-x-lg"></i>
                         </button>
@@ -4675,7 +4675,7 @@ const MayaPages = {
                                    value="${profile?.birthPlace || ''}" placeholder="${isHindi ? 'शहर, देश' : 'City, Country'}" autocomplete="off">
                             <input type="hidden" id="profileBirthLat" value="${profile?.birthLat ?? ''}">
                             <input type="hidden" id="profileBirthLng" value="${profile?.birthLon ?? ''}">
-                            <input type="hidden" id="profileBirthTimezone" value="">
+                            <input type="hidden" id="profileBirthTimezone" value="${profile?.birthTimezone ?? ''}">
                         </div>
                     </div>
                     
@@ -4744,11 +4744,11 @@ const MayaPages = {
                             </div>
                             <div class="maya-select-wrapper">
                                 <div class="maya-select" id="settingLanguage" data-value="${currentLang}">
-                                    ${currentLang === 'en' ? 'English' : 'हिंदी'}
+                                    ${currentLang === 'en' ? 'English' : 'Hindi'}
                                 </div>
                                 <div class="maya-select-dropdown">
                                     <div class="maya-select-option ${currentLang === 'en' ? 'selected' : ''}" data-value="en">English</div>
-                                    <div class="maya-select-option ${currentLang === 'hi' ? 'selected' : ''}" data-value="hi">हिंदी</div>
+                                    <div class="maya-select-option ${currentLang === 'hi' ? 'selected' : ''}" data-value="hi">Hindi</div>
                                 </div>
                             </div>
                         </div>
@@ -10571,10 +10571,12 @@ Rules:
                 const birthPlaceInput = document.getElementById('profileBirthPlace');
                 const birthLatInput = document.getElementById('profileBirthLat');
                 const birthLngInput = document.getElementById('profileBirthLng');
+                const birthTimezoneInput = document.getElementById('profileBirthTimezone');
                 const birthPlace = birthPlaceInput?.value?.trim() || '';
 
                 let birthLat = Number.parseFloat(birthLatInput?.value || '');
                 let birthLon = Number.parseFloat(birthLngInput?.value || '');
+                let birthTimezone = Number.parseFloat(birthTimezoneInput?.value || '');
 
                 if (!Number.isFinite(birthLat) || !Number.isFinite(birthLon)) {
                     const canReuseStoredCoords = (existingProfile.birthPlace || '').trim() === birthPlace;
@@ -10584,19 +10586,31 @@ Rules:
                     birthLon = canReuseStoredCoords && Number.isFinite(Number(existingProfile.birthLon))
                         ? Number(existingProfile.birthLon)
                         : null;
+                    birthTimezone = canReuseStoredCoords && Number.isFinite(Number(existingProfile.birthTimezone))
+                        ? Number(existingProfile.birthTimezone)
+                        : birthTimezone;
+                }
+
+                if (!Number.isFinite(birthTimezone) && Number.isFinite(birthLon)) {
+                    birthTimezone = Math.max(-720, Math.min(840, Math.round(birthLon / 15) * 60));
                 }
 
                 let resolvedBirthPlace = {
                     birthPlace,
                     birthLat,
-                    birthLon
+                    birthLon,
+                    birthTimezone: Number.isFinite(birthTimezone) ? birthTimezone : null
                 };
 
                 if (birthPlace) {
                     resolvedBirthPlace = await MayaUtils.location.resolveBirthPlace(birthPlace, {
                         birthLat,
-                        birthLon
+                        birthLon,
+                        birthTimezone: Number.isFinite(birthTimezone) ? birthTimezone : null
                     });
+                    if (!Number.isFinite(Number(resolvedBirthPlace.birthTimezone)) && Number.isFinite(birthTimezone)) {
+                        resolvedBirthPlace.birthTimezone = birthTimezone;
+                    }
                 }
 
                 const profileData = {
@@ -10606,12 +10620,13 @@ Rules:
                     birthPlace: resolvedBirthPlace.birthPlace || birthPlace,
                     birthLat: Number.isFinite(resolvedBirthPlace.birthLat) ? resolvedBirthPlace.birthLat : null,
                     birthLon: Number.isFinite(resolvedBirthPlace.birthLon) ? resolvedBirthPlace.birthLon : null,
+                    birthTimezone: Number.isFinite(Number(resolvedBirthPlace.birthTimezone)) ? Number(resolvedBirthPlace.birthTimezone) : null,
                     gender: genderRadio ? genderRadio.value : null,
                     language: MayaUtils.storage.get('maya_language') || existingProfile.language || 'en'
                 };
 
                 await MayaAuth.saveBirthDetails(profileData);
-                MayaUtils.toast.success(isHindi ? 'प्रोफ़ाइल सहेजी गई!' : 'Profile saved successfully!');
+                MayaUtils.toast.success('Profile saved successfully!');
 
                 // Refresh the page to show updated avatar
                 this.render('profile');

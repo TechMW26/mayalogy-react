@@ -31,6 +31,21 @@ function normalizeText(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function sanitizeTtsControlTags(value) {
+  let text = normalizeText(value);
+
+  text = text
+    .replace(/\[\[\s*pause\s*[-:]?\s*\d{0,5}\s*(?:ms)?\s*\]\]/gi, ', ')
+    .replace(/\[(?:long\s+)?pause\]/gi, ', ')
+    .replace(/\[(?:warm|curious|thoughtful|softly|gentle smile|smile|reassuring|whispers?|excited|empathetic|calm|sighs?|exhales?|laughs?|chuckles|intrigued|mysterious|dramatic|intimate|slowly|quickly|hesitant|confident|gasps?|breathes?|nervous|relieved|serious|kindly)\]/gi, '')
+    .replace(/<\/?(?:break|speak|prosody|emphasis|voice|amazon:[^>\s]+)(?:\s+[^>]*)?>/gi, ' ')
+    .replace(/\[[a-z][a-z\s_-]{1,40}\]/gi, '')
+    .replace(/\s+([,.!?;:।])/g, '$1')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  return text;
+}
 function dataUrlToBlob(dataUrl) {
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
 
@@ -140,7 +155,7 @@ async function removeBackgroundWithCloudinary(blob, env) {
 }
 
 export async function handleTextToSpeechRequest(payload, env = process.env) {
-  const text = normalizeText(payload?.text);
+  const text = sanitizeTtsControlTags(payload?.text);
 
   if (!text) {
     return jsonResponse(400, { error: 'text is required' });
@@ -161,28 +176,16 @@ export async function handleTextToSpeechRequest(payload, env = process.env) {
 
   const requestBody = {
     text,
-    model_id: payload?.model_id || 'eleven_v3',
+    model_id: 'eleven_v3',
     voice_settings: payload?.voice_settings || {
-      stability: 0.55,
-      similarity_boost: 0.78,
-      style: 0.30,
+      stability: 0.42,
+      similarity_boost: 0.82,
+      style: 0.42,
       use_speaker_boost: true,
     },
     optimize_streaming_latency: payload?.optimize_streaming_latency ?? 2,
+    apply_text_normalization: 'on',
   };
-
-  // language_code is only valid for the multilingual v2 model; v3 auto-detects.
-  if (requestBody.model_id !== 'eleven_v3') {
-    requestBody.language_code = payload?.language_code || 'en';
-  }
-
-  if (normalizeText(payload?.previous_text)) {
-    requestBody.previous_text = String(payload.previous_text).slice(-350);
-  }
-
-  if (normalizeText(payload?.next_text)) {
-    requestBody.next_text = String(payload.next_text).slice(0, 350);
-  }
 
   const url = `${ELEVENLABS_BASE_URL}/${encodeURIComponent(voiceId)}`;
   let lastStatus = 502;

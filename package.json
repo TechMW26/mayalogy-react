@@ -13,6 +13,7 @@
     "dev:vercel": "vercel dev"
   },
   "dependencies": {
+    "astronomy-engine": "^2.1.19",
     "firebase-admin": "^13.8.0",
     "framer-motion": "^10.18.0",
     "react": "^18.3.1",

@@ -284,7 +284,7 @@ const MayaKundli = {
         ctx.restore();
     },
 
-    drawPlanetGlyphBadge(ctx, planet, centerX, centerY, reveal = 1, pulse = 0) {
+    drawPlanetGlyphBadge(ctx, planet, centerX, centerY, reveal = 1, pulse = 0, options = {}) {
         const amount = this.easeOutBack(reveal);
         if (amount <= 0) return;
 
@@ -292,8 +292,22 @@ const MayaKundli = {
         const label = this.planetShortCodes[planet.name] || planet.name.substring(0, 2);
         const pulseScale = 1 + Math.sin(pulse + centerX * 0.01 + centerY * 0.01) * 0.04;
         const scale = (0.3 + amount * 0.7) * pulseScale;
-        const imgSize = 20;
+        const imgSize = options.size || 20;
+        const labelSize = options.labelSize || 7;
+        const showLabel = options.showLabel !== false;
         const planetImg = this.createPlanetImage(planet.name, imgSize);
+        const spinSpeed = {
+            Sun: 0.55,
+            Moon: 0.72,
+            Mars: 0.9,
+            Mercury: 1.18,
+            Jupiter: 0.42,
+            Venus: 0.66,
+            Saturn: 0.34,
+            Rahu: -0.58,
+            Ketu: -0.62
+        }[planet.name] || 0.5;
+        const rotation = pulse * spinSpeed + (planet.name || '').length * 0.19;
 
         ctx.save();
         ctx.globalAlpha = this.clamp01(reveal);
@@ -301,10 +315,11 @@ const MayaKundli = {
         ctx.scale(scale, scale);
 
         if (planetImg) {
-            // Draw realistic planet image
+            ctx.save();
+            ctx.rotate(rotation);
             ctx.drawImage(planetImg, -imgSize / 2, -imgSize / 2 - 1, imgSize, imgSize);
+            ctx.restore();
         } else {
-            // Fallback: colored circle
             const color = info.color || '#d4a732';
             ctx.beginPath();
             ctx.arc(0, -1, 8, 0, Math.PI * 2);
@@ -314,13 +329,14 @@ const MayaKundli = {
             ctx.fill();
         }
 
-        // Planet short label below the image
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#fffaf0';
-        ctx.font = 'bold 7px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        ctx.fillText(label, 0, imgSize / 2 + 1);
+        if (showLabel) {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = options.labelColor || '#fffaf0';
+            ctx.font = `bold ${labelSize}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillText(label, 0, imgSize / 2 + 1);
+        }
 
         ctx.restore();
     },
@@ -431,6 +447,11 @@ const MayaKundli = {
         const start = performance.now();
 
         const renderFrame = (now) => {
+            if (!document.body.contains(canvas)) {
+                delete this._chartAnimationFrames[canvas.id];
+                return;
+            }
+
             const progress = this.clamp01((now - start) / duration);
             // Lines grow progressively: 0-40% of animation
             const lineProgress = this.easeOutCubic(this.clamp01(progress / 0.40));
@@ -446,11 +467,7 @@ const MayaKundli = {
                 pulse: now * 0.006
             });
 
-            if (progress < 1) {
-                this._chartAnimationFrames[canvas.id] = requestAnimationFrame(renderFrame);
-            } else {
-                delete this._chartAnimationFrames[canvas.id];
-            }
+            this._chartAnimationFrames[canvas.id] = requestAnimationFrame(renderFrame);
         };
 
         this._chartAnimationFrames[canvas.id] = requestAnimationFrame(renderFrame);
@@ -666,6 +683,7 @@ const MayaKundli = {
         const lineProgress = this.clamp01(frameState.lineProgress ?? 1);
         const labelOpacity = this.clamp01(frameState.labelOpacity ?? 1);
         const planetProgress = this.clamp01(frameState.planetProgress ?? 1);
+        const pulse = Number(frameState.pulse || 0);
 
         ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
@@ -735,7 +753,7 @@ const MayaKundli = {
         };
 
         const totalPlanetMarkers = Object.values(data.planetsByHouse || {}).reduce((count, planets = []) => {
-            return count + Math.min(planets.length, 2) + (planets.length > 2 ? 1 : 0);
+            return count + Math.min(planets.length, 3) + (planets.length > 3 ? 1 : 0);
         }, 0);
         let planetCursor = 0;
 
@@ -763,34 +781,44 @@ const MayaKundli = {
             }
             ctx.restore();
 
-            const planetBaseOffset = pos.y >= 82 ? -2 : (isAsc ? 12 : 5);
-            let planetY = point.y + planetBaseOffset;
-            housePlanets.slice(0, 2).forEach((planet) => {
+            const visiblePlanets = housePlanets.slice(0, 3);
+            const lowerHouse = pos.y >= 78;
+            const planetBaseY = point.y + (lowerHouse ? -2 : (isAsc ? 15 : 9));
+            const layoutOffsets = visiblePlanets.length <= 1
+                ? [{ x: 0, y: 0 }]
+                : visiblePlanets.length === 2
+                    ? [{ x: -11, y: 0 }, { x: 11, y: 0 }]
+                    : (lowerHouse
+                        ? [{ x: -12, y: 0 }, { x: 12, y: 0 }, { x: 0, y: -22 }]
+                        : [{ x: -12, y: 0 }, { x: 12, y: 0 }, { x: 0, y: 22 }]);
+
+            visiblePlanets.forEach((planet, localIndex) => {
                 planetCursor += 1;
                 const reveal = this.clamp01(planetProgress * Math.max(totalPlanetMarkers, 1) - (planetCursor - 1));
                 if (reveal <= 0) return;
-                const info = data.planetInfo[planet.name] || {};
-
-                ctx.save();
-                ctx.globalAlpha = reveal;
-                ctx.fillStyle = info.color || textColor;
-                ctx.font = '9px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(`${info.symbol || '•'} ${info.vedic || planet.name}`, point.x, planetY);
-                ctx.restore();
-                planetY += 11;
+                const offset = layoutOffsets[localIndex] || { x: 0, y: 0 };
+                this.drawPlanetGlyphBadge(
+                    ctx,
+                    planet,
+                    point.x + offset.x,
+                    planetBaseY + offset.y,
+                    reveal,
+                    pulse + localIndex * 0.75 + house * 0.13,
+                    { size: 18, labelSize: 6, labelColor: '#3a2408' }
+                );
             });
 
-            if (housePlanets.length > 2) {
+            if (housePlanets.length > 3) {
                 planetCursor += 1;
                 const reveal = this.clamp01(planetProgress * Math.max(totalPlanetMarkers, 1) - (planetCursor - 1));
                 if (reveal > 0) {
+                    const moreY = planetBaseY + (lowerHouse ? -29 : 29);
                     ctx.save();
                     ctx.globalAlpha = reveal;
                     ctx.fillStyle = mutedColor;
                     ctx.font = '8px Arial';
                     ctx.textAlign = 'center';
-                    ctx.fillText(`+${housePlanets.length - 2}`, point.x, planetY);
+                    ctx.fillText(`+${housePlanets.length - 3}`, point.x, moreY);
                     ctx.restore();
                 }
             }
@@ -819,6 +847,11 @@ const MayaKundli = {
         const start = performance.now();
 
         const renderFrame = (now) => {
+            if (!document.body.contains(canvas)) {
+                delete this._chartAnimationFrames[canvas.id];
+                return;
+            }
+
             const progress = this.clamp01((now - start) / duration);
             const lineProgress = this.easeOutCubic(this.clamp01(progress / 0.42));
             const labelOpacity = this.easeOutCubic(this.clamp01((progress - 0.25) / 0.25));
@@ -827,14 +860,11 @@ const MayaKundli = {
             this.renderNorthIndianCanvasFrame(ctx, data, {
                 lineProgress,
                 labelOpacity,
-                planetProgress
+                planetProgress,
+                pulse: now * 0.006
             });
 
-            if (progress < 1) {
-                this._chartAnimationFrames[canvas.id] = requestAnimationFrame(renderFrame);
-            } else {
-                delete this._chartAnimationFrames[canvas.id];
-            }
+            this._chartAnimationFrames[canvas.id] = requestAnimationFrame(renderFrame);
         };
 
         this._chartAnimationFrames[canvas.id] = requestAnimationFrame(renderFrame);
@@ -920,19 +950,21 @@ const MayaKundli = {
     /**
      * Generate basic birth chart data
      */
-    generateBirthChart(birthDate, birthTime, birthPlace, birthLat = null, birthLon = null) {
+    generateBirthChart(birthDate, birthTime, birthPlace, birthLat = null, birthLon = null, birthTimezone = null) {
         const resolvedContext = MayaAstrology.resolveBirthContext(birthDate, {
             birthTime,
             birthPlace,
             birthLat,
-            birthLon
+            birthLon,
+            birthTimezone
         });
         const resolvedTime = resolvedContext.birthTime && resolvedContext.birthTime !== 'unknown' ? resolvedContext.birthTime : '12:00';
         const latitude = Number.isFinite(Number(resolvedContext.birthLat)) ? Number(resolvedContext.birthLat) : 0;
         const longitude = Number.isFinite(Number(resolvedContext.birthLon)) ? Number(resolvedContext.birthLon) : 0;
-        const ascendant = MayaAstrology.calculateAscendant(birthDate, resolvedTime, latitude, longitude);
+        const timezone = Number.isFinite(Number(resolvedContext.birthTimezone)) ? Number(resolvedContext.birthTimezone) : null;
+        const ascendant = MayaAstrology.calculateAscendant(birthDate, resolvedTime, latitude, longitude, timezone);
         const planets = MayaAstrology.calculateBirthPlanets
-            ? MayaAstrology.calculateBirthPlanets(birthDate, resolvedTime, latitude, longitude)
+            ? MayaAstrology.calculateBirthPlanets(birthDate, resolvedTime, latitude, longitude, timezone)
             : MayaAstrology.getCurrentPlanets();
         
         return {
@@ -942,7 +974,8 @@ const MayaKundli = {
             birthTime: resolvedTime,
             birthPlace: birthPlace || resolvedContext.birthPlace || '',
             birthLat: latitude,
-            birthLon: longitude
+            birthLon: longitude,
+            birthTimezone: timezone
         };
     },
 
@@ -1647,6 +1680,8 @@ const MayaKundli = {
      * Render Kundli page - returns HTML string
      */
     async renderKundliPage(profile, isHindi = false) {
+        isHindi = false;
+
         if (!profile || !profile.birthDate) {
             return `
                 <div class="maya-page maya-kundli-page">
@@ -1671,7 +1706,8 @@ const MayaKundli = {
             birthTimeInput,
             profile.birthPlace || 'Unknown',
             profile.birthLat,
-            profile.birthLon
+            profile.birthLon,
+            profile.birthTimezone
         );
 
         const westernSign = MayaAstrology.getWesternZodiac(profile.birthDate)?.name || '';
@@ -1679,7 +1715,8 @@ const MayaKundli = {
             birthTime: birthTimeInput,
             birthPlace: profile.birthPlace || '',
             birthLat: profile.birthLat,
-            birthLon: profile.birthLon
+            birthLon: profile.birthLon,
+            birthTimezone: profile.birthTimezone
         })?.name || birthChart.planets.find((planet) => planet.name === 'Moon')?.sign?.name || '';
         
         const moonForDasha = birthChart.planets.find(p => p.name === 'Moon');

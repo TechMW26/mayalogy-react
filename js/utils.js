@@ -168,16 +168,20 @@ const MayaUtils = {
         async resolveBirthPlace(placeName, existing = {}) {
             const birthPlace = typeof placeName === 'string' ? placeName.trim() : '';
             if (!birthPlace) {
-                return { birthPlace: '', birthLat: null, birthLon: null, resolved: false };
+                return { birthPlace: '', birthLat: null, birthLon: null, birthTimezone: null, resolved: false };
             }
 
             const existingLat = Number(existing.birthLat ?? existing.lat);
             const existingLon = Number(existing.birthLon ?? existing.lon);
+            const existingTimezone = Number(existing.birthTimezone ?? existing.utcOffsetMinutes ?? existing.timezone);
             if (Number.isFinite(existingLat) && Number.isFinite(existingLon)) {
                 return {
                     birthPlace,
                     birthLat: existingLat,
                     birthLon: existingLon,
+                    birthTimezone: Number.isFinite(existingTimezone)
+                        ? existingTimezone
+                        : Math.max(-720, Math.min(840, Math.round(existingLon / 15) * 60)),
                     resolved: true,
                     source: 'existing'
                 };
@@ -204,6 +208,7 @@ const MayaUtils = {
                         birthPlace: match.display_name || birthPlace,
                         birthLat: Number.parseFloat(match.lat),
                         birthLon: Number.parseFloat(match.lon),
+                        birthTimezone: Math.max(-720, Math.min(840, Math.round(Number.parseFloat(match.lon) / 15) * 60)),
                         resolved: true,
                         source: 'lookup'
                     };
@@ -216,6 +221,7 @@ const MayaUtils = {
                 birthPlace,
                 birthLat: null,
                 birthLon: null,
+                birthTimezone: null,
                 resolved: false,
                 source: 'unresolved'
             };

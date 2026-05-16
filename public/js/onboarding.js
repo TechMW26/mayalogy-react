@@ -90,7 +90,7 @@ const MayaOnboarding = {
             type: 'select',
             options: [
                 { value: 'en', label: 'English', labelHi: 'English' },
-                { value: 'hi', label: 'हिन्दी (Hindi)', labelHi: 'हिन्दी (Hindi)' }
+                { value: 'hi', label: 'Hindi', labelHi: 'Hindi' }
             ],
             validation: (value) => ['en', 'hi'].includes(value)
         },
@@ -1720,13 +1720,15 @@ const MayaOnboarding = {
         let resolved = {
             birthPlace: this.userData.birthPlace || '',
             birthLat: Number.isFinite(Number(this.userData.birthLat)) ? Number(this.userData.birthLat) : null,
-            birthLon: Number.isFinite(Number(this.userData.birthLon)) ? Number(this.userData.birthLon) : null
+            birthLon: Number.isFinite(Number(this.userData.birthLon)) ? Number(this.userData.birthLon) : null,
+            birthTimezone: Number.isFinite(Number(this.userData.birthTimezone)) ? Number(this.userData.birthTimezone) : null
         };
         try {
             if (this.userData.birthPlace && window.MayaUtils?.location?.resolveBirthPlace) {
                 resolved = await MayaUtils.location.resolveBirthPlace(this.userData.birthPlace, {
                     birthLat: this.userData.birthLat,
-                    birthLon: this.userData.birthLon
+                    birthLon: this.userData.birthLon,
+                    birthTimezone: this.userData.birthTimezone
                 });
             }
         } catch (err) {
@@ -1745,6 +1747,7 @@ const MayaOnboarding = {
             birthPlace: resolved.birthPlace || this.userData.birthPlace,
             birthLat: Number.isFinite(resolved.birthLat) ? resolved.birthLat : null,
             birthLon: Number.isFinite(resolved.birthLon) ? resolved.birthLon : null,
+            birthTimezone: Number.isFinite(Number(resolved.birthTimezone)) ? Number(resolved.birthTimezone) : null,
             maritalStatus: this.userData.maritalStatus,
             language
         };
@@ -1884,7 +1887,8 @@ const MayaOnboarding = {
             <div class="location-suggestion" 
                  data-name="${loc.display_name}"
                  data-lat="${loc.lat}"
-                 data-lon="${loc.lon}">
+                 data-lon="${loc.lon}"
+                 data-timezone="${Math.max(-720, Math.min(840, Math.round(Number.parseFloat(loc.lon) / 15) * 60))}">
                 <i class="bi bi-geo-alt"></i>
                 ${loc.display_name}
             </div>
@@ -1898,6 +1902,7 @@ const MayaOnboarding = {
                 input.value = item.dataset.name;
                 this.userData.birthLat = parseFloat(item.dataset.lat);
                 this.userData.birthLon = parseFloat(item.dataset.lon);
+                this.userData.birthTimezone = Number.parseFloat(item.dataset.timezone);
             }
             suggestions.style.display = 'none';
         };
@@ -2140,17 +2145,20 @@ const MayaOnboarding = {
         let resolvedBirthPlace = {
             birthPlace: this.userData.birthPlace || '',
             birthLat: Number.isFinite(Number(this.userData.birthLat)) ? Number(this.userData.birthLat) : null,
-            birthLon: Number.isFinite(Number(this.userData.birthLon)) ? Number(this.userData.birthLon) : null
+            birthLon: Number.isFinite(Number(this.userData.birthLon)) ? Number(this.userData.birthLon) : null,
+            birthTimezone: Number.isFinite(Number(this.userData.birthTimezone)) ? Number(this.userData.birthTimezone) : null
         };
 
         if (this.userData.birthPlace) {
             resolvedBirthPlace = await MayaUtils.location.resolveBirthPlace(this.userData.birthPlace, {
                 birthLat: this.userData.birthLat,
-                birthLon: this.userData.birthLon
+                birthLon: this.userData.birthLon,
+                birthTimezone: this.userData.birthTimezone
             });
             this.userData.birthPlace = resolvedBirthPlace.birthPlace || this.userData.birthPlace;
             this.userData.birthLat = Number.isFinite(resolvedBirthPlace.birthLat) ? resolvedBirthPlace.birthLat : null;
             this.userData.birthLon = Number.isFinite(resolvedBirthPlace.birthLon) ? resolvedBirthPlace.birthLon : null;
+            this.userData.birthTimezone = Number.isFinite(Number(resolvedBirthPlace.birthTimezone)) ? Number(resolvedBirthPlace.birthTimezone) : null;
         }
 
         // Save birth details
@@ -2163,6 +2171,7 @@ const MayaOnboarding = {
             birthPlace: resolvedBirthPlace.birthPlace || this.userData.birthPlace,
             birthLat: Number.isFinite(resolvedBirthPlace.birthLat) ? resolvedBirthPlace.birthLat : null,
             birthLon: Number.isFinite(resolvedBirthPlace.birthLon) ? resolvedBirthPlace.birthLon : null,
+            birthTimezone: Number.isFinite(Number(resolvedBirthPlace.birthTimezone)) ? Number(resolvedBirthPlace.birthTimezone) : null,
             language: this.userData.language || MayaUtils.storage.get('maya_language') || 'en'
         };
 

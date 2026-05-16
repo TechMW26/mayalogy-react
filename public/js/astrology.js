@@ -1,7 +1,7 @@
 /**
  * MAYA - Astrology Calculator
  * Vedic and Western Astrology Calculations
- * Using IST (Indian Standard Time) for all calculations
+ * Uses local birth time converted to UTC, then Lahiri sidereal positions.
  */
 
 const MayaAstrology = {
@@ -49,6 +49,32 @@ const MayaAstrology = {
         return {};
     },
 
+    normalizeUtcOffsetMinutes(value) {
+        if (value == null || value === '') return null;
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            const offsetMatch = trimmed.match(/^([+-]?)(\d{1,2})(?::?(\d{2}))?$/);
+            if (offsetMatch) {
+                const sign = offsetMatch[1] === '-' ? -1 : 1;
+                const hours = Number.parseInt(offsetMatch[2], 10);
+                const minutes = Number.parseInt(offsetMatch[3] || '0', 10);
+                if (Number.isFinite(hours) && Number.isFinite(minutes)) {
+                    return sign * (hours * 60 + minutes);
+                }
+            }
+        }
+
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric)) return null;
+        return Math.abs(numeric) <= 16 ? numeric * 60 : numeric;
+    },
+
+    estimateTimezoneOffsetMinutes(longitude) {
+        const numericLongitude = Number(longitude);
+        if (!Number.isFinite(numericLongitude)) return 330;
+        return Math.max(-720, Math.min(840, Math.round(numericLongitude / 15) * 60));
+    },
+
     resolveBirthContext(birthDate, birthContext = {}) {
         const normalized = this.normalizeBirthContext(birthContext);
         const storedProfile = MayaUtils?.storage?.get('maya_profile') || {};
@@ -70,12 +96,28 @@ const MayaAstrology = {
         const explicitLon = Number(normalized.birthLon);
         const fallbackLat = canReuseStoredCoords ? Number(merged.birthLat) : Number.NaN;
         const fallbackLon = canReuseStoredCoords ? Number(merged.birthLon) : Number.NaN;
+        const explicitTimezone = this.normalizeUtcOffsetMinutes(
+            normalized.birthTimezone ?? normalized.utcOffsetMinutes ?? normalized.timezone
+        );
+        const fallbackTimezone = canReuseStoredCoords
+            ? this.normalizeUtcOffsetMinutes(merged.birthTimezone ?? merged.utcOffsetMinutes ?? merged.timezone)
+            : null;
+        const hasExplicitCoords = Number.isFinite(explicitLat) && Number.isFinite(explicitLon);
+        const hasFallbackCoords = Number.isFinite(fallbackLat) && Number.isFinite(fallbackLon);
+        const birthLat = Number.isFinite(explicitLat) ? explicitLat : (Number.isFinite(fallbackLat) ? fallbackLat : 0);
+        const birthLon = Number.isFinite(explicitLon) ? explicitLon : (Number.isFinite(fallbackLon) ? fallbackLon : 0);
+        const birthTimezone = Number.isFinite(explicitTimezone)
+            ? explicitTimezone
+            : (Number.isFinite(fallbackTimezone)
+                ? fallbackTimezone
+                : (hasExplicitCoords || hasFallbackCoords ? this.estimateTimezoneOffsetMinutes(birthLon) : 330));
 
         return {
             birthTime: merged.birthTime || '12:00',
             birthPlace: merged.birthPlace || '',
-            birthLat: Number.isFinite(explicitLat) ? explicitLat : (Number.isFinite(fallbackLat) ? fallbackLat : 0),
-            birthLon: Number.isFinite(explicitLon) ? explicitLon : (Number.isFinite(fallbackLon) ? fallbackLon : 0)
+            birthLat,
+            birthLon,
+            birthTimezone
         };
     },
 
@@ -192,12 +234,13 @@ const MayaAstrology = {
     /**
      * Build a concrete birth moment using the collected date and time.
      */
-    buildBirthMoment(birthDate, birthTime = '12:00') {
+    buildBirthMoment(birthDate, birthTime = '12:00', utcOffsetMinutes = 330) {
         const date = this.parseDate(birthDate);
         if (!date) return null;
 
         const { hours, minutes } = this.parseTimeParts(birthTime);
-        return new Date(
+        const offsetMinutes = this.normalizeUtcOffsetMinutes(utcOffsetMinutes) ?? 330;
+        const localBirthUtc = Date.UTC(
             date.getFullYear(),
             date.getMonth(),
             date.getDate(),
@@ -206,6 +249,7 @@ const MayaAstrology = {
             0,
             0
         );
+        return new Date(localBirthUtc - offsetMinutes * 60000);
     },
 
     /**
@@ -227,10 +271,10 @@ const MayaAstrology = {
             return null;
         }
 
-        let year = moment.getFullYear();
-        let month = moment.getMonth() + 1;
-        const day = moment.getDate()
-            + (moment.getHours() + moment.getMinutes() / 60 + moment.getSeconds() / 3600) / 24;
+        let year = moment.getUTCFullYear();
+        let month = moment.getUTCMonth() + 1;
+        const day = moment.getUTCDate()
+            + (moment.getUTCHours() + moment.getUTCMinutes() / 60 + moment.getUTCSeconds() / 3600) / 24;
 
         if (month <= 2) {
             year -= 1;
@@ -249,7 +293,8 @@ const MayaAstrology = {
 
     getLahiriAyanamsa(julianDay) {
         if (!Number.isFinite(julianDay)) return null;
-        return 23.85 + 0.0137 * ((julianDay - 2451545.0) / 365.25);
+        const tropicalCenturiesFrom1900 = (julianDay - 2415020.0) / 36525;
+        return 22.460148 + 1.396042 * tropicalCenturiesFrom1900 + 0.000087 * tropicalCenturiesFrom1900 * tropicalCenturiesFrom1900;
     },
 
     getTropicalSunLongitude(julianDay) {
@@ -296,8 +341,74 @@ const MayaAstrology = {
         return this.normalizeDegree(longitude);
     },
 
-    getSiderealLongitudes(birthDate, birthTime = '12:00') {
-        const moment = this.buildBirthMoment(birthDate, birthTime);
+    getAstronomyEngine() {
+        return (typeof window !== 'undefined' && window.Astronomy) ? window.Astronomy : null;
+    },
+
+    getTrueObliquity(julianDay) {
+        const T = (julianDay - 2451545.0) / 36525;
+        return 23.439291111 - 0.013004167 * T - 0.000000164 * T * T + 0.000000504 * T * T * T;
+    },
+
+    getGreenwichSiderealDegrees(moment, julianDay = this.getJulianDay(moment)) {
+        const astronomy = this.getAstronomyEngine();
+        if (astronomy?.SiderealTime) {
+            return this.normalizeDegree(astronomy.SiderealTime(moment) * 15);
+        }
+
+        const T = (julianDay - 2451545.0) / 36525;
+        return this.normalizeDegree(
+            280.46061837
+            + 360.98564736629 * (julianDay - 2451545.0)
+            + 0.000387933 * T * T
+            - (T * T * T) / 38710000
+        );
+    },
+
+    calculateMeanRahuLongitude(julianDay) {
+        const T = (julianDay - 2451545.0) / 36525;
+        const ayanamsa = this.getLahiriAyanamsa(julianDay);
+        const tropicalNode = 125.04455501
+            - 1934.1361849 * T
+            + 0.0020762 * T * T
+            + (T * T * T) / 467410
+            - (T * T * T * T) / 60616000;
+        return this.normalizeDegree(tropicalNode - ayanamsa);
+    },
+
+    calculateSiderealLongitudeFromEngine(bodyName, moment) {
+        const astronomy = this.getAstronomyEngine();
+        const julianDay = this.getJulianDay(moment);
+        const ayanamsa = this.getLahiriAyanamsa(julianDay);
+        if (!astronomy || !Number.isFinite(julianDay) || !Number.isFinite(ayanamsa)) return null;
+
+        if (bodyName === 'Rahu') return this.calculateMeanRahuLongitude(julianDay);
+        if (bodyName === 'Ketu') return this.normalizeDegree(this.calculateMeanRahuLongitude(julianDay) + 180);
+
+        try {
+            let tropicalLongitude = null;
+            if (bodyName === 'Sun' && astronomy.SunPosition) {
+                tropicalLongitude = astronomy.SunPosition(moment).elon;
+            } else if (bodyName === 'Moon' && astronomy.EclipticGeoMoon) {
+                tropicalLongitude = astronomy.EclipticGeoMoon(moment).lon;
+            } else if (astronomy.GeoVector && astronomy.Ecliptic) {
+                const body = astronomy.Body?.[bodyName] || bodyName;
+                const vector = astronomy.GeoVector(body, moment, true);
+                tropicalLongitude = astronomy.Ecliptic(vector).elon;
+            }
+
+            return Number.isFinite(tropicalLongitude)
+                ? this.normalizeDegree(tropicalLongitude - ayanamsa)
+                : null;
+        } catch (error) {
+            console.warn(`Astronomy Engine longitude failed for ${bodyName}:`, error.message);
+            return null;
+        }
+    },
+
+    getSiderealLongitudes(birthDate, birthContext = '12:00') {
+        const context = this.resolveBirthContext(birthDate, birthContext);
+        const moment = this.buildBirthMoment(birthDate, context.birthTime, context.birthTimezone);
         if (!moment) {
             return { sunLongitude: null, moonLongitude: null, julianDay: null };
         }
@@ -308,10 +419,22 @@ const MayaAstrology = {
             return { sunLongitude: null, moonLongitude: null, julianDay: null };
         }
 
+        const engineSun = this.calculateSiderealLongitudeFromEngine('Sun', moment);
+        const engineMoon = this.calculateSiderealLongitudeFromEngine('Moon', moment);
+        if (Number.isFinite(engineSun) && Number.isFinite(engineMoon)) {
+            return {
+                julianDay,
+                sunLongitude: engineSun,
+                moonLongitude: engineMoon,
+                source: 'astronomy-engine-lahiri'
+            };
+        }
+
         return {
             julianDay,
             sunLongitude: this.normalizeDegree(this.getTropicalSunLongitude(julianDay) - ayanamsa),
-            moonLongitude: this.normalizeDegree(this.getTropicalMoonLongitude(julianDay) - ayanamsa)
+            moonLongitude: this.normalizeDegree(this.getTropicalMoonLongitude(julianDay) - ayanamsa),
+            source: 'fallback-lahiri'
         };
     },
 
@@ -385,14 +508,14 @@ const MayaAstrology = {
         try {
             if (!birthDate) return null;
 
-            const { birthTime, birthLat, birthLon } = this.resolveBirthContext(birthDate, birthContext);
-            const { moonLongitude } = this.getSiderealLongitudes(birthDate, birthTime);
+            const { birthTime, birthLat, birthLon, birthTimezone } = this.resolveBirthContext(birthDate, birthContext);
+            const { moonLongitude } = this.getSiderealLongitudes(birthDate, { birthTime, birthLat, birthLon, birthTimezone });
 
             if (Number.isFinite(moonLongitude) && MAYA_CONFIG?.ZODIAC?.SIGNS?.length) {
                 return MAYA_CONFIG.ZODIAC.SIGNS[Math.floor(moonLongitude / 30) % 12];
             }
 
-            const moonPlanet = this.calculateBirthPlanets(birthDate, birthTime, birthLat, birthLon)
+            const moonPlanet = this.calculateBirthPlanets(birthDate, birthTime, birthLat, birthLon, birthTimezone)
                 .find((planet) => planet.name === 'Moon');
 
             if (moonPlanet?.sign?.name) {
@@ -874,49 +997,90 @@ const MayaAstrology = {
     },
 
     /**
-     * Calculate ascendant/rising sign (simplified)
+     * Calculate sidereal ascendant/rising sign using local sidereal time.
      */
-    calculateAscendant(birthDate, birthTime = '12:00', latitude = 0, longitude = 0) {
-        const moment = this.buildBirthMoment(birthDate, birthTime);
+    calculateAscendant(birthDate, birthTime = '12:00', latitude = 0, longitude = 0, utcOffsetMinutes = null) {
+        const context = this.resolveBirthContext(birthDate, {
+            birthTime,
+            birthLat: latitude,
+            birthLon: longitude,
+            birthTimezone: utcOffsetMinutes
+        });
+        const moment = this.buildBirthMoment(birthDate, context.birthTime, context.birthTimezone);
         if (!moment || !MAYA_CONFIG?.ZODIAC?.SIGNS?.length) {
             return MAYA_CONFIG?.ZODIAC?.SIGNS?.[0] || null;
         }
 
-        const normalizedLatitude = Number.isFinite(Number(latitude)) ? Number(latitude) : 0;
-        const normalizedLongitude = Number.isFinite(Number(longitude)) ? Number(longitude) : 0;
+        const julianDay = this.getJulianDay(moment);
+        const ayanamsa = this.getLahiriAyanamsa(julianDay);
+        if (!Number.isFinite(julianDay) || !Number.isFinite(ayanamsa)) {
+            return MAYA_CONFIG.ZODIAC.SIGNS[0];
+        }
 
-        const startOfYear = new Date(moment.getFullYear(), 0, 0);
-        const dayOfYear = (moment - startOfYear) / (1000 * 60 * 60 * 24);
-        const hours = moment.getHours() + moment.getMinutes() / 60;
-
-        // Approximate local sidereal time using longitude and seasonal drift.
-        const daysSinceJ2000 = (moment.getTime() - Date.UTC(2000, 0, 1, 12, 0, 0)) / 86400000;
-        const greenwichSidereal = 18.697374558 + 24.06570982441908 * daysSinceJ2000;
-        const localSidereal = this.normalizeHour(greenwichSidereal + normalizedLongitude / 15 + hours * 0.041);
-
-        const seasonalTilt = Math.sin((dayOfYear / 365.25) * Math.PI * 2) * 4.5;
-        const ascDegree = this.normalizeDegree(localSidereal * 15 + seasonalTilt + normalizedLatitude * 0.38);
-        const signIndex = Math.floor(ascDegree / 30) % 12;
+        const normalizedLatitude = Math.max(-89.5, Math.min(89.5, Number(context.birthLat) || 0));
+        const normalizedLongitude = Number(context.birthLon) || 0;
+        const localSiderealDegrees = this.normalizeDegree(this.getGreenwichSiderealDegrees(moment, julianDay) + normalizedLongitude);
+        const obliquity = this.getTrueObliquity(julianDay) * Math.PI / 180;
+        const theta = localSiderealDegrees * Math.PI / 180;
+        const phi = normalizedLatitude * Math.PI / 180;
+        const ascTropical = this.normalizeDegree(
+            Math.atan2(-Math.cos(theta), Math.sin(theta) * Math.cos(obliquity) + Math.tan(phi) * Math.sin(obliquity)) * 180 / Math.PI
+        );
+        const ascSidereal = this.normalizeDegree(ascTropical - ayanamsa);
+        const signIndex = Math.floor(ascSidereal / 30) % 12;
 
         return MAYA_CONFIG.ZODIAC.SIGNS[signIndex];
     },
 
+    calculateBirthPlanetsWithAstronomy(moment, isApproximate = false) {
+        if (!this.getAstronomyEngine() || !MAYA_CONFIG?.PLANETS?.LIST?.length || !MAYA_CONFIG?.ZODIAC?.SIGNS?.length) {
+            return null;
+        }
+
+        const planets = MAYA_CONFIG.PLANETS.LIST.map((planet) => {
+            const absoluteDegree = this.calculateSiderealLongitudeFromEngine(planet.name, moment);
+            if (!Number.isFinite(absoluteDegree)) return null;
+            const signIndex = Math.floor(absoluteDegree / 30) % 12;
+            return {
+                ...planet,
+                sign: MAYA_CONFIG.ZODIAC.SIGNS[signIndex],
+                degree: Number((absoluteDegree % 30).toFixed(1)),
+                absoluteDegree: Number(absoluteDegree.toFixed(1)),
+                isApproximate,
+                calculationSource: 'astronomy-engine-lahiri'
+            };
+        });
+
+        return planets.every(Boolean) ? planets : null;
+    },
+
     /**
-     * Approximate planetary positions for a user's birth chart.
-     * This is not ephemeris-grade astronomy, but it is user-derived and stable.
+     * Calculate planetary positions for a user's birth chart.
+     * Uses Astronomy Engine when loaded, with the older approximation as fallback.
      */
-    calculateBirthPlanets(birthDate, birthTime = '12:00', latitude = 0, longitude = 0) {
-        const moment = this.buildBirthMoment(birthDate, birthTime);
+    calculateBirthPlanets(birthDate, birthTime = '12:00', latitude = 0, longitude = 0, utcOffsetMinutes = null) {
+        const context = this.resolveBirthContext(birthDate, {
+            birthTime,
+            birthLat: latitude,
+            birthLon: longitude,
+            birthTimezone: utcOffsetMinutes
+        });
+        const moment = this.buildBirthMoment(birthDate, context.birthTime, context.birthTimezone);
         if (!moment || !MAYA_CONFIG?.PLANETS?.LIST?.length) {
             return this.getCurrentPlanets();
         }
 
+        const precisePlanets = this.calculateBirthPlanetsWithAstronomy(moment, false);
+        if (precisePlanets?.length) {
+            return precisePlanets;
+        }
+
         const epoch = new Date(Date.UTC(2000, 0, 1, 12, 0, 0));
         const daysSinceEpoch = (moment.getTime() - epoch.getTime()) / 86400000;
-        const { hours, minutes, isApproximate } = this.parseTimeParts(birthTime);
+        const { hours, minutes, isApproximate } = this.parseTimeParts(context.birthTime);
         const timeFactor = (hours + minutes / 60) / 24;
-        const geoOffset = (Number(latitude) || 0) * 0.03 + (Number(longitude) || 0) * 0.015;
-        const siderealLongitudes = this.getSiderealLongitudes(birthDate, birthTime);
+        const geoOffset = (Number(context.birthLat) || 0) * 0.03 + (Number(context.birthLon) || 0) * 0.015;
+        const siderealLongitudes = this.getSiderealLongitudes(birthDate, context);
 
         const orbitalProfiles = {
             Sun: { period: 365.256, baseLongitude: 280.466, timeSensitivity: 0.18, geoSensitivity: 0.08 },
@@ -931,6 +1095,7 @@ const MayaAstrology = {
         };
 
         let rahuLongitude = null;
+        const meanRahuLongitude = this.calculateMeanRahuLongitude(siderealLongitudes.julianDay);
 
         return MAYA_CONFIG.PLANETS.LIST.map((planet) => {
             const profile = orbitalProfiles[planet.name];
@@ -953,6 +1118,9 @@ const MayaAstrology = {
                         orbitalProfiles.Rahu.baseLongitude - daysSinceEpoch * (360 / orbitalProfiles.Rahu.period)
                     );
                 absoluteDegree = this.normalizeDegree(baseRahu + profile.offset);
+            } else if (planet.name === 'Rahu' && Number.isFinite(meanRahuLongitude)) {
+                absoluteDegree = meanRahuLongitude;
+                rahuLongitude = absoluteDegree;
             } else if (planet.name === 'Sun' && Number.isFinite(siderealLongitudes.sunLongitude)) {
                 absoluteDegree = siderealLongitudes.sunLongitude;
             } else if (planet.name === 'Moon' && Number.isFinite(siderealLongitudes.moonLongitude)) {
@@ -1010,12 +1178,19 @@ const MayaAstrology = {
      * Get complete astrological profile
      */
     getCompleteProfile(fullName, birthDate, birthTime, birthPlace) {
+        const birthContext = this.resolveBirthContext(birthDate, { birthTime, birthPlace });
         const western = this.getWesternZodiac(birthDate);
-        const vedic = this.getVedicZodiac(birthDate, { birthTime });
+        const vedic = this.getVedicZodiac(birthDate, birthContext);
         const chinese = this.getChineseZodiac(birthDate);
         const personality = this.getPersonalityTraits(western.name);
         const dailyTraits = this.getDailyTraits(western.name);
-        const ascendant = this.calculateAscendant(birthDate, birthTime);
+        const ascendant = this.calculateAscendant(
+            birthDate,
+            birthContext.birthTime,
+            birthContext.birthLat,
+            birthContext.birthLon,
+            birthContext.birthTimezone
+        );
 
         return {
             name: fullName,

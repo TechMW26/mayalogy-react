@@ -6,6 +6,8 @@
 const MayaAI = {
     conversationHistory: [],
     currentProvider: 'gemini',
+    groqUnavailableUntil: 0,
+    groqUnavailableReason: '',
 
     normalizeUserData(userData = {}) {
         const storedProfile = MayaUtils?.storage?.get('maya_profile') || {};
@@ -16,6 +18,7 @@ const MayaAI = {
         const birthPlace = userData.birthPlace || storedProfile.birthPlace || storedFunnelData.birthPlace || '';
         const birthLat = userData.birthLat ?? storedProfile.birthLat ?? storedFunnelData.birthLat ?? null;
         const birthLon = userData.birthLon ?? storedProfile.birthLon ?? storedFunnelData.birthLon ?? null;
+        const birthTimezone = userData.birthTimezone ?? storedProfile.birthTimezone ?? storedFunnelData.birthTimezone ?? null;
         const gender = userData.gender || storedProfile.gender || storedFunnelData.gender || '';
         const language = userData.language || storedProfile.language || storedFunnelData.language || 'en';
 
@@ -30,6 +33,7 @@ const MayaAI = {
             birthPlace,
             birthLat,
             birthLon,
+            birthTimezone,
             gender,
             language
         };
@@ -216,6 +220,10 @@ const MayaAI = {
             ? this.conversationHistory[this.conversationHistory.length - 1]?.content || message
             : message;
 
+        if (options.provider === 'gemini' || options.preferGemini || options.requireComplete || this._shouldSkipGroqForRequest(systemPrompt, userMessage, options)) {
+            return this.callGemini(message, { ...options, provider: 'gemini', timeoutMs: 0 });
+        }
+
         const groqResult = await this._callGroqProvider(systemPrompt, userMessage, includeHistory, options);
         if (groqResult) {
             this.currentProvider = 'groq';
@@ -226,11 +234,36 @@ const MayaAI = {
             throw new Error('Groq fast provider failed');
         }
 
-        return this.callGemini(message, options);
+        return this.callGemini(message, { ...options, provider: 'gemini', timeoutMs: 0 });
     },
 
     _getGroqApiKey() {
         return String(MAYA_CONFIG.API_KEYS.GROQ || '').trim();
+    },
+
+    _isGroqTemporarilyUnavailable() {
+        return Date.now() < this.groqUnavailableUntil;
+    },
+
+    _markGroqTemporarilyUnavailable(reason, cooldownMs = 90000) {
+        this.groqUnavailableReason = reason || 'Groq fast lane temporarily unavailable';
+        this.groqUnavailableUntil = Date.now() + cooldownMs;
+    },
+
+    _shouldSkipGroqForRequest(systemPrompt = '', userMessage = '', options = {}) {
+        if (this._isGroqTemporarilyUnavailable()) return true;
+        const contextMessages = Array.isArray(options.contextMessages) ? options.contextMessages : [];
+        const contextLength = contextMessages.reduce((total, msg) => total + String(msg?.content || msg?.text || '').length, 0);
+        const promptLength = String(systemPrompt || '').length + String(userMessage || '').length + contextLength;
+        return promptLength > 5200 || Number(options.maxTokens || 0) > 1200 || options.timeoutMs === 0 || options.noTimeout === true;
+    },
+
+    async _withOptionalTimeout(promise, timeoutMs, label) {
+        const numericTimeout = Number(timeoutMs);
+        if (Number.isFinite(numericTimeout) && numericTimeout > 0) {
+            return MayaUtils.withTimeout(promise, numericTimeout, label);
+        }
+        return promise;
     },
 
     _getGeminiApiKeys() {
@@ -251,6 +284,7 @@ const MayaAI = {
     async _callGroqProvider(systemPrompt, userMessage, includeHistory = false, options = {}) {
         const apiKey = this._getGroqApiKey();
         if (!apiKey) return null;
+        if (this._isGroqTemporarilyUnavailable()) return null;
 
         const models = MAYA_CONFIG.GROQ_MODELS || ['llama-3.1-8b-instant'];
         const endpoint = MAYA_CONFIG.ENDPOINTS.GROQ || 'https://api.groq.com/openai/v1/chat/completions';
@@ -277,7 +311,7 @@ const MayaAI = {
         for (const model of models) {
             try {
                 console.log(`⚡ Calling Groq fast model: ${model}...`);
-                const response = await MayaUtils.withTimeout(
+                const response = await this._withOptionalTimeout(
                     fetch(endpoint, {
                         method: 'POST',
                         headers: {
@@ -292,7 +326,7 @@ const MayaAI = {
                             max_tokens: options?.maxTokens || 900
                         })
                     }),
-                    options?.timeoutMs || 12000,
+                    options?.timeoutMs ?? 12000,
                     `Groq ${model}`
                 );
 
@@ -307,9 +341,15 @@ const MayaAI = {
                     continue;
                 }
 
+                if (response.status === 413) {
+                    this._markGroqTemporarilyUnavailable(`Groq ${model} request too large`, 120000);
+                    console.warn(`⚠️ Groq ${model} request too large (${response.status}); using Gemini instead.`);
+                    return null;
+                }
                 if (response.status === 429 || response.status === 503) {
-                    console.warn(`⚠️ Groq ${model} rate-limited/overloaded (${response.status}), trying next...`);
-                    continue;
+                    this._markGroqTemporarilyUnavailable(`Groq ${model} rate-limited/overloaded`, 90000);
+                    console.warn(`⚠️ Groq ${model} rate-limited/overloaded (${response.status}); using Gemini instead.`);
+                    return null;
                 }
                 if (response.status === 400 || response.status === 404) {
                     const errBody = await response.text();
@@ -372,15 +412,18 @@ const MayaAI = {
 
         const generationConfig = {
             temperature: options?.temperature ?? 0.85,
-            topP: options?.topP ?? 0.95,
-            maxOutputTokens: options?.maxTokens || 8192
+            topP: options?.topP ?? 0.95
         };
+        const requestedMaxTokens = Number(options?.maxTokens || 0);
+        if (Number.isFinite(requestedMaxTokens) && requestedMaxTokens > 0) {
+            generationConfig.maxOutputTokens = requestedMaxTokens;
+        }
 
         for (const apiKey of apiKeys) {
             for (const model of models) {
                 try {
                     console.log(`⚡ Calling Gemini model: ${model}...`);
-                    const response = await MayaUtils.withTimeout(
+                    const response = await this._withOptionalTimeout(
                         fetch(`${baseUrl}/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -390,7 +433,7 @@ const MayaAI = {
                                 generationConfig
                             })
                         }),
-                        25000,
+                        options?.timeoutMs ?? 0,
                         `Gemini ${model}`
                     );
 
@@ -488,7 +531,8 @@ const MayaAI = {
                     normalizedUser.birthTime,
                     normalizedUser.birthPlace,
                     normalizedUser.birthLat,
-                    normalizedUser.birthLon
+                    normalizedUser.birthLon,
+                    normalizedUser.birthTimezone
                 );
                 chartSummary = MayaKundli.summarizeBirthChart(birthChart) || {};
             }

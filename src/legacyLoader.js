@@ -1,4 +1,4 @@
-const BUILD_STAMP = '20260505a-review';
+const BUILD_STAMP = '20260516b-kundli-ai';
 
 const SCRIPT_SOURCES = [
   { src: 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js', optional: true },
@@ -10,6 +10,7 @@ const SCRIPT_SOURCES = [
   { src: `/js/i18n.js?v=${BUILD_STAMP}` },
   { src: `/js/musicPlayer.js?v=${BUILD_STAMP}` },
   { src: `/js/numerology.js?v=${BUILD_STAMP}` },
+  { src: `/js/vendor/astronomy.browser.min.js?v=${BUILD_STAMP}` },
   { src: `/js/astrology.js?v=${BUILD_STAMP}` },
   { src: `/js/kundli.js?v=${BUILD_STAMP}` },
   { src: `/js/lalkitab-knowledge.js?v=${BUILD_STAMP}` },

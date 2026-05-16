@@ -663,6 +663,20 @@ const MayaVoice = {
             'details': 'जानकारी',
             'guide': 'गाइड',
             'astrology': 'ज्योतिष',
+            'promotion': 'प्रमोशन',
+            'promotions': 'प्रमोशन',
+            'promote': 'प्रोमोट',
+            'promoted': 'प्रोमोट',
+            'appraisal': 'अप्रेज़ल',
+            'increment': 'इन्क्रीमेंट',
+            'salary': 'सैलरी',
+            'raise': 'रेज़',
+            'manager': 'मैनेजर',
+            'boss': 'बॉस',
+            'office': 'ऑफिस',
+            'company': 'कंपनी',
+            'team': 'टीम',
+            'project': 'प्रोजेक्ट',
             'ank': 'अंक',
         };
         let result = text;
@@ -796,16 +810,91 @@ const MayaVoice = {
             .trim();
     },
 
+    stripTtsControlTags(rawText) {
+        return String(rawText || '')
+            .replace(/\[\[\s*pause\s*[-:]?\s*(\d{0,5})\s*(?:ms)?\s*\]\]/gi, (_, ms) => Number(ms || 0) >= 500 ? '. ' : ', ')
+            .replace(/\[\[\s*pause[^\]]*\]\]/gi, ', ')
+            .replace(/\[(?:long\s+)?pause\]/gi, ', ')
+            .replace(/\[(?:warm|curious|thoughtful|softly|gentle smile|smile|reassuring|whispers?|excited|empathetic|calm|sighs?|exhales?|laughs?|chuckles|intrigued|mysterious|dramatic|intimate|slowly|quickly|hesitant|confident|gasps?|breathes?|nervous|relieved|serious|kindly)\]\s*/gi, '')
+            .replace(/<\/?(?:break|speak|prosody|emphasis|voice|amazon:[^>\s]+)(?:\s+[^>]*)?>/gi, ' ')
+            .replace(/\[[a-z][a-z\s_-]{1,40}\]\s*/gi, '')
+            .replace(/\s+([,.!?;:।])/g, '$1')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+    },
+
+    normalizeEnglishPronunciationTerms(text) {
+        const replacements = [
+            ['ElevenLabs', 'Eleven Labs'],
+            ['Mayalogy', 'Maa yaa low jee'],
+            ['Ask Maya', 'Ask Maa yaa'],
+            ['MAYA', 'Maa yaa'],
+            ['Maya', 'Maa yaa'],
+            ['Gemini', 'Jem in eye'],
+            ['Groq', 'Grock'],
+            ['WhatsApp', 'Whats App'],
+            ['YouTube', 'You Tube'],
+            ['kundali', 'koon dlee'],
+            ['kundli', 'koon dlee'],
+            ['rashis', 'raa shees'],
+            ['rashi', 'raa shee'],
+            ['lagna', 'lug nuh'],
+            ['nakshatra', 'nuck shut ruh'],
+            ['nakshatras', 'nuck shut ruhs'],
+            ['mahādasha', 'mahaa duh shaa'],
+            ['mahadasha', 'mahaa duh shaa'],
+            ['antardasha', 'un ter duh shaa'],
+            ['dasha', 'duh shaa'],
+            ['ayanamsa', 'eye uh nahm shuh'],
+            ['Lahiri', 'Laa hee ree'],
+            ['jyotish', 'jyoh tish'],
+            ['Vedic', 'Vay dic'],
+            ['Lal Kitab', 'Laal Ki taab'],
+            ['Rahu', 'Raa hoo'],
+            ['Ketu', 'Kay too'],
+            ['Shani', 'Shuh nee'],
+            ['Mangal', 'Mun gul'],
+            ['Budha', 'Boo dhuh'],
+            ['Budh', 'Boodh'],
+            ['Shukra', 'Shook ruh'],
+            ['Surya', 'Soor yuh'],
+            ['Chandra', 'Chun druh'],
+            ['Brihaspati', 'Bree hus puh tee'],
+            ['Mesha', 'May shuh'],
+            ['Vrishabha', 'Vri shubh uh'],
+            ['Mithuna', 'Mi thoo nuh'],
+            ['Karka', 'Kur kuh'],
+            ['Simha', 'Sim huh'],
+            ['Kanya', 'Kun yaa'],
+            ['Tula', 'Too laa'],
+            ['Vrishchika', 'Vrish chi kuh'],
+            ['Dhanu', 'Dhaa noo'],
+            ['Makara', 'Muh kur uh'],
+            ['Kumbha', 'Koom bhuh'],
+            ['Meena', 'Mee naa'],
+            ['Porsche', 'Por shuh'],
+            ['appraisal', 'uh pray zul'],
+            ['increment', 'in kruh ment'],
+            ['EMI', 'E M I'],
+            ['OTP', 'O T P'],
+            ['API', 'A P I'],
+            ['TTS', 'T T S'],
+            ['MCQ', 'M C Q'],
+            ['AI', 'A I'],
+            ['UI', 'U I']
+        ];
+
+        return replacements
+            .sort((left, right) => right[0].length - left[0].length)
+            .reduce((result, [term, spoken]) => {
+                return result.replace(new RegExp(`\\b${this.escapeRegExp(term)}\\b`, 'gi'), spoken);
+            }, String(text || ''));
+    },
+
     forceHindiSpeechDevanagari(text) {
         if (!text) return '';
 
-        const tagPattern = /\[(?:warm|curious|thoughtful|softly|gentle smile|smile|pause|long pause|reassuring|whispers?|excited|empathetic|calm|sighs?|exhales?|laughs?|chuckles|intrigued|mysterious|dramatic|intimate|slowly|quickly|hesitant|confident|gasps?)\]/gi;
-        const protectedTags = [];
-        let result = String(text).replace(tagPattern, (tag) => {
-            const token = `\uE000${protectedTags.length}\uE001`;
-            protectedTags.push(tag);
-            return token;
-        });
+        let result = this.stripTtsControlTags(text);
 
         const phraseMap = [
             ['Life Path Number', 'लाइफ पाथ अंक'],
@@ -818,6 +907,10 @@ const MayaVoice = {
             ['Personal Year', 'पर्सनल ईयर'],
             ['Ask Maya', 'आस्क माया'],
             ['WhatsApp', 'व्हाट्सऐप'],
+            ['Gemini AI', 'जेमिनी एआई'],
+            ['Gemini API', 'जेमिनी एपीआई'],
+            ['Gemini model', 'जेमिनी मॉडल'],
+            ['Gemini key', 'जेमिनी key'],
             ['real life', 'असल जीवन'],
             ['real-life', 'असल जीवन'],
             ['current situation', 'मौजूदा स्थिति'],
@@ -828,6 +921,30 @@ const MayaVoice = {
             ['birth chart', 'जन्म कुंडली'],
             ['chart', 'कुंडली'],
             ['kundli', 'कुंडली'],
+            ['Aries rashi', 'मेष राशि'],
+            ['Taurus rashi', 'वृषभ राशि'],
+            ['Gemini rashi', 'मिथुन राशि'],
+            ['Cancer rashi', 'कर्क राशि'],
+            ['Leo rashi', 'सिंह राशि'],
+            ['Virgo rashi', 'कन्या राशि'],
+            ['Libra rashi', 'तुला राशि'],
+            ['Scorpio rashi', 'वृश्चिक राशि'],
+            ['Sagittarius rashi', 'धनु राशि'],
+            ['Capricorn rashi', 'मकर राशि'],
+            ['Aquarius rashi', 'कुंभ राशि'],
+            ['Pisces rashi', 'मीन राशि'],
+            ['Aries', 'मेष'],
+            ['Taurus', 'वृषभ'],
+            ['Gemini', 'मिथुन'],
+            ['Cancer', 'कर्क'],
+            ['Leo', 'सिंह'],
+            ['Virgo', 'कन्या'],
+            ['Libra', 'तुला'],
+            ['Scorpio', 'वृश्चिक'],
+            ['Sagittarius', 'धनु'],
+            ['Capricorn', 'मकर'],
+            ['Aquarius', 'कुंभ'],
+            ['Pisces', 'मीन'],
             ['reading', 'रीडिंग'],
             ['numbers', 'अंक'],
             ['number', 'अंक'],
@@ -853,6 +970,26 @@ const MayaVoice = {
             ['profile', 'प्रोफाइल'],
             ['file', 'फाइल'],
             ['save', 'सेव'],
+            ['salary hike', 'सैलरी हाइक'],
+            ['salary raise', 'सैलरी रेज़'],
+            ['promotion', 'प्रमोशन'],
+            ['promotions', 'प्रमोशन'],
+            ['promote', 'प्रोमोट'],
+            ['promoted', 'प्रोमोट'],
+            ['for promotion', 'प्रमोशन के लिए'],
+            ['for appraisal', 'अप्रेज़ल के लिए'],
+            ['for career', 'करियर के लिए'],
+            ['for marriage', 'शादी के लिए'],
+            ['appraisal', 'अप्रेज़ल'],
+            ['increment', 'इन्क्रीमेंट'],
+            ['salary', 'सैलरी'],
+            ['raise', 'रेज़'],
+            ['manager', 'मैनेजर'],
+            ['boss', 'बॉस'],
+            ['office', 'ऑफिस'],
+            ['company', 'कंपनी'],
+            ['team', 'टीम'],
+            ['project', 'प्रोजेक्ट'],
             ['login', 'लॉगिन'],
             ['password', 'पासवर्ड'],
             ['email', 'ईमेल'],
@@ -860,7 +997,103 @@ const MayaVoice = {
             ['MCQ', 'एमसीक्यू'],
             ['TTS', 'टीटीएस'],
             ['OTP', 'ओटीपी'],
-            ['API', 'एपीआई']
+            ['API', 'एपीआई'],
+            ['ElevenLabs', 'इलेवन लैब्स'],
+            ['Mayalogy', 'मायालॉजी'],
+            ['Gemini', 'जेमिनी'],
+            ['Groq', 'ग्रॉक'],
+            ['Google', 'गूगल'],
+            ['YouTube', 'यूट्यूब'],
+            ['Porsche', 'पोर्शा'],
+            ['Appraisal pending', 'अप्रेज़ल पेंडिंग'],
+            ['Manager support', 'मैनेजर सपोर्ट'],
+            ['Performance strong', 'परफॉर्मेंस स्ट्रॉन्ग'],
+            ['Future together', 'फ्यूचर साथ में'],
+            ['Trust issue', 'ट्रस्ट इशू'],
+            ['Ongoing confusion', 'चलती हुई कन्फ्यूज़न'],
+            ['Job growth stuck', 'जॉब ग्रोथ रुकी'],
+            ['Direction unclear', 'डायरेक्शन क्लियर नहीं'],
+            ['Business or job', 'बिज़नेस या जॉब'],
+            ['Income timing', 'इनकम टाइमिंग'],
+            ['Savings leak', 'सेविंग्स लीक'],
+            ['Investment doubt', 'इन्वेस्टमेंट डाउट'],
+            ['Low energy', 'कम ऊर्जा'],
+            ['Stress and sleep', 'स्ट्रेस और नींद'],
+            ['Check-up concern', 'चेकअप कन्सर्न'],
+            ['Exam result', 'एग्ज़ाम रिज़ल्ट'],
+            ['Course confusion', 'कोर्स कन्फ्यूज़न'],
+            ['Family pressure', 'फैमिली प्रेशर'],
+            ['Parents tension', 'पैरेंट्स से टेंशन'],
+            ['Home environment', 'घर का माहौल'],
+            ['Sibling issue', 'सिब्लिंग इशू'],
+            ['Move abroad', 'अब्रॉड जाना'],
+            ['Visa delay', 'वीज़ा डिले'],
+            ['Travel timing', 'ट्रैवल टाइमिंग'],
+            ['Saving right now', 'अभी सेविंग'],
+            ['Loan planning', 'लोन प्लानिंग'],
+            ['Family decision pending', 'फैमिली डिसीज़न पेंडिंग'],
+            ['Career timing', 'करियर टाइमिंग'],
+            ['Relationship timing', 'रिलेशनशिप टाइमिंग'],
+            ['Big change', 'बड़ा बदलाव'],
+            ['Clear timing', 'क्लियर टाइमिंग'],
+            ['Partner nature', 'पार्टनर नेचर'],
+            ['Reason for delay', 'डिले का कारण'],
+            ['pending', 'पेंडिंग'],
+            ['support', 'सपोर्ट'],
+            ['strong', 'स्ट्रॉन्ग'],
+            ['future', 'फ्यूचर'],
+            ['together', 'साथ में'],
+            ['trust', 'ट्रस्ट'],
+            ['issue', 'इशू'],
+            ['growth', 'ग्रोथ'],
+            ['stuck', 'रुका'],
+            ['direction', 'डायरेक्शन'],
+            ['unclear', 'क्लियर नहीं'],
+            ['business', 'बिज़नेस'],
+            ['job', 'जॉब'],
+            ['income', 'इनकम'],
+            ['saving', 'सेविंग'],
+            ['savings', 'सेविंग्स'],
+            ['leak', 'लीक'],
+            ['investment', 'इन्वेस्टमेंट'],
+            ['doubt', 'डाउट'],
+            ['low', 'कम'],
+            ['stress', 'स्ट्रेस'],
+            ['sleep', 'नींद'],
+            ['check-up', 'चेकअप'],
+            ['checkup', 'चेकअप'],
+            ['concern', 'कन्सर्न'],
+            ['exam', 'एग्ज़ाम'],
+            ['result', 'रिज़ल्ट'],
+            ['course', 'कोर्स'],
+            ['delay', 'डिले'],
+            ['parents', 'पैरेंट्स'],
+            ['home', 'घर'],
+            ['environment', 'माहौल'],
+            ['sibling', 'सिब्लिंग'],
+            ['abroad', 'अब्रॉड'],
+            ['visa', 'वीज़ा'],
+            ['travel', 'ट्रैवल'],
+            ['budget', 'बजट'],
+            ['loan', 'लोन'],
+            ['planning', 'प्लानिंग'],
+            ['family', 'फैमिली'],
+            ['decision', 'डिसीज़न'],
+            ['clear', 'क्लियर'],
+            ['nature', 'नेचर'],
+            ['reason', 'कारण'],
+            ['overview', 'ओवरव्यू'],
+            ['needed', 'चाहिए'],
+            ['needs', 'चाहिए'],
+            ['need', 'ज़रूरत'],
+            ['for', 'के लिए'],
+            ['and', 'और'],
+            ['or', 'या'],
+            ['with', 'के साथ'],
+            ['without', 'बिना'],
+            ['to', 'को'],
+            ['in', 'में'],
+            ['on', 'पर']
         ];
 
         for (const [latin, devanagari] of phraseMap.sort((a, b) => b[0].length - a[0].length)) {
@@ -868,10 +1101,6 @@ const MayaVoice = {
         }
 
         result = result.replace(/\b[A-Za-z][A-Za-z']*\b/g, (word) => this.approximateDevanagari(word));
-
-        protectedTags.forEach((tag, index) => {
-            result = result.replace(new RegExp(`\uE000${index}\uE001`, 'g'), tag);
-        });
 
         return result;
     },
@@ -1236,7 +1465,7 @@ const MayaVoice = {
      * Prepare text for TTS - convert numbers and clean up
      */
     prepareForSpeech(text) {
-        let prepared = this.normalizeMixedScriptTerms(this.normalizeNameReferences(text));
+        let prepared = this.stripTtsControlTags(this.normalizeMixedScriptTerms(this.normalizeNameReferences(text)));
 
         // When Hindi, convert user's name and remaining romanized Hindi words to Devanagari
         const isHindiPrep = window.MayaUtils?.storage?.get('maya_language') === 'hi';
@@ -1263,6 +1492,9 @@ const MayaVoice = {
         prepared = this.normalizeHyphenatedExpressions(prepared);
         prepared = this.removeAdjacentPhraseRepetition(prepared);
         prepared = this.limitDashaOverfocus(prepared);
+        if (!isHindiPrep) {
+            prepared = this.normalizeEnglishPronunciationTerms(prepared);
+        }
 
         // Convert authored pause markers into spoken punctuation before number expansion,
         // otherwise markers like [[pause-250]] can leak the number into speech.
@@ -1296,6 +1528,7 @@ const MayaVoice = {
         prepared = prepared.replace(/\+/g, ' plus ');
 
         // Remove excess punctuation
+        prepared = this.stripTtsControlTags(prepared);
         prepared = prepared.replace(/[,]{2,}/g, ',');
         prepared = prepared.replace(/[.]{2,}/g, '.');
         prepared = prepared.replace(/\s+([,.!?])/g, '$1');
@@ -1446,10 +1679,7 @@ const MayaVoice = {
     },
 
     stripExpressionTags(rawText) {
-        return String(rawText || '')
-            .replace(/\[(?:warm|curious|thoughtful|softly|gentle smile|smile|pause|long pause|reassuring|whispers?|excited|empathetic|calm|sighs?|exhales?|laughs?|chuckles|intrigued|mysterious|dramatic|intimate|slowly|quickly|hesitant|confident|gasps?)\]\s*/gi, '')
-            .replace(/\s{2,}/g, ' ')
-            .trim();
+        return this.stripTtsControlTags(rawText);
     },
 
     async buildElevenLabsError(response) {
@@ -1486,8 +1716,6 @@ const MayaVoice = {
         }
 
         const isHindi = window.MayaUtils?.storage?.get('maya_language') === 'hi';
-        const previousText = String(options.previousText || '').trim();
-        const nextText = String(options.nextText || '').trim();
         // Resolve the guide gender (male / female). Male uses the dedicated male voice id.
         const isMaleGuide = this.isMaleGuide();
         const voiceId = this.preferredVoiceId
@@ -1498,67 +1726,47 @@ const MayaVoice = {
                     : (MAYA_CONFIG.API_KEYS.ELEVENLABS_EN_VOICE_ID || MAYA_CONFIG.API_KEYS.ELEVENLABS_VOICE_ID)));
         const url = MAYA_CONFIG.ENDPOINTS.ELEVENLABS;
 
-        // Try v3 first for expression tags; fall back to multilingual v2 if
-        // the account/model rejects it.
-        const modelChain = (this._elevenLabsModelChain && this._elevenLabsModelChain.length)
-            ? this._elevenLabsModelChain
-            : ['eleven_v3', 'eleven_multilingual_v2'];
+        const modelChain = ['eleven_v3'];
+        this._elevenLabsModelChain = modelChain;
 
         const latencyOptimization = isMaleGuide ? 3 : 2;
         // Tuned for CONSISTENCY across generations (was: low stability + high style
         // which made each render swing in speed, tone & volume). Keep speaker_boost on
         // so volume is normalized identically every time. Pin speed to a single value
         // so two consecutive replies don't sound paced differently.
-        const voiceSettingsByModel = (modelId) => {
-            const isV3 = modelId === 'eleven_v3';
+        const voiceSettingsByModel = () => {
             if (!isMaleGuide) {
                 return {
-                    stability: isV3 ? 0.58 : 0.62,
-                    similarity_boost: isV3 ? 0.84 : 0.86,
-                    style: isV3 ? 0.62 : 0.46,
+                    stability: 0.58,
+                    similarity_boost: 0.84,
+                    style: 0.62,
                     use_speaker_boost: true,
-                    speed: isV3 ? 0.86 : 0.90
+                    speed: 0.86
                 };
             }
 
             return {
-                stability: isV3 ? 0.68 : 0.70,
-                similarity_boost: isV3 ? 0.88 : 0.90,
-                style: isV3 ? 0.34 : 0.24,
+                stability: 0.68,
+                similarity_boost: 0.88,
+                style: 0.34,
                 use_speaker_boost: true,
                 speed: 0.96
             };
         };
-        let modelId = modelChain[0];
-        let modelIndex = 0;
+        const modelId = modelChain[0];
 
         const buildRequestBody = (currentModelId) => {
-            // Inject ElevenLabs v3 expression tags for warmer, more human delivery.
-            const finalText = (currentModelId === 'eleven_v3')
-                ? this._injectExpressionTags(text, { isHindi, isMaleGuide })
-                : this.stripExpressionTags(text);
+            const finalText = this.stripTtsControlTags(this.stripExpressionTags(text));
             const body = {
                 text: finalText,
                 model_id: currentModelId,
                 voice_settings: voiceSettingsByModel(currentModelId),
-                optimize_streaming_latency: latencyOptimization
+                optimize_streaming_latency: latencyOptimization,
+                apply_text_normalization: 'on'
             };
-            // language_code is only valid on the multilingual v2 model; v3
-            // auto-detects language from the text and rejects this field.
-            if (currentModelId !== 'eleven_v3') {
-                body.language_code = isHindi ? 'hi' : 'en';
-            }
             return body;
         };
         let requestBody = buildRequestBody(modelId);
-
-        if (previousText) {
-            requestBody.previous_text = previousText.slice(-350);
-        }
-
-        if (nextText) {
-            requestBody.next_text = nextText.slice(0, 350);
-        }
 
         // Rate limiting: wait if we're sending requests too fast
         const now = Date.now();
@@ -1597,22 +1805,12 @@ const MayaVoice = {
 
                 if (!response.ok) {
                     const error = await this.buildElevenLabsError(response);
-                    // If the current model isn't available on this ElevenLabs
-                    // account (typical for v3 alpha access), try the next
-                    // model in the chain instead of giving up.
+                    // v3 is the only supported ElevenLabs model for this app.
                     const message = String(error?.message || '').toLowerCase();
                     const isModelRejection = (response.status === 400 || response.status === 404 || response.status === 422)
                         && (message.includes('model') || message.includes('not allowed') || message.includes('access'));
-                    if (isModelRejection && modelIndex < modelChain.length - 1) {
-                        modelIndex += 1;
-                        const nextModel = modelChain[modelIndex];
-                        console.warn(`⚠️ ElevenLabs model "${modelId}" rejected (${response.status}); falling back to "${nextModel}"`);
-                        modelId = nextModel;
-                        this._elevenLabsModelChain = modelChain.slice(modelIndex);
-                        requestBody = buildRequestBody(modelId);
-                        if (previousText) requestBody.previous_text = previousText.slice(-350);
-                        if (nextText) requestBody.next_text = nextText.slice(0, 350);
-                        continue;
+                    if (isModelRejection) {
+                        error.ttsNoRetry = true;
                     }
                     if ([401, 403, 404, 500, 502, 503].includes(response.status)) {
                         const cooldownMs = response.status === 503 ? 300000 : 120000;

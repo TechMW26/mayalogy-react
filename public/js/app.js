@@ -275,7 +275,7 @@ const MayaApp = {
                 const firstName = profile.name.split(' ')[0];
                 userNameEl.textContent = firstName;
             } else {
-                userNameEl.textContent = window.MayaI18n?.t('Guest') || (isHindi ? 'अतिथि' : 'Guest');
+                userNameEl.textContent = window.MayaI18n?.t('Guest') || 'Guest';
             }
         }
 
@@ -374,17 +374,17 @@ const MayaApp = {
             good: {
                 class: 'day-status-pill--good',
                 icon: 'bi-sun-fill',
-                label: isHindi ? 'शुभ दिन' : 'Great Day'
+                label: 'Great Day'
             },
             okay: {
                 class: 'day-status-pill--okay',
                 icon: 'bi-cloud-sun-fill',
-                label: isHindi ? 'सामान्य दिन' : 'Mixed Day'
+                label: 'Mixed Day'
             },
             challenging: {
                 class: 'day-status-pill--challenging',
                 icon: 'bi-cloud-fill',
-                label: isHindi ? 'सावधान रहें' : 'Be Mindful'
+                label: 'Be Mindful'
             }
         };
 
@@ -721,7 +721,7 @@ const MayaApp = {
         if (!container) return;
 
         const profile = MayaUtils.storage.get('maya_profile') || {};
-        const language = MayaUtils.storage.get('maya_language') || 'en';
+        const language = 'en';
         const zodiac = window.MayaAstrology?.getZodiac(profile.birthDate, profile);
 
         // Get today's horoscope data
@@ -739,8 +739,8 @@ const MayaApp = {
             notifications.push({
                 id: 'daily-plan-ready',
                 icon: 'bi-signpost-split',
-                text: language === 'hi' ? 'आज की योजना तैयार है!' : 'Your daily plan is ready!',
-                time: language === 'hi' ? 'अभी' : 'Just now',
+                text: 'Your daily plan is ready!',
+                time: 'Just now',
                 unread: true,
                 action: 'horoscope'
             });
@@ -752,10 +752,8 @@ const MayaApp = {
             notifications.push({
                 id: 'time-morning',
                 icon: 'bi-sunrise',
-                text: language === 'hi'
-                    ? `सुप्रभात ${profile.name || ''}! आज एक स्पष्ट इरादा लिखें।`
-                    : `Good morning ${profile.name || ''}! Write one clear intention for today.`,
-                time: language === 'hi' ? 'सुबह' : 'Morning',
+                text: `Good morning ${profile.name || ''}! Write one clear intention for today.`,
+                time: 'Morning',
                 unread: false,
                 action: null
             });
@@ -764,10 +762,8 @@ const MayaApp = {
             notifications.push({
                 id: 'time-afternoon',
                 icon: 'bi-sun',
-                text: language === 'hi'
-                    ? 'दोपहर में धैर्य रखें - ऊर्जा का स्तर बनाए रखें।'
-                    : 'Stay patient this afternoon - maintain your energy levels.',
-                time: language === 'hi' ? 'दोपहर' : 'Afternoon',
+                text: 'Stay patient this afternoon - maintain your energy levels.',
+                time: 'Afternoon',
                 unread: false,
                 action: null
             });
@@ -776,10 +772,8 @@ const MayaApp = {
             notifications.push({
                 id: 'time-evening',
                 icon: 'bi-sunset',
-                text: language === 'hi'
-                    ? 'शाम का समय - आराम और चिंतन के लिए उत्तम।'
-                    : 'Evening time - perfect for relaxation and reflection.',
-                time: language === 'hi' ? 'शाम' : 'Evening',
+                text: 'Evening time - perfect for relaxation and reflection.',
+                time: 'Evening',
                 unread: false,
                 action: null
             });
@@ -788,10 +782,8 @@ const MayaApp = {
             notifications.push({
                 id: 'time-night',
                 icon: 'bi-moon-stars',
-                text: language === 'hi'
-                    ? 'रात्रि का समय - कल के लिए शुभ ऊर्जा का संचय करें।'
-                    : 'Night time - preserve positive energy for tomorrow.',
-                time: language === 'hi' ? 'रात' : 'Night',
+                text: 'Night time - preserve positive energy for tomorrow.',
+                time: 'Night',
                 unread: false,
                 action: null
             });
@@ -815,7 +807,7 @@ const MayaApp = {
                         id: 'zodiac-caution',
                         icon: 'bi-shield-exclamation',
                         text: tips.precaution,
-                        time: language === 'hi' ? 'सावधानी' : 'Caution',
+                        time: 'Caution',
                         unread: true,
                         action: null
                     });
@@ -831,7 +823,7 @@ const MayaApp = {
                     id: 'lucky',
                     icon: 'bi-gem',
                     text: luckyInfo,
-                    time: language === 'hi' ? 'आज' : 'Today',
+                    time: 'Today',
                     unread: false,
                     action: null
                 });
@@ -849,7 +841,7 @@ const MayaApp = {
             container.innerHTML = `
                 <div class="notifications-empty">
                     <i class="bi bi-bell-slash"></i>
-                    <p>${language === 'hi' ? 'कोई नई सूचना नहीं' : 'No new notifications'}</p>
+                    <p>No new notifications</p>
                 </div>
             `;
         } else {
@@ -860,7 +852,7 @@ const MayaApp = {
                         <p class="notification-text">${n.text}</p>
                         <span class="notification-time">${n.time}</span>
                     </div>
-                    <button class="notification-dismiss" title="${language === 'hi' ? 'हटाएं' : 'Dismiss'}">
+                    <button class="notification-dismiss" title="Dismiss">
                         <i class="bi bi-x"></i>
                     </button>
                 </div>
@@ -900,43 +892,30 @@ const MayaApp = {
         if (!zodiacSign) {
             // Fallback data if config not found
             const luckyData = {
-                'Aries': { color: 'Red', numbers: [9, 1, 8], hi_color: 'लाल' },
-                'Taurus': { color: 'Green', numbers: [6, 5, 8], hi_color: 'हरा' },
-                'Gemini': { color: 'Yellow', numbers: [5, 3, 6], hi_color: 'पीला' },
-                'Cancer': { color: 'White', numbers: [2, 7, 9], hi_color: 'सफेद' },
-                'Leo': { color: 'Gold', numbers: [1, 4, 9], hi_color: 'सुनहरा' },
-                'Virgo': { color: 'Green', numbers: [5, 6, 2], hi_color: 'हरा' },
-                'Libra': { color: 'White', numbers: [6, 9, 5], hi_color: 'सफेद' },
-                'Scorpio': { color: 'Maroon', numbers: [9, 4, 2], hi_color: 'मैरून' },
-                'Sagittarius': { color: 'Yellow', numbers: [3, 7, 9], hi_color: 'पीला' },
-                'Capricorn': { color: 'Navy Blue', numbers: [8, 4, 6], hi_color: 'गहरा नीला' },
-                'Aquarius': { color: 'Blue', numbers: [4, 8, 7], hi_color: 'नीला' },
-                'Pisces': { color: 'Yellow', numbers: [3, 7, 12], hi_color: 'पीला' }
+                'Aries': { color: 'Red', numbers: [9, 1, 8] },
+                'Taurus': { color: 'Green', numbers: [6, 5, 8] },
+                'Gemini': { color: 'Yellow', numbers: [5, 3, 6] },
+                'Cancer': { color: 'White', numbers: [2, 7, 9] },
+                'Leo': { color: 'Gold', numbers: [1, 4, 9] },
+                'Virgo': { color: 'Green', numbers: [5, 6, 2] },
+                'Libra': { color: 'White', numbers: [6, 9, 5] },
+                'Scorpio': { color: 'Maroon', numbers: [9, 4, 2] },
+                'Sagittarius': { color: 'Yellow', numbers: [3, 7, 9] },
+                'Capricorn': { color: 'Navy Blue', numbers: [8, 4, 6] },
+                'Aquarius': { color: 'Blue', numbers: [4, 8, 7] },
+                'Pisces': { color: 'Yellow', numbers: [3, 7, 12] }
             };
             const data = luckyData[zodiacName];
             if (!data) return null;
 
-            return language === 'hi'
-                ? `आज का शुभ रंग: ${data.hi_color} | शुभ अंक: ${data.numbers[0]}`
-                : `Lucky color: ${data.color} | Lucky number: ${data.numbers[0]}`;
+            return `Lucky color: ${data.color} | Lucky number: ${data.numbers[0]}`;
         }
 
         // Use config data for accurate info
         const colorName = zodiacSign.colorName || 'Indigo';
         const luckyNumber = zodiacSign.luckyNumbers?.[0] || 7;
 
-        // Hindi color names mapping
-        const hindiColors = {
-            'Red': 'लाल', 'Green': 'हरा', 'Yellow': 'पीला', 'White': 'सफेद',
-            'Gold': 'सुनहरा', 'Maroon': 'मैरून', 'Navy Blue': 'गहरा नीला',
-            'Blue': 'नीला', 'Pink': 'गुलाबी', 'Purple': 'बैंगनी'
-        };
-
-        const hiColor = hindiColors[colorName] || colorName;
-
-        return language === 'hi'
-            ? `प्रोफाइल संकेत: ${hiColor} | संख्या संकेत: ${luckyNumber}`
-            : `Profile cue: ${colorName} | Number cue: ${luckyNumber}`;
+        return `Profile cue: ${colorName} | Number cue: ${luckyNumber}`;
     },
 
     /**
@@ -986,11 +965,11 @@ const MayaApp = {
                         // Check if all notifications are dismissed
                         const remaining = container.querySelectorAll('.notification-item:not(.dismissed)');
                         if (remaining.length === 0) {
-                            const language = MayaUtils.storage.get('maya_language') || 'en';
+                            const language = 'en';
                             container.innerHTML = `
                                 <div class="notifications-empty">
                                     <i class="bi bi-bell-slash"></i>
-                                    <p>${language === 'hi' ? 'कोई नई सूचना नहीं' : 'No new notifications'}</p>
+                                    <p>No new notifications</p>
                                 </div>
                             `;
                         }
@@ -1103,7 +1082,7 @@ const MayaApp = {
 
         const textElement = document.getElementById('maya-speaking-text');
         const blobContainer = document.getElementById('maya-blob-container');
-        const language = MayaUtils.storage.get('maya_language') || 'en';
+        const language = 'en';
 
         // Setup realtime callbacks
         MayaRealtime.onStateChange = (state, message) => {
@@ -1165,9 +1144,7 @@ const MayaApp = {
         MayaRealtime.onTranscript = (transcript, source) => {
             if (source === 'user' && textElement) {
                 // Show what user said
-                textElement.innerHTML = language === 'hi'
-                    ? `<span class="user-transcript">"${transcript}"</span>`
-                    : `<span class="user-transcript">"${transcript}"</span>`;
+                textElement.innerHTML = `<span class="user-transcript">"${transcript}"</span>`;
             }
         };
 
@@ -1211,7 +1188,8 @@ const MayaApp = {
         const sendBtn = document.getElementById('maya-send');
         const input = document.getElementById('maya-input');
         const micBtn = document.getElementById('maya-mic');
-        const language = MayaUtils.storage.get('maya_language') || 'en';
+        const language = 'en';
+        const narrationLanguage = MayaUtils.storage.get('maya_language') || 'en';
 
         // Remove old listeners by cloning elements
         if (sendBtn) {
@@ -1225,7 +1203,7 @@ const MayaApp = {
             const newInput = input.cloneNode(true);
             input.parentNode.replaceChild(newInput, input);
 
-            newInput.placeholder = language === 'hi' ? 'MAYA से कुछ भी पूछें...' : 'Ask MAYA anything...';
+            newInput.placeholder = 'Ask MAYA anything...';
             newInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') this.handleMayaChat();
             });
@@ -1238,7 +1216,7 @@ const MayaApp = {
 
             // Initialize listener
             MayaListener.init();
-            MayaListener.setLanguage(language);
+            MayaListener.setLanguage(narrationLanguage);
 
             // Handle recognition results
             MayaListener.onResult = (transcript) => {
@@ -1257,7 +1235,7 @@ const MayaApp = {
                 }
                 const inputEl = document.getElementById('maya-input');
                 if (inputEl) {
-                    inputEl.placeholder = language === 'hi' ? 'सुन रही हूँ...' : 'Listening...';
+                    inputEl.placeholder = 'Listening...';
                 }
             };
 
@@ -1269,7 +1247,7 @@ const MayaApp = {
                 }
                 const inputEl = document.getElementById('maya-input');
                 if (inputEl) {
-                    inputEl.placeholder = language === 'hi' ? 'MAYA से कुछ भी पूछें...' : 'Ask MAYA anything...';
+                    inputEl.placeholder = 'Ask MAYA anything...';
                 }
             };
 
@@ -1293,16 +1271,14 @@ const MayaApp = {
 
         container.innerHTML = '';
 
-        const language = MayaUtils.storage.get('maya_language') || 'en';
+        const language = 'en';
         const history = MayaUtils.storage.get('maya_chat_history') || [];
         const recentHistory = history.slice(-12);
 
         if (!recentHistory.length) {
             this._addChatBubble(
                 'maya',
-                language === 'hi'
-                    ? 'मैं यहाँ हूँ. मुझसे reflection, timing, रिश्तों, काम, या आज की योजना के बारे में पूछें.'
-                    : 'I am here. Ask me about reflection, timing, relationships, work, or today\'s plan.'
+                'I am here. Ask me about reflection, timing, relationships, work, or today\'s plan.'
             );
             return;
         }
@@ -1348,6 +1324,7 @@ const MayaApp = {
                     birthPlace: profile.birthPlace,
                     birthLat: profile.birthLat,
                     birthLon: profile.birthLon,
+                    birthTimezone: profile.birthTimezone,
                     gender: profile.gender,
                     language: language
                 });
@@ -1360,6 +1337,7 @@ const MayaApp = {
                 birthPlace: profile.birthPlace,
                 birthLat: profile.birthLat,
                 birthLon: profile.birthLon,
+                birthTimezone: profile.birthTimezone,
                 language: language
             });
 
@@ -1381,9 +1359,7 @@ const MayaApp = {
             console.error('MAYA chat error:', error);
             if (window.MayaBlob) MayaBlob.stopThinking();
             typing?.remove();
-            const errorMsg = language === 'hi'
-                ? 'क्षमा करें, मुझे अभी कुछ समस्या हो रही है।'
-                : 'I apologize, I\'m having some trouble right now.';
+            const errorMsg = 'I apologize, I\'m having some trouble right now.';
             this._addChatBubble('maya', errorMsg);
         }
     },
@@ -1523,7 +1499,7 @@ const MayaApp = {
         }
 
         if (textElement) {
-            textElement.textContent = language === 'hi' ? "आपकी guidance plan बना रही हूँ..." : "Building your guidance plan...";
+            textElement.textContent = "Building your guidance plan...";
         }
 
         try {
@@ -1536,6 +1512,7 @@ const MayaApp = {
                 birthPlace: profile.birthPlace,
                 birthLat: profile.birthLat,
                 birthLon: profile.birthLon,
+                birthTimezone: profile.birthTimezone,
                 gender: profile.gender,
                 language: language
             };
@@ -1558,9 +1535,7 @@ const MayaApp = {
         } catch (error) {
             console.error('Reading generation error:', error);
             if (textElement) {
-                const fallbackMsg = language === 'hi'
-                    ? 'रीडिंग अभी तैयार नहीं हो सकी। कृपया फिर से कोशिश करें।'
-                    : 'The reading could not be generated right now. Please try again.';
+                const fallbackMsg = 'The reading could not be generated right now. Please try again.';
                 textElement.textContent = fallbackMsg;
             }
             if (window.MayaBlob) {

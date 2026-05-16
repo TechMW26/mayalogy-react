@@ -991,7 +991,8 @@ Current section: ${sectionKey}
             birthTime: this.hasExactBirthTime() ? this.userData.birthTime : 'unknown',
             birthPlace: this.userData.birthPlace || '',
             birthLat: this.userData.birthLat,
-            birthLon: this.userData.birthLon
+            birthLon: this.userData.birthLon,
+            birthTimezone: this.userData.birthTimezone
         };
         const western = window.MayaAstrology?.getWesternZodiac?.(this.userData.birthDate) || {};
         const vedic = window.MayaAstrology?.getVedicZodiac?.(this.userData.birthDate, birthContext) || {};
@@ -1001,7 +1002,8 @@ Current section: ${sectionKey}
                 birthContext.birthTime,
                 birthContext.birthPlace || 'Unknown',
                 birthContext.birthLat,
-                birthContext.birthLon
+                birthContext.birthLon,
+                birthContext.birthTimezone
             )
             : null;
         const chartSummary = kundliChart && window.MayaKundli?.summarizeBirthChart
@@ -1056,7 +1058,8 @@ Current section: ${sectionKey}
                 birthTime: this.getResolvedBirthTime(),
                 birthPlace: this.userData.birthPlace || '',
                 birthLat: this.userData.birthLat,
-                birthLon: this.userData.birthLon
+                birthLon: this.userData.birthLon,
+                birthTimezone: this.userData.birthTimezone
             })?.name || '',
             westernZodiac: profile.western?.name || '',
             vedicZodiac: profile.vedic?.name || '',
@@ -1300,8 +1303,27 @@ Current section: ${sectionKey}
         // ensures the captions match the spoken audio one-to-one.
         cleaned = this._collapseAdjacentRepeats(cleaned);
         cleaned = this._capRepeatedAstroTerms(cleaned, isHindi);
+        cleaned = this._trimDanglingSentence(cleaned);
 
         return cleaned;
+    },
+
+    _trimDanglingSentence(text) {
+        const value = String(text || '').trim();
+        if (!value || /[.!?।]$/.test(value)) return value;
+
+        const lastBoundary = Math.max(
+            value.lastIndexOf('.'),
+            value.lastIndexOf('!'),
+            value.lastIndexOf('?'),
+            value.lastIndexOf('।')
+        );
+
+        if (lastBoundary >= 45 && value.length - lastBoundary > 10) {
+            return value.slice(0, lastBoundary + 1).trim();
+        }
+
+        return value;
     },
 
     // Collapse back-to-back repeated tokens & 2-4 word phrases (Latin + Devanagari).
@@ -1533,6 +1555,7 @@ Current section: ${sectionKey}
             birthPlace: userData.birthPlace || null,
             birthLat: userData.birthLat || null,
             birthLon: userData.birthLon || null,
+            birthTimezone: userData.birthTimezone || null,
             language: language
         };
         
@@ -1657,10 +1680,7 @@ Current section: ${sectionKey}
         
         this.contentGenerating[key] = (async () => {
             try {
-                const content = await Promise.race([
-                    generator(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
-                ]);
+                const content = await generator();
                 return content;
             } catch (e) {
                 console.warn(`⚠️ Pre-generation failed for ${key}:`, e.message);
@@ -1688,11 +1708,7 @@ Current section: ${sectionKey}
                 return await MayaUtils.retry(
                     async (attempt) => {
                         console.log(`🔁 Narration attempt ${attempt} for ${key}`);
-                        const content = await MayaUtils.withTimeout(
-                            Promise.resolve().then(() => fallbackGenerator()),
-                            28000,
-                            `${key} generation`
-                        );
+                        const content = await Promise.resolve().then(() => fallbackGenerator());
 
                         if (!content || String(content).trim().length < 20) {
                             throw new Error(`Empty narration for ${key}`);
@@ -2120,6 +2136,52 @@ ${this.getBaseRules(false)}`);
         return '';
     },
 
+    async _callNarrationFunnelAI(prompt, options = {}) {
+        if (!window.MayaAI || typeof MayaAI.callGemini !== 'function') return '';
+        return MayaAI.callGemini(prompt, {
+            ...options,
+            provider: 'gemini',
+            preferGemini: true,
+            requireComplete: true,
+            timeoutMs: 0
+        });
+    },
+
+    async _callQuestionFunnelAI(prompt, options = {}) {
+        if (!window.MayaAI || typeof MayaAI.callGemini !== 'function') return '';
+        const maxTokens = Math.max(Number(options.maxTokens || 0), 1400);
+        const timeoutMs = 0;
+        return MayaAI.callGemini(prompt, { ...options, provider: 'gemini', maxTokens, timeoutMs });
+    },
+
+    async _generateAdaptiveQuestionFromGemini(prompt, fallback, askedKeys = new Set(), options = {}) {
+        if (!fallback) return null;
+        if (!window.MayaAI || typeof MayaAI.callGemini !== 'function') return fallback;
+
+        const attempts = [
+            options,
+            {
+                ...options,
+                temperature: Math.min(Number(options.temperature ?? 0.65), 0.45),
+                maxTokens: Math.max(Number(options.maxTokens || 0), 1600),
+                timeoutMs: Math.max(Number(options.timeoutMs || 0), 22000)
+            }
+        ];
+
+        for (const attemptOptions of attempts) {
+            try {
+                const aiRaw = await this._callQuestionFunnelAI(prompt, attemptOptions);
+                const parsed = this._extractFirstJsonObject(aiRaw);
+                const sanitized = parsed ? this._sanitizeAdaptiveQuestion(parsed, fallback, askedKeys) : null;
+                if (sanitized?.source === 'ai') return sanitized;
+            } catch (error) {
+                console.warn('Gemini question generation attempt failed:', error?.message || error);
+            }
+        }
+
+        return fallback;
+    },
+
     _getLocalJourneyIntro({ isHindi, askMayaActive, guideName, isMale, topicLabel, subjectPhrase }) {
         const profile = this.personalization || {};
         const moonSign = profile.moonSign || profile.vedic?.name || '';
@@ -2132,8 +2194,8 @@ ${this.getBaseRules(false)}`);
         const markerEn = [ascendant && `${ascendant} ascendant`, moonSign && `${moonSign} moon sign`, dasha && `${dasha} dasha`, lp && `Life Path ${lp}`, year && `Personal Year ${year}`].filter(Boolean).slice(0, 2).join(' and ') || 'your birth details';
         const index = Math.floor((Date.now() + Math.random() * 1000) % 4);
 
-        const askHiSubject = subjectPhrase === 'आपका सवाल' ? 'आपके सवाल' : `${subjectPhrase} वाले सवाल`;
-        const askEnSubject = subjectPhrase === 'your question' ? 'your question' : `your ${subjectPhrase} question`;
+        const askHiSubject = this._formatAskMayaQuestionNoun(subjectPhrase, true);
+        const askEnSubject = this._formatAskMayaQuestionNoun(subjectPhrase, false);
         const hiIntros = askMayaActive
             ? [
                 `नमस्ते ${name}, मैं ${guideName} हूँ। ${askHiSubject} को मैं सीधे उसी दिशा में पढ़${isMale ? 'ूँगा' : 'ूँगी'}, बिना किसी और विषय में भटके। ${markerHi} अभी पहला संकेत दे रहा है कि answer सिर्फ timing से नहीं, आपकी current situation से भी जुड़ेगा। पहले मैं chart तैयार कर${isMale ? 'ूँगा' : 'ूँगी'}, फिर एक छोटा detail पूछकर बात को और exact कर${isMale ? 'ूँगा' : 'ूँगी'}।`,
@@ -2210,11 +2272,11 @@ Return only spoken text.`;
 
         try {
             this._initFastAiContext(lang);
-            const raw = await this._callFastFunnelAI(prompt, { maxTokens: 700, temperature: 0.95, timeoutMs: 10000 });
+            const raw = await this._callNarrationFunnelAI(prompt, { temperature: 0.9, topP: 0.95 });
             const cleaned = this.sanitizeNarrationText(raw);
             if (cleaned && cleaned.length > 80) return cleaned;
         } catch (error) {
-            console.warn('Fast journey intro failed:', error?.message || error);
+            console.warn('Journey intro generation failed:', error?.message || error);
         }
 
         return fallback;
@@ -2276,11 +2338,11 @@ Rules:
 
         try {
             this._initFastAiContext(lang);
-            const raw = await this._callFastFunnelAI(prompt, { maxTokens: 520, temperature: 0.9, timeoutMs: 10000 });
+            const raw = await this._callNarrationFunnelAI(prompt, { temperature: 0.82, topP: 0.95 });
             const cleaned = this.sanitizeNarrationText(raw);
             if (cleaned && cleaned.length > 60) return cleaned;
         } catch (error) {
-            console.warn('Fast pre-question bridge failed:', error?.message || error);
+            console.warn('Pre-question bridge generation failed:', error?.message || error);
         }
 
         return fallback;
@@ -2551,7 +2613,7 @@ Rules:
                     lines.push("- यह section POST-LOGIN है: अब इसी सवाल का COMPLETE, SPECIFIC, और HONEST answer दीजिए। Chart evidence (ग्रह, राशि, घर, दशा, transit) को NAME करके बताइए कि इस सवाल का जवाब क्या है, क्यों है, कब-कब क्या होगा, और क्या practical action / remedy लेना चाहिए। Vague मत रहिए।");
                 }
                 if (sectionKey === 'opening' || sectionKey === 'kundli') {
-                    lines.push("- IMPORTANT: इस section का BAHUT FIRST sentence यह होना चाहिए कि आप " + qSubjectPhrase + " का जवाब उनकी कुंडली, numbers और timing से ढूँढने जा रही हैं। Exact original question quote मत कीजिए।");
+                    lines.push("- IMPORTANT: इस section का BAHUT FIRST sentence natural हो: बताइए कि आप " + qSubjectPhrase + " के बारे में उनकी कुंडली, numbers और timing से answer ढूँढने जा रही हैं। Exact original question quote मत कीजिए।");
                     lines.push("- Kundli के structure की लम्बी व्याख्या मत दीजिए। केवल 1 chart marker name कीजिए और तुरंत user के सवाल की तरफ pivot कीजिए।");
                 }
                 if (recentSpoken) {
@@ -3322,9 +3384,22 @@ All three segments must connect as one flowing story — every segment must cite
      */
     async showValidationQuestion(question, options, spokenQuestion) {
         const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const safeOptions = (Array.isArray(options) ? options : [])
+            .map((opt, index) => ({
+                label: String(opt?.label || '').trim(),
+                value: String(opt?.value || `option_${index + 1}`).trim()
+            }))
+            .filter(opt => opt.label && opt.value);
+        if (!safeOptions.length) {
+            safeOptions.push(
+                { label: isHindi ? 'हाँ' : 'Yes', value: 'yes' },
+                { label: isHindi ? 'नहीं' : 'No', value: 'no' }
+            );
+        }
 
-        // Speak the question while building the UI
-        const speakPromise = this.speak(spokenQuestion || question);
+        const speakPromise = this.speak(spokenQuestion || question).catch((error) => {
+            console.warn('Question speech failed; keeping question UI active:', error?.message || error);
+        });
 
         // Add "None of the above" option with custom input
         const noneLabel = isHindi ? 'इनमें से कोई नहीं' : 'None of the above';
@@ -3336,7 +3411,7 @@ All three segments must connect as one flowing story — every segment must cite
             <div class="maya-validation-container">
                 <p class="maya-validation-question">${question}</p>
                 <div class="maya-validation-options" id="maya-validation-options">
-                    ${options.map(opt => `
+                    ${safeOptions.map(opt => `
                         <button class="maya-validation-btn" data-value="${opt.value}">
                             ${opt.label}
                         </button>
@@ -3360,15 +3435,15 @@ All three segments must connect as one flowing story — every segment must cite
         `;
         document.body.appendChild(overlay);
 
-        await speakPromise;
-
         return new Promise((resolve) => {
             const container = overlay.querySelector('#maya-validation-options');
             const customArea = overlay.querySelector('#maya-validation-custom');
             const customInput = overlay.querySelector('#maya-custom-input');
             const customSubmit = overlay.querySelector('#maya-custom-submit');
             const backBtn = overlay.querySelector('#maya-custom-back');
-            if (!container) { overlay.remove(); resolve(options[0]?.value || 'yes'); return; }
+            if (!container) { overlay.remove(); resolve(safeOptions[0]?.value || 'yes'); return; }
+
+            speakPromise.finally(() => {});
 
             // Back button - return to options from custom input
             if (backBtn) {
@@ -3627,7 +3702,7 @@ ONLY return the spoken response. Nothing else.`;
                 // Try once, then keep the flow moving with a local bridge.
                 for (let attempt = 0; attempt < 1 && !ack; attempt++) {
                     try {
-                        const result = await this._callFastFunnelAI(ackPrompt, { maxTokens: 260, temperature: 0.82, timeoutMs: 9000 });
+                        const result = await this._callNarrationFunnelAI(ackPrompt, { temperature: 0.76, topP: 0.92 });
                         if (result && result.length > 10 && result.length < 350) {
                             ack = this.sanitizeNarrationText(result);
                         }
@@ -3911,6 +3986,7 @@ ONLY return the spoken response. Nothing else.`;
         // Order matters — most specific first.
         if (/\b(marriage|wedding|spouse|husband|wife|shaadi|शादी|पति|पत्नी)\b/.test(q)) return 'marriage';
         if (/\b(love|partner|relationship|girlfriend|boyfriend|crush|breakup|प्यार|रिश्त|प्रेम|साथी)\b/.test(q)) return 'love';
+        if (/\b(promot(?:e|ed|es|ing|ion|ions)|appraisal|increment|salary\s*hike|raise)\b|प्रमोशन|पदोन्नति|तरक्की|इन्क्रीमेंट|इंक्रीमेंट|सैलरी\s*हाइक|वेतन\s*वृद्धि/.test(q)) return 'promotion';
         if (/\b(career|job|work|business|promotion|profession|startup|नौकरी|करियर|कैरियर|काम|व्यवसाय)\b/.test(q)) return 'career';
         if (/\b(car|vehicle|bike|scooter|motorcycle|automobile|driving|drive|porsche|porche|gadi|gaadi)\b|गाड़ी|गाड़ी|कार|वाहन|बाइक|स्कूटर/.test(q)) return 'vehicle';
         if (/\b(money|wealth|income|salary|finance|invest|loan|debt|पैसा|पैसे|धन|कमाई|निवेश)\b/.test(q)) return 'money';
@@ -3926,20 +4002,38 @@ ONLY return the spoken response. Nothing else.`;
     _getAskMayaTopicLabel(topic, isHindi) {
         const map = isHindi
             ? {
-                marriage: 'शादी', love: 'रिश्ते', career: 'करियर', money: 'पैसा',
+                marriage: 'शादी', love: 'रिश्ते', promotion: 'प्रमोशन', career: 'करियर', money: 'पैसा',
                 health: 'सेहत', education: 'पढ़ाई', children: 'संतान', family: 'परिवार',
                 travel: 'यात्रा/विदेश', vehicle: 'पहली गाड़ी/वाहन', timing: 'timing', general: 'इस सवाल'
             }
             : {
-                marriage: 'marriage', love: 'relationships', career: 'career', money: 'money',
+                marriage: 'marriage', love: 'relationships', promotion: 'promotion', career: 'career', money: 'money',
                 health: 'health', education: 'education', children: 'children', family: 'family',
                 travel: 'travel/relocation', vehicle: 'car/vehicle', timing: 'timing', general: 'this question'
             };
         return map[topic] || map.general;
     },
 
+    _formatAskMayaQuestionNoun(subjectPhrase, isHindi) {
+        const phrase = String(subjectPhrase || '').trim();
+        if (!phrase) return isHindi ? 'आपके सवाल' : 'your question';
+        if (isHindi) {
+            const normalized = phrase
+                .replace(/\s*वाले\s+सवाल\s*/g, '')
+                .replace(/\s*वाला\s+सवाल\s*/g, '')
+                .trim();
+            if (/^आप|सवाल|विषय|बात/.test(normalized)) return normalized;
+            if (/timing|direction|सावधानी|संकेत/.test(normalized)) return normalized;
+            return `${normalized} की बात`;
+        }
+        if (/\bquestion\b/i.test(phrase)) return `your ${phrase}`.replace(/your\s+your\s+/i, 'your ');
+        return `your ${phrase} question`;
+    },
+
         _getAskMayaSubjectPhrase(topic, isHindi) {
             const q = String(this._getActiveUserQuestion() || '').toLowerCase();
+            const hasPromotion = /\b(promot(?:e|ed|es|ing|ion|ions)|appraisal)\b|प्रमोशन|पदोन्नति|तरक्की/.test(q);
+            const hasSalaryRaise = /\b(increment|salary\s*hike|salary\s*raise|raise)\b|इन्क्रीमेंट|इंक्रीमेंट|सैलरी\s*हाइक|वेतन\s*वृद्धि/.test(q);
             const hasPorsche = /\b(porsche|porche)\b/.test(q);
             const hasBike = /\b(bike|motorcycle)\b|बाइक/.test(q);
             const hasScooter = /\b(scooter)\b|स्कूटर/.test(q);
@@ -3947,19 +4041,21 @@ ONLY return the spoken response. Nothing else.`;
             const hi = {
                 marriage: 'शादी की timing',
                 love: 'रिश्ते की direction',
+                promotion: 'प्रमोशन',
                 career: 'career direction',
                 money: 'धन और timing',
                 health: 'सेहत की सावधानी',
                 education: 'पढ़ाई की direction',
                 children: 'संतान से जुड़े संकेत',
-                family: 'परिवार वाला विषय',
+                family: 'परिवार की बात',
                 travel: 'यात्रा या विदेश की timing',
-                timing: 'timing वाला सवाल',
+                timing: 'timing',
                 general: 'आपका सवाल'
             };
             const en = {
                 marriage: 'marriage timing',
                 love: 'relationship direction',
+                promotion: 'promotion',
                 career: 'career direction',
                 money: 'money timing',
                 health: 'health pattern',
@@ -3970,6 +4066,9 @@ ONLY return the spoken response. Nothing else.`;
                 timing: 'timing question',
                 general: 'your question'
             };
+
+            if (hasPromotion) return isHindi ? 'प्रमोशन' : 'promotion';
+            if (hasSalaryRaise) return isHindi ? 'सैलरी इन्क्रीमेंट' : 'salary increment';
 
             if (topic === 'vehicle') {
                 if (hasPorsche) return isHindi ? 'पहली Porsche की timing' : 'first Porsche timing';
@@ -3998,17 +4097,22 @@ ONLY return the spoken response. Nothing else.`;
         });
 
         const hi = {
-            marriage: make('इस शादी वाले सवाल में असली चिंता क्या है?', [
+            promotion: make('आपके प्रमोशन में अभी कौन-सा factor सबसे बड़ा है?', [
+                { label: 'Appraisal pending है', value: 'appraisal_pending', insight: 'User needs promotion timing with appraisal context.' },
+                { label: 'Manager support चाहिए', value: 'manager_support', insight: 'User needs authority/support signal for promotion.' },
+                { label: 'Performance strong है', value: 'performance_strong', insight: 'User has work evidence but needs timing and recognition clarity.' }
+            ], 'हम आपके प्रमोशन के बारे में बात कर रहे हैं; इसे exact करने के लिए एक बात बताइए।'),
+            marriage: make('शादी के बारे में असली चिंता क्या है?', [
                 { label: 'Timing साफ चाहिए', value: 'marriage_timing', insight: 'User needs marriage timing before deeper chart answer.' },
                 { label: 'Partner कैसा होगा', value: 'partner_nature', insight: 'User needs spouse nature and compatibility cues.' },
                 { label: 'Delay क्यों हो रहा', value: 'delay_reason', insight: 'User needs blockage reason and remedy direction.' }
-            ], 'आपके शादी वाले सवाल को सटीक करने के लिए एक बात बताइए।'),
+            ], 'शादी की बात को सटीक करने के लिए एक बात बताइए।'),
             love: make('रिश्ते के सवाल में अभी सबसे बड़ा doubt क्या है?', [
                 { label: 'Future साथ में', value: 'future_together', insight: 'User wants relationship outcome timing.' },
                 { label: 'Trust issue है', value: 'trust_issue', insight: 'User needs emotional pattern clarity.' },
                 { label: 'Confusion चल रही', value: 'confusion', insight: 'User needs whether to continue or step back.' }
-            ], 'आपके रिश्ते वाले सवाल को साफ करने के लिए एक छोटा जवाब चाहिए।'),
-            career: make('Career वाले सवाल में सबसे ज़्यादा अटका क्या है?', [
+            ], 'रिश्ते की direction साफ करने के लिए एक छोटा जवाब चाहिए।'),
+            career: make('Career में सबसे ज़्यादा अटका क्या है?', [
                 { label: 'Job growth रुकी', value: 'growth_blocked', insight: 'User needs growth timing and blockage reason.' },
                 { label: 'Direction clear नहीं', value: 'direction_unclear', insight: 'User needs career direction clarity.' },
                 { label: 'Business या job', value: 'business_or_job', insight: 'User needs path comparison.' }
@@ -4017,38 +4121,38 @@ ONLY return the spoken response. Nothing else.`;
                 { label: 'Income बढ़े कब', value: 'income_timing', insight: 'User needs earning window.' },
                 { label: 'Saving टिकती नहीं', value: 'saving_leak', insight: 'User needs money leak pattern.' },
                 { label: 'Investment doubt है', value: 'investment_doubt', insight: 'User needs broad investment timing.' }
-            ], 'पैसे वाले सवाल को precise करने के लिए एक बात बताइए।'),
+            ], 'पैसे की बात को precise करने के लिए एक बात बताइए।'),
             health: make('सेहत में अभी pressure कहाँ महसूस होता है?', [
                 { label: 'Energy कम रहती', value: 'low_energy', insight: 'User needs vitality timing.' },
                 { label: 'Stress और sleep', value: 'stress_sleep', insight: 'User needs stress rhythm clarity.' },
                 { label: 'Check-up concern', value: 'checkup_concern', insight: 'User needs cautious health-window guidance.' }
-            ], 'सेहत वाले सवाल में मैं safe और precise रहना चाहती हूँ, इसलिए ये बताइए।'),
-            education: make('पढ़ाई वाले सवाल में main pressure क्या है?', [
+            ], 'सेहत की बात में मैं safe और precise रहना चाहती हूँ, इसलिए ये बताइए।'),
+            education: make('पढ़ाई में main pressure क्या है?', [
                 { label: 'Exam result', value: 'exam_result', insight: 'User needs result and performance timing.' },
                 { label: 'Focus नहीं बनता', value: 'focus_issue', insight: 'User needs study rhythm pattern.' },
                 { label: 'Course confusion', value: 'course_confusion', insight: 'User needs education direction.' }
-            ], 'पढ़ाई वाले सवाल को साफ करने के लिए एक बात बताइए।'),
-            children: make('संतान वाले सवाल में असली चिंता क्या है?', [
+            ], 'पढ़ाई की direction साफ करने के लिए एक बात बताइए।'),
+            children: make('संतान के बारे में असली चिंता क्या है?', [
                 { label: 'Timing जानना है', value: 'children_timing', insight: 'User needs timing window.' },
                 { label: 'Delay concern है', value: 'delay_concern', insight: 'User needs delay reason.' },
                 { label: 'Family pressure है', value: 'family_pressure', insight: 'User needs emotional context.' }
-            ], 'संतान वाले सवाल को sensitive तरीके से पढ़ने के लिए ये बताइए।'),
-            family: make('परिवार वाले सवाल में issue कहाँ है?', [
+            ], 'संतान से जुड़े संकेत sensitive तरीके से पढ़ने के लिए ये बताइए।'),
+            family: make('परिवार में issue कहाँ है?', [
                 { label: 'Parents से tension', value: 'parent_tension', insight: 'User needs parent-karaka clarity.' },
                 { label: 'घर का माहौल', value: 'home_environment', insight: 'User needs domestic pattern.' },
                 { label: 'Sibling issue है', value: 'sibling_issue', insight: 'User needs sibling pattern.' }
-            ], 'परिवार वाले सवाल का जवाब exact करने के लिए एक बात बताइए।'),
-            travel: make('विदेश/यात्रा वाले सवाल में focus क्या है?', [
+            ], 'परिवार की बात exact करने के लिए एक बात बताइए।'),
+            travel: make('विदेश/यात्रा में focus क्या है?', [
                 { label: 'Abroad जाना है', value: 'abroad_move', insight: 'User needs relocation timing.' },
                 { label: 'Visa delay है', value: 'visa_delay', insight: 'User needs delay/approval window.' },
                 { label: 'Travel timing चाहिए', value: 'travel_timing', insight: 'User needs travel timing.' }
-            ], 'विदेश या travel वाले सवाल को सटीक करने के लिए ये बताइए।'),
+            ], 'विदेश या travel की timing सटीक करने के लिए ये बताइए।'),
             vehicle: make('पहली गाड़ी के लिए अभी आपकी स्थिति क्या है?', [
                 { label: 'Budget बन रहा', value: 'budget_building', insight: 'User is preparing finances for vehicle purchase timing.' },
                 { label: 'Loan planning चल रही', value: 'loan_planning', insight: 'User needs purchase timing with loan or approval context.' },
                 { label: 'Family decision बाकी', value: 'family_decision_pending', insight: 'User needs timing with family approval or shared decision context.' }
-            ], 'आपके पहली गाड़ी वाले सवाल को exact करने के लिए एक बात बताइए।'),
-            timing: make('Timing वाले सवाल में किस चीज़ का समय चाहिए?', [
+            ], 'पहली गाड़ी की timing exact करने के लिए एक बात बताइए।'),
+            timing: make('आपको किस चीज़ का समय चाहिए?', [
                 { label: 'Career का time', value: 'career_timing', insight: 'User needs work timing.' },
                 { label: 'Relationship का time', value: 'relationship_timing', insight: 'User needs relationship timing.' },
                 { label: 'Big change कब', value: 'change_timing', insight: 'User needs major shift window.' }
@@ -4061,6 +4165,11 @@ ONLY return the spoken response. Nothing else.`;
         };
 
         const en = {
+            promotion: make('What is the biggest factor in this promotion question?', [
+                { label: 'Appraisal is pending', value: 'appraisal_pending', insight: 'User needs promotion timing with appraisal context.' },
+                { label: 'Manager support needed', value: 'manager_support', insight: 'User needs authority/support signal for promotion.' },
+                { label: 'Performance is strong', value: 'performance_strong', insight: 'User has work evidence but needs timing and recognition clarity.' }
+            ], 'To make your promotion answer exact, tell me this.'),
             marriage: make('What is the real concern in this marriage question?', [
                 { label: 'Clear timing', value: 'marriage_timing', insight: 'User needs marriage timing before deeper chart answer.' },
                 { label: 'Partner nature', value: 'partner_nature', insight: 'User needs spouse nature and compatibility cues.' },
@@ -4307,10 +4416,41 @@ ONLY return the spoken response. Nothing else.`;
 
     getFallbackProfileQuestionForStage(stageKey, askedKeys = new Set()) {
         const pool = this.filterProfileQuestions(this.getProfileQuestions(), askedKeys);
-        if (!pool.length) return null;
+        if (!pool.length) return this.getEmergencyProfileQuestionForStage(stageKey, askedKeys);
 
         const ranked = this.rankStageQuestionCandidates(stageKey, pool);
-        return ranked[0]?.question || pool[0];
+        return ranked[0]?.question || pool[0] || this.getEmergencyProfileQuestionForStage(stageKey, askedKeys);
+    },
+
+    getEmergencyProfileQuestionForStage(stageKey, askedKeys = new Set()) {
+        const isHindi = MayaUtils?.storage?.get('maya_language') === 'hi';
+        const asked = askedKeys instanceof Set ? askedKeys : new Set(askedKeys || []);
+        const key = `profile_${stageKey}_detail`;
+        if (asked.has(key)) return null;
+
+        return isHindi
+            ? {
+                key,
+                spoken: 'इसे और personal बनाने के लिए एक छोटा detail बताइए।',
+                question: 'अभी आपकी ज़िंदगी में सबसे strong signal क्या है?',
+                options: [
+                    { label: 'Career pressure', value: 'career_pressure', insight: 'User is carrying work pressure right now.' },
+                    { label: 'Relationship confusion', value: 'relationship_confusion', insight: 'User needs emotional clarity right now.' },
+                    { label: 'Money चिंता', value: 'money_pressure', insight: 'User needs financial timing clarity right now.' }
+                ],
+                source: 'local_emergency'
+            }
+            : {
+                key,
+                spoken: 'To make this more personal, tell me one small detail.',
+                question: 'What feels strongest in your life right now?',
+                options: [
+                    { label: 'Career pressure', value: 'career_pressure', insight: 'User is carrying work pressure right now.' },
+                    { label: 'Relationship confusion', value: 'relationship_confusion', insight: 'User needs emotional clarity right now.' },
+                    { label: 'Money concern', value: 'money_pressure', insight: 'User needs financial timing clarity right now.' }
+                ],
+                source: 'local_emergency'
+            };
     },
 
     _extractFirstJsonObject(text = '') {
@@ -4433,7 +4573,7 @@ ONLY return the spoken response. Nothing else.`;
             : this.getFallbackProfileQuestionForStage(stageKey, askedKeys);
         if (!fallback) return null;
 
-        if (!window.MayaAI?.callFast && !window.MayaAI?.callGemini) {
+        if (!window.MayaAI?.callGemini) {
             return fallback;
         }
 
@@ -4524,9 +4664,7 @@ Return ONLY JSON:
 {"key":"ask_maya_focus","spoken":"...","question":"...","options":[{"label":"...","value":"...","insight":"..."}]}`;
 
             try {
-                const aiRaw = await this._callFastFunnelAI(askMayaPrompt, { maxTokens: 760, temperature: 0.75, timeoutMs: 10000 });
-                const parsed = this._extractFirstJsonObject(aiRaw);
-                return this._sanitizeAdaptiveQuestion(parsed, fallback, askedKeys) || fallback;
+                return await this._generateAdaptiveQuestionFromGemini(askMayaPrompt, fallback, askedKeys, { maxTokens: 1400, temperature: 0.65, timeoutMs: 18000 });
             } catch (error) {
                 console.warn('Ask-Maya focus question generation failed:', error?.message || error);
                 return fallback;
@@ -4588,9 +4726,7 @@ Return ONLY JSON:
 {"key":"...","spoken":"...","question":"...","options":[{"label":"...","value":"...","insight":"..."}]}`;
 
         try {
-            const aiRaw = await this._callFastFunnelAI(prompt, { maxTokens: 760, temperature: 0.75, timeoutMs: 10000 });
-            const parsed = this._extractFirstJsonObject(aiRaw);
-            return this._sanitizeAdaptiveQuestion(parsed, fallback, askedKeys);
+            return await this._generateAdaptiveQuestionFromGemini(prompt, fallback, askedKeys, { maxTokens: 1400, temperature: 0.65, timeoutMs: 18000 });
         } catch (error) {
             console.warn('Dynamic profile question generation failed:', error?.message || error);
             return fallback;
@@ -5265,7 +5401,7 @@ Return ONLY JSON:
             // ═══ STEP 2b: Post-kundli -warm transition into questions ═══
             const postKundliLine = askMayaActive
                 ? (isHindi
-                    ? `बहुत अच्छा, कुंडली बन गई है। अब focus सिर्फ आपके ${topicLabel} वाले सवाल पर रहेगा -एक छोटा follow-up ${this._isGuiderMale() ? 'पूछूँगा' : 'पूछूँगी'} ताकि answer exact हो सके।`
+                    ? `बहुत अच्छा, कुंडली बन गई है। अब focus सिर्फ ${topicLabel} पर रहेगा -एक छोटा follow-up ${this._isGuiderMale() ? 'पूछूँगा' : 'पूछूँगी'} ताकि answer exact हो सके।`
                     : `Wonderful, your kundli is ready. From here, I am staying only with your ${topicLabel} question -I will ask one quick follow-up so the answer becomes exact.`)
                 : (isHindi
                     ? `बहुत अच्छा, कुंडली बन गई है! इसमें बहुत कुछ दिख रहा है। अब मैं कुछ सवाल ${this._isGuiderMale() ? 'पूछूँगा' : 'पूछूँगी'} ताकि reading और भी गहरी और सटीक हो सके।`
@@ -6779,6 +6915,7 @@ Return ONLY JSON:
             birthPlace: this.userData?.birthPlace || funnelData.birthPlace || existingProfile.birthPlace,
             birthLat: this.userData?.birthLat || funnelData.birthLat || existingProfile.birthLat,
             birthLon: this.userData?.birthLon || funnelData.birthLon || existingProfile.birthLon,
+            birthTimezone: this.userData?.birthTimezone || funnelData.birthTimezone || existingProfile.birthTimezone,
             gender: this.userData?.gender || funnelData.gender || existingProfile.gender,
             maritalStatus: this.userData?.maritalStatus || funnelData.maritalStatus || existingProfile.maritalStatus,
             language
