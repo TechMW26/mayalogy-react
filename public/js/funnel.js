@@ -27,6 +27,15 @@ const MayaFunnel = {
     kundliChart: null,
     personalization: null,
 
+    // ── UNIFIED FULL-SCRIPT CACHE ──────────────────────────────
+    // Populated once by prefetchFullScript() before the funnel starts speaking.
+    // Each downstream stage reads its line from here instead of making its
+    // own per-chunk Gemini call. This eliminates mid-flow repetition,
+    // hallucinations, and per-section latency.
+    script: null,                  // { sectionKey: spokenText, ... }
+    _scriptPrefetchPromise: null,  // in-flight prefetch promise
+    _scriptPrefetchStartedAt: 0,
+
 
     // --- Multilingual TTS + complete-sentence safety helpers ---
     normalizeLanguage(language = 'en') {
@@ -189,6 +198,308 @@ Regenerate the SAME section as complete spoken text. End with a full sentence an
         }
 
         return cleaned || this.sanitizeNarrationText(fallback);
+    },
+
+    // =====================================================================
+    // UNIFIED FULL-SCRIPT GENERATION
+    // ---------------------------------------------------------------------
+    // One Gemini call up front returns the COMPLETE reading script as a
+    // JSON object. Downstream stages call _getCachedScriptSection() and
+    // skip their own AI call when the line is already in the cache.
+    // On any failure the cache stays empty and the existing per-section
+    // AI paths run as fallback (zero behavioural regression).
+    // =====================================================================
+
+    /** Reset the cached unified script. Called at the start of every funnel. */
+    resetScriptCache() {
+        this.script = null;
+        this._scriptPrefetchPromise = null;
+        this._scriptPrefetchStartedAt = 0;
+    },
+
+    /** Return cached spoken text for a given script section, or null. */
+    _getCachedScriptSection(sectionKey) {
+        const value = this.script?.[sectionKey];
+        if (typeof value !== 'string') return null;
+        const trimmed = value.trim();
+        return trimmed.length >= 12 ? trimmed : null;
+    },
+
+    /**
+     * Map between the legacy getContent() cache keys and the unified
+     * script section keys, so the existing call sites pick up the
+     * pre-generated text without needing to be rewritten individually.
+     */
+    _contentKeyToScriptSection(key) {
+        switch (key) {
+            case 'kundliStageNarrative': return 'kundli';
+            case 'allNumbersNarrative': return 'numbersReveal';
+            case 'lifePathCalculationNarrative': return 'numbersReveal';
+            case 'destinyCalculationNarrative': return 'numbersReveal';
+            case 'soulUrgeCalculationNarrative': return 'numbersReveal';
+            case 'teaserRevealNarration': return 'combinedTeaser';
+            default: return null;
+        }
+    },
+
+    _getCachedContentNarration(key) {
+        const section = this._contentKeyToScriptSection(key);
+        return section ? this._getCachedScriptSection(section) : null;
+    },
+
+    /**
+     * Generate the entire funnel script in ONE Gemini call.
+     * Idempotent: subsequent calls return the in-flight or cached result.
+     * Caller is expected to display a loading animation while this runs.
+     */
+    async prefetchFullScript() {
+        if (this.script) return this.script;
+        if (this._scriptPrefetchPromise) return this._scriptPrefetchPromise;
+
+        this._scriptPrefetchStartedAt = Date.now();
+        const isHindi = this._isHindiMode();
+        const lang = isHindi ? 'hi' : 'en';
+
+        this._scriptPrefetchPromise = (async () => {
+            try {
+                this._initFastAiContext(lang);
+                const prompt = this._buildUnifiedScriptPrompt(isHindi);
+                const raw = await this._callNarrationFunnelAI(prompt, {
+                    temperature: 0.85,
+                    topP: 0.95,
+                    timeoutMs: 0,
+                    requireComplete: true
+                });
+
+                const parsed = this._parseUnifiedScriptResponse(raw);
+                if (parsed && Object.keys(parsed).length >= 8) {
+                    // Defensive: sanitize each line through the standard cleaner
+                    // so pause tokens / control words / stray markdown are gone.
+                    const cleaned = {};
+                    for (const [key, value] of Object.entries(parsed)) {
+                        if (typeof value !== 'string') continue;
+                        const sanitized = this.sanitizeNarrationText(value).trim();
+                        if (sanitized.length >= 12) cleaned[key] = sanitized;
+                    }
+                    this.script = cleaned;
+                    const took = Date.now() - this._scriptPrefetchStartedAt;
+                    console.log(`✅ Full funnel script cached: ${Object.keys(cleaned).length} sections in ${took}ms`);
+                } else {
+                    console.warn('⚠️ Full-script prefetch returned too few sections; per-section fallback will run');
+                }
+            } catch (err) {
+                console.warn('⚠️ Full-script prefetch failed:', err?.message || err);
+            } finally {
+                this._scriptPrefetchPromise = null;
+            }
+            return this.script;
+        })();
+
+        return this._scriptPrefetchPromise;
+    },
+
+    /**
+     * Parse the JSON object Gemini returns. Tolerates markdown fences
+     * and leading/trailing prose by extracting the first balanced {...}.
+     */
+    _parseUnifiedScriptResponse(raw) {
+        if (!raw) return null;
+        let text = String(raw).trim();
+        // Strip code fences if present
+        text = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+
+        // Try direct parse first
+        try {
+            const direct = JSON.parse(text);
+            if (direct && typeof direct === 'object') return direct;
+        } catch (_e) { /* fall through */ }
+
+        // Locate first balanced {...} block
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}');
+        if (start === -1 || end === -1 || end <= start) return null;
+        const slice = text.slice(start, end + 1);
+        try {
+            return JSON.parse(slice);
+        } catch (_e) {
+            // Last resort: try to repair common issues (smart quotes, trailing commas)
+            const repaired = slice
+                .replace(/[\u201C\u201D]/g, '"')
+                .replace(/[\u2018\u2019]/g, "'")
+                .replace(/,(\s*[}\]])/g, '$1');
+            try { return JSON.parse(repaired); } catch (_e2) { return null; }
+        }
+    },
+
+    /**
+     * Build the single mega-prompt that yields the entire reading script.
+     * Re-uses the rich chart-facts block from buildDirectSectionPrompt() by
+     * generating a throw-away single-section prompt and stripping its
+     * per-section directive, so the prefetch carries every guardrail
+     * (temporal awareness, life stage, chara karakas, user answers, etc.).
+     */
+    _buildUnifiedScriptPrompt(isHindi) {
+        const baseContext = this.buildBaseAIContext(this.buildPredictionItems());
+        baseContext.alreadyToldDigest = '';
+
+        // Anchor prompt for one neutral section just to extract the facts/rules.
+        const anchorPrompt = this.buildDirectSectionPrompt('completion', baseContext);
+
+        // The anchor structure ends with "...\n\nReturn only the spoken text."
+        // and starts with the per-section directive. Strip both ends so we
+        // keep only the chart facts + rules + memory blocks.
+        let factsAndRules = anchorPrompt
+            .replace(/Return only the spoken text\.\s*$/, '')
+            .trim();
+
+        // Remove the leading "Write ONE completion message..." directive and the
+        // "Narrative arc for this section:" stub so the model isn't biased
+        // toward producing a single completion line.
+        const arcMarker = '\n\nNarrative arc for this section:\n';
+        const idx = factsAndRules.indexOf(arcMarker);
+        if (idx !== -1) {
+            // Drop everything from the start through the narrative arc paragraph.
+            const afterArc = factsAndRules.slice(idx + arcMarker.length);
+            const factsStart = afterArc.indexOf('\n\n');
+            factsAndRules = factsStart !== -1 ? afterArc.slice(factsStart + 2) : afterArc;
+        }
+
+        const userQuestion = (this.userData?.userQuestion || '').toString().trim();
+        const askMaya = userQuestion.length >= 3;
+        const topic = askMaya ? this._classifyUserQuestionTopic(userQuestion) : null;
+        const topicLabel = askMaya ? this._getAskMayaTopicLabel(topic, isHindi) : '';
+        const subjectPhrase = askMaya ? this._getAskMayaSubjectPhrase(topic, isHindi) : '';
+        const guideName = this._guideName?.() || (isHindi ? 'माया' : 'MAYA');
+
+        const masterDirective = isHindi
+            ? `## MASTER TASK — पूरी funnel reading का COMPLETE script एक ही response में
+आप ${guideName} हैं। आज user के लिए पूरी reading का spoken script एक JSON object में return कीजिए। हर key एक spoken section है — इन्हें अलग-अलग questions न समझिए, बल्कि एक ही flowing कहानी के chapters मानिए।
+
+CRITICAL CONSISTENCY RULES (पूरे script पर लागू):
+- पूरा script एक ही continuous narrative है। हर section पिछले section से naturally आगे बढ़े।
+- ZERO REPETITION RULE (सख्त): पूरे script में कोई भी sentence, phrase, metaphor, opener, closer, adjective-cluster, या signature line दो बार मत आए। हर section की भाषा अलग हो — अलग रचना, अलग तस्वीरें, अलग शब्द।
+  - कोई भी planet, dasha, nakshatra, yoga, house, month-window, year, observation, या number एक ही angle से दो section में मत दोहराइए। अगर वही ग्रह/दशा फिर आए तो उसका नया पहलू दिखाइए।
+  - Section openers कभी repeat न हों — जैसे "देखिए...", "एक बात बताऊँ...", "सच कहूँ तो...", "interesting बात ये है कि..." — हर ऐसा opener पूरे script में सिर्फ एक बार।
+  - Adjectives और metaphors भी unique रखिए ("बहुत खास", "unique", "powerful", "deep", "special" — एक section में जो use हुआ, बाकी में दूसरा शब्द)।
+  - दो sections को mentally compare कीजिए before writing — अगर 70%+ वही feel/structure है तो दूसरा section पूरा फिर से लिखिए।
+- User का नाम पूरे script में MAX 3 बार। बाकी हर जगह "आप / आपके / आपकी"।
+- हर section TTS-safe spoken text: कोई bullets, markdown, headings, या nested JSON नहीं।
+- Greeting ("नमस्ते", "Hello") सिर्फ "opening" में। बाकी किसी भी section में reset/restart/welcome-back वाक्य forbidden।
+- Pause tokens [[pause-250]] / [[pause-500]] केवल वहीं use कीजिए जहाँ section spec में बताया गया है।
+${askMaya ? `- USER QUESTION LOCK (HIGHEST PRIORITY): यह पूरी reading केवल "${topicLabel}" के बारे में है। हर section इसी विषय पर रहे — प्यार/career/पैसा/सेहत/परिवार जैसे unrelated topics MENTION भी मत कीजिए जब तक वो user के सवाल का असली topic न हो।\n  Spoken subject phrase: "${subjectPhrase}".\n  Original question (internal context only — verbatim quote forbidden): "${userQuestion.slice(0, 220)}"` : ''}`
+            : `## MASTER TASK — produce the COMPLETE funnel reading in ONE response
+You are ${guideName}. Return today's full spoken funnel script as a single JSON object. Each key is one spoken section — treat them not as separate questions but as chapters of one flowing story.
+
+CRITICAL CONSISTENCY RULES (apply across the whole script):
+- The entire script is ONE continuous narrative; every section must continue naturally from the previous one.
+- ZERO REPETITION RULE (strict): No sentence, phrase, metaphor, opener, closer, adjective-cluster, or signature line may appear twice anywhere in the script. Every section uses a different sentence shape, different imagery, different vocabulary.
+  - No planet, dasha, nakshatra, yoga, house, month window, year, observation, or number may be revisited from the same angle in a later section. If the same planet must reappear, present a genuinely new facet of it.
+  - Section openers must never repeat — phrases like "You know...", "Let me tell you something...", "Honestly...", "Here is the interesting part...", "The thing is..." each appear AT MOST ONCE across the whole script.
+  - Adjectives and metaphors must also stay unique ("very special", "unique", "powerful", "deep", "rare" — once a section uses one, no other section reuses it).
+  - Before writing each section, mentally compare it against the prior ones — if it shares 70%+ of its feel or structure, rewrite that section from scratch.
+- Use the user's name AT MOST 3 times across the entire script. Use "you / your" everywhere else.
+- Every section is TTS-safe spoken text: no bullets, markdown, headings, or nested JSON.
+- Greet ("Hello / Namaste") ONLY in "opening". Reset/restart/welcome-back lines are forbidden in every other section.
+- Use pause tokens [[pause-250]] / [[pause-500]] ONLY where the per-section spec calls for them.
+${askMaya ? `- USER QUESTION LOCK (HIGHEST PRIORITY): This entire reading is ONLY about "${topicLabel}". Every section stays on this subject — do NOT mention unrelated topics like love/career/money/health/family unless that IS the user's actual topic.\n  Spoken subject phrase: "${subjectPhrase}".\n  Original question (internal context only — verbatim quote forbidden): "${userQuestion.slice(0, 220)}"` : ''}`;
+
+        const specs = this._unifiedSectionSpecs(isHindi, askMaya, { topicLabel, subjectPhrase });
+
+        const jsonShape = `{
+  "opening": "...",
+  "kundli": "...",
+  "preQuestionBridge": "...",
+  "numbersReveal": "...",
+  "combinedTeaser": "...",
+  "accuracyShock": "...",
+  "suspenseBridge": "...",
+  "emailGate": "...",
+  "authCheck": "...",
+  "welcomeBack": "...",
+  "newUser": "...",
+  "deepRevealPrep": "...",
+  "loveIntro": "...",
+  "love": "...",
+  "careerIntro": "...",
+  "career": "...",
+  "yearIntro": "...",
+  "year": "...",
+  "warningIntro": "...",
+  "warning": "...",
+  "completion": "...",
+  "returnHook": "..."
+}`;
+
+        const outputRule = isHindi
+            ? `\n\n## OUTPUT FORMAT (CRITICAL)\nकेवल valid JSON object return कीजिए, ठीक नीचे दिए shape में। कोई preamble नहीं, कोई \`\`\`json fence नहीं, कोई explanation नहीं। हर value एक single JSON string हो (newlines allowed inside the string)। Pause tokens [[pause-250]] / [[pause-500]] को string values के अंदर रहने दीजिए।\n\nREQUIRED SHAPE:\n${jsonShape}`
+            : `\n\n## OUTPUT FORMAT (CRITICAL)\nReturn ONLY a valid JSON object that exactly matches the shape below. No preamble, no \`\`\`json fences, no explanation. Each value is a single JSON string (newlines inside the string are fine). Keep pause tokens [[pause-250]] / [[pause-500]] inside the string values where indicated.\n\nREQUIRED SHAPE:\n${jsonShape}`;
+
+        return `${masterDirective}\n\n${factsAndRules}\n\n## SECTION SPECS\n${specs}${outputRule}`;
+    },
+
+    /**
+     * Compact per-section spec for the unified prompt. Mirrors the editorial
+     * constraints from the original per-section prompts in
+     * buildDirectSectionPrompt(), but condensed so the JSON output stays
+     * within model limits.
+     */
+    _unifiedSectionSpecs(isHindi, askMaya, { topicLabel = '', subjectPhrase = '' } = {}) {
+        const lp = this.calculations?.lifePath || '';
+        const dest = this.calculations?.destiny || '';
+        const su = this.calculations?.soulUrge || '';
+        const firstName = this.firstName || (isHindi ? 'जी' : 'friend');
+
+        if (isHindi) {
+            return [
+                `"opening" — 4-5 short spoken sentences. पहली line में warm greeting + "मैं ${this._guideName?.() || 'माया'} हूँ" naturally fit हो। ${askMaya ? `पहले या दूसरे वाक्य में साफ कहिए कि आप ${subjectPhrase} पर locked रहेंगी।` : 'Chart, numbers, या timing से ONE standout factual clue दीजिए (जन्मतिथि literal मत पढ़िए)।'} आखिरी वाक्य: personal reading कुंडली + numbers + timing से तैयार हो रही है। Pause token के बाद ${'[[pause-500]]'} introduction के तुरंत बाद। No filler, no cosmic platitudes।`,
+                `"kundli" — 2-3 short sentences। CRITICAL: कुंडली बन रही है, "तैयार है / बन गई है" मत कहिए। Present-progressive: "विन्यास बन रहा है / ग्रह जगह ले रहे हैं"। ${askMaya ? `पहली line साफ pivot करे ${subjectPhrase} की तरफ।` : 'सिर्फ ONE chart marker name कीजिए (Lagna, Moon sign, या current dasha में से कोई एक) और एक SHORT FOMO teaser plant कीजिए ("numbers मिलते ही एक बड़ी बात खुलेगी") — prediction reveal नहीं।'} ज्यादा से ज्यादा एक [[pause-250]]।`,
+                `"preQuestionBridge" — 2-3 short sentences। पहले question से पहले की bridge। Greeting नहीं, "कुंडली बन गई" repeat नहीं। ONE concrete chart/number pattern + क्यों अगला सवाल important है। ${askMaya ? `${topicLabel} पर ही रहिए।` : ''} No pause।`,
+                `"numbersReveal" — 7-9 short sentences। Numbers: Life Path ${lp}, Destiny ${dest}, Soul Urge ${su}. STRUCTURE: (1) ONE sentence derivation बताइए। (2) हर number का 1-2 sentence reading + chart का कौनसा planet/house इसे confirm करता है + real life पर specific असर। तीनों के बीच [[pause-250]] डालें। (3) Closing ONE sentence में तीनों + chart combine करके ONE specific personal incident (past या upcoming) name कीजिए — exact time period सहित। No padding।`,
+                `"combinedTeaser" — total 6 sentences max, तीन connected segments।\n[Segment 1 — IDENTITY TRUTH] 2 sentences। "आप ऐसे इंसान हैं जो..." format। Flattery-free pattern observation।\n[[pause-250]]\n[Segment 2 — EMOTIONAL PATTERN] 2 sentences। ONE daily inner emotional pattern, chart से confirmed।\n[[pause-250]]\n[Segment 3 — UNRESOLVED THREAD] 2 sentences। Chart से ONE open loop जो naturally resolution माँगे। User को लगे "मुझे और जानना है।"`,
+                `"accuracyShock" — 3 sentences। Chart data से ONE SPECIFIC past event predict कीजिए — approximate month/year + nature (relationship/career/health/family/emotional crisis) + emotional impact। Generic line forbidden। ज्यादा से ज्यादा एक [[pause-250]]।`,
+                `"suspenseBridge" — EXACTLY 3 sentences। (1) chart में सबसे intense unresolved pattern name कीजिए। (2) "इसका पूरा truth यहाँ खोलना ठीक नहीं" + naturally tease कीजिए कि file save होते ही love, career, timing windows, warnings खुलेंगी। (3) "आपकी पूरी file तैयार है, बस इसे save कर लीजिए।" No pause।`,
+                `"emailGate" — EXACTLY 2 sentences, soft WhatsApp OTP gate। FOMO/डर नहीं। (1) warm continuation। (2) CORE: "${firstName}, आगे की reading सुरक्षित रखने के लिए व्हाट्सऐप verification चाहिए — अपना मोबाइल नंबर डाल दीजिए; ओटीपी आने में कुछ सेकंड लग सकते हैं।" Email/password कभी नहीं। No pause।`,
+                `"authCheck" — 1 sentence। Saved reading check करने की operational line। No pause।`,
+                `"welcomeBack" — 2 sentences। Warm recognition + saved reading mention + OTP/password ask। No pause।`,
+                `"newUser" — 2 sentences। OTP verify करके reading save और protect करने की बात। No pause।`,
+                `"deepRevealPrep" — 2 sentences। Surface layer अब तक थी; अब deeper personal patterns खुलेंगे। End में consent-style question। No pause।`,
+                `"loveIntro" — 1 sentence। Love section का warm direct transition। No pause।`,
+                `"love" — 4 sentences max। FILTERLESS love reading। Venus की राशि, 7th house lord, और दशा NAME कीजिए। Married likely → marriage dynamics + real friction; unmarried → attachment pattern + partnership timing (specific months/years)। Vague line forbidden। ज्यादा से ज्यादा एक [[pause-250]]।`,
+                `"careerIntro" — 1 sentence। Career section का transition। No pause।`,
+                `"career" — 4 sentences max। FILTERLESS career & money। 10th house, current दशा, key planetary positions use कीजिए। ONE underused strength + ONE concrete next move with specific month/year। No fake positivity। ज्यादा से ज्यादा एक [[pause-250]]।`,
+                `"yearIntro" — 1 sentence। Timing section का transition। No pause।`,
+                `"year" — 4-5 sentences। FILTERLESS timing। Past months past tense में, predictions ONLY upcoming months पर। दशा transitions + transits + Personal Year combine करके अगले 3-6 months की 2 NEW specific windows बताइए (हर window: exact month + year + क्या करना/avoid)। ONE hidden trap with timing। ज्यादा से ज्यादा एक [[pause-250]]।`,
+                `"warningIntro" — 1 sentence। Caution section का transition। डराइए नहीं। No pause।`,
+                `"warning" — 4 sentences max। ONE NEW specific self-sabotage pattern — planetary evidence + trigger months + practical avoidance। Generic "careful रहिए" forbidden। ज्यादा से ज्यादा एक [[pause-250]]।`,
+                `"completion" — 2 sentences। Reading को grounded way में close + questions invite। No pause।`,
+                `"returnHook" — 2 sentences। ONE upcoming timing shift (specific month) + "कल इसे और गहराई से देखेंगे।" Natural motivation। No pause।`
+            ].join('\n\n');
+        }
+
+        return [
+            `"opening" — 4-5 short spoken sentences. The first line carries a warm greeting + "I am ${this._guideName?.() || 'MAYA'}" naturally. ${askMaya ? `Sentence 1 or 2 makes it explicit that you are staying locked on ${subjectPhrase}.` : 'Name ONE standout factual clue from chart, numbers, or timing (do not recite the literal birth date).'} The final sentence makes it clear the personal reading is being assembled from kundli + numbers + timing. Place [[pause-500]] immediately after the introduction sentence. No filler, no cosmic platitudes.`,
+            `"kundli" — 2-3 short sentences. CRITICAL: the chart is still forming, so do NOT say "your kundli is ready / chart is ready / wonderful". Use present-progressive: "the chart is forming, planets are settling". ${askMaya ? `The first sentence pivots clearly toward ${subjectPhrase}.` : 'Quote only ONE chart marker (ascendant, moon sign, or current dasha) and plant a SHORT FOMO teaser ("once the numbers line up, one big prediction will surface") — never reveal the prediction.'} At most one [[pause-250]].`,
+            `"preQuestionBridge" — 2-3 short sentences. Bridge into the first MCQ. No greeting, no "your kundli is ready" repeat. Give ONE concrete chart/number pattern + why the next question matters. ${askMaya ? `Stay on ${topicLabel}.` : ''} No pause.`,
+            `"numbersReveal" — 7-9 short sentences. Numbers: Life Path ${lp}, Destiny ${dest}, Soul Urge ${su}. STRUCTURE: (1) ONE sentence on derivation. (2) 1-2 sentences per number — what it represents + which planet/house/dasha in the chart confirms it + its specific real-life effect. Insert [[pause-250]] between the three. (3) Closing ONE sentence: combine all three numbers + chart to name ONE specific personal incident (past or upcoming) with an exact time period. No padding.`,
+            `"combinedTeaser" — total 6 sentences max, three connected segments.\n[Segment 1 — IDENTITY TRUTH] 2 sentences. "You are someone who..." format. Flattery-free pattern observation.\n[[pause-250]]\n[Segment 2 — EMOTIONAL PATTERN] 2 sentences. ONE daily inner emotional pattern confirmed by the chart.\n[[pause-250]]\n[Segment 3 — UNRESOLVED THREAD] 2 sentences. ONE open loop from the chart that demands resolution. The user must feel "I need to know more."`,
+            `"accuracyShock" — 3 sentences. From chart data predict ONE SPECIFIC past event — approximate month/year + nature (relationship/career/health/family/emotional crisis) + emotional impact. Generic lines forbidden. At most one [[pause-250]].`,
+            `"suspenseBridge" — EXACTLY 3 sentences. (1) Name the most intense unresolved pattern visible in the chart. (2) Say "it would not be right to open the full truth here" AND naturally tease that once the file is saved, love, career, timing windows, warnings will all open. (3) "Your full file is ready, just save it." No pause.`,
+            `"emailGate" — EXACTLY 2 sentences, soft WhatsApp OTP gate. No FOMO/fear. (1) Warm continuation. (2) CORE: "${firstName}, to keep the rest of this reading secure I need WhatsApp verification — enter your mobile number; the OTP can take a few seconds to arrive." Never mention email or password. No pause.`,
+            `"authCheck" — 1 sentence. Operational line that you are checking their saved reading. No pause.`,
+            `"welcomeBack" — 2 sentences. Warm recognition + saved reading mention + OTP/password ask. No pause.`,
+            `"newUser" — 2 sentences. Verifying via OTP saves and protects the reading. No pause.`,
+            `"deepRevealPrep" — 2 sentences. Acknowledge that what was shared so far was the surface layer; the deeper personal patterns are about to open. End with a consent-style question. No pause.`,
+            `"loveIntro" — 1 sentence. Warm direct transition into the love section. No pause.`,
+            `"love" — 4 sentences max. FILTERLESS love reading. NAME the Venus sign, 7th house lord, and relevant dasha. If likely married → marriage dynamics + real friction; if unmarried → attachment pattern + partnership timing (specific months/years). Vague lines forbidden. At most one [[pause-250]].`,
+            `"careerIntro" — 1 sentence. Clean transition into the career section. No pause.`,
+            `"career" — 4 sentences max. FILTERLESS career & money. Use 10th house, current dasha, key planetary positions. Name ONE underused strength and ONE concrete next move with a specific month/year. No fake positivity. At most one [[pause-250]].`,
+            `"yearIntro" — 1 sentence. Clean transition into the timing section. No pause.`,
+            `"year" — 4-5 sentences. FILTERLESS timing. Past months in past tense, predictions ONLY about upcoming months. Combine dasha transitions + transits + personal year to map 2 NEW specific windows in the next 3-6 months (each: exact month + year + what to do or avoid). Include ONE hidden trap with timing. At most one [[pause-250]].`,
+            `"warningIntro" — 1 sentence. Honest transition into the caution section. No fear-mongering. No pause.`,
+            `"warning" — 4 sentences max. ONE NEW specific self-sabotage pattern — planetary evidence + trigger months + practical avoidance. Generic "be careful" is forbidden. At most one [[pause-250]].`,
+            `"completion" — 2 sentences. Close the reading in a grounded way and invite questions. No pause.`,
+            `"returnHook" — 2 sentences. Identify ONE upcoming timing shift (specific month) and say "Let's go deeper next time." Natural motivation. No pause.`
+        ].join('\n\n');
     },
 
     _speechPause(ms = 250) {
@@ -418,16 +729,19 @@ Regenerate the SAME section as complete spoken text. End with a full sentence an
     chapterOrder: null,
 
     stageTiming: {
-        introSettle: 600,
-        calculationLeadIn: 180,
-        calcStepDelay: 500,
-        letterDelay: 100,
-        vowelDelay: 130,
-        kundliSignalDelay: 240,
-        kundliInsightDelay: 200,
-        stageSettle: 600,
-        validationSettle: 500,
-        suspensePause: 800
+        // Tightened defaults: keep visual animations breathable but kill the
+        // long dead-air pauses that used to sit between consecutive spoken
+        // narrations and made the funnel feel slow / boring.
+        introSettle: 250,
+        calculationLeadIn: 100,
+        calcStepDelay: 260,
+        letterDelay: 90,
+        vowelDelay: 110,
+        kundliSignalDelay: 140,
+        kundliInsightDelay: 110,
+        stageSettle: 260,
+        validationSettle: 220,
+        suspensePause: 380
     },
     
     // Funnel phases
@@ -1613,6 +1927,11 @@ Current section: ${sectionKey}
             .replace(/आज\s+\d{1,2}\s+[^\s,.!?।]+\s+\d{4}\s+का\s+दिन/gi, isHindi ? 'यह चरण' : 'this phase')
             .replace(/today'?s verdict/gi, isHindi ? 'यह पैटर्न' : 'this pattern')
             .replace(/आज का verdict/gi, 'यह पैटर्न')
+            // TTS pronounces "/" as the word "slash". Replace any slash that
+            // sits between two word characters (Latin or Devanagari) with the
+            // appropriate spoken connector so e.g. "love/career" becomes
+            // "love or career" / "love या career".
+            .replace(/([\w\u0900-\u097F])\s*\/\s*([\w\u0900-\u097F])/g, isHindi ? '$1 या $2' : '$1 or $2')
             .replace(/([A-Za-z\u0900-\u097F]+)\s*जी(?=[\s,.!?।]|$)/g, '$1')
             .replace(/\s+/g, ' ')
             .replace(/\s+([,.!?।])/g, '$1')
@@ -2106,6 +2425,13 @@ Current section: ${sectionKey}
      * Get content from cache or generate on-demand (fast path)
      */
     async getContent(key, fallbackGenerator) {
+        // Unified-script fast path: if the prefetch produced this section, use it.
+        const cached = this._getCachedContentNarration(key);
+        if (cached) {
+            console.log(`⚡ Using cached unified-script narration: ${key}`);
+            return cached;
+        }
+
         if (this.contentGenerating[key]) {
             console.log(`⏳ Waiting for: ${key}`);
             return await this.contentGenerating[key];
@@ -2636,6 +2962,13 @@ ${this.getBaseRules(false)}`);
     },
 
     async generateJourneyIntro({ isHindi, askMayaActive, guideName, isMale, topicLabel, subjectPhrase }) {
+        // Unified-script fast path
+        const cached = this._getCachedScriptSection('opening');
+        if (cached) {
+            console.log('⚡ Using cached unified-script opening');
+            return cached;
+        }
+
         const lang = isHindi ? 'hi' : 'en';
         const fallback = this._getLocalJourneyIntro({ isHindi, askMayaActive, guideName, isMale, topicLabel, subjectPhrase });
         const profile = this.personalization || {};
@@ -2712,6 +3045,13 @@ Return only spoken text.`;
     },
 
     async generatePreQuestionBridge({ isHindi, askMayaActive, topicLabel, subjectPhrase }) {
+        // Unified-script fast path
+        const cached = this._getCachedScriptSection('preQuestionBridge');
+        if (cached) {
+            console.log('⚡ Using cached unified-script preQuestionBridge');
+            return cached;
+        }
+
         const fallback = this._getLocalPreQuestionBridge({ isHindi, askMayaActive, topicLabel, subjectPhrase });
         const lang = isHindi ? 'hi' : 'en';
         const profile = this.personalization || {};
@@ -3435,51 +3775,45 @@ All three segments must connect as one flowing story — every segment must cite
     _showThinkingIndicator(type = 'thinking') {
         this._hideThinkingIndicator();
 
-        const lang = this._isHindiMode();
+        // UI copy is ALWAYS in English regardless of voice/narration language.
         const copy = {
             thinking: {
-                badge: lang ? 'विश्लेषण' : 'AI ANALYSIS',
-                title: lang ? 'आपकी कुंडली की गहरी परतें पढ़ रही हूँ' : 'Reading the deeper layers of your chart',
-                subtitle: lang ? 'ग्रह, भाव और वर्तमान गोचर का मिलान कर रही हूँ।' : 'Cross-checking planets, houses, and current timing.'
+                badge: 'AI ANALYSIS',
+                title: 'Reading the deeper layers of your chart',
+                subtitle: 'Cross-checking planets, houses, and current timing.'
             },
             calculating: {
-                badge: lang ? 'सटीक गणना' : 'PRECISION CALCULATION',
-                title: lang ? 'आपकी सटीक कुंडली की गणना चल रही है' : 'Running your exact chart calculations',
-                subtitle: lang ? 'जन्म समय, अंश और अंकीय गणनाएँ पक्की कर रही हूँ।' : 'Verifying birth time, degrees, and numerology reductions.'
+                badge: 'PRECISION CALCULATION',
+                title: 'Running your exact chart calculations',
+                subtitle: 'Verifying birth time, degrees, and numerology reductions.'
             },
             revealing: {
-                badge: lang ? 'गहरा वाचन' : 'DEEP READING',
-                title: lang ? 'छिपा हुआ ढंग बाहर निकाल रही हूँ' : 'Pulling out the hidden pattern',
-                subtitle: lang ? 'आपके प्रश्न से जुड़ा सबसे गहरा सूत्र पकड़ रही हूँ।' : 'Finding the thread most relevant to your question.'
+                badge: 'DEEP READING',
+                title: 'Pulling out the hidden pattern',
+                subtitle: 'Finding the thread most relevant to your question.'
             },
             love: {
-                badge: lang ? 'प्रेम वाचन' : 'LOVE READING',
-                title: lang ? 'आपके सम्बन्धों का ढंग पढ़ रही हूँ' : 'Reading your relationship pattern',
-                subtitle: lang ? 'शुक्र, सातवाँ भाव और भावनात्मक समय देख रही हूँ।' : 'Checking Venus, the seventh house, and emotional timing.'
+                badge: 'LOVE READING',
+                title: 'Reading your relationship pattern',
+                subtitle: 'Checking Venus, the seventh house, and emotional timing.'
             },
             career: {
-                badge: lang ? 'व्यवसाय वाचन' : 'CAREER READING',
-                title: lang ? 'आपकी व्यावसायिक रेखा पढ़ रही हूँ' : 'Decoding your professional line',
-                subtitle: lang ? 'दसवाँ भाव, शनि और धन के संकेत मिला रही हूँ।' : 'Aligning the tenth house, Saturn, and money indicators.'
+                badge: 'CAREER READING',
+                title: 'Decoding your professional line',
+                subtitle: 'Aligning the tenth house, Saturn, and money indicators.'
             },
             year: {
-                badge: lang ? 'आने वाला समय' : 'YEAR AHEAD',
-                title: lang ? 'आने वाले महीनों का सार पढ़ रही हूँ' : 'Reading the theme of the coming months',
-                subtitle: lang ? 'गोचर, अवसर और बड़े बदलावों का नक्शा बना रही हूँ।' : 'Mapping transits, timing windows, and major shifts.'
+                badge: 'YEAR AHEAD',
+                title: 'Reading the theme of the coming months',
+                subtitle: 'Mapping transits, timing windows, and major shifts.'
             },
             kundli: {
-                badge: lang ? 'कुंडली संरेखण' : 'KUNDLI ALIGNMENT',
-                title: lang ? 'पूरी जन्म कुंडली संरेखित कर रही हूँ' : 'Aligning your full birth chart',
-                subtitle: lang ? 'लग्न, भाव और ग्रह स्थिति पक्की कर रही हूँ।' : 'Locking your lagna, houses, and graha placements.'
+                badge: 'KUNDLI ALIGNMENT',
+                title: 'Aligning your full birth chart',
+                subtitle: 'Locking your lagna, houses, and graha placements.'
             }
         };
         const content = copy[type] || copy.thinking;
-
-        // Gender-flip Hindi strings if guide is male
-        if (lang && this._isGuiderMale()) {
-            if (content.title) content.title = this._flipVoiceLine(content.title);
-            if (content.subtitle) content.subtitle = this._flipVoiceLine(content.subtitle);
-        }
 
         const indicator = document.createElement('div');
         indicator.id = 'maya-thinking-indicator';
@@ -3520,6 +3854,13 @@ All three segments must connect as one flowing story — every segment must cite
     },
 
     async generateDirectReadingSection(sectionKey, context = {}) {
+        // Unified-script fast path
+        const cached = this._getCachedScriptSection(sectionKey);
+        if (cached) {
+            console.log(`⚡ Using cached unified-script section: ${sectionKey}`);
+            return cached;
+        }
+
         const lang = this._syncLanguagePreference();
         const isHindi = lang === 'hi';
         const localFallback = this._getLocalDirectSectionFallback(sectionKey, context);
@@ -3643,7 +3984,26 @@ All three segments must connect as one flowing story — every segment must cite
             this._syncLanguagePreference();
 
             console.log('🎭 Funnel UI ready, beginning journey...');
-            
+
+            // ── UNIFIED SCRIPT PREFETCH ───────────────────────────────────
+            // Generate the COMPLETE funnel reading in a single Gemini call
+            // BEFORE any narration starts. Downstream stages then read from
+            // cache, which kills cross-chunk repetition / hallucination.
+            // The blob + thinking indicator give the user a clear "MAYA is
+            // preparing your reading" beat. On failure we silently fall back
+            // to the existing per-section AI calls.
+            this.resetScriptCache();
+            try { this._showThinkingIndicator?.('calculating'); } catch (_e) {}
+            try { window.MayaBlob?.startThinking?.(); } catch (_e) {}
+            try {
+                await this.prefetchFullScript();
+            } catch (prefetchErr) {
+                console.warn('⚠️ Script prefetch threw, continuing with per-section fallback:', prefetchErr?.message || prefetchErr);
+            } finally {
+                try { this._hideThinkingIndicator?.(); } catch (_e) {}
+                try { window.MayaBlob?.stopThinking?.(); } catch (_e) {}
+            }
+
             // Begin the journey with flowing narrative
             await this.beginJourney();
             
@@ -5569,6 +5929,110 @@ Return ONLY JSON:
         const isMale = this.userData?.gender === 'male';
         const dashaStartYear = profile.currentDasha?.startYear || '';
 
+        // ─── Ask-Maya topic lock ───────────────────────────────────────────
+        // In Ask-Maya flow the validation MCQ MUST stay on the user's question
+        // topic. A generic dasha-obsession question (Rahu, Saturn, etc.) drifts
+        // off-topic and breaks the contract that "every follow-up relates to
+        // your question". So we build a topic-anchored validation instead.
+        if (this._isAskMayaFlow && this._isAskMayaFlow()) {
+            const userQ = (this._getActiveUserQuestion && this._getActiveUserQuestion()) || '';
+            const topic = this._classifyUserQuestionTopic ? this._classifyUserQuestionTopic(userQ) : 'general';
+            const topicLabel = this._getAskMayaTopicLabel ? this._getAskMayaTopicLabel(topic, isHindi) : '';
+            const subjectPhrase = this._getAskMayaSubjectPhrase ? this._getAskMayaSubjectPhrase(topic, isHindi) : topicLabel;
+            const subj = (subjectPhrase || topicLabel || (isHindi ? 'इस सवाल' : 'this question')).toString().trim();
+
+            const variantsByTopic = isHindi ? {
+                career: [
+                    `${subj} के बारे में एक pattern दिख रहा है - क्या पिछले कुछ महीनों में आपने महसूस किया कि मेहनत के बावजूद चीजें वहाँ नहीं पहुँच रहीं जहाँ पहुँचनी चाहिए?`,
+                    `${subj} में अक्सर एक ऐसा moment आता है जब लगता है कि अब decision लेना ही पड़ेगा - क्या आप अभी ऐसी जगह हैं?`,
+                    `क्या ${subj} को लेकर अंदर ही अंदर एक बेचैनी है जो दूसरों को नहीं दिखती, सिर्फ आप जानते हैं?`
+                ],
+                love: [
+                    `${subj} के बारे में एक बात दिख रही है - क्या आप अक्सर सामने वाले की feelings को अपनी feelings से ज्यादा importance देते हैं?`,
+                    `${subj} में क्या एक ऐसा pattern है जहाँ शुरुआत बहुत अच्छी होती है पर बीच में कुछ टूट जाता है?`,
+                    `क्या ${subj} में आप अभी एक ऐसी जगह हैं जहाँ clarity नहीं मिल रही - न आगे बढ़ पा रहे हैं, न पीछे हट पा रहे हैं?`
+                ],
+                marriage: [
+                    `${subj} के बारे में दिख रहा है कि timing आपके हाथ से ज्यादा circumstances पर depend कर रही है - क्या ये सही है?`,
+                    `क्या ${subj} को लेकर family और आपकी अपनी सोच के बीच एक tension है जो अभी unresolved है?`,
+                    `${subj} में क्या एक नाम बार-बार दिमाग में आता है जिसके बारे में आप sure नहीं हैं?`
+                ],
+                money: [
+                    `${subj} में एक pattern दिख रहा है - क्या income तो आती है पर savings बनते-बनते कुछ unexpected expense आ जाता है?`,
+                    `क्या ${subj} को लेकर आपने recently कोई बड़ा decision टाला है क्योंकि timing सही नहीं लग रही?`,
+                    `${subj} में क्या एक डर है जो rational नहीं है पर फिर भी हर decision को slow कर देता है?`
+                ],
+                health: [
+                    `${subj} में क्या एक ऐसी चीज़ है जो doctors को नहीं दिख रही पर आप अंदर से जानते हैं कि कुछ है?`,
+                    `${subj} को लेकर क्या नींद और energy levels पिछले कुछ महीनों से उतार-चढ़ाव में हैं?`
+                ],
+                travel: [
+                    `${subj} के बारे में दिख रहा है कि एक plan बनता है फिर कुछ ना कुछ हो जाता है - क्या ये pattern आपने notice किया?`,
+                    `क्या ${subj} को लेकर एक खास जगह या देश का नाम बार-बार दिमाग में आता है?`,
+                    `${subj} में क्या timing को लेकर अभी confusion है - कब जाना है, कब रुकना है?`
+                ],
+                family: [
+                    `${subj} में क्या एक ऐसा रिश्ता है जिसमें आप ज्यादा दे रहे हैं और बदले में वो नहीं मिल रहा जो चाहिए?`,
+                    `क्या ${subj} को लेकर एक पुरानी बात है जो आज तक सुलझी नहीं है?`
+                ],
+                spiritual: [
+                    `${subj} के बारे में क्या ऐसा लगता है कि answer अंदर ही है पर बाहर ढूँढ रहे हैं?`,
+                    `${subj} में क्या recent में कोई ऐसा अनुभव हुआ जो coincidence नहीं लगा?`
+                ],
+                general: [
+                    `आपके सवाल "${userQ.slice(0, 80)}" को लेकर एक बात दिख रही है - क्या इसका answer आप पहले से अंदर जानते हैं पर confirmation चाहिए?`,
+                    `${subj || 'इस सवाल'} में क्या आप एक crossroad पर हैं जहाँ दो रास्ते दिख रहे हैं और दोनों ठीक लगते हैं?`,
+                    `${subj || 'इस सवाल'} को लेकर क्या आपने recently किसी से बात की पर पूरी बात नहीं रख पाए?`
+                ]
+            } : {
+                career: [
+                    `I am seeing a pattern around ${subj} - have you felt in recent months that despite hard work, things are not landing where they should?`,
+                    `${subj.charAt(0).toUpperCase() + subj.slice(1)} often has a moment where a decision can no longer be postponed - are you at that point right now?`,
+                    `Is there a quiet restlessness about ${subj} that others do not see, that only you carry?`
+                ],
+                love: [
+                    `Something is showing about ${subj} - do you often place the other person's feelings above your own?`,
+                    `In ${subj}, is there a pattern where things start beautifully but break somewhere in the middle?`,
+                    `Are you at a place with ${subj} where clarity is missing - you cannot move forward but cannot step back either?`
+                ],
+                marriage: [
+                    `${subj.charAt(0).toUpperCase() + subj.slice(1)} timing seems to depend more on circumstances than your own choice - does that feel true?`,
+                    `Is there a tension between family expectations and your own thinking around ${subj} that is still unresolved?`,
+                    `In ${subj}, is there one name that keeps returning to your mind that you are not certain about?`
+                ],
+                money: [
+                    `I see a pattern around ${subj} - income comes in, but just as savings build, an unexpected expense arrives?`,
+                    `Have you recently postponed a major decision about ${subj} because the timing did not feel right?`,
+                    `Is there a fear around ${subj} that is not rational, yet it slows down every decision?`
+                ],
+                health: [
+                    `In ${subj}, is there something doctors are not seeing that you know inside is real?`,
+                    `Have your sleep and energy been on a rollercoaster around ${subj} in recent months?`
+                ],
+                travel: [
+                    `${subj.charAt(0).toUpperCase() + subj.slice(1)} shows a pattern - a plan forms, then something always shifts - have you noticed this?`,
+                    `Around ${subj}, is there one specific place or country that keeps coming back into your mind?`,
+                    `In ${subj}, is there confusion about timing right now - when to go, when to wait?`
+                ],
+                family: [
+                    `In ${subj}, is there one relationship where you give more than you receive?`,
+                    `Is there an old matter around ${subj} that has never fully been resolved?`
+                ],
+                spiritual: [
+                    `Does it feel like the answer about ${subj} is already within you, but you keep searching outside?`,
+                    `Has something happened recently around ${subj} that did not feel like coincidence?`
+                ],
+                general: [
+                    `About your question "${userQ.slice(0, 80)}" - do you already know the answer inside, and you just need confirmation?`,
+                    `Around ${subj || 'this question'}, are you at a crossroad where two paths look right and you cannot choose?`,
+                    `Have you recently spoken to someone about ${subj || 'this'} but could not put the full thing into words?`
+                ]
+            };
+            const pool = variantsByTopic[topic] || variantsByTopic.general;
+            return pool[Math.floor(Math.random() * pool.length)];
+        }
+        // ───────────────────────────────────────────────────────────────────
+
         // Saturn dasha - multiple variants
         if (dasha && /saturn|shani/i.test(dasha)) {
             const variants = isHindi ? [
@@ -5819,18 +6283,12 @@ Return ONLY JSON:
             await this.animateKundliFormation();
             this.advanceProgress('kundli');
 
-            // ═══ STEP 2b: Post-kundli -warm transition into questions ═══
-            const postKundliLine = askMayaActive
-                ? (isHindi
-                    ? `बहुत अच्छा, कुंडली बन गई है। अब focus सिर्फ ${topicLabel} पर रहेगा -एक छोटा follow-up ${this._isGuiderMale() ? 'पूछूँगा' : 'पूछूँगी'} ताकि answer exact हो सके।`
-                    : `Wonderful, your kundli is ready. From here, I am staying only with your ${topicLabel} question -I will ask one quick follow-up so the answer becomes exact.`)
-                : (isHindi
-                    ? `बहुत अच्छा, कुंडली बन गई है! इसमें बहुत कुछ दिख रहा है। अब मैं कुछ सवाल ${this._isGuiderMale() ? 'पूछूँगा' : 'पूछूँगी'} ताकि reading और भी गहरी और सटीक हो सके।`
-                    : `Wonderful, your kundli is ready! I can already see a lot in it. Let me ask you a few questions so I can make this reading even deeper and more accurate.`);
-            await this.speak(postKundliLine);
-            this.spokenNarrations.push({ stage: 'postKundliTransition', text: postKundliLine });
-            this.recordStepContext('postKundliTransition', postKundliLine);
-
+            // ═══ STEP 2b: Post-kundli bridge straight into Q1 ═══
+            // (Previously we spoke a hardcoded "let me ask a few questions" line
+            // here AND the AI bridge below — three promises of a question before
+            // any actual question appeared, which felt repetitive and dead.
+            // The unified-script preQuestionBridge already carries the
+            // transition naturally, so we go straight into it.)
             const preQuestionBridge = await this.generatePreQuestionBridge({
                 isHindi,
                 askMayaActive,
@@ -7463,8 +7921,13 @@ Return ONLY JSON:
         
         // COMPLETION - AI outro
         let completionText = null;
+        // Unified-script fast path: skip MayaStatements call when prefetch gave us the line.
+        const cachedCompletion = this._getCachedScriptSection('completion');
+        if (cachedCompletion) {
+            completionText = cachedCompletion;
+        }
         try {
-            if (window.MayaStatements?.getCompletionOutro) {
+            if (!completionText && window.MayaStatements?.getCompletionOutro) {
                 completionText = await this.withFiller(() => MayaStatements.getCompletionOutro(this.firstName, aiContext), 'thinking');
             }
         } catch (e) {
@@ -7504,18 +7967,24 @@ Return ONLY JSON:
             await this.speak(intro);
             this.spokenNarrations.push({ stage: `${chapter}_intro`, text: intro });
             this.recordStepContext(`${chapter}_intro`, intro);
-            await MayaUtils.sleep(300);
+            await MayaUtils.sleep(120);
         }
 
         let reading = null;
+        // Unified-script fast path: avoid the per-chapter MayaStatements call
+        // entirely when the prefetch already produced this chapter's text.
+        const cachedChapter = this._getCachedScriptSection(chapter);
+        if (cachedChapter) {
+            reading = cachedChapter;
+        }
         try {
-            if (chapter === 'love' && window.MayaStatements?.getLoveReadingAI) {
+            if (!reading && chapter === 'love' && window.MayaStatements?.getLoveReadingAI) {
                 reading = await this.withFiller(() => MayaStatements.getLoveReadingAI(numbers.lifePath, numbers.soulUrge, this.firstName, aiContext), 'love');
-            } else if (chapter === 'career' && window.MayaStatements?.getCareerReadingAI) {
+            } else if (!reading && chapter === 'career' && window.MayaStatements?.getCareerReadingAI) {
                 reading = await this.withFiller(() => MayaStatements.getCareerReadingAI(numbers.destiny, numbers.lifePath, this.firstName, aiContext), 'career');
-            } else if (chapter === 'year' && window.MayaStatements?.getYearReadingAI) {
+            } else if (!reading && chapter === 'year' && window.MayaStatements?.getYearReadingAI) {
                 reading = await this.withFiller(() => MayaStatements.getYearReadingAI(numbers.personalYear, this.buildPredictionItems(), this.firstName, aiContext), 'year');
-            } else if (chapter === 'warning' && window.MayaStatements?.getWarningReadingAI) {
+            } else if (!reading && chapter === 'warning' && window.MayaStatements?.getWarningReadingAI) {
                 reading = await this.withFiller(() => MayaStatements.getWarningReadingAI(numbers.lifePath, numbers.personalYear, this.firstName, aiContext), 'revealing');
             }
         } catch (e) {
@@ -7530,7 +7999,7 @@ Return ONLY JSON:
             await this.speak(reading);
             this.spokenNarrations.push({ stage: chapter, text: reading });
             this.recordStepContext(chapter, reading);
-            await MayaUtils.sleep(800);
+            await MayaUtils.sleep(320);
         }
     },
 
