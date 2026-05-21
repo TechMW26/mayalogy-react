@@ -16,6 +16,7 @@ const MayaVoice = {
     aborted: false,       // Flag to abort current speech
     _speechQueue: Promise.resolve(),
     _speechTurnId: 0,
+    lastPlaybackEndedAt: 0,
     elevenLabsUnavailableUntil: 0,
     elevenLabsUnavailableReason: '',
 
@@ -595,17 +596,21 @@ const MayaVoice = {
     rateLimitQueue: [],
     isProcessingQueue: false,
     lastRequestTime: 0,
-    minRequestInterval: 180, // Keep audio generation responsive without hammering the API
-    maxRetries: 3,
-    retryBaseDelay: 1000, // Start with 1 second delay for retries
+    minRequestInterval: 30, // Keep requests flowing so narration does not stall.
+    maxRetries: 2,
+    retryBaseDelay: 180, // Faster retry/fallback path to avoid long dead air.
     speechProfile: {
-        fallbackRate: 0.92,
-        fallbackPitch: 1.04,
-        interSentencePauseMs: 140,
-        maxChunkChars: 420,
-        maxSentencesPerChunk: 3,
+        fallbackRate: 1,
+        fallbackPitch: 1.02,
+        interSentencePauseMs: 0,
+        maxChunkChars: 560,
+        maxSentencesPerChunk: 4,
         playbackRateEn: 1,
         playbackRateHi: 1
+    },
+    polling: {
+        audioStateMs: 12,
+        speechStateMs: 12
     },
 
     getAgentGender() {
@@ -1067,17 +1072,19 @@ const MayaVoice = {
     removeAdjacentPhraseRepetition(text) {
         let cleaned = String(text || '');
         const separator = '(?:\\s*[,.!?।;:\\-]\\s*|\\s+)';
+        // Unicode-aware boundary: \b fails for Devanagari (treated as \W by JS).
+        const wch = 'A-Za-z\\u0900-\\u097F';
 
         // Collapse repeated single tokens: "लग्न लग्न" -> "लग्न"
         cleaned = cleaned.replace(
-            new RegExp(`\\b([A-Za-z\\u0900-\\u097F]+)\\b${separator}\\1\\b`, 'gi'),
+            new RegExp(`(?<![${wch}])([${wch}]+)(?![${wch}])${separator}\\1(?![${wch}])`, 'gi'),
             '$1'
         );
 
         // Collapse repeated 2-4 word phrases: "mean lagna mean lagna" -> "mean lagna"
         for (let pass = 0; pass < 3; pass++) {
             cleaned = cleaned.replace(
-                new RegExp(`\\b((?:[A-Za-z\\u0900-\\u097F]+\\s+){1,3}[A-Za-z\\u0900-\\u097F]+)\\b${separator}\\1\\b`, 'gi'),
+                new RegExp(`(?<![${wch}])((?:[${wch}]+\\s+){1,3}[${wch}]+)(?![${wch}])${separator}\\1(?![${wch}])`, 'gi'),
                 '$1'
             );
         }
@@ -1188,6 +1195,8 @@ const MayaVoice = {
 
     prefetchSpeech(text) {
         if (!text || this.isMuted || this.isElevenLabsUnavailable()) return;
+        // Block speech if funnel is loading
+        if (typeof window !== 'undefined' && window.MayaFunnel?.isLoading) return;
         try {
             const prepared = this.prepareForSpeech(text);
             const chunks = this.splitIntoSpeechChunks(prepared);
@@ -1525,12 +1534,13 @@ const MayaVoice = {
 
     async waitForCurrentAudioComplete() {
         let warned = false;
+        const pollMs = this.polling.audioStateMs;
         while (this.currentAudio || this.isPlaying) {
             if (!warned) {
                 console.warn('⏳ Waiting for active audio source before starting next block');
                 warned = true;
             }
-            await MayaUtils.sleep(80);
+            await MayaUtils.sleep(pollMs);
         }
     },
 
@@ -1832,11 +1842,10 @@ const MayaVoice = {
                 source.buffer = audioBuffer;
 
                 const isHindi = window.MayaUtils?.storage?.get('maya_language') === 'hi';
-                const isMaleGuide = this.isMaleGuide();
                 const requestedRate = isHindi
                     ? this.speechProfile.playbackRateHi
                     : this.speechProfile.playbackRateEn;
-                const effectiveRate = isMaleGuide ? requestedRate : Math.min(requestedRate, 0.97);
+                const effectiveRate = requestedRate;
                 source.playbackRate.value = effectiveRate;
 
                 source.connect(gainNode);
@@ -1862,10 +1871,19 @@ const MayaVoice = {
                 source.onended = () => {
                     this.isPlaying = false;
                     this.currentAudio = null;
+                    this.lastPlaybackEndedAt = performance.now();
                     resolve();
                 };
 
                 if (!this.isMuted) {
+                    const playbackStartMs = performance.now();
+                    if (this.lastPlaybackEndedAt > 0) {
+                        const gapMs = Math.round(playbackStartMs - this.lastPlaybackEndedAt);
+                        if (gapMs > 40) {
+                            console.log(`⏱️ Speech gap: ${gapMs}ms`);
+                        }
+                    }
+
                     source.start(now);
                     // Fire one-shot callback so callers know audio is actually playing
                     if (this.onPlaybackStart) {
@@ -1900,7 +1918,7 @@ const MayaVoice = {
      * Build complete-sentence TTS chunks only when ElevenLabs/proxy text length needs splitting.
      * This never cuts inside a sentence, so playback cannot stop mid-thought because of chunking.
      */
-    splitIntoCompleteTtsBlocks(text, maxChars = 1100) {
+    splitIntoCompleteTtsBlocks(text, maxChars = 1800) {
         const source = String(text || '').replace(/\s+/g, ' ').trim();
         if (!source) return [];
         if (source.length <= maxChars) return [source];
@@ -1935,12 +1953,32 @@ const MayaVoice = {
         const blocks = this.splitIntoCompleteTtsBlocks(preparedText);
         if (!blocks.length) return;
 
+        const pendingAudio = new Array(blocks.length);
+        const scheduleTts = (idx) => {
+            if (idx < 0 || idx >= blocks.length || pendingAudio[idx]) return;
+            pendingAudio[idx] = this.textToSpeech(blocks[idx], { singlePass: true });
+        };
+
+        // Start first two chunks immediately so playback of chunk 1 overlaps
+        // chunk 2 generation and avoids long dead air between blocks.
+        scheduleTts(0);
+        scheduleTts(1);
+
         for (let index = 0; index < blocks.length; index++) {
             if (this.aborted) throw new Error('Speech aborted before completion');
             const block = blocks[index];
             if (typeof onProgress === 'function') onProgress(block, false);
-            const audioBlob = await this.textToSpeech(block, { singlePass: true });
+
+            scheduleTts(index + 2);
+
+            const ttsWaitStart = performance.now();
+            const audioBlob = await pendingAudio[index];
+            const ttsWaitMs = Math.round(performance.now() - ttsWaitStart);
+            if (ttsWaitMs > 120) {
+                console.log(`⏱️ TTS wait before block ${index + 1}/${blocks.length}: ${ttsWaitMs}ms`);
+            }
             if (!audioBlob) throw new Error('TTS returned empty audio');
+
             await this.playAudio(audioBlob);
             if (this.aborted) throw new Error('Speech aborted during playback');
             if (index < blocks.length - 1 && this.speechProfile.interSentencePauseMs > 0) {
@@ -1955,12 +1993,13 @@ const MayaVoice = {
      */
     async waitForSpeechComplete() {
         let waitTicks = 0;
+        const pollMs = this.polling.speechStateMs;
         while (this.speakingLock || this.isPlaying || this.currentAudio) {
             waitTicks += 1;
             if (waitTicks === 125) {
                 console.warn('⏳ Waiting for Maya speech to finish naturally; not interrupting audio or TTS generation.');
             }
-            await MayaUtils.sleep(80);
+            await MayaUtils.sleep(pollMs);
         }
     },
 
@@ -1970,10 +2009,10 @@ const MayaVoice = {
         this._speechTurnId = turnId;
 
         const queuedTurn = previousTurn
-            .catch(() => {})
+            .catch(() => { })
             .then(() => run(turnId));
 
-        this._speechQueue = queuedTurn.catch(() => {});
+        this._speechQueue = queuedTurn.catch(() => { });
         return queuedTurn;
     },
 
@@ -1982,16 +2021,23 @@ const MayaVoice = {
      * Uses parallel pre-fetching for faster playback - starts immediately
      * PREVENTS OVERLAP: waits for any ongoing speech to complete first
      */
-    async speak(text, onProgress = null) {
+    async speak(text, onProgress = null, options = {}) {
         if (this.isMuted) {
             if (typeof onProgress === 'function') onProgress(text, true);
             return;
         }
 
         const safeProgress = typeof onProgress === 'function' ? onProgress : null;
+        const urgentStart = options?.urgentStart === true;
 
-        return this.enqueueSpeechTurn(async (turnId) => {
-            await this.waitForSpeechComplete();
+        const runSpeechTurn = async (turnId) => {
+            if (urgentStart) {
+                // Emergency startup path: cut through stale queue/wait so
+                // first audible response starts as soon as possible.
+                this.stopCurrentAudio({ releaseLock: true, markAborted: true });
+            } else {
+                await this.waitForSpeechComplete();
+            }
 
             this.aborted = false;
             this.speakingLock = true;
@@ -2001,7 +2047,7 @@ const MayaVoice = {
                 if (!preparedText) return;
 
                 const blocks = this.splitIntoCompleteTtsBlocks(preparedText);
-                console.log(`🎙️ Maya speech turn ${turnId}: ${blocks.length} complete TTS block(s)`);
+                console.log(`🎙️ Maya speech turn ${turnId}: ${blocks.length} complete TTS block(s)${urgentStart ? ' (urgent)' : ''}`);
                 await this.speakPreparedTextComplete(preparedText, safeProgress);
 
                 if (safeProgress) {
@@ -2010,7 +2056,16 @@ const MayaVoice = {
             } finally {
                 this.speakingLock = false;
             }
-        });
+        };
+
+        if (urgentStart) {
+            const turnId = (this._speechTurnId || 0) + 1;
+            this._speechTurnId = turnId;
+            this._speechQueue = Promise.resolve();
+            return runSpeechTurn(turnId);
+        }
+
+        return this.enqueueSpeechTurn((turnId) => runSpeechTurn(turnId));
     },
 
     /**
@@ -2097,7 +2152,7 @@ const MayaVoice = {
             const isHindi = window.MayaUtils?.storage?.get('maya_language') === 'hi';
             utterance.lang = isHindi ? 'hi-IN' : 'en-US';
             const isMaleGuide = this.isMaleGuide();
-            utterance.rate = isMaleGuide ? 0.98 : this.speechProfile.fallbackRate;
+            utterance.rate = isMaleGuide ? 1 : this.speechProfile.fallbackRate;
             utterance.pitch = isMaleGuide ? 0.98 : this.speechProfile.fallbackPitch;
 
             // Try to find appropriate voice based on language

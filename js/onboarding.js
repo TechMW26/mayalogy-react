@@ -2222,7 +2222,7 @@ const MayaOnboarding = {
                         console.log(`🎭 Initializing MayaFunnel${attempt > 1 ? ` (attempt ${attempt})` : ''}...`);
                         MayaFunnel.init(this.userData);
 
-                        // Prompt user to enable audio (required for autoplay)
+                        // Enable and prewarm audio first so first narration can play immediately.
                         console.log('🔊 Requesting audio permission...');
                         try {
                             await this.requestAudioPermission();
@@ -2230,6 +2230,12 @@ const MayaOnboarding = {
                             console.warn('⚠️ Audio permission skipped:', audioError.message);
                             // Continue without audio - not a critical error
                         }
+
+                        // Start Gemini warmup right after guide selection so
+                        // first speech and data arrive with less waiting.
+                        MayaFunnel.prefetchJourneyStartup?.().catch((error) => {
+                            console.warn('⚠️ Startup prefetch skipped:', error?.message || error);
+                        });
 
                         // Start the funnel experience
                         console.log('🎭 Starting MayaFunnel.start()...');
@@ -2275,6 +2281,9 @@ const MayaOnboarding = {
         if (window.MayaVoice) {
             MayaVoice.setMute(false);
             await MayaVoice.resumeContext();
+            try {
+                await MayaVoice.preWarmTTS?.();
+            } catch (_error) { /* non-fatal */ }
         }
         return Promise.resolve(true);
     },

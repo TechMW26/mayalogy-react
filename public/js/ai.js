@@ -8,6 +8,7 @@ const MayaAI = {
     currentProvider: 'gemini',
     groqUnavailableUntil: 0,
     groqUnavailableReason: '',
+    geminiKeyCursor: 0,
 
     /**
      * Safe global getter so the app does not crash if MayaUtils is not loaded yet.
@@ -398,7 +399,7 @@ const MayaAI = {
             systemPrompt += `\n18. If you mention a strength, pair it with the cost, pressure, contradiction, or responsibility that makes it feel real.`;
             systemPrompt += `\n19. Write in complete, connected sentences that flow naturally into each other like one spoken paragraph. Each sentence should build on, respond to, or advance the previous one - never drop an isolated observation that has no connection to what came before or after. Avoid bullet-point thinking; think story arc.`;
             systemPrompt += `\n20. 🚫 WORD REPETITION BAN (HARD FAILURE): Never write the same word twice in a row, ever. Examples that are FORBIDDEN: "taurus taurus", "वृषभ वृषभ", "rahu rahu", "राहु राहु", "dasha dasha", "दशा दशा", "shani shani", "rashi rashi", "is samay is samay", "you you", "आप आप". If you ever feel the urge to repeat a noun, STOP -use a pronoun ("it", "that one", "वही", "यह", "उसकी"). Do not repeat the same word in back-to-back sentences either. Use synonyms: "energy" → "force/drive/vibe", "pattern" → "cycle/tendency/thread", "strong" → "powerful/deep/solid".`;
-            systemPrompt += `\n21. 🚫 NAME REPETITION BAN: Use the user's name MAX 1-2 times in any response. Use "you/your" or "आप/आपके" everywhere else. The name in every sentence is FORBIDDEN.`;
+            systemPrompt += `\n21. 🚫 NAME REPETITION BAN: Use the user's name at most 1 time in any response. Use "you/your" or "आप/आपके" everywhere else. The name in every sentence is FORBIDDEN.`;
             systemPrompt += `\n22. 🚫 ZODIAC / PLANET / DASHA REPETITION CAP: Within ONE response, name any single zodiac sign (Taurus / वृषभ etc.) AT MOST 2 times. Name any single planet (Rahu / Saturn / राहु / शनि etc.) AT MOST 3 times. After the cap, refer back as "this sign / आपकी राशि / यह ग्रह / वही दशा". NEVER write the proper noun twice in a row, e.g. "Taurus Taurus rashi" or "Rahu Rahu dasha" -this is an instant fail. If you mention a yoga, dosha, or dasha by name in one section, do NOT name it again in the next section -angle it from a different planetary combination instead.`;
             systemPrompt += `\n23. 🚫 ROMANIZED HINDI BAN: NEVER write Hindi words in Roman/Latin script (e.g. "aapka", "kundli", "rashi", "graha", "dasha", "mahadasha", "shani", "mangal"). If a word is Hindi or Sanskrit, write it in Devanagari (आपका, कुंडली, राशि, ग्रह, दशा, महादशा, शनि, मंगल). If it is English, write it in English. No romanized Hindi ever.`;
 
@@ -464,9 +465,18 @@ const MayaAI = {
      * Fast text generation for lightweight funnel moments.
      */
     async callFast(message, options = {}) {
+        const fastTimeoutMs = Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : 4200;
         // Groq fast-lane is intentionally disabled.
         // All spoken/narration content must come from Gemini so sentence completion is consistent.
-        return this.callGemini(message, { ...options, provider: 'gemini', preferGemini: true, requireComplete: true, timeoutMs: 0 });
+        return this.callGemini(message, {
+            ...options,
+            provider: 'gemini',
+            preferGemini: true,
+            requireComplete: options.requireComplete !== false,
+            timeoutMs: fastTimeoutMs,
+            maxKeyAttempts: Number(options.maxKeyAttempts) > 0 ? Number(options.maxKeyAttempts) : 2,
+            fastFail: options.fastFail !== false
+        });
     },
 
     _getGroqApiKey() {
@@ -523,6 +533,52 @@ const MayaAI = {
             .filter((key, index, arr) => arr.indexOf(key) === index);
     },
 
+    _getGeminiKeyStartIndex(apiKeys = []) {
+        if (!Array.isArray(apiKeys) || !apiKeys.length) return 0;
+        const count = apiKeys.length;
+        const rawCursor = Number(this.geminiKeyCursor);
+        if (!Number.isInteger(rawCursor) || rawCursor < 0) {
+            this.geminiKeyCursor = 0;
+            return 0;
+        }
+
+        const normalized = rawCursor % count;
+        if (normalized !== rawCursor) {
+            this.geminiKeyCursor = normalized;
+        }
+        return normalized;
+    },
+
+    _getGeminiKeyOrder(apiKeys = []) {
+        if (!Array.isArray(apiKeys) || !apiKeys.length) return [];
+        const startIndex = this._getGeminiKeyStartIndex(apiKeys);
+        const ordered = [];
+
+        for (let offset = 0; offset < apiKeys.length; offset += 1) {
+            const keyIndex = (startIndex + offset) % apiKeys.length;
+            ordered.push({ apiKey: apiKeys[keyIndex], keyIndex });
+        }
+
+        return ordered;
+    },
+
+    _setGeminiPreferredKeyIndex(keyIndex, keyCount) {
+        const count = Math.max(1, Number(keyCount) || 1);
+        const normalized = ((Number(keyIndex) || 0) % count + count) % count;
+        this.geminiKeyCursor = normalized;
+    },
+
+    _rotateGeminiKeyAfterFailure(apiKeys = [], failedKeyIndex = 0, reason = '') {
+        if (!Array.isArray(apiKeys) || apiKeys.length < 2) return;
+        const nextIndex = (Number(failedKeyIndex) + 1 + apiKeys.length) % apiKeys.length;
+        const switched = this.geminiKeyCursor !== nextIndex;
+        this.geminiKeyCursor = nextIndex;
+
+        if (switched) {
+            console.warn(`🔁 Gemini key switched to ${nextIndex + 1}/${apiKeys.length}${reason ? ` (${reason})` : ''}`);
+        }
+    },
+
     /**
      * Groq fast-lane inference.
      */
@@ -537,6 +593,13 @@ const MayaAI = {
     async _callGeminiProvider(systemPrompt, userMessage, includeHistory = false, options = {}) {
         const apiKeys = this._getGeminiApiKeys();
         if (!apiKeys.length) return null;
+        const orderedKeys = this._getGeminiKeyOrder(apiKeys);
+        const requestedKeyAttempts = Number(options?.maxKeyAttempts ?? options?.maxGeminiKeys ?? 0);
+        const keyAttempts = Number.isFinite(requestedKeyAttempts) && requestedKeyAttempts > 0
+            ? Math.max(1, Math.min(orderedKeys.length, Math.floor(requestedKeyAttempts)))
+            : orderedKeys.length;
+        const keysToTry = orderedKeys.slice(0, keyAttempts);
+        const fastFail = options?.fastFail === true;
 
         const models = MAYA_CONFIG.GEMINI_TEXT_MODELS || MAYA_CONFIG.GEMINI_MODELS || ['gemini-2.5-flash-lite'];
         const baseUrl = MAYA_CONFIG.ENDPOINTS.GEMINI_BASE || 'https://generativelanguage.googleapis.com/v1beta/models';
@@ -583,15 +646,15 @@ const MayaAI = {
         }
 
         const generationConfig = {
-            temperature: options?.temperature ?? 0.85,
-            topP: options?.topP ?? 0.95
+            temperature: options?.temperature ?? 0.95,
+            topP: options?.topP ?? 0.98
         };
         // No hard maxOutputTokens here; Gemini should finish the requested spoken unit naturally.
 
-        for (const apiKey of apiKeys) {
+        for (const { apiKey, keyIndex } of keysToTry) {
             for (const model of models) {
                 try {
-                    console.log(`⚡ Calling Gemini model: ${model}...`);
+                    console.log(`⚡ Calling Gemini key ${keyIndex + 1}/${apiKeys.length} model: ${model}...`);
 
                     const response = await this._withOptionalTimeout(
                         fetch(`${baseUrl}/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
@@ -664,6 +727,7 @@ Regenerate the same answer as complete spoken narration. Return the full correct
                                 text = `${text.trim()}.`;
                             }
 
+                            this._setGeminiPreferredKeyIndex(keyIndex, apiKeys.length);
                             console.log(`✅ Gemini succeeded with model: ${model}`);
                             return text;
                         }
@@ -672,8 +736,20 @@ Regenerate the same answer as complete spoken narration. Return the full correct
                         continue;
                     }
 
-                    if (response.status === 429 || response.status === 503) {
-                        console.warn(`⚠️ Gemini ${model} rate-limited/overloaded (${response.status}), trying next...`);
+                    if ([401, 403, 429, 500, 502, 503].includes(response.status)) {
+                        if (apiKeys.length > 1) {
+                            console.warn(`⚠️ Gemini ${model} key ${keyIndex + 1}/${apiKeys.length} failed (${response.status}), switching key...`);
+                            this._rotateGeminiKeyAfterFailure(apiKeys, keyIndex, `HTTP ${response.status}`);
+                            if (fastFail && [429, 500, 502, 503].includes(response.status)) {
+                                return null;
+                            }
+                            break;
+                        }
+
+                        console.warn(`⚠️ Gemini ${model} failed (${response.status}) with only one key configured, trying next model...`);
+                        if (fastFail && [429, 500, 502, 503].includes(response.status)) {
+                            return null;
+                        }
                         continue;
                     }
 
@@ -685,8 +761,21 @@ Regenerate the same answer as complete spoken narration. Return the full correct
 
                     const errBody = await response.text();
                     console.warn(`⚠️ Gemini ${model} error ${response.status}: ${errBody.substring(0, 160)}`);
+                    if (fastFail) {
+                        return null;
+                    }
                 } catch (err) {
                     console.warn(`⚠️ Gemini ${model} threw:`, err.message);
+                    if (apiKeys.length > 1) {
+                        this._rotateGeminiKeyAfterFailure(apiKeys, keyIndex, 'network error');
+                        if (fastFail) {
+                            return null;
+                        }
+                        break;
+                    }
+                    if (fastFail) {
+                        return null;
+                    }
                 }
             }
         }

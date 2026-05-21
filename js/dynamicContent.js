@@ -666,28 +666,58 @@ The goal is to make them NEED the complete picture. Complete your thoughts fully
     },
 
     /**
-     * Generate multiple pieces in parallel (for background pre-generation)
+     * Generate multiple pieces in parallel with smart batching (OPTIMIZED)
+     * Uses configurable batch size to avoid rate limiting
      * Note: Fillers disabled for batch since it runs in background
      */
-    async generateBatch(requests, language = this.language) {
-        console.log(`🔮 Batch generating ${requests.length} content pieces...`);
+    async generateBatch(requests, language = this.language, batchSize = 3) {
+        console.log(`⚡ OPTIMIZED batch generating ${requests.length} pieces (batch size: ${batchSize})...`);
         
-        const promises = requests.map(req => 
-            this.generate(req.type, req.data, { 
-                ...req.options, 
-                language,
-                stream: false,
-                speakFillers: false  // Don't speak fillers for background generation
-            })
-        );
+        const overallStart = performance.now();
+        const allResults = [];
+        const totalBatches = Math.ceil(requests.length / batchSize);
 
-        const results = await Promise.allSettled(promises);
+        // Process requests in optimized batches
+        for (let i = 0; i < requests.length; i += batchSize) {
+            const batch = requests.slice(i, i + batchSize);
+            const batchNum = Math.floor(i / batchSize) + 1;
+
+            console.log(`   📦 Batch ${batchNum}/${totalBatches} (${batch.length} requests)`);
+
+            // Fire all requests in this batch in parallel
+            const batchPromises = batch.map(req => 
+                this.generate(req.type, req.data, { 
+                    ...req.options, 
+                    language,
+                    stream: false,
+                    speakFillers: false
+                }).catch(error => {
+                    console.error(`Failed to generate ${req.type}:`, error.message);
+                    return null;
+                })
+            );
+
+            const batchResults = await Promise.allSettled(batchPromises);
+            
+            // Map results
+            batchResults.forEach((result, idx) => {
+                const req = batch[idx];
+                allResults.push({
+                    type: req.type,
+                    content: result.status === 'fulfilled' ? result.value : null,
+                    error: result.status === 'rejected' ? result.reason?.message : null
+                });
+            });
+
+            // No fixed inter-batch delay: continue immediately for low-latency flow.
+        }
+
+        const overallTime = performance.now() - overallStart;
+        const successful = allResults.filter(r => r.content !== null).length;
         
-        return results.map((result, i) => ({
-            type: requests[i].type,
-            content: result.status === 'fulfilled' ? result.value : null,
-            error: result.status === 'rejected' ? result.reason : null
-        }));
+        console.log(`✅ Batch complete: ${successful}/${requests.length} successful in ${overallTime.toFixed(0)}ms`);
+
+        return allResults;
     },
 
     /**
