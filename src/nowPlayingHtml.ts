@@ -58,13 +58,8 @@ body.mode-detect .lyrics-scene, body.mode-detect .lyrics-scene * { animation-pla
   position: relative; z-index: 5;
   width: min(92vw, 520px); aspect-ratio: 1;
   display: grid; place-items: center;
-  border-radius: 42px;
-  background: rgba(255, 255, 255, 0.10);
-  border: 1px solid rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  box-shadow: 0 35px 90px rgba(31, 41, 55, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.85);
-  overflow: hidden; transform: translateZ(0);
+  background: transparent; border: none; box-shadow: none;
+  overflow: visible; transform: translateZ(0);
 }
 .blob {
   position: relative; width: 58%; height: 58%;
@@ -168,8 +163,8 @@ body.mode-detect .lyrics-scene, body.mode-detect .lyrics-scene * { animation-pla
 }
 .lyric-line.prev, .lyric-line.next { opacity: 0.56; filter: blur(0.25px); transform: scale(0.94); color: rgba(17, 24, 39, 0.42); }
 .lyric-line.active { opacity: 1; filter: blur(0); transform: scale(1.06); color: rgba(17, 24, 39, 0.95); font-weight: 700; }
-/* plain (unsynced) lyrics: readable, no karaoke/auto-scroll */
-.lyrics-list.plain { top: 8px; transform: none !important; }
+/* plain (unsynced) lyrics: readable, no karaoke highlight, hand-scrollable */
+.lyrics-list.plain { top: 8px; }
 .lyrics-list.plain .lyric-line { opacity: 0.82; color: rgba(17, 24, 39, 0.72); transform: none; filter: none; font-size: 20px; margin: 13px auto; }
 .lyrics-empty { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(17,24,39,0.3); font-size: 34px; }
 /* subtle loader shown while synced lyrics are being fetched */
@@ -270,6 +265,15 @@ body.show-retry.mode-detect .retry-wrap { display: flex; }
   var baseMs = 0, anchorPerf = 0, playing = false;
   var LOOKAHEAD = 180;
 
+  // ---- human scroll state ----
+  var autoCenterY = 0;       // last computed auto-center target for the active line
+  var manualY = 0;           // translateY currently applied to the list
+  var userScrolling = false; // true while the user is dragging or within the idle window
+  var dragging = false;
+  var dragStartTouchY = 0, dragStartManualY = 0;
+  var scrollIdleTimer = null;
+  var SCROLL_IDLE_MS = 2600;  // re-center on the active verse after this much inactivity
+
   function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
   function post(o){ if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(o)); }
 
@@ -294,8 +298,36 @@ body.show-retry.mode-detect .retry-wrap { display: flex; }
   function centerActive(){
     var el = lyricEls[activeIndex]; if (!el) return;
     var wh = lyricsWindow.offsetHeight;
-    var ty = wh * 0.5 - el.offsetTop - el.offsetHeight / 2;
-    lyricsList.style.transform = 'translateY(' + ty + 'px)';
+    autoCenterY = wh * 0.5 - el.offsetTop - el.offsetHeight / 2;
+    // While the user is hand-scrolling, don't fight their position — just remember
+    // where the active verse wants to be and snap back once they stop.
+    if (userScrolling) return;
+    manualY = autoCenterY;
+    lyricsList.style.transition = '';
+    lyricsList.style.transform = 'translateY(' + autoCenterY + 'px)';
+  }
+  function scrollBounds(){
+    var wh = lyricsWindow.offsetHeight;
+    var lh = lyricsList.offsetHeight;
+    // allow the whole list to be dragged through, with a little overscroll headroom
+    return { min: Math.min(0, wh - lh - 24) - wh * 0.18, max: wh * 0.5 + wh * 0.18 };
+  }
+  function applyManual(){
+    manualY = clamp(manualY, scrollBounds().min, scrollBounds().max);
+    lyricsList.style.transform = 'translateY(' + manualY + 'px)';
+  }
+  function scheduleRecenter(){
+    if (scrollIdleTimer) clearTimeout(scrollIdleTimer);
+    scrollIdleTimer = setTimeout(function(){
+      userScrolling = false;
+      lyricsList.style.transition = '';
+      if (synced) centerActive();
+    }, SCROLL_IDLE_MS);
+  }
+  function beginUserScroll(){
+    userScrolling = true;
+    if (scrollIdleTimer) clearTimeout(scrollIdleTimer);
+    lyricsList.style.transition = 'none';
   }
   function updateLyrics(){
     if (!synced || lyrics.length === 0) return;
@@ -326,6 +358,36 @@ body.show-retry.mode-detect .retry-wrap { display: flex; }
   }
   requestAnimationFrame(loop);
   window.addEventListener('resize', function(){ if (mode === 'lyrics') centerActive(); });
+
+  // ---- human-scrollable lyrics with auto re-center on inactivity ----
+  lyricsWindow.addEventListener('touchstart', function(e){
+    if (mode !== 'lyrics' || lyrics.length === 0) return;
+    dragging = true;
+    beginUserScroll();
+    dragStartTouchY = e.touches[0].clientY;
+    dragStartManualY = manualY;
+  }, { passive: true });
+  lyricsWindow.addEventListener('touchmove', function(e){
+    if (!dragging) return;
+    manualY = dragStartManualY + (e.touches[0].clientY - dragStartTouchY);
+    applyManual();
+    if (e.cancelable) e.preventDefault();
+  }, { passive: false });
+  function endDrag(){
+    if (!dragging) return;
+    dragging = false;
+    scheduleRecenter();
+  }
+  lyricsWindow.addEventListener('touchend', endDrag, { passive: true });
+  lyricsWindow.addEventListener('touchcancel', endDrag, { passive: true });
+  lyricsWindow.addEventListener('wheel', function(e){
+    if (mode !== 'lyrics' || lyrics.length === 0) return;
+    beginUserScroll();
+    manualY -= e.deltaY;
+    applyManual();
+    scheduleRecenter();
+    if (e.cancelable) e.preventDefault();
+  }, { passive: false });
 
   document.getElementById('detectScene').addEventListener('click', function(){ post({ type: 'detect' }); });
   document.getElementById('grabber').addEventListener('click', function(e){ e.stopPropagation(); post({ type: 'close' }); });
@@ -365,7 +427,10 @@ body.show-retry.mode-detect .retry-wrap { display: flex; }
         lyricEls.push(el);
       }
       lyricsList.className = 'lyrics-list' + (synced ? '' : ' plain');
-      if (!synced) lyricsList.style.transform = 'translateY(0px)';
+      userScrolling = false;
+      if (scrollIdleTimer) clearTimeout(scrollIdleTimer);
+      lyricsList.style.transition = '';
+      if (!synced){ manualY = 0; lyricsList.style.transform = 'translateY(0px)'; }
       else centerActive();
     },
     sync: function(d){ baseMs = d.posMs || 0; anchorPerf = performance.now(); playing = !!d.playing; },

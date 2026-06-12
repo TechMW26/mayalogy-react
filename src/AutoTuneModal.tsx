@@ -27,6 +27,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 
 import BlobVisualizer from './BlobVisualizer';
 import { notifySuccess, tapLight, tapMedium } from './haptics';
+import { refineTerraformEqWithAI } from './ai';
 
 type EqShape = {
   subBass: number;
@@ -669,8 +670,27 @@ export default function AutoTuneModal({
     await teardown();
     await restoreVolume();
 
+    // AI refinement: hand the measured per-band deltas + the heuristic
+    // correction to Groq for a more musical, balanced tuning. Falls back to
+    // the heuristic on any failure so Terraform always produces a result.
+    let finalEq = result;
+    if (!cancelledRef.current) {
+      try {
+        setStepLabel('Refining with AI');
+        const readings = valid.map(({ idx, value }) => ({
+          key: BAND_WINDOWS[idx].key,
+          label: BAND_WINDOWS[idx].label,
+          deltaDb: value,
+        }));
+        const refined = await refineTerraformEqWithAI(readings, result);
+        if (refined && !cancelledRef.current) finalEq = refined;
+      } catch {
+        /* keep the heuristic correction */
+      }
+    }
+
     setIntensity(0);
-    setCorrections(result);
+    setCorrections(finalEq);
     setPhase('done');
     notifySuccess();
   };

@@ -86,6 +86,11 @@ export default function VerticalSlider({
   // Throttled emitters.
   const lastEmitAtRef = useRef(0);
   const lastHapticAtRef = useRef(0);
+  // Timestamp of the most recent gesture event (grant/move). Used to tell a
+  // genuinely active drag apart from a stale isDraggingRef flag that some
+  // Android gesture terminations can leave stuck — which previously froze the
+  // thumb in place while the numeric reading updated on a mode/preset change.
+  const lastGestureAtRef = useRef(0);
 
   // Sync refs every render — these are reads, never writes.
   valueRef.current = value;
@@ -96,13 +101,18 @@ export default function VerticalSlider({
   rangeRef.current = range;
   stepRef.current = step;
 
-  // External value changes (preset applied, auto-tune, etc.) spring the thumb
-  // into place. Skip while the user is actively dragging.
+  // External value changes (preset applied, auto-tune, mode switch, etc.) spring
+  // the thumb into place. Skip only while a drag is GENUINELY active (a gesture
+  // event fired very recently); a stale isDraggingRef must never freeze the
+  // thumb, otherwise switching modes updates the reading but not the thumb.
   useEffect(() => {
     lastCommittedRef.current = value;
     pendingValueRef.current = value;
     setDisplayValue(value);
-    if (isDraggingRef.current) return;
+    const gestureActive =
+      isDraggingRef.current && Date.now() - lastGestureAtRef.current < 250;
+    if (gestureActive) return;
+    isDraggingRef.current = false;
     try {
       Animated.spring(fracAnim, {
         toValue: (value - min) / range,
@@ -164,6 +174,7 @@ export default function VerticalSlider({
           const h = trackHeightRef.current;
           if (h <= 0) return;
           isDraggingRef.current = true;
+          lastGestureAtRef.current = Date.now();
           startValueRef.current = valueRef.current;
           pendingValueRef.current = valueRef.current;
           lastEmitAtRef.current = 0;
@@ -211,6 +222,7 @@ export default function VerticalSlider({
         try {
           const h = trackHeightRef.current;
           if (h <= 0) return;
+          lastGestureAtRef.current = Date.now();
           const minLocal = minRef.current;
           const rangeLocal = rangeRef.current;
           const stepLocal = stepRef.current;

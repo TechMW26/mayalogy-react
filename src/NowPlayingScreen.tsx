@@ -8,6 +8,7 @@ import { recordMicSnippet } from 'zenova-audio-fx';
 
 import { decodePcmBase64, recognizePcmBase64, type ShazamMatch } from './shazam';
 import { fetchLyrics, findActiveLineIndex, type LyricsResult } from './lyrics';
+import { generateLyricsWithAI } from './ai';
 import { NOW_PLAYING_HTML } from './nowPlayingHtml';
 
 type Theme = {
@@ -50,9 +51,9 @@ const RESYNC_SNIPPET_MS = 3200;
 const RESYNC_APPLY_THRESHOLD_MS = 120;
 const HARD_RESYNC_THRESHOLD_MS = 2400;
 const SILENCE_RMS_THRESHOLD = 0.006;
-// Require two consecutive silent watchdog reads (~2s) before freezing, so quiet
-// musical passages / vocal gaps don't false-freeze and desync the lyric clock.
-const SILENCE_STREAK_TO_FREEZE = 2;
+// Two consecutive silent watchdog reads (~3-4s) means the music was paused or
+// stopped -> bounce the user back to the scanner to detect the next track.
+const SILENCE_STREAK_TO_REDETECT = 2;
 
 const LYRICS_KEEP_AWAKE_TAG = 'zenova-now-playing-lyrics';
 
@@ -109,7 +110,6 @@ export default function NowPlayingScreen({ visible, theme, onClose }: NowPlaying
   const syncBaseMsRef = useRef(0);
   const syncCalibrationMsRef = useRef(0);
   const syncFrozenRef = useRef(false);
-  const syncFrozenAtRef = useRef(0);
   const syncFrozenPosMsRef = useRef(0);
   const hasReliableOffsetRef = useRef(false);
   const silenceStreakRef = useRef(0);
@@ -126,6 +126,8 @@ export default function NowPlayingScreen({ visible, theme, onClose }: NowPlaying
   const mountedRef = useRef(true);
   const runningRef = useRef(false);
   const runIdentifyRef = useRef<() => void>(() => {});
+  const applyNewSongRef = useRef<(heard: ShazamMatch, sampleStartAt: number) => void>(() => {});
+  const startResyncRef = useRef<() => void>(() => {});
 
   const clearSyncClock = useCallback(() => {
     if (syncRafRef.current != null) {
@@ -152,23 +154,6 @@ export default function NowPlayingScreen({ visible, theme, onClose }: NowPlaying
     const elapsed = now - syncStartAtRef.current;
     return Math.max(0, syncBaseMsRef.current + elapsed + syncCalibrationMsRef.current);
   }, []);
-
-  const setSyncFrozen = useCallback(
-    (frozen: boolean) => {
-      if (frozen) {
-        if (syncFrozenRef.current) return;
-        syncFrozenPosMsRef.current = currentSyncedPosMs(Date.now());
-        syncFrozenAtRef.current = Date.now();
-        syncFrozenRef.current = true;
-        return;
-      }
-      if (!syncFrozenRef.current) return;
-      const pausedForMs = Date.now() - syncFrozenAtRef.current;
-      syncStartAtRef.current += pausedForMs;
-      syncFrozenRef.current = false;
-    },
-    [currentSyncedPosMs],
-  );
 
   const applyCalibrationDelta = useCallback((deltaMs: number) => {
     if (!Number.isFinite(deltaMs)) return;
@@ -306,21 +291,22 @@ export default function NowPlayingScreen({ visible, theme, onClose }: NowPlaying
           // --- Fast watchdog: a short snippet just to read the audio level. ---
           const watchPcm = await recordMicSnippet(WATCHDOG_SNIPPET_MS);
           if (!mountedRef.current) return;
-          if (watchPcm) {
-            if (rmsLevel(watchPcm) < SILENCE_RMS_THRESHOLD) {
-              // Audio dropped out -> the track was paused/stopped. Freeze now.
-              silenceStreakRef.current += 1;
-              if (silenceStreakRef.current >= SILENCE_STREAK_TO_FREEZE) {
-                setSyncFrozen(true);
-              }
-              stableResyncStreakRef.current = 0;
-              nextDelayMs = WATCHDOG_MS;
+          if (watchPcm && rmsLevel(watchPcm) < SILENCE_RMS_THRESHOLD) {
+            // Audio dropped out -> the track was paused/stopped.
+            silenceStreakRef.current += 1;
+            stableResyncStreakRef.current = 0;
+            if (silenceStreakRef.current >= SILENCE_STREAK_TO_REDETECT) {
+              // Confirmed silence: bounce back to the scanner for the next track.
+              shouldReschedule = false;
+              silenceStreakRef.current = 0;
+              runIdentifyRef.current();
               return;
             }
-            // Audio present -> resume the clock immediately if it was frozen.
-            silenceStreakRef.current = 0;
-            setSyncFrozen(false);
+            nextDelayMs = WATCHDOG_MS;
+            return;
           }
+          // Audio present.
+          silenceStreakRef.current = 0;
 
           if (!needFullResync) {
             nextDelayMs = WATCHDOG_MS;
@@ -339,15 +325,17 @@ export default function NowPlayingScreen({ visible, theme, onClose }: NowPlaying
 
           if (rmsLevel(pcm) < SILENCE_RMS_THRESHOLD) {
             silenceStreakRef.current += 1;
-            if (silenceStreakRef.current >= SILENCE_STREAK_TO_FREEZE) {
-              setSyncFrozen(true);
-            }
             stableResyncStreakRef.current = 0;
+            if (silenceStreakRef.current >= SILENCE_STREAK_TO_REDETECT) {
+              shouldReschedule = false;
+              silenceStreakRef.current = 0;
+              runIdentifyRef.current();
+              return;
+            }
             nextDelayMs = WATCHDOG_MS;
             return;
           }
           silenceStreakRef.current = 0;
-          setSyncFrozen(false);
 
           let heard: ShazamMatch | null = null;
           try {
@@ -364,8 +352,9 @@ export default function NowPlayingScreen({ visible, theme, onClose }: NowPlaying
 
           const current = matchRef.current;
           if (current && !sameSong(current, heard)) {
+            // Song changed -> swap song + lyrics in place via Shazam, no scanner flash.
             shouldReschedule = false;
-            runIdentifyRef.current();
+            applyNewSongRef.current(heard, sampleStartAt);
             return;
           }
 
@@ -412,7 +401,6 @@ export default function NowPlayingScreen({ visible, theme, onClose }: NowPlaying
     clearResyncLoop,
     currentSyncedPosMs,
     rebaseSyncClock,
-    setSyncFrozen,
   ]);
 
   const scheduleAutoRedetect = useCallback((result: LyricsResult | null, currentPosMs: number) => {
@@ -498,28 +486,37 @@ export default function NowPlayingScreen({ visible, theme, onClose }: NowPlaying
       const offset = found.offsetSeconds ?? null;
       const hasOffset = typeof offset === 'number' && offset >= 0;
 
-      fetchLyrics(found.artist, found.title, found.album)
-        .then((res) => {
+      void (async () => {
+        let res: LyricsResult | null = null;
+        try {
+          res = await fetchLyrics(found.artist, found.title, found.album);
+        } catch {
+          res = null;
+        }
+        if (!mountedRef.current) return;
+
+        const currentPosMs = hasOffset
+          ? Math.max(0, (offset as number) * 1000 + (Date.now() - recordStartRef.current))
+          : 0;
+
+        let result = res && (res.synced || !instant) ? res : instant;
+
+        // Nothing usable from LRCLIB or Shazam -> generate lyrics with AI.
+        if (!result || result.lines.length === 0) {
+          const ai = await generateLyricsWithAI(found.artist, found.title);
           if (!mountedRef.current) return;
+          if (ai) result = ai;
+        }
 
-          const currentPosMs = hasOffset
-            ? Math.max(0, (offset as number) * 1000 + (Date.now() - recordStartRef.current))
-            : 0;
-
-          const result = res && (res.synced || !instant) ? res : instant;
-          setLyrics(result);
-
-          if (result && result.synced) {
-            startSyncClock(result, currentPosMs, hasOffset);
-          } else {
-            setActiveLine(-1);
-          }
-
-          scheduleAutoRedetect(result, currentPosMs);
-        })
-        .finally(() => {
-          if (mountedRef.current) setLyricsLoading(false);
-        });
+        setLyrics(result);
+        if (result && result.synced) {
+          startSyncClock(result, currentPosMs, hasOffset);
+        } else {
+          setActiveLine(-1);
+        }
+        scheduleAutoRedetect(result, currentPosMs);
+        if (mountedRef.current) setLyricsLoading(false);
+      })();
     } finally {
       runningRef.current = false;
     }
@@ -528,6 +525,74 @@ export default function NowPlayingScreen({ visible, theme, onClose }: NowPlaying
   useEffect(() => {
     runIdentifyRef.current = runIdentify;
   }, [runIdentify]);
+
+  // Seamlessly swap to a newly-detected song without flashing the scanner: update
+  // the header + album art, fetch the new lyrics (showing the loader), restart the
+  // sync clock from the heard offset, then resume the watchdog for the new track.
+  const applyNewSong = useCallback(
+    async (heard: ShazamMatch, sampleStartAt: number) => {
+      if (!mountedRef.current) return;
+      clearResyncLoop();
+      clearSyncClock();
+      if (endTimerRef.current) clearTimeout(endTimerRef.current);
+
+      setMatch(heard);
+      matchRef.current = heard;
+      setActiveLine(-1);
+
+      const instant: LyricsResult | null =
+        heard.shazamLyrics && heard.shazamLyrics.length > 0
+          ? {
+              synced: false,
+              lines: heard.shazamLyrics.map((text) => ({ ms: -1, text })),
+              plain: heard.shazamLyrics.join('\n'),
+              durationMs: null,
+            }
+          : null;
+      setLyrics(instant);
+      setLyricsLoading(!instant);
+
+      const offset = heard.offsetSeconds ?? null;
+      const hasOffset = typeof offset === 'number' && offset >= 0;
+
+      try {
+        const res = await fetchLyrics(heard.artist, heard.title, heard.album);
+        if (!mountedRef.current) return;
+        const currentPosMs = hasOffset
+          ? Math.max(0, (offset as number) * 1000 + (Date.now() - sampleStartAt))
+          : 0;
+        let result = res && (res.synced || !instant) ? res : instant;
+        if (!result || result.lines.length === 0) {
+          const ai = await generateLyricsWithAI(heard.artist, heard.title);
+          if (!mountedRef.current) return;
+          if (ai) result = ai;
+        }
+        setLyrics(result);
+        if (result && result.synced) {
+          startSyncClock(result, currentPosMs, hasOffset);
+        } else {
+          setActiveLine(-1);
+        }
+        scheduleAutoRedetect(result, currentPosMs);
+      } catch {
+        /* keep whatever lyrics we already have */
+      } finally {
+        if (mountedRef.current) {
+          setLyricsLoading(false);
+          startResyncRef.current();
+        }
+      }
+    },
+    [clearResyncLoop, clearSyncClock, scheduleAutoRedetect, startSyncClock],
+  );
+
+  useEffect(() => {
+    applyNewSongRef.current = applyNewSong;
+  }, [applyNewSong]);
+
+  useEffect(() => {
+    startResyncRef.current = startAudibleResyncLoop;
+  }, [startAudibleResyncLoop]);
 
   const autoStartedRef = useRef(false);
   useEffect(() => {
