@@ -38,6 +38,11 @@ const REDETECT_BUFFER_MS = 3000;
 const OUTRO_PAD_MS = 8000;
 const SAFETY_REDETECT_MS = 20000;
 const SYNC_LOOKAHEAD_MS = 180;
+// Negative bias (ms) pulling the reported lyric position slightly behind the
+// computed clock to compensate for Bluetooth audio output latency + render
+// lead, so highlighted lyrics line up with what the listener actually hears
+// instead of running ahead of the music.
+const SYNC_BIAS_MS = -650;
 
 const MAX_CALIBRATION_MS = 2800;
 // Fast watchdog: a short, cheap mic snippet on a tight cadence purely to notice
@@ -155,6 +160,14 @@ export default function NowPlayingScreen({ visible, theme, onClose }: NowPlaying
     return Math.max(0, syncBaseMsRef.current + elapsed + syncCalibrationMsRef.current);
   }, []);
 
+  // Position actually shown to the listener: the canonical clock pulled back by
+  // SYNC_BIAS_MS to compensate for output latency. Drift correction keeps using
+  // currentSyncedPosMs (the canonical clock) so this bias is never "corrected away".
+  const presentationPosMs = useCallback(
+    (now = Date.now()): number => Math.max(0, currentSyncedPosMs(now) + SYNC_BIAS_MS),
+    [currentSyncedPosMs],
+  );
+
   const applyCalibrationDelta = useCallback((deltaMs: number) => {
     if (!Number.isFinite(deltaMs)) return;
     const abs = Math.abs(deltaMs);
@@ -252,11 +265,11 @@ export default function NowPlayingScreen({ visible, theme, onClose }: NowPlaying
 
       injectJs(
         'window.ZV&&ZV.sync({posMs:' +
-          Math.round(currentSyncedPosMs(Date.now())) +
+          Math.round(presentationPosMs(Date.now())) +
           ',playing:true});',
       );
     },
-    [clearSyncClock, currentSyncedPosMs, injectJs],
+    [clearSyncClock, presentationPosMs, injectJs],
   );
 
   const startAudibleResyncLoop = useCallback(() => {
@@ -380,7 +393,7 @@ export default function NowPlayingScreen({ visible, theme, onClose }: NowPlaying
             if (synced?.synced) {
               const idx = findActiveLineIndex(
                 synced.lines,
-                currentSyncedPosMs(Date.now()) + SYNC_LOOKAHEAD_MS,
+                presentationPosMs(Date.now()) + SYNC_LOOKAHEAD_MS,
               );
               setActiveLine((prev) => (prev === idx ? prev : idx));
             }
@@ -400,6 +413,7 @@ export default function NowPlayingScreen({ visible, theme, onClose }: NowPlaying
     applyCalibrationDelta,
     clearResyncLoop,
     currentSyncedPosMs,
+    presentationPosMs,
     rebaseSyncClock,
   ]);
 
@@ -700,12 +714,12 @@ export default function NowPlayingScreen({ visible, theme, onClose }: NowPlaying
   const pushSync = useCallback(() => {
     injectJs(
       'window.ZV&&ZV.sync({posMs:' +
-        Math.round(currentSyncedPosMs(Date.now())) +
+        Math.round(presentationPosMs(Date.now())) +
         ',playing:' +
         (!syncFrozenRef.current).toString() +
         '});',
     );
-  }, [currentSyncedPosMs, injectJs]);
+  }, [presentationPosMs, injectJs]);
 
   const pushInsets = useCallback(() => {
     injectJs(
