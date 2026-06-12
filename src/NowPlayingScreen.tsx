@@ -42,7 +42,7 @@ const SYNC_LOOKAHEAD_MS = 180;
 // computed clock to compensate for Bluetooth audio output latency + render
 // lead, so highlighted lyrics line up with what the listener actually hears
 // instead of running ahead of the music.
-const SYNC_BIAS_MS = -450;
+const SYNC_BIAS_MS = -250;
 
 const MAX_CALIBRATION_MS = 2800;
 // Fast watchdog: a short, cheap mic snippet on a tight cadence purely to notice
