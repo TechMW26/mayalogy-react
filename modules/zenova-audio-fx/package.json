@@ -1,0 +1,7 @@
+{
+  "name": "zenova-audio-fx",
+  "version": "1.0.0",
+  "description": "System-side Equaliser + BassBoost + Virtualizer wrapper for Zenova Sound (Android).",
+  "main": "src/index.ts",
+  "private": true
+}
