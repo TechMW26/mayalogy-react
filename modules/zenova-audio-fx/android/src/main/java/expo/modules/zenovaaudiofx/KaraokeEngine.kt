@@ -47,13 +47,16 @@ class KaraokeEngine {
   @Volatile private var distortion: Float = 0f     // 0..1
   @Volatile private var peakLevel: Float = 0f      // smoothed peak (UI VU)
 
-  // ---- Noise gate (downward expander) to suppress speaker/room bleed ----
-  // Anything quieter than the open threshold is heavily attenuated, which
-  // removes the low-level echo tail the speaker feeds back into the mic.
-  @Volatile private var gateOpenThresh: Float = 0.020f  // RMS above this -> open
-  @Volatile private var gateCloseThresh: Float = 0.010f // RMS below this -> close
+  // ---- Noise gate (gentle downward expander) to tame speaker/room bleed ----
+  // The platform AEC already removes most of the speaker feedback, so this gate
+  // is intentionally soft: it ATTENUATES low-level bleed toward a floor rather
+  // than fully muting, and opens instantly so word onsets and quiet syllables
+  // are never chopped.
+  @Volatile private var gateOpenThresh: Float = 0.012f  // RMS above this -> open
+  @Volatile private var gateCloseThresh: Float = 0.004f // RMS below this -> floor
+  @Volatile private var gateFloor: Float = 0.45f        // min gain when "closed"
   private var gateEnv: Float = 0f      // smoothed input envelope
-  private var gateGain: Float = 0f     // current gate gain (0 closed .. 1 open)
+  private var gateGain: Float = 1f     // current gate gain (floor .. 1 open)
 
   // ---- Schroeder reverb buffers (4 combs into 2 allpasses) ----
   private val combLens = intArrayOf(421, 451, 487, 521)
@@ -184,15 +187,16 @@ class KaraokeEngine {
     } catch (_: Throwable) {}
 
     // When the platform AEC (VOICE_COMMUNICATION) is engaged most bleed is
-    // already removed, so a gentle gate suffices. On the raw-MIC fallback there
-    // is no echo cancellation, so gate harder to suppress the speaker feedback.
+    // already removed, so the gate barely has to work and keeps a high floor so
+    // the voice is never cut. On the raw-MIC fallback there is no echo
+    // cancellation, so attenuate harder (lower floor) to suppress feedback.
     if (usedVoiceComm) {
-      gateOpenThresh = 0.018f; gateCloseThresh = 0.009f
+      gateOpenThresh = 0.012f; gateCloseThresh = 0.004f; gateFloor = 0.55f
     } else {
-      gateOpenThresh = 0.030f; gateCloseThresh = 0.016f
+      gateOpenThresh = 0.020f; gateCloseThresh = 0.009f; gateFloor = 0.30f
     }
     gateEnv = 0f
-    gateGain = 0f
+    gateGain = 1f
 
     val minTrkBytes = AudioTrack.getMinBufferSize(
       SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT,
@@ -253,19 +257,21 @@ class KaraokeEngine {
       val dist = distortion
       val gOpen = gateOpenThresh
       val gClose = gateCloseThresh
+      val gFloor = gateFloor
       var peak = 0f
       for (i in 0 until read) {
         var x = (inBuf[i].toFloat()) / 32768f
 
-        // Noise gate: follow the raw input envelope; open quickly when the
-        // singer is above the open threshold, close (with a slow release) when
-        // it drops below the close threshold. Residual speaker bleed and room
-        // noise sit below the threshold and get attenuated, killing the echo.
+        // Soft noise gate: follow the raw input envelope; open instantly when
+        // the singer rises above the open threshold, and ease down only to the
+        // floor (not silence) when it drops below the close threshold. Because
+        // it never fully closes and opens instantly, the voice is preserved
+        // while steady low-level bleed is gently attenuated.
         val ax = if (x >= 0f) x else -x
         gateEnv = if (ax > gateEnv) (gateEnv * 0.4f + ax * 0.6f) else (gateEnv * 0.96f + ax * 0.04f)
-        val gateTarget = if (gateEnv >= gOpen) 1f else if (gateEnv <= gClose) 0f else gateGain
-        // Fast attack (open), slow release (close) to avoid choppy gating.
-        gateGain = if (gateTarget > gateGain) (gateGain * 0.5f + gateTarget * 0.5f)
+        val gateTarget = if (gateEnv >= gOpen) 1f else if (gateEnv <= gClose) gFloor else gateGain
+        // Instant attack (open), slow release (toward floor) to avoid choppy gating.
+        gateGain = if (gateTarget >= gateGain) gateTarget
                    else (gateGain * 0.92f + gateTarget * 0.08f)
         x *= gateGain
 
