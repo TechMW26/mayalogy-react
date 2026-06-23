@@ -1,0 +1,1208 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Serif+Devanagari:wght@400;500;600&display=swap');
+
+:root,
+[data-bs-theme="dark"],
+[data-bs-theme="light"] {
+    --maya-primary: #d9a34b;
+    --maya-primary-light: #f4d38c;
+    --maya-primary-dark: #8d5927;
+    --maya-heading: #f1d59a;
+    --maya-text-primary: #f5e8ce;
+    --maya-text-secondary: #b9aa91;
+    --maya-text-muted: #817565;
+    --maya-bg-primary: transparent;
+    --maya-bg-secondary: rgba(7, 8, 14, 0.94);
+    --maya-bg-tertiary: rgba(13, 14, 25, 0.92);
+    --maya-bg-card: linear-gradient(145deg, rgba(16, 18, 33, 0.96), rgba(7, 8, 15, 0.96));
+    --maya-border: rgba(222, 165, 76, 0.58);
+    --maya-border-light: rgba(222, 165, 76, 0.22);
+    --maya-corner-top-left: url('/images/royal-corners/top-left.png');
+    --maya-corner-top-right: url('/images/royal-corners/top-right.png');
+    --maya-corner-bottom-left: url('/images/royal-corners/bottom-left.png');
+    --maya-corner-bottom-right: url('/images/royal-corners/bottom-right.png');
+    --maya-royal-radius: clamp(27.3px, 4.2vw, 40px);
+    --maya-royal-inner-radius: clamp(23.1px, 3.57vw, 35.7px);
+    --maya-guide-radius: clamp(26px, 4vw, 38px);
+    --maya-guide-inner-radius: clamp(22px, 3.4vw, 34px);
+    --font-primary: 'Cormorant Garamond', 'Noto Serif Devanagari', Georgia, serif;
+    --font-display: 'Cormorant Garamond', 'Noto Serif Devanagari', Georgia, serif;
+}
+
+html {
+    background: #050405;
+}
+
+body {
+    background:
+        linear-gradient(180deg, rgba(1, 2, 5, 0.10), rgba(2, 2, 5, 0.26)),
+        url('/background.jpeg') center top / cover fixed no-repeat !important;
+    color: var(--maya-text-primary);
+    font-family: var(--font-primary);
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 50% 18%, rgba(203, 126, 44, 0.08), transparent 30%),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.18), transparent 18%, transparent 82%, rgba(0, 0, 0, 0.18));
+}
+
+.app-container,
+.main-content,
+.maya-page,
+.page-container,
+.page-wrapper,
+.maya-overlay,
+.modal,
+.modal-dialog,
+.modal-content,
+.onboarding-modal,
+.onboarding-modal .modal-body,
+.onboarding-main {
+    background: transparent !important;
+}
+
+h1, h2, h3, h4, h5, h6,
+.page-title,
+.maya-page__title,
+.logo-name {
+    color: var(--maya-heading) !important;
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: 0.025em;
+}
+
+.main-header,
+.sidebar,
+.bottom-nav,
+.notifications-panel {
+    background: rgba(5, 6, 11, 0.90) !important;
+    border-color: rgba(216, 157, 67, 0.25) !important;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.42);
+    backdrop-filter: blur(18px) saturate(110%);
+    -webkit-backdrop-filter: blur(18px) saturate(110%);
+}
+
+.main-header::after,
+.bottom-nav::before {
+    content: '';
+    position: absolute;
+    left: 12%;
+    right: 12%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(225, 169, 77, 0.62), transparent);
+}
+
+.main-header::after { bottom: -1px; }
+.bottom-nav::before { top: -1px; }
+
+.header-logo .logo-icon {
+    filter: sepia(1) saturate(.8) drop-shadow(0 0 8px rgba(222, 164, 70, .28));
+}
+
+.maya-blob-mini {
+    background:
+        radial-gradient(circle at 34% 28%, #fff9df 0 10%, transparent 34%),
+        radial-gradient(circle at 58% 56%, rgba(255, 189, 198, .92), transparent 52%),
+        linear-gradient(145deg, #e7a6bd, #ffd29c 62%, #fff3c7) !important;
+    box-shadow:
+        0 0 12px rgba(255, 234, 183, .66),
+        0 0 24px rgba(237, 145, 167, .34),
+        inset 0 3px 8px rgba(255, 255, 255, .45) !important;
+}
+
+.sidebar-nav .nav-link,
+.bottom-nav .nav-item {
+    color: #aa9a82;
+    font-family: var(--font-primary);
+}
+
+.sidebar-nav .nav-link:hover,
+.sidebar-nav .nav-link.active,
+.bottom-nav .nav-item.active {
+    color: #f0cf8b;
+    background: rgba(213, 151, 59, 0.09);
+    border-color: #c98b3b;
+    text-shadow: 0 0 14px rgba(222, 166, 77, 0.28);
+}
+
+.maya-card,
+.maya-panel,
+.quick-action-card,
+.maya-insight-card,
+.maya-action-tile,
+.maya-info-card,
+.auth-modal,
+.notifications-header {
+    background: var(--maya-bg-card) !important;
+    border: 1px solid rgba(216, 156, 68, 0.48) !important;
+    box-shadow:
+        0 20px 55px rgba(0, 0, 0, 0.42),
+        inset 0 0 0 1px rgba(245, 206, 129, 0.05),
+        0 0 18px rgba(208, 139, 48, 0.07) !important;
+}
+
+.maya-card,
+.maya-panel,
+.quick-action-card,
+.maya-insight-card,
+.maya-action-tile,
+.maya-info-card {
+    border: 1px solid rgba(231, 171, 76, .72) !important;
+    border-radius: var(--maya-royal-radius) !important;
+    position: relative;
+    isolation: isolate;
+    overflow: visible !important;
+}
+
+.maya-card,
+.maya-panel,
+.quick-action-card,
+.maya-insight-card,
+.maya-action-tile,
+.maya-info-card,
+.auth-modal,
+.notifications-header,
+.unified-num-card,
+.kundli-formation-chart-card,
+.number-reveal {
+    border-radius: var(--maya-royal-radius) !important;
+}
+
+.modal-content:not(.onboarding-modal),
+.maya-modal__container:not(.maya-modal__container--fullscreen),
+.maya-modal__content,
+.maya-lucky-modal__content,
+.maya-aspect-modal,
+.calculation-container,
+.maya-validation-container,
+.email-gate-container,
+.auth-flow-container,
+.toast {
+    border: 1px solid rgba(231, 171, 76, .76) !important;
+    border-radius: var(--maya-royal-radius) !important;
+}
+
+.modal-content:not(.onboarding-modal),
+.maya-modal__container:not(.maya-modal__container--fullscreen),
+.maya-modal__content,
+.maya-lucky-modal__content,
+.maya-aspect-modal,
+.calculation-container,
+.maya-validation-container,
+.email-gate-container,
+.auth-flow-container {
+    border-radius: var(--maya-royal-radius) !important;
+}
+
+.modal-content:not(.onboarding-modal),
+.maya-modal__container:not(.maya-modal__container--fullscreen),
+.maya-modal__content,
+.maya-lucky-modal__content,
+.maya-aspect-modal,
+.calculation-container,
+.email-gate-container,
+.auth-flow-container {
+    position: relative;
+    isolation: isolate;
+    overflow: visible !important;
+}
+
+.modal-content:not(.onboarding-modal)::after,
+.maya-modal__container:not(.maya-modal__container--fullscreen)::after,
+.maya-modal__content::after,
+.maya-lucky-modal__content::after,
+.maya-aspect-modal::after,
+.calculation-container::after,
+.email-gate-container::after,
+.auth-flow-container::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    z-index: 5;
+    pointer-events: none;
+    border-radius: inherit;
+    background:
+        linear-gradient(115deg,
+            transparent 0 28%,
+            rgba(255, 224, 150, 0.04) 36%,
+            rgba(255, 241, 190, 0.72) 49%,
+            rgba(255, 190, 75, 0.12) 59%,
+            transparent 70%) 180% 0 / 220% 100% no-repeat;
+    mix-blend-mode: screen;
+    opacity: .72;
+    animation: mayaDirectionalShine 5.2s cubic-bezier(.4, 0, .2, 1) infinite;
+}
+
+.gc-card::before,
+.modal-content:not(.onboarding-modal)::before,
+.maya-modal__container:not(.maya-modal__container--fullscreen)::before,
+.maya-modal__content::before,
+.maya-lucky-modal__content::before,
+.maya-aspect-modal::before,
+.calculation-container::before,
+.maya-validation-container::before,
+.email-gate-container::before,
+.auth-flow-container::before,
+.maya-card::before,
+.maya-panel::before,
+.quick-action-card::before,
+.maya-insight-card::before,
+.maya-action-tile::before,
+.maya-info-card::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    z-index: 7;
+    pointer-events: none;
+    background-image:
+        var(--maya-corner-top-left),
+        var(--maya-corner-top-right),
+        var(--maya-corner-bottom-left),
+        var(--maya-corner-bottom-right);
+    background-position:
+        left top,
+        right top,
+        left bottom,
+        right bottom;
+    background-repeat: no-repeat;
+    background-size:
+        clamp(58px, 16%, 122px) auto,
+        clamp(58px, 16%, 122px) auto,
+        clamp(58px, 16%, 122px) auto,
+        clamp(58px, 16%, 122px) auto;
+    filter:
+        saturate(.94)
+        brightness(1.08)
+        drop-shadow(0 0 5px rgba(255, 185, 62, .34));
+}
+
+@keyframes mayaDirectionalShine {
+    0%, 18% { background-position: 180% 0; opacity: 0; }
+    28% { opacity: .78; }
+    55% { background-position: -120% 0; opacity: .5; }
+    62%, 100% { background-position: -120% 0; opacity: 0; }
+}
+
+.btn,
+.maya-btn,
+.maya-validation-btn {
+    font-family: var(--font-primary);
+    font-size: .98rem;
+    min-height: 42px;
+    padding: .55rem 1rem;
+}
+
+.btn-primary,
+.btn-maya,
+.maya-btn--primary,
+.onboarding-confirm,
+.maya-continue-gate-btn {
+    color: #1c1208 !important;
+    border: 1px solid #f0c56e !important;
+    background:
+        linear-gradient(180deg, rgba(255, 224, 150, 0.28), transparent 35%),
+        linear-gradient(100deg, #b9772e, #efbd66 48%, #b8752c) !important;
+    box-shadow:
+        inset 0 0 0 2px rgba(91, 47, 16, 0.38),
+        inset 0 0 0 4px rgba(250, 213, 133, 0.20),
+        0 9px 22px rgba(185, 108, 31, 0.30) !important;
+}
+
+.btn-outline-primary,
+.btn-outline-secondary,
+.btn-outline-light,
+.btn-maya-outline,
+.maya-btn--outline {
+    color: #ebcc91 !important;
+    border: 1px solid rgba(205, 139, 58, 0.72) !important;
+    background: rgba(7, 8, 15, 0.82) !important;
+    box-shadow: inset 0 0 18px rgba(216, 154, 66, 0.025);
+}
+
+.form-control,
+.onboarding-input,
+.maya-input,
+textarea,
+select {
+    color: #f1dfbe !important;
+    caret-color: #efbd66;
+    background: linear-gradient(180deg, rgba(19, 20, 34, 0.96), rgba(7, 8, 15, 0.96)) !important;
+    border: 1px solid rgba(224, 157, 63, 0.76) !important;
+    box-shadow: inset 0 0 0 2px rgba(5, 5, 10, 0.66), 0 0 10px rgba(228, 153, 58, 0.11) !important;
+    min-height: 46px;
+    padding: .65rem 1rem !important;
+    font-size: 1rem !important;
+}
+
+.modal-dialog.modal-fullscreen-onboarding,
+.onboarding-modal,
+.onboarding-modal .modal-body {
+    width: 100vw;
+    max-width: none;
+    min-height: 100dvh;
+    margin: 0;
+}
+
+.onboarding-main {
+    min-height: 100dvh;
+    justify-content: center;
+    padding: max(3.5rem, env(safe-area-inset-top)) clamp(1rem, 5vw, 2rem) max(2rem, env(safe-area-inset-bottom));
+}
+
+.onboarding-header {
+    display: none;
+}
+
+.onboarding-progress {
+    position: fixed;
+    top: max(1rem, env(safe-area-inset-top));
+    left: 50%;
+    z-index: 3;
+    transform: translateX(-50%);
+    margin: 0;
+}
+
+.onboarding-progress-dots {
+    padding: 6px 12px;
+    background: rgba(5, 6, 11, 0.62);
+    border-color: rgba(210, 148, 58, 0.30);
+}
+
+.onboarding-progress-text {
+    display: none;
+}
+
+.onboarding-content,
+#onboardingContent {
+    width: min(100%, 680px);
+    max-width: 680px;
+    min-height: 0;
+    overflow: visible !important;
+    padding: clamp(1rem, 4vw, 2rem);
+    border: 0;
+    border-radius: 0;
+    background: transparent !important;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.onboarding-question {
+    margin: 0 auto clamp(2.1rem, 6vh, 3.4rem) !important;
+}
+
+.onboarding-question .lead {
+    max-width: 650px;
+    margin: 0 auto;
+    color: #f3ddb0 !important;
+    font-family: var(--font-display);
+    font-size: clamp(1.65rem, 5.5vw, 2.3rem);
+    font-weight: 500;
+    line-height: 1.42;
+    letter-spacing: 0.012em;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85);
+}
+
+.maya-ritual-divider {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    width: min(250px, 70%);
+    margin: 1.4rem auto 0;
+    color: #a56a31;
+}
+
+.maya-ritual-divider::before,
+.maya-ritual-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #8b5828);
+}
+
+.maya-ritual-divider::after {
+    transform: scaleX(-1);
+}
+
+.maya-ritual-divider span {
+    display: block;
+    transform: rotate(180deg);
+    font-size: 1.35rem;
+}
+
+.onboarding-input-container {
+    border-radius: 0 !important;
+}
+
+.onboarding-input,
+.onboarding-name-input {
+    min-height: 56px;
+    padding: .7rem 1.1rem !important;
+    border-radius: 24px !important;
+    font-family: var(--font-display);
+    font-size: 1.12rem !important;
+}
+
+.onboarding-options {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem !important;
+    width: min(100%, 620px) !important;
+}
+
+.btn-outline-primary.onboarding-option,
+.btn.onboarding-option {
+    width: 100%;
+    min-height: 58px;
+    padding: .62rem 1rem;
+    border: 1px solid rgba(225, 158, 63, .80) !important;
+    border-radius: 25px !important;
+    color: #f0d7a7 !important;
+    background: radial-gradient(circle at 50% 0%, rgba(45, 50, 80, .22), transparent 60%), rgba(7, 8, 15, .90) !important;
+    box-shadow: inset 0 0 0 2px rgba(10, 8, 10, .60), 0 0 14px rgba(212, 137, 44, .11) !important;
+    font-family: var(--font-display);
+    font-size: clamp(1.15rem, 4.5vw, 1.5rem);
+    font-weight: 500;
+}
+
+.btn-outline-primary.onboarding-option::before,
+.btn-outline-primary.onboarding-option::after {
+    content: '✦';
+    margin: 0 1rem;
+    color: #a76d32;
+    font-size: .7em;
+}
+
+.onboarding-actions {
+    width: min(100%, 620px) !important;
+    max-width: 620px;
+    margin-top: 1.35rem !important;
+    padding: 0 0 1rem;
+    gap: 1rem !important;
+}
+
+.onboarding-actions .btn,
+.gc-choose-btn {
+    width: 100%;
+    min-height: 52px;
+    border-radius: 23px !important;
+    font-family: var(--font-display);
+    font-size: 1.22rem;
+    font-weight: 500;
+}
+
+#prevStepBtn {
+    position: fixed;
+    top: max(14px, env(safe-area-inset-top));
+    left: max(14px, env(safe-area-inset-left));
+    z-index: 10020;
+    width: 42px !important;
+    min-width: 42px !important;
+    height: 42px;
+    min-height: 42px;
+    padding: 0 !important;
+    overflow: hidden;
+    border-radius: 50% !important;
+    font-size: 0 !important;
+    color: #dfbd82 !important;
+    border: 1px solid rgba(178, 111, 46, .62) !important;
+    background: rgba(4, 5, 10, .72) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .28) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+#prevStepBtn .bi {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    font-size: 1.05rem;
+    line-height: 1;
+}
+
+#prevStepBtn:hover,
+#prevStepBtn:focus-visible {
+    color: #f5d58e !important;
+    background: rgba(19, 15, 16, .90) !important;
+    border-color: rgba(231, 174, 84, .88) !important;
+}
+
+#nextStepBtn {
+    order: 1;
+}
+
+.existing-user-login {
+    border-color: rgba(209, 147, 56, .18) !important;
+}
+
+#onboardingContent[data-step="agentGender"] {
+    width: min(100%, 760px);
+}
+
+#onboardingContent[data-step="agentGender"] .onboarding-question {
+    margin-bottom: .3rem !important;
+}
+
+#onboardingContent[data-step="agentGender"] .onboarding-actions {
+    margin-top: .7rem !important;
+}
+
+.gc-slider-viewport {
+    width: min(100%, 620px);
+    max-width: 620px;
+    padding: .4rem 0 0;
+}
+
+.gc-slide {
+    width: 100%;
+    padding: 12px 4px;
+}
+
+.gc-card {
+    width: 100%;
+    max-width: 620px;
+    padding: 3px;
+    border: 1px solid rgba(242, 174, 70, .90);
+    border-radius: var(--maya-guide-radius);
+    background: radial-gradient(circle at 50% 22%, rgba(42, 47, 79, .40), transparent 46%), linear-gradient(155deg, #111426, #070811 72%);
+}
+
+.gc-main-card {
+    aspect-ratio: 3 / 4.2;
+    border-radius: var(--maya-guide-inner-radius);
+    border: 1px solid color-mix(in srgb, var(--electric-border-color) 84%, #ffd98b);
+}
+
+.gc-border-outer,
+.gc-glow-1,
+.gc-glow-2,
+.gc-content {
+    border-radius: var(--maya-guide-inner-radius);
+}
+
+.gc-glow-1 {
+    border-width: 1px;
+}
+
+.gc-glow-2 {
+    border-width: 1px;
+    filter: blur(5px);
+}
+
+.gc-content-top {
+    padding: 24px 24px 8px;
+    gap: 13px;
+}
+
+.gc-glass-badge {
+    color: #e8c888;
+    border: 1px solid rgba(222, 158, 70, .62);
+    border-radius: 14px;
+    background: rgba(6, 7, 13, .62);
+    font-family: var(--font-display);
+    font-size: .8rem;
+    letter-spacing: .13em;
+}
+
+.gc-avatar {
+    width: min(166px, 41vw);
+    height: min(166px, 41vw);
+    border: 2px solid #c48839;
+    box-shadow: 0 0 0 5px rgba(8, 8, 13, .8), 0 0 0 6px rgba(218, 151, 61, .38);
+}
+
+.gc-name {
+    color: #f4dfb9;
+    font-family: var(--font-display);
+    font-size: clamp(2.7rem, 11vw, 4rem);
+    font-weight: 400;
+}
+
+.gc-desc {
+    color: #b9aa91;
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    opacity: .82;
+}
+
+.gc-dot {
+    background: #4c4135;
+}
+
+.gc-dot.active {
+    background: #f0ad43;
+    box-shadow: 0 0 9px rgba(239, 170, 63, .55);
+}
+
+.gc-choose-btn {
+    max-width: 100%;
+    color: #1c1208;
+    border: 1px solid #f0c56e;
+    background: linear-gradient(180deg, rgba(255, 224, 150, .3), transparent 35%), linear-gradient(100deg, #b9772e, #efbd66 48%, #b8752c);
+    box-shadow: inset 0 0 0 3px rgba(91, 47, 16, .34), 0 9px 22px rgba(185, 108, 31, .3);
+}
+
+.calculation-overlay {
+    background: transparent !important;
+    padding:
+        max(1rem, env(safe-area-inset-top))
+        1rem
+        max(5.5rem, env(safe-area-inset-bottom)) !important;
+    align-items: flex-start !important;
+    overflow-y: auto !important;
+}
+
+.calculation-container {
+    width: min(86vw, 680px) !important;
+    padding: clamp(1.2rem, 4vw, 2rem) !important;
+    margin: auto !important;
+    max-height: none !important;
+    height: max-content !important;
+    overflow: visible !important;
+    position: relative;
+    z-index: 120;
+    border: 1px solid rgba(215, 153, 64, .70) !important;
+    border-radius: var(--maya-royal-radius) !important;
+    background: radial-gradient(circle at 50% 10%, rgba(39, 43, 75, .34), transparent 44%), linear-gradient(155deg, rgba(15, 17, 31, .97), rgba(6, 7, 13, .97)) !important;
+    box-shadow:
+        inset 0 0 0 1px rgba(251, 213, 135, .50),
+        inset 0 0 0 4px rgba(4, 4, 8, .78),
+        inset 0 0 0 5px rgba(226, 168, 75, .70),
+        0 25px 70px rgba(0, 0, 0, .55) !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.calculation-container > * {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.calculation-title::before {
+    content: '✦  PRECISION CALCULATION  ✦';
+    display: inline-block;
+    margin-bottom: 1.4rem;
+    padding: .5rem 1.1rem;
+    border: 1px solid rgba(193, 126, 51, .58);
+    border-radius: 16px;
+    color: #e6bd73;
+    font-size: .8rem;
+    letter-spacing: .13em;
+}
+
+.calculation-title h2 {
+    color: #f5dfb8 !important;
+    font-size: clamp(1.55rem, 5vw, 2.2rem);
+}
+
+.calculation-title p,
+.calc-waiting p {
+    text-align: center !important;
+    color: #9e9486 !important;
+}
+
+/* One outer calculation frame; inner content should not look nested. */
+.calculation-container .calculation-display,
+.calculation-container .calculation-result,
+.calculation-container .calculation-result__group,
+.calculation-container .calc-section,
+.calculation-container .unified-numbers,
+.calculation-container .kundli-formation-chart-card,
+.calculation-container .kundli-formation-chart-shell {
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+.calculation-container .calc-section,
+.calculation-container .unified-numbers,
+.calculation-container .kundli-formation-chart-shell,
+.calculation-container .kundli-formation-meta,
+.calculation-container .calculation-result {
+    margin-left: auto !important;
+    margin-right: auto !important;
+    text-align: center !important;
+}
+
+.calculation-container .kundli-formation-meta,
+.calculation-container .calculation-result__group,
+.calculation-container .unified-numbers__grid {
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+.calculation-container .kundli-formation-meta__item {
+    flex: 0 1 155px;
+}
+
+.calculation-container .calculation-display {
+    min-height: 0;
+    padding: 0 !important;
+    margin-bottom: .85rem !important;
+}
+
+.calculation-container .kundli-formation-chart-card {
+    max-width: 390px;
+    padding: .4rem 0 0 !important;
+    overflow: visible;
+}
+
+.calculation-container .kundli-formation-chart-card::before {
+    display: none;
+}
+
+.calculation-container .kundli-formation-chart {
+    padding: 8px;
+    border-radius: 12px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .28) !important;
+}
+
+.calculation-container .calc-explanation {
+    max-width: 36rem;
+    padding: .25rem 0 .25rem .8rem;
+    background: transparent !important;
+    border-radius: 0;
+}
+
+.calculation-container .unified-num-card {
+    background: rgba(18, 19, 32, .42);
+    border-color: rgba(214, 151, 65, .28);
+    box-shadow: none;
+}
+
+.calculation-container .number-reveal {
+    box-shadow: none !important;
+}
+
+/* Generic popup bodies use their outer royal frame instead of stacked cards. */
+.maya-modal__body > .maya-card,
+.maya-modal__body > .maya-panel,
+.maya-lucky-modal__body > .maya-card,
+.maya-aspect-modal__body > .maya-card,
+.modal-body > .maya-card,
+.modal-body > .maya-panel {
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+.maya-validation-overlay {
+    background: rgba(0, 0, 0, .50) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.maya-validation-container {
+    width: min(86vw, 680px) !important;
+    padding: clamp(1.75rem, 5vw, 2.5rem) !important;
+    border: 1px solid rgba(220, 158, 68, .78) !important;
+    border-radius: var(--maya-royal-radius) !important;
+    background: radial-gradient(circle at 50% 0%, rgba(42, 47, 83, .38), transparent 48%), linear-gradient(155deg, #111426, #070811 72%) !important;
+    box-shadow:
+        inset 0 0 0 1px rgba(251, 213, 135, .50),
+        inset 0 0 0 4px rgba(4, 4, 8, .76),
+        inset 0 0 0 5px rgba(226, 168, 75, .70),
+        0 24px 68px rgba(0, 0, 0, .62) !important;
+    position: relative !important;
+    isolation: isolate;
+    overflow: visible !important;
+    height: max-content;
+}
+
+.calculation-container::before {
+    inset: -1px;
+    background-size:
+        clamp(58px, 15%, 112px) auto,
+        clamp(58px, 15%, 112px) auto,
+        clamp(58px, 15%, 112px) auto,
+        clamp(58px, 15%, 112px) auto;
+}
+
+.maya-validation-container::before {
+    inset: -1px;
+    background-size:
+        clamp(52px, 15%, 92px) auto,
+        clamp(52px, 15%, 92px) auto,
+        clamp(52px, 15%, 92px) auto,
+        clamp(52px, 15%, 92px) auto;
+}
+
+.maya-validation-container::before,
+.maya-validation-container::after {
+    margin: 0;
+}
+
+.maya-validation-question {
+    color: #f1d493 !important;
+    font-family: var(--font-display);
+    font-size: clamp(1.35rem, 5vw, 2rem) !important;
+    line-height: 1.45;
+    text-align: center !important;
+    margin: .25rem auto .4rem !important;
+}
+
+.maya-validation-options {
+    gap: 1rem !important;
+    padding: .65rem .45rem .35rem;
+}
+
+.maya-validation-btn {
+    min-height: 44px;
+    padding: .5rem .85rem;
+    color: #ead19f !important;
+    border: 1px solid rgba(211, 148, 62, .58) !important;
+    border-radius: 20px !important;
+    background: rgba(8, 9, 16, .78) !important;
+}
+
+.maya-validation-btn--none {
+    border-style: dotted !important;
+}
+
+.maya-card,
+.maya-panel,
+.quick-action-card,
+.maya-insight-card,
+.maya-action-tile,
+.maya-info-card,
+.notifications-header,
+.toast,
+.email-gate-container,
+.auth-flow-container,
+.modal-content:not(.onboarding-modal),
+.maya-modal__container:not(.maya-modal__container--fullscreen),
+.maya-modal__content,
+.maya-lucky-modal__content,
+.maya-aspect-modal {
+    box-shadow:
+        inset 0 0 0 1px rgba(250, 211, 131, .44),
+        inset 0 0 0 4px rgba(4, 5, 10, .76),
+        inset 0 0 0 5px rgba(226, 168, 75, .68),
+        0 22px 58px rgba(0, 0, 0, .50),
+        0 0 22px rgba(220, 151, 55, .10) !important;
+}
+
+/* Keep the approved guide-selection card geometry and border unchanged. */
+.gc-card {
+    border-radius: var(--maya-guide-radius) !important;
+    box-shadow:
+        inset 0 0 0 1px rgba(250, 211, 131, .44),
+        inset 0 0 0 4px rgba(4, 5, 10, .76),
+        0 22px 58px rgba(0, 0, 0, .50),
+        0 0 22px rgba(220, 151, 55, .10) !important;
+}
+
+.email-gate-container,
+.auth-flow-container {
+    width: min(88vw, 560px) !important;
+    max-width: 560px !important;
+    padding: clamp(1.35rem, 4vw, 2rem) !important;
+    border: 1px solid rgba(231, 171, 76, .78) !important;
+    background:
+        radial-gradient(circle at 50% 0%, rgba(42, 47, 83, .32), transparent 46%),
+        linear-gradient(155deg, rgba(16, 18, 34, .97), rgba(6, 7, 13, .98)) !important;
+}
+
+.email-gate-container::before,
+.auth-flow-container::before {
+    background-size:
+        clamp(44px, 13%, 76px) auto,
+        clamp(44px, 13%, 76px) auto,
+        clamp(44px, 13%, 76px) auto,
+        clamp(44px, 13%, 76px) auto;
+}
+
+body:has(.email-gate-active) .maya-progress-meter {
+    opacity: 0 !important;
+    pointer-events: none;
+}
+
+body:has(.email-gate-active) .maya-text-display {
+    z-index: 140 !important;
+    padding-top: max(4.5rem, env(safe-area-inset-top)) !important;
+    background: linear-gradient(180deg, rgba(5, 4, 5, .68), rgba(5, 4, 5, .96)) !important;
+}
+
+.maya-blob-container.blob-auth-gate {
+    top: 14% !important;
+    width: 130px !important;
+    height: 130px !important;
+    opacity: .52;
+    z-index: 112;
+}
+
+.maya-blob-container.blob-auth-gate canvas {
+    transform: translate(-50%, -50%) scale(.34) !important;
+    filter: saturate(1.05) brightness(.92);
+}
+
+.maya-blob-container.blob-auth-gate .maya-orb-flares {
+    transform: translate(-50%, -50%) scale(.42);
+    opacity: .38;
+}
+
+body:has(#calculation-overlay) .maya-blob-container.blob-small {
+    top: 30% !important;
+    width: min(330px, 76vw) !important;
+    height: min(330px, 76vw) !important;
+    max-width: none;
+    max-height: none;
+    opacity: 1;
+    overflow: visible;
+    filter:
+        drop-shadow(0 0 12px rgba(255, 239, 190, .72))
+        drop-shadow(0 0 32px rgba(247, 163, 175, .48))
+        drop-shadow(0 0 76px rgba(255, 184, 92, .28));
+}
+
+body:has(#calculation-overlay) .maya-blob-container.blob-small::before {
+    content: '';
+    position: absolute;
+    inset: -26%;
+    z-index: -1;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle, transparent 0 27%, rgba(255, 244, 202, .52) 28%, transparent 29%),
+        repeating-conic-gradient(from 0deg, rgba(255, 205, 109, .68) 0deg 1deg, transparent 1deg 14deg),
+        radial-gradient(circle, rgba(255, 248, 214, .52) 0 10%, rgba(248, 176, 190, .28) 30%, rgba(244, 171, 112, .10) 53%, transparent 70%);
+    filter: blur(2px) drop-shadow(0 0 18px rgba(255, 193, 99, .44));
+    animation: mayaTempleAura 3.2s ease-in-out infinite;
+}
+
+body:has(#calculation-overlay) .maya-blob-container.blob-small::after {
+    content: 'ॐ';
+    position: absolute;
+    inset: 20%;
+    z-index: 4;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 232, 180, .42);
+    border-radius: 50%;
+    color: rgba(255, 247, 215, .90);
+    font-family: 'Noto Serif Devanagari', serif;
+    font-size: clamp(2.2rem, 10vw, 4.1rem);
+    text-shadow:
+        0 0 8px #fff7cf,
+        0 0 22px rgba(255, 201, 114, .82);
+    background:
+        radial-gradient(circle, rgba(255, 249, 217, .32), transparent 48%),
+        repeating-conic-gradient(from 0deg, rgba(255, 232, 175, .22) 0deg 1deg, transparent 1deg 20deg);
+    box-shadow:
+        inset 0 0 22px rgba(255, 238, 191, .18),
+        0 0 18px rgba(255, 194, 100, .18);
+    animation: mayaMandalaTurn 24s linear infinite;
+}
+
+body:has(#calculation-overlay) .maya-blob-container.blob-small canvas {
+    width: 100vw !important;
+    height: 100dvh !important;
+    filter: saturate(1.14) brightness(1.1);
+}
+
+.maya-orb-flares {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100vw;
+    height: 100dvh;
+    transform: translate(-50%, -50%);
+    z-index: 3;
+    pointer-events: none;
+    overflow: visible;
+}
+
+#maya-blob-canvas,
+.maya-blob-container canvas {
+    position: absolute !important;
+    top: 50%;
+    left: 50%;
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-width: none !important;
+    max-height: none !important;
+    transform: translate(-50%, -50%);
+    object-fit: fill;
+    pointer-events: none;
+}
+
+.maya-blob-container {
+    overflow: visible !important;
+}
+
+.maya-orb-flare {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--flare-size);
+    height: var(--flare-size);
+    border-radius: 50%;
+    background: #fff5bd;
+    box-shadow:
+        0 0 5px #fff7ce,
+        0 0 13px rgba(255, 202, 92, .95),
+        0 0 24px rgba(248, 139, 125, .55);
+    opacity: 0;
+    animation: mayaOrbFlareShoot var(--flare-duration) ease-out var(--flare-delay) infinite;
+}
+
+.maya-orb-flare--streak {
+    width: calc(var(--flare-size) * 5);
+    height: max(1px, calc(var(--flare-size) / 2));
+    border-radius: 999px;
+    transform-origin: left center;
+    background: linear-gradient(90deg, #fff9d6, rgba(255, 191, 80, .7), transparent);
+}
+
+@keyframes mayaOrbFlareShoot {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) rotate(var(--flare-angle)) translateX(45px) scale(.4);
+    }
+    12% {
+        opacity: 1;
+    }
+    72% {
+        opacity: .76;
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) rotate(var(--flare-angle)) translateX(var(--flare-distance)) scale(1.2);
+    }
+}
+
+@keyframes mayaTempleAura {
+    50% {
+        opacity: .72;
+        transform: scale(1.08);
+    }
+}
+
+@keyframes mayaMandalaTurn {
+    50% {
+        filter: brightness(1.16);
+        box-shadow:
+            inset 0 0 32px rgba(255, 238, 191, .27),
+            0 0 28px rgba(255, 194, 100, .28);
+    }
+}
+
+.maya-blob-container.blob-centered,
+.maya-blob-container.blob-top {
+    overflow: visible;
+    filter:
+        drop-shadow(0 0 12px rgba(255, 235, 179, .48))
+        drop-shadow(0 0 28px rgba(244, 155, 174, .28));
+}
+
+@media (max-width: 599px) {
+    .onboarding-main {
+        justify-content: center;
+        padding-left: .75rem !important;
+        padding-right: .75rem !important;
+    }
+
+    .onboarding-content,
+    #onboardingContent {
+        padding: .85rem !important;
+    }
+
+    #onboardingContent[data-step="agentGender"] {
+        padding-top: .25rem !important;
+    }
+
+    .onboarding-main[data-step="agentGender"] {
+        justify-content: flex-start;
+        padding-top: max(3.4rem, env(safe-area-inset-top)) !important;
+    }
+
+    #onboardingContent[data-step="agentGender"] .onboarding-question .lead {
+        font-size: 1.5rem;
+    }
+
+    #onboardingContent[data-step="agentGender"] .gc-card {
+        width: 100%;
+        max-width: none;
+    }
+
+    #onboardingContent[data-step="agentGender"] .gc-avatar {
+        width: 140px;
+        height: 140px;
+    }
+
+    #onboardingContent[data-step="agentGender"] .gc-name {
+        font-size: 3rem;
+    }
+
+    .maya-validation-options {
+        grid-template-columns: 1fr 1fr !important;
+    }
+
+    .calculation-container {
+        width: min(88vw, 680px) !important;
+        margin: auto !important;
+        max-height: none !important;
+    }
+
+    .calculation-title {
+        margin-bottom: .75rem !important;
+    }
+
+    .calculation-title::before {
+        margin-bottom: .9rem;
+        padding: .38rem .75rem;
+        font-size: .68rem;
+    }
+
+    .calculation-display {
+        min-height: 0 !important;
+        padding: 0 !important;
+        margin-bottom: .75rem !important;
+    }
+}
+
+@media (max-height: 760px) and (max-width: 599px) {
+    .onboarding-main {
+        justify-content: flex-start;
+        padding-top: max(3rem, env(safe-area-inset-top)) !important;
+    }
+
+    .onboarding-question {
+        margin-bottom: 1.35rem !important;
+    }
+
+    .onboarding-question .lead {
+        font-size: 1.4rem;
+    }
+
+    .maya-ritual-divider {
+        margin-top: .8rem;
+    }
+
+    .gc-card {
+        width: 100%;
+    }
+
+    .gc-content-top {
+        padding-top: 18px;
+        gap: 8px;
+    }
+
+    .gc-avatar {
+        width: 125px;
+        height: 125px;
+    }
+
+    .gc-name {
+        font-size: 2.7rem;
+    }
+}

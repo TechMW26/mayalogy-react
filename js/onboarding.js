@@ -318,6 +318,8 @@ const MayaOnboarding = {
     async showLandingScreen() {
         const container = document.getElementById('onboardingContent');
         if (!container) return;
+        container.dataset.step = 'landing';
+        container.closest('.onboarding-main')?.setAttribute('data-step', 'landing');
 
         // Hide progress bar on landing
         const progressBar = document.querySelector('.onboarding-progress');
@@ -572,18 +574,60 @@ const MayaOnboarding = {
     },
 
     /**
-     * Update progress bar
+     * Update progress bar — renders dot indicators (8 circles in a pill).
+     * Creates the progress container inside .onboarding-main if it doesn't exist.
      */
     updateProgressBar(stepIndex) {
-        const progress = ((stepIndex + 1) / this.totalSteps) * 100;
-        const progressBar = document.querySelector('.onboarding-progress-bar');
-        const progressText = document.querySelector('.onboarding-progress-text');
+        const total = this.totalSteps;
+        let progressContainer = document.querySelector('.onboarding-progress');
 
-        if (progressBar) {
-            progressBar.style.width = `${progress}%`;
+        // Create progress container if it doesn't exist
+        if (!progressContainer) {
+            const main = document.querySelector('.onboarding-main');
+            if (!main) return;
+            progressContainer = document.createElement('div');
+            progressContainer.className = 'onboarding-progress';
+            // Insert at top of onboarding-main, before onboarding-content
+            const content = main.querySelector('#onboardingContent');
+            if (content) {
+                main.insertBefore(progressContainer, content);
+            } else {
+                main.prepend(progressContainer);
+            }
         }
+
+        // Create or reuse the dots wrapper
+        let dotsWrap = progressContainer.querySelector('.onboarding-progress-dots');
+        if (!dotsWrap) {
+            dotsWrap = document.createElement('div');
+            dotsWrap.className = 'onboarding-progress-dots';
+            // Clear old linear progress bar inside the container
+            const oldProgress = progressContainer.querySelector('.progress');
+            if (oldProgress) oldProgress.remove();
+            progressContainer.prepend(dotsWrap);
+            // Ensure progress text exists
+            if (!progressContainer.querySelector('.onboarding-progress-text')) {
+                const textEl = document.createElement('span');
+                textEl.className = 'onboarding-progress-text';
+                progressContainer.appendChild(textEl);
+            }
+        }
+
+        // Build dots
+        dotsWrap.innerHTML = '';
+        for (let i = 0; i < total; i++) {
+            const dot = document.createElement('span');
+            dot.className = 'onboarding-progress-dot';
+            if (i < stepIndex) dot.classList.add('done');
+            if (i === stepIndex) dot.classList.add('active');
+            dot.setAttribute('aria-label', `Step ${i + 1} of ${total}`);
+            dotsWrap.appendChild(dot);
+        }
+
+        // Update text label
+        const progressText = progressContainer.querySelector('.onboarding-progress-text');
         if (progressText) {
-            progressText.textContent = `${this.t('progress')} ${stepIndex + 1} ${this.t('of')} ${this.totalSteps}`;
+            progressText.textContent = `${this.t('progress')} ${stepIndex + 1} ${this.t('of')} ${total}`;
         }
     },
 
@@ -603,6 +647,8 @@ const MayaOnboarding = {
         }
 
         console.log('Showing question in container:', question);
+        container.dataset.step = step.id;
+        container.closest('.onboarding-main')?.setAttribute('data-step', step.id);
 
         let inputHtml = '';
         const placeholder = this.getStepText(step, 'placeholder');
@@ -769,14 +815,16 @@ const MayaOnboarding = {
         container.innerHTML = `
             <div class="onboarding-question mb-4">
                 <p class="lead">${question}</p>
+                <div class="maya-ritual-divider" aria-hidden="true"><span>♧</span></div>
             </div>
             <div class="onboarding-input-container">
                 ${inputHtml}
             </div>
             <div class="onboarding-actions mt-4">
                 ${this.currentStep > 0 ? `
-                    <button type="button" class="btn btn-outline-secondary" id="prevStepBtn">
-                        ${this.t('back')}
+                    <button type="button" class="btn btn-outline-secondary" id="prevStepBtn" aria-label="${this.t('back')}">
+                        <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                        <span class="visually-hidden">${this.t('back')}</span>
                     </button>
                 ` : ''}
                 ${step.type === 'text' || step.type === 'name' || step.type === 'date' || step.type === 'time' || step.type === 'location' ? `

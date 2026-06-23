@@ -17,6 +17,21 @@ const MayaBlob = {
     targetMouseX: 0,
     targetMouseY: 0,
 
+    getRenderSize() {
+        return {
+            width: Math.max(320, window.innerWidth || 320),
+            height: Math.max(568, window.innerHeight || 568)
+        };
+    },
+
+    updateCameraDistance(width, height) {
+        if (!this.camera) return;
+
+        const targetDiameter = Math.min(430, Math.max(240, width * 0.7, height * 0.34));
+        const verticalFov = THREE.MathUtils.degToRad(this.camera.fov);
+        this.camera.position.z = (3 * height) / (2 * Math.tan(verticalFov / 2) * targetDiameter);
+    },
+
     /**
      * Vertex Shader
      */
@@ -128,8 +143,7 @@ const MayaBlob = {
             vec3 viewDirection = normalize(cameraPosition - vPosition);
             float fresnel = pow(1.0 - dot(viewDirection, vNormal), 2.5);
             
-            // Three-tone color mixing based on displacement
-            // uColor1 = bronze (dark), uColor2 = yellow (mid), uColor3 = white (light)
+            // Soft rose, warm gold, and pearl layers inspired by a luminous lotus.
             float colorMix = (vDisplacement + 0.3) / 0.6;
             vec3 baseColor;
             if (colorMix < 0.5) {
@@ -138,19 +152,23 @@ const MayaBlob = {
                 baseColor = mix(uColor2, uColor3, (colorMix - 0.5) * 2.0);
             }
             
-            // Add bright glow on edges (white-yellow)
-            vec3 glowColor = vec3(1.0, 0.95, 0.7);
+            vec3 glowColor = vec3(1.0, 0.84, 0.64);
+            vec3 roseGlow = vec3(1.0, 0.58, 0.72);
+            float innerGlow = 1.0 - smoothstep(-0.12, 0.30, length(vPosition.xy) / 1.8);
             vec3 finalColor = mix(baseColor, glowColor, fresnel * uGlowIntensity);
+            finalColor = mix(finalColor, roseGlow, max(vDisplacement, 0.0) * 0.7);
+            finalColor += glowColor * innerGlow * 0.16;
             
             // Add subtle pulsing
             float pulse = sin(uTime * 2.0) * 0.08 + 0.92;
             finalColor *= pulse;
             
             // Enhanced glow effect
-            float glow = fresnel * 0.6;
-            finalColor += glowColor * glow * 0.3;
+            float glow = fresnel * 0.78;
+            finalColor += glowColor * glow * 0.22;
             
-            gl_FragColor = vec4(finalColor, 1.0);
+            float alpha = 0.76 + fresnel * 0.18;
+            gl_FragColor = vec4(finalColor, alpha);
         }
     `,
 
@@ -164,18 +182,14 @@ const MayaBlob = {
             return;
         }
 
-        // Use fixed size for blob - CSS will constrain the container
-        // This ensures consistent blob rendering regardless of container computed size
-        const size = 280; // Match CSS .maya-blob-container width/height
-        const width = size;
-        const height = size;
+        const { width, height } = this.getRenderSize();
 
         // Scene
         this.scene = new THREE.Scene();
 
         // Camera
         this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-        this.camera.position.z = 5;
+        this.updateCameraDistance(width, height);
 
         // Clear any existing canvases
         const existingCanvas = this.container.querySelector('canvas');
@@ -205,6 +219,7 @@ const MayaBlob = {
 
         // Add ambient glow particles
         this.createParticles();
+        this.createMagicFlares();
 
         // Event listeners
         window.addEventListener('resize', this.onResize.bind(this));
@@ -225,12 +240,12 @@ const MayaBlob = {
         // Uniforms
         this.uniforms = {
             uTime: { value: 0 },
-            uAmplitude: { value: 0.15 },
-            uFrequency: { value: 1.5 },
-            uColor1: { value: new THREE.Color(0xa8741f) },  // Bronze (dark)
-            uColor2: { value: new THREE.Color(0xffdf64) },  // Yellow (highlights)
-            uColor3: { value: new THREE.Color(0xfffef5) },  // White (inner light)
-            uGlowIntensity: { value: 0.6 }
+            uAmplitude: { value: 0.11 },
+            uFrequency: { value: 1.35 },
+            uColor1: { value: new THREE.Color(0xdca0b5) },
+            uColor2: { value: new THREE.Color(0xf6c991) },
+            uColor3: { value: new THREE.Color(0xfff4d6) },
+            uGlowIntensity: { value: 0.88 }
         };
 
         // Material
@@ -238,9 +253,10 @@ const MayaBlob = {
             vertexShader: this.vertexShader,
             fragmentShader: this.fragmentShader,
             uniforms: this.uniforms,
-            transparent: false,
+            transparent: true,
             side: THREE.FrontSide,
-            depthWrite: true
+            depthWrite: false,
+            blending: THREE.NormalBlending
         });
 
         // Mesh
@@ -252,7 +268,7 @@ const MayaBlob = {
      * Create ambient glow particles
      */
     createParticles() {
-        const particleCount = 100;
+        const particleCount = 180;
         const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array(particleCount * 3);
 
@@ -269,14 +285,37 @@ const MayaBlob = {
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
         const material = new THREE.PointsMaterial({
-            color: 0xffdf64,
-            size: 0.05,
-            transparent: false,
-            opacity: 1.0
+            color: 0xffc96e,
+            size: 0.045,
+            transparent: true,
+            opacity: 0.76,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
         });
 
         this.particles = new THREE.Points(geometry, material);
         this.scene.add(this.particles);
+    },
+
+    createMagicFlares() {
+        this.container.querySelector('.maya-orb-flares')?.remove();
+
+        const flareLayer = document.createElement('div');
+        flareLayer.className = 'maya-orb-flares';
+        flareLayer.setAttribute('aria-hidden', 'true');
+
+        for (let index = 0; index < 18; index++) {
+            const flare = document.createElement('span');
+            flare.className = `maya-orb-flare${index % 4 === 0 ? ' maya-orb-flare--streak' : ''}`;
+            flare.style.setProperty('--flare-angle', `${Math.round((360 / 18) * index + Math.random() * 18)}deg`);
+            flare.style.setProperty('--flare-distance', `${90 + Math.round(Math.random() * 95)}px`);
+            flare.style.setProperty('--flare-delay', `${(-Math.random() * 4.8).toFixed(2)}s`);
+            flare.style.setProperty('--flare-duration', `${(2.6 + Math.random() * 2.4).toFixed(2)}s`);
+            flare.style.setProperty('--flare-size', `${2 + Math.round(Math.random() * 4)}px`);
+            flareLayer.appendChild(flare);
+        }
+
+        this.container.prepend(flareLayer);
     },
 
     /**
@@ -297,8 +336,8 @@ const MayaBlob = {
 
             // Audio reactivity
             const amplitude = window.MayaVoice ? MayaVoice.getAmplitude() : 0;
-            this.uniforms.uAmplitude.value = 0.15 + amplitude * 0.3;
-            this.uniforms.uGlowIntensity.value = 0.5 + amplitude * 0.5;
+            this.uniforms.uAmplitude.value = 0.11 + amplitude * 0.22;
+            this.uniforms.uGlowIntensity.value = 0.82 + amplitude * 0.35;
         }
 
         // Rotate blob slightly based on mouse
@@ -324,12 +363,10 @@ const MayaBlob = {
     onResize() {
         if (!this.container) return;
 
-        // Keep blob size fixed - CSS handles responsive scaling
-        const size = 280;
-        const width = size;
-        const height = size;
+        const { width, height } = this.getRenderSize();
 
         this.camera.aspect = width / height;
+        this.updateCameraDistance(width, height);
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(width, height);
     },
@@ -422,15 +459,15 @@ const MayaBlob = {
                 repeat: -1
             });
             gsap.to(this.uniforms.uColor1.value, {
-                r: 0.52,
-                g: 0.26,
-                b: 1.0,
+                r: 0.86,
+                g: 0.52,
+                b: 0.68,
                 duration: 0.45
             });
             gsap.to(this.uniforms.uColor2.value, {
                 r: 1.0,
                 g: 0.76,
-                b: 0.95,
+                b: 0.60,
                 duration: 0.5
             });
             if (this.blob?.scale) {
@@ -462,30 +499,30 @@ const MayaBlob = {
             }
 
             gsap.to(this.uniforms.uFrequency, {
-                value: 1.5,
+                value: 1.35,
                 duration: 0.5,
                 ease: 'power2.out'
             });
             gsap.to(this.uniforms.uAmplitude, {
-                value: 0.15,
+                value: 0.11,
                 duration: 0.55,
                 ease: 'power2.out'
             });
             gsap.to(this.uniforms.uGlowIntensity, {
-                value: 0.6,
+                value: 0.88,
                 duration: 0.55,
                 ease: 'power2.out'
             });
             gsap.to(this.uniforms.uColor1.value, {
-                r: 0.0,
-                g: 0.4,
-                b: 1.0,
+                r: 0.86,
+                g: 0.63,
+                b: 0.71,
                 duration: 0.5
             });
             gsap.to(this.uniforms.uColor2.value, {
-                r: 1.0,
-                g: 0.8745098039,
-                b: 0.3921568627,
+                r: 0.96,
+                g: 0.79,
+                b: 0.57,
                 duration: 0.5
             });
             if (this.blob?.scale) {
@@ -531,17 +568,17 @@ const MayaBlob = {
         this._speakingAnimation = false;
         if (this.uniforms) {
             gsap.to(this.uniforms.uAmplitude, {
-                value: 0.15,
+                value: 0.11,
                 duration: 0.5,
                 ease: 'power2.out'
             });
             gsap.to(this.uniforms.uGlowIntensity, {
-                value: 0.5,
+                value: 0.82,
                 duration: 0.5,
                 ease: 'power2.out'
             });
             gsap.to(this.uniforms.uFrequency, {
-                value: 1.5,
+                value: 1.35,
                 duration: 0.5,
                 ease: 'power2.out'
             });

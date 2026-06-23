@@ -69,6 +69,13 @@ label {
     /* Fonts */
     --font-primary: 'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     --font-display: 'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    --maya-bg-image: url('/background.jpeg');
+    --maya-bg-hero: linear-gradient(180deg, rgba(11, 11, 12, 0.94), rgba(4, 4, 6, 0.90));
+    --maya-bg-card: rgba(12, 11, 14, 0.80);
+    --maya-card-border: rgba(255, 205, 108, 0.16);
+    --maya-button-glow: 0 22px 46px rgba(216, 155, 56, 0.22);
+    --maya-button-gradient: linear-gradient(135deg, rgba(235, 188, 96, 1), rgba(194, 147, 58, 1));
+    --maya-button-border: rgba(255, 214, 131, 0.24);
 }
 
 /* Light Theme */
@@ -146,7 +153,15 @@ html {
 
 body {
     font-family: var(--font-primary);
-    background: var(--maya-bg-primary);
+    background-image:
+      var(--maya-bg-image),
+      radial-gradient(circle at top center, rgba(255, 236, 177, 0.08), transparent 32%),
+      var(--maya-bg-hero);
+    background-color: #050304;
+    background-size: cover, cover, cover;
+    background-repeat: no-repeat;
+    background-position: center top, center top, center top;
+    background-attachment: fixed;
     color: var(--maya-text-primary);
     min-height: 100vh;
     overflow-x: hidden;
@@ -1216,14 +1231,14 @@ p {
     left: 0;
     width: 100%;
     height: 100%;
-    background: #0B0B0B;
+    background: transparent;
     z-index: 2000;
     display: flex;
     flex-direction: column;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.5s, visibility 0.5s;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .maya-overlay.show {
@@ -1872,14 +1887,15 @@ p {
 }
 
 .onboarding-modal {
-    background: var(--maya-bg-primary);
+    background: transparent !important;
     border: none;
     border-radius: 0;
-    overflow: hidden;
+    overflow: visible;
     width: 100vw;
     height: 100vh;
     max-width: 100vw;
     max-height: 100vh;
+    box-shadow: none !important;
 }
 
 .onboarding-modal .modal-body {
@@ -1890,6 +1906,7 @@ p {
     width: 100%;
     align-items: center;
     justify-content: center;
+    background: transparent !important;
 }
 
 /* Onboarding Header */
@@ -1900,7 +1917,7 @@ p {
     top: 0;
     left: 0;
     right: 0;
-    background: var(--maya-bg-primary);
+    background: transparent;
     z-index: 10;
     display: flex;
     flex-direction: column;
@@ -1915,10 +1932,11 @@ p {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 1rem 1rem;
+    padding: 2rem 1.25rem 3rem;
     width: 100%;
+    min-height: 100vh;
     max-width: 100vw;
-    overflow-x: hidden;
+    overflow: visible;
     box-sizing: border-box;
     text-align: center;
 }
@@ -1948,29 +1966,62 @@ p {
 }
 
 .onboarding-progress {
-    max-width: 300px;
-    margin: 0 auto;
+    max-width: 280px;
+    margin: 0 auto 1.5rem;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
 }
 
+.onboarding-progress-dots {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    padding: 6px 16px;
+    background: rgba(18, 16, 21, 0.70);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 100px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.onboarding-progress-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    transition: all 0.35s ease;
+    flex-shrink: 0;
+}
+
+.onboarding-progress-dot.active {
+    background: linear-gradient(135deg, rgba(242, 194, 79, 1), rgba(226, 162, 70, 1));
+    border-color: rgba(255, 215, 130, 0.35);
+    box-shadow: 0 0 8px rgba(226, 166, 72, 0.50);
+    transform: scale(1.25);
+}
+
+.onboarding-progress-dot.done {
+    background: rgba(226, 166, 72, 0.45);
+    border-color: rgba(226, 166, 72, 0.25);
+}
+
+/* Hide old linear progress bar */
 .onboarding-progress .progress {
-    height: 4px;
-    background: var(--maya-bg-tertiary);
-    border-radius: 2px;
-    overflow: hidden;
-}
-
-.onboarding-progress-bar {
-    background: var(--maya-gradient-1);
-    transition: width 0.5s ease;
+    display: none;
 }
 
 .onboarding-progress-text {
     display: block;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--maya-text-muted);
-    margin-top: 0.5rem;
     text-align: center;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 /* Onboarding Content */
@@ -1982,12 +2033,18 @@ p {
     justify-content: center;
     align-items: center;
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: visible;
     width: 100%;
-    max-width: 500px;
+    max-width: 520px;
     box-sizing: border-box;
     text-align: center;
     margin: 0 auto;
+    background: rgba(10, 9, 12, 0.82);
+    border: 1px solid rgba(255, 210, 120, 0.16);
+    box-shadow: 0 38px 110px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 2rem;
 }
 
 /* Defensive: keep all funnel page text/labels centered */
@@ -2072,7 +2129,7 @@ p {
     }
 }
 
-/* Onboarding Options (Gender, Language, etc) */
+/* Onboarding Options (Gender, Language, Relationship, etc) */
 .onboarding-options {
     display: flex;
     flex-wrap: wrap;
@@ -2085,14 +2142,25 @@ p {
 .onboarding-option {
     min-width: 120px;
     padding: 1rem 1.5rem;
-    border-radius: 0.75rem;
+    border-radius: 100px !important;
     font-size: 1rem;
-    transition: all 0.3s;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    background: rgba(18, 16, 21, 0.82);
+    color: #f5eee1;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+    overflow: visible;
 }
 
-.onboarding-option:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0, 102, 255, 0.3);
+.onboarding-option:hover,
+.onboarding-option.active,
+.onboarding-option:focus-visible {
+    background: rgba(255, 221, 128, 0.12);
+    border-color: rgba(255, 205, 95, 0.32);
+    transform: translateY(-1px);
+    box-shadow: 0 18px 40px rgba(224, 164, 63, 0.16);
 }
 
 /* ═══════════════════════════════════════════════
@@ -2476,13 +2544,18 @@ p {
     align-items: center;
     margin-top: 2rem;
     padding-top: 1.5rem;
+    padding-bottom: 2rem;
     width: 100%;
     max-width: 400px;
+    overflow: visible;
 }
 
 .onboarding-actions .btn {
     min-width: 120px;
     padding: 0.75rem 1.5rem;
+    overflow: visible;
+    position: relative;
+    z-index: 1;
 }
 
 /* Location Suggestions */
@@ -2529,12 +2602,18 @@ p {
 .onboarding-confirm {
     padding: 1rem 2rem;
     font-size: 1.1rem;
-    background: var(--maya-gradient-1);
-    border: none;
+    border: 1px solid rgba(255, 215, 130, 0.22);
+    border-radius: 999px;
+    font-weight: 700;
+    background: linear-gradient(135deg, rgba(242, 194, 79, 1), rgba(226, 162, 70, 1));
+    color: #130b03;
+    box-shadow: 0 20px 46px rgba(226, 166, 72, 0.28);
+    overflow: visible;
 }
 
 .onboarding-confirm:hover {
-    transform: scale(1.05);
+    filter: brightness(1.02);
+    transform: translateY(-1px);
 }
 
 /* Legacy styles kept for compatibility */
@@ -2798,6 +2877,27 @@ p {
 .btn-maya-outline:hover {
     background: var(--maya-primary);
     color: white;
+}
+
+/* Back button — subtle text-only, matches reference */
+#prevStepBtn,
+.btn-back-subtle {
+    background: transparent !important;
+    border: none !important;
+    color: rgba(255, 255, 255, 0.45) !important;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    letter-spacing: 0.02em;
+    transition: color 0.25s ease;
+    box-shadow: none !important;
+}
+
+#prevStepBtn:hover,
+.btn-back-subtle:hover {
+    color: rgba(255, 255, 255, 0.75) !important;
+    background: transparent !important;
+    transform: none;
 }
 
 /* Small button variant */
@@ -14040,7 +14140,6 @@ h6,
 .btn,
 .btn-maya,
 .btn-maya-outline,
-.onboarding-option,
 .maya-kundli-toggle__btn,
 .maya-btn {
     border-radius: 100px !important;
@@ -14052,18 +14151,21 @@ h6,
 .btn-primary,
 .btn-maya,
 .maya-btn--primary,
+.maya-continue-gate-btn,
 .onboarding-confirm {
-    background: linear-gradient(135deg, var(--maya-primary) 0%, var(--maya-primary-light) 55%, var(--maya-secondary) 130%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.25);
+    background: linear-gradient(135deg, rgba(242, 194, 79, 1), rgba(226, 162, 70, 1));
+    border: 1px solid rgba(255, 215, 130, 0.22);
+    color: #130b03;
+    box-shadow: 0 20px 46px rgba(226, 166, 72, 0.28);
 }
 
 .btn-primary:hover,
 .btn-maya:hover,
 .maya-btn--primary:hover,
+.maya-continue-gate-btn:hover,
 .onboarding-confirm:hover {
-    transform: translateY(-2px);
-    filter: brightness(1.03);
+    transform: translateY(-1px);
+    filter: brightness(1.02);
 }
 
 .btn-outline-primary,
@@ -14080,6 +14182,32 @@ h6,
     color: var(--maya-primary);
     border-color: var(--maya-primary);
     background: color-mix(in srgb, var(--maya-bg-tertiary) 78%, transparent);
+}
+
+/* Onboarding option pill buttons — must beat .btn-outline-primary cascade */
+.btn-outline-primary.onboarding-option,
+.btn.onboarding-option {
+    background: rgba(18, 16, 21, 0.82) !important;
+    color: #f5eee1 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05) !important;
+    border-radius: 100px !important;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    overflow: visible;
+}
+
+.btn-outline-primary.onboarding-option:hover,
+.btn.onboarding-option:hover,
+.btn-outline-primary.onboarding-option.active,
+.btn.onboarding-option.active,
+.btn-outline-primary.onboarding-option:focus-visible,
+.btn.onboarding-option:focus-visible {
+    background: rgba(255, 221, 128, 0.12) !important;
+    border-color: rgba(255, 205, 95, 0.32) !important;
+    color: #f5eee1 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 18px 40px rgba(224, 164, 63, 0.16) !important;
 }
 
 /* Inputs: softer, higher-contrast */
@@ -20323,13 +20451,19 @@ input[type="datetime-local"] {
         border-radius: 14px !important;
     }
 
-    /* Ensure onboarding main doesn't overflow */
+    /* Ensure onboarding main doesn't overflow horizontally but allow button glow */
     .onboarding-main,
     .onboarding-content,
     #onboardingContent,
     #maya-onboarding {
-        overflow-x: hidden !important;
+        overflow-x: visible !important;
+        overflow-y: auto;
         max-width: 100vw !important;
+    }
+    .onboarding-content,
+    #onboardingContent {
+        overflow-y: auto;
+        overflow-x: visible !important;
     }
 
     /* Fix position relative container */
@@ -21723,6 +21857,7 @@ input[type="datetime-local"] {
     padding: 3rem 1.5rem;
     animation: fadeInUp 0.6s ease;
     text-align: center;
+    overflow: visible;
 }
 
 .landing-visual {
@@ -21777,35 +21912,45 @@ input[type="datetime-local"] {
     margin-top: 2.5rem;
     width: 100%;
     max-width: 300px;
+    overflow: visible;
 }
 
 .landing-begin-btn {
     width: 100%;
-    padding: 0.95rem 2rem;
+    padding: 1rem 2rem;
     font-size: 1.05rem;
-    font-weight: 600;
+    font-weight: 700;
     border-radius: 999px;
     letter-spacing: 0.02em;
+    background: linear-gradient(135deg, rgba(242, 194, 79, 1), rgba(227, 153, 58, 1));
+    color: #100b02;
+    border: 1px solid rgba(255, 230, 150, 0.28);
+    box-shadow: 0 18px 40px rgba(219, 157, 46, 0.28);
+}
+
+.landing-begin-btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.02);
 }
 
 .landing-login-btn {
     width: 100%;
-    padding: 0.8rem 2rem;
-    font-size: 0.9rem;
+    padding: 0.9rem 2rem;
+    font-size: 0.95rem;
     font-weight: 500;
     border-radius: 999px;
     letter-spacing: 0.01em;
-    background: transparent;
-    color: var(--maya-text-secondary, #aaa);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    cursor: pointer;
-    transition: border-color 0.3s, color 0.3s, background 0.3s;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--maya-text-primary, #fff);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(16px);
+    transition: border-color 0.3s, color 0.3s, background 0.3s, transform 0.2s ease;
 }
 
 .landing-login-btn:hover {
-    border-color: rgba(226, 196, 106, 0.4);
-    color: var(--maya-primary, #E2C46A);
-    background: rgba(226, 196, 106, 0.05);
+    border-color: rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.12);
 }
 
 @keyframes landingPulse {

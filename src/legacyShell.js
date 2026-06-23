@@ -204,6 +204,7 @@ export const LEGACY_SHELL_HTML = String.raw`
     <div class="modal-dialog modal-fullscreen-onboarding">
         <div class="modal-content onboarding-modal">
             <div class="modal-body p-0">
+                <div class="onboarding-header"></div>
                 <div class="onboarding-main">
                     <div class="onboarding-content" id="onboardingContent">
                         <div class="text-center p-4">

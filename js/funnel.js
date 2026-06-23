@@ -47,7 +47,6 @@ const MayaFunnel = {
     chapterOrder: null,
 
     stageTiming: {
-<<<<<<< Updated upstream
         introSettle: 0,
         calculationLeadIn: 0,
         calcStepDelay: 0,
@@ -60,18 +59,6 @@ const MayaFunnel = {
         narrationPoll: 1,
         narrationBuffer: 0,
         suspensePause: 0
-=======
-        introSettle: 10,
-        calculationLeadIn: 10,
-        calcStepDelay: 10,
-        letterDelay: 10,
-        vowelDelay: 10,
-        kundliSignalDelay: 10,
-        kundliInsightDelay: 10,
-        stageSettle: 10,
-        validationSettle: 10,
-        suspensePause: 10
->>>>>>> Stashed changes
     },
 
     timingControl: {

@@ -43,6 +43,7 @@ const MayaFunnel = {
     _firstIntroResolvedAt: 0,
     _firstSpeechRequestedAt: 0,
     _firstSpeechPlaybackAt: 0,
+    _acknowledgementHistory: [],
 
 
     // --- Multilingual TTS + complete-sentence safety helpers ---
@@ -813,6 +814,7 @@ ${askMaya ? `- USER QUESTION LOCK (HIGHEST PRIORITY): This entire reading is ONL
             progressUnlocks: [],
             profileAnswers: {}
         };
+        this._acknowledgementHistory = [];
     },
 
     recordValidation(question, answer) {
@@ -3666,7 +3668,7 @@ No padding, no generic praise।`,
 [[pause-250]]
 [Segment 3 - UNRESOLVED THREAD] 2 sentences। Chart से ONE open loop जो naturally resolution माँगे -timing shift, relationship question, या career crossroad। User को लगे "मुझे और जानना है।"
 
-तीनों segments connected कहानी की तरह -हर segment SPECIFIC chart evidence cite करे। Generic observations FORBIDDEN।`,
+तीनों segments connected कहानी की तरह हों। कम से कम TWO declarative observations ऐसी हों जो user की answer history से privately recognisable हों; सवाल मत पूछिए। हर segment SPECIFIC chart evidence cite करे। Generic observations FORBIDDEN।`,
                 identityTruth: `Current user के लिए ONE grounded identity truth। 2 sentences। "आप ऐसे इंसान हैं जो..." format। Chart + numbers से flattery-free observation -no praise, सिर्फ accurate self-description। No pause।`,
                 emotionalPattern: `Current user के लिए ONE emotional pattern observation। 2 sentences। Daily emotional pattern जो user actually जीता है -inner conflict / recurring feeling / relationship dynamic, chart से confirmed। "Inside-out" -अंदर महसूस होने वाली बात। No pause।`,
                 unresolvedThread: `Current user के लिए ONE unresolved thread। 2 sentences। Chart से open loop जो naturally resolution माँगे (timing shift / relationship question / career crossroad)। User को लगे "मुझे और जानना है।" Deep reading में resolve होगा। No pause।`,
@@ -3719,7 +3721,7 @@ No padding, no generic praise.`,
 [[pause-250]]
 [Segment 3 - UNRESOLVED THREAD] 2 sentences. ONE open loop from the chart that naturally demands resolution (timing shift / relationship question / career crossroad). The user must feel "I need to know more."
 
-All three segments must connect as one flowing story — every segment must cite SPECIFIC chart evidence. Generic observations are FORBIDDEN.`,
+All three segments must connect as one flowing story. Include at least TWO declarative observations that are privately recognisable from the user's answer history; do not ask questions. Every segment must cite SPECIFIC chart evidence. Generic observations are FORBIDDEN.`,
                 identityTruth: `Write ONE grounded identity truth. 2 sentences. "You are someone who..." format. Flattery-free observation from chart + numbers — no praise, just accurate self-description. No pause.`,
                 emotionalPattern: `Write ONE emotional pattern observation. 2 sentences. A daily emotional pattern the user actually lives with — inner conflict / recurring feeling / relationship dynamic confirmed by the chart. "Inside-out" — what they feel privately. No pause.`,
                 unresolvedThread: `Write ONE unresolved thread. 2 sentences. An open loop from the chart that naturally demands resolution (timing shift / relationship question / career crossroad). The user must feel "I need to know more." This thread will be resolved in the deep reading. No pause.`,
@@ -4586,23 +4588,47 @@ All three segments must connect as one flowing story — every segment must cite
         const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
         const moonSign = profile.moonSign || profile.vedic?.name || '';
         const ascendant = profile.ascendant?.name || '';
-        const marker = dasha || moonSign || ascendant;
         const answer = String(answerLabel || answerValue || '').trim();
+        const value = String(answerValue || answerLabel || '').trim().toLowerCase();
+        const turn = this._acknowledgementHistory.length % 5;
         const isAskMaya = this._isAskMayaFlow();
 
         if (isAskMaya) {
             const topic = this._classifyUserQuestionTopic(this._getActiveUserQuestion());
             const subjectPhrase = this._getAskMayaSubjectPhrase(topic, isHindi);
             if (isHindi) {
-                return `${answer ? `ठीक है, "${answer}" से ` : 'ठीक है, इससे '} ${subjectPhrase} की तस्वीर ज्यादा साफ हो रही है। ${marker ? `${marker} का signal अब इस real-life detail से जुड़ रहा है, इसलिए आगे answer बिना भटके इसी दिशा में खुलेगा।` : 'अब आगे answer बिना भटके इसी दिशा में खुलेगा।'}`;
+                return `${answer ? `"${answer}" आपके ${subjectPhrase} की असली उलझन बता रहा है।` : `यह आपके ${subjectPhrase} की असली उलझन बता रहा है।`} अब मैं अगली बात उसी बिंदु से ${this._isGuiderMale() ? 'खोलूँगा' : 'खोलूँगी'}, किसी सामान्य निष्कर्ष से नहीं।`;
             }
-            return `${answer ? `Got it, "${answer}" makes ` : 'Got it, that makes '}your ${subjectPhrase} clearer. ${marker ? `The ${marker} signal now has a real-life anchor, so the next layer can stay precise instead of drifting.` : 'The next layer can stay precise instead of drifting.'}`;
+            return `${answer ? `"${answer}" identifies the real tension inside ` : 'That identifies the real tension inside '}your ${subjectPhrase}. I will open the next layer from that exact point, not from a generic conclusion.`;
         }
 
-        if (isHindi) {
-            return `${answer ? `ठीक है, "${answer}" note कर लिया।` : 'ठीक है, यह note कर लिया।'} ${marker ? `${marker} के साथ यह जवाब reading को ज्यादा personal बना रहा है, इसलिए अगली बात सीधे आपके pattern से जुड़ेगी।` : 'यह जवाब reading को ज्यादा personal बना रहा है, इसलिए अगली बात सीधे आपके pattern से जुड़ेगी।'}`;
-        }
-        return `${answer ? `Got it, I have noted "${answer}".` : 'Got it, I have noted that.'} ${marker ? `With ${marker} in view, this makes the reading more personal, so the next part can connect directly to your pattern.` : 'This makes the reading more personal, so the next part can connect directly to your pattern.'}`;
+        const isPressureAnswer = /(stuck|isolated|underpaid|distance|confused|volatile|flows_out|health|family|relationship_shift|career_shift|नहीं|अटका|दूरी|अकेला)/i.test(value);
+        const hiTemplates = [
+            () => `"${answer}" उस संकेत से मेल खाता है जो आपकी कुंडली के व्यवहार वाले हिस्से में दिख रहा था। यह केवल परिस्थिति नहीं, आपके फैसले लेने के ढंग का भी हिस्सा है।`,
+            () => `${moonSign ? `${moonSign} चन्द्र राशि` : 'आपकी भावनात्मक बनावट'} के साथ "${answer}" का अर्थ है कि बाहर की स्थिति से पहले भीतर का दबाव बढ़ता है। अगली परत उसी दबाव की जड़ बताएगी।`,
+            () => isPressureAnswer
+                ? `"${answer}" में एक थकाने वाला चक्र दिखता है, लेकिन यह स्थायी नहीं है। समय-चक्र में इसका टूटने वाला बिंदु भी मौजूद है।`
+                : `"${answer}" स्थिरता दिखाता है, पर उसके नीचे बदलाव की तैयारी चल रही है। कुंडली में दोनों संकेत एक साथ आ रहे हैं।`,
+            () => `${ascendant ? `${ascendant} लग्न` : 'आपकी कुंडली की बाहरी बनावट'} और आपके इस जवाब में एक दिलचस्प विरोध है—दूसरों को जो दिखता है, भीतर अनुभव वैसा नहीं है।`,
+            () => `${dasha ? `${dasha} दशा` : 'वर्तमान समय-चक्र'} को केवल एक बार संदर्भ में ${this._isGuiderMale() ? 'रखूँगा' : 'रखूँगी'}: "${answer}" बताता है कि उसका असर जीवन के किस हिस्से में उतर रहा है। अब आगे परिणाम की बात होगी, कारण दोहराया नहीं जाएगा।`
+        ];
+        const enTemplates = [
+            () => `"${answer}" matches the behavioural signal already visible in your chart. This is not only a circumstance; it also reflects how you make decisions under pressure.`,
+            () => `With ${moonSign ? `your ${moonSign} Moon` : 'your emotional pattern'}, "${answer}" suggests the pressure builds internally before the outside situation changes. The next layer is about the source of that pressure.`,
+            () => isPressureAnswer
+                ? `"${answer}" points to a tiring cycle, but not a permanent one. Your timing pattern also shows where that cycle begins to break.`
+                : `"${answer}" shows stability on the surface while a change is preparing underneath. Both signals appear together in your chart.`,
+            () => `${ascendant ? `Your ${ascendant} ascendant` : 'Your outer chart pattern'} and this answer reveal a useful contrast: what others see is not the full experience you carry inside.`,
+            () => `I will use ${dasha ? `the ${dasha} dasha` : 'your current timing cycle'} once here: "${answer}" shows where its effect is landing in real life. From here, the reading moves to the outcome instead of repeating the cause.`
+        ];
+        return (isHindi ? hiTemplates : enTemplates)[turn]();
+    },
+
+    _rememberAcknowledgement(text) {
+        const cleaned = String(text || '').trim();
+        if (!cleaned) return;
+        this._acknowledgementHistory.push(cleaned);
+        if (this._acknowledgementHistory.length > 6) this._acknowledgementHistory.shift();
     },
 
     async _generateMcqAck(question, answerLabel, answerValue, isHindi, options = {}) {
@@ -4639,6 +4665,7 @@ All three segments must connect as one flowing story — every segment must cite
 
                 const guideName = this._guideName();
                 const isMale = this._isGuiderMale();
+                const recentAcknowledgements = this._acknowledgementHistory.slice(-3).join('\n- ');
 
                 const ackPrompt = isHindi
                     ? `तुम ${guideName} हो -एक warm, caring ${isMale ? 'male' : 'female'} personal guidance coach जो user से personal बात कर ${isMale ? 'रहा' : 'रही'} है。
@@ -4658,6 +4685,10 @@ TASK -2-3 छोटे sentences में बोलो (spoken Hindi, 40-60 wor
 STYLE: जैसे एक caring ${isMale ? 'बड़े भाई' : 'बड़ी बहन'} बात कर ${isMale ? 'रहा' : 'रही'} हो। Natural, warm, spoken Hindi। Short sentences。
 ${isMale ? 'MASCULINE' : 'FEMININE'} verbs: "मैं देख ${isMale ? 'रहा' : 'रही'} हूँ", "मुझे दिख रहा है", "मैं बता ${isMale ? 'रहा' : 'रही'} हूँ"
 FORBIDDEN: English words (except planet names), bullet points, generic "picture clear ho rahi hai", repeating instructions, praise like "bahut accha", listing rules。
+इन phrases का प्रयोग बिल्कुल मत करना: "ठीक है", "नोट कर लिया", "रीडिंग पर्सनल बन रही है", "तस्वीर साफ हो रही है"।
+हर जवाब का conversational काम अलग हो: कभी contrast, कभी consequence, कभी hidden motive, कभी timing bridge।
+पिछले acknowledgements दोहराना मना है:
+- ${recentAcknowledgements || 'कोई नहीं'}
 ONLY return the spoken Hindi response. Nothing else.`
 
                     : `You are ${guideName} -a warm, caring ${isMale ? 'male' : 'female'} personal guidance coach having a personal conversation with the user.
@@ -4676,6 +4707,10 @@ TASK -Respond in 2-3 short sentences (40-60 words max):
 
 STYLE: Like a caring older ${isMale ? 'brother' : 'sister'}. Natural, warm, conversational. Short sentences.
 FORBIDDEN: bullet points, generic phrases like "the picture is getting clear", repeating instructions, excessive praise, listing rules.
+Never say "got it", "noted", "this makes the reading personal", or "the picture is clearer".
+Each response must do a different conversational job: contrast, consequence, hidden motive, or timing bridge.
+Do not repeat these recent acknowledgements:
+- ${recentAcknowledgements || 'None'}
 ONLY return the spoken response. Nothing else.`;
 
                 if (window.MayaAI?.callFast || window.MayaAI?.callGemini) {
@@ -4804,6 +4839,7 @@ ONLY return the spoken response. Nothing else.`;
         await this.speak(ack);
         hideAnim(); // safety: no-op if already removed
         if (ack && ack.length > 8) {
+            this._rememberAcknowledgement(ack);
             this.spokenNarrations.push({ stage: 'mini_check_ack', text: ack });
             this.recordStepContext('mini_check_ack', ack);
         }
@@ -5943,6 +5979,7 @@ Return ONLY JSON:
         await this.speak(ack);
         hideAnim(); // safety: no-op if already removed
         if (ack && ack.length > 8) {
+            this._rememberAcknowledgement(ack);
             this.spokenNarrations.push({ stage: 'chapter_choice_ack', text: ack });
             this.recordStepContext('chapter_choice_ack', ack);
         }
@@ -6051,6 +6088,7 @@ Return ONLY JSON:
         await this.speak(ack);
         hideAnim(); // safety: no-op if already removed
         if (ack && ack.length > 8) {
+            this._rememberAcknowledgement(ack);
             this.spokenNarrations.push({ stage: `micro_${chapterKey}_ack`, text: ack });
             this.recordStepContext(`micro_${chapterKey}_ack`, ack);
         }
@@ -6431,6 +6469,7 @@ Return ONLY JSON:
         await this.speak(ack);
         hideAnim(); // safety: no-op if already removed
         if (ack && ack.length > 8) {
+            this._rememberAcknowledgement(ack);
             this.spokenNarrations.push({ stage: `ack_${q.key}`, text: ack });
             this.recordStepContext(`ack_${q.key}`, ack);
         }
@@ -6671,27 +6710,10 @@ Return ONLY JSON:
             this.advanceProgress('accuracy_hit');
             this.advanceProgress('deep_patterns');
 
-            // ═══ STEP 11: Fifth question - after teaser (repeating pattern) ═══
-            // In Ask-Maya flow we skip Q5 entirely — the user already gave us their question
-            // plus 2 focused MCQs; another generic "I keep seeing one more thing" would dilute
-            // the answer and risk repetition. Head straight to the email gate.
-            if (!askMayaActive) {
-                const transQ5 = isHindi
-                    ? 'अब तक जो दिखा वो बस शुरुआत है। एक और बात है जो मुझे बार-बार दिख रही है।'
-                    : 'What I have shared so far is just the beginning. There is one more thing I keep seeing.';
-                if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(transQ5);
-                const q5 = await this.getAdaptiveQuestionForStage('q5_pattern', askedProfileKeys);
-                if (q5) {
-                    console.log('🎯 Q5 after teaser: adaptive...');
-                    await this.speak(transQ5);
-                    this.spokenNarrations.push({ stage: 'transition_q5', text: transQ5 });
-                    this.recordStepContext('transition_q5', transQ5);
-                    await this.askSingleProfileQuestion(q5);
-                    if (q5.key) askedProfileKeys.add(q5.key);
-                }
-            }
+            // The teaser is the proof moment. Do not dilute it with another
+            // generic question before authentication.
 
-            // ═══ STEP 12: Suspense bridge → email gate ═══
+            // ═══ STEP 11: Suspense bridge → email gate ═══
             console.log('🌉 Suspense bridge...');
             await this.showSuspenseBridge();
             this.advanceProgress('full_reading');
@@ -7525,7 +7547,7 @@ Return ONLY JSON:
         const aiContext = this.buildBaseAIContext(predictionItems);
 
         // Single combined AI call for all 3 teaser segments + email ask
-        const teaserNarration = await this.getContent('teaserRevealNarration', async () => {
+        let teaserNarration = await this.getContent('teaserRevealNarration', async () => {
             const combined = await this.withFiller(
                 () => this.generateDirectReadingSection('combinedTeaser', aiContext),
                 'revealing'
@@ -7546,6 +7568,9 @@ Return ONLY JSON:
             if (unresolvedThread?.length > 20) { segments.push(unresolvedThread.trim()); this.unresolvedThread = unresolvedThread; }
             return segments.join(' [[pause-250]] ');
         });
+        if (!teaserNarration || teaserNarration.length < 40) {
+            teaserNarration = this.buildPreGateProofNarration();
+        }
 
         try {
             if (teaserNarration && teaserNarration.length > 20) {
@@ -7557,6 +7582,68 @@ Return ONLY JSON:
             // Speaking "enter your email" AND showing the form felt like asking twice.
             this.teaserGateNarrated = true;
         }
+    },
+
+    buildPreGateProofNarration() {
+        const isHindi = this._isHindiMode();
+        const answers = this.sessionMemory?.profileAnswers || {};
+        const getValue = (key) => String(answers[key] || '').split(' (')[0].trim();
+        const profile = this.personalization || {};
+        const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
+        const moonSign = profile.moonSign || profile.vedic?.name || '';
+        const lifePath = this.calculations?.lifePath || '';
+        const facts = [];
+
+        const phase = getValue('current_phase');
+        const money = getValue('money_pattern');
+        const relationship = getValue('relationship_status');
+        const upheaval = getValue('recent_upheaval');
+
+        const hiFacts = {
+            stuck: 'आप बाहर से धैर्य रख रहे हैं, लेकिन भीतर आपको लग रहा है कि मेहनत और गति का अनुपात बिगड़ गया है।',
+            rapid_change: 'एक साथ कई दिशाएँ बदल रही हैं, इसलिए उत्साह और अस्थिरता दोनों साथ महसूस हो रहे हैं।',
+            isolated: 'लोग आसपास हैं, फिर भी असली बात भीतर ही रह जाती है—यह अकेलापन भीड़ की कमी वाला नहीं है।',
+            missing: 'ऊपर से जीवन संभला हुआ है, पर भीतर कोई अधूरा उद्देश्य बार-बार ध्यान खींच रहा है।',
+            flows_out: 'पैसा आने की क्षमता है, पर अनियोजित जिम्मेदारियाँ उसे टिकने नहीं देतीं।',
+            underpaid: 'आपकी शिकायत मेहनत से नहीं, मेहनत के अनुपात में लौटने वाले परिणाम से है।',
+            volatile: 'धन का दबाव कमी से ज्यादा अनिश्चितता का है—कब आएगा और कब निकल जाएगा, यही थकाता है।',
+            plateau: 'स्थिरता बनी हुई है, पर वही स्थिरता अब ठहराव जैसी लगने लगी है।',
+            searching: 'रिश्तों में आपकी समस्या विकल्पों की कमी नहीं, भरोसे लायक निरंतरता की कमी है।',
+            confused: 'एक रिश्ता या संभावना मन में है, पर संकेत इतने मिले-जुले हैं कि निर्णय टलता जा रहा है।',
+            distance: 'दूरी अचानक नहीं बनी; छोटी अनकही बातों ने धीरे-धीरे जगह बनाई है।',
+            not_priority: 'अभी आपका मन रिश्ते से ज्यादा नियंत्रण, काम और दिशा वापस पाने पर लगा है।'
+        };
+        const enFacts = {
+            stuck: 'You are staying patient outwardly, but inwardly the ratio between effort and movement feels wrong.',
+            rapid_change: 'Several directions are changing at once, so excitement and instability are arriving together.',
+            isolated: 'People may be around you, yet the real matter stays inside; this is not loneliness caused by an empty room.',
+            missing: 'Life looks managed on the surface, while an unfinished sense of purpose keeps returning underneath.',
+            flows_out: 'You can create income, but unplanned responsibilities keep preventing it from settling.',
+            underpaid: 'The frustration is not hard work itself; it is the return you receive in proportion to that work.',
+            volatile: 'The financial pressure is less about scarcity and more about unpredictability.',
+            plateau: 'Stability is present, but that same stability has started to feel like a ceiling.',
+            searching: 'The relationship issue is not a lack of options; it is a lack of dependable continuity.',
+            confused: 'A person or possibility remains in mind, but mixed signals keep postponing a decision.',
+            distance: 'The distance did not appear suddenly; small unspoken matters accumulated over time.',
+            not_priority: 'Right now, your attention is more focused on regaining control, work, and direction than on relationships.'
+        };
+        const factMap = isHindi ? hiFacts : enFacts;
+        [phase, money, relationship].forEach((value) => {
+            if (value && factMap[value] && facts.length < 3) facts.push(factMap[value]);
+        });
+
+        if (facts.length < 2 && upheaval) {
+            facts.push(isHindi
+                ? 'पिछले कुछ वर्षों का बदलाव केवल घटना नहीं था; उसके बाद आपने निर्णय लेते समय लोगों पर कम और अपने नियंत्रण पर ज्यादा भरोसा करना शुरू किया।'
+                : 'The change in recent years was not just an event; afterward, you began relying less on people and more on your own control when making decisions.');
+        }
+
+        const chartLine = isHindi
+            ? `${moonSign ? `${moonSign} चन्द्र राशि` : 'आपकी भावनात्मक बनावट'}${dasha ? ` और ${dasha} समय-चक्र` : ''} यही अंदर-बाहर का अंतर दिखाते हैं${lifePath ? `; जीवन पथ ${lifePath} इसे आपके फैसलों में और स्पष्ट करता है` : ''}।`
+            : `${moonSign ? `Your ${moonSign} Moon` : 'Your emotional pattern'}${dasha ? ` and ${dasha} timing cycle` : ''} show this same gap between the inner and outer life${lifePath ? `; Life Path ${lifePath} makes it especially visible in your decisions` : ''}.`;
+        facts.push(chartLine);
+
+        return facts.slice(0, 4).join(' [[pause-250]] ');
     },
 
     /**
@@ -7635,7 +7722,7 @@ Return ONLY JSON:
 
         if (blobContainer) {
             blobContainer.classList.remove('blob-centered');
-            blobContainer.classList.add('blob-top');
+            blobContainer.classList.add('blob-top', 'blob-auth-gate');
         }
 
         if (textDisplay) {
@@ -8098,7 +8185,7 @@ Return ONLY JSON:
         textDisplay.classList.remove('email-gate-active');
 
         if (blobContainer) {
-            blobContainer.classList.remove('blob-top');
+            blobContainer.classList.remove('blob-top', 'blob-auth-gate');
             blobContainer.classList.add('blob-centered');
         }
 
@@ -8648,7 +8735,7 @@ Return ONLY JSON:
 
         // Reset blob
         if (blobContainer) {
-            blobContainer.classList.remove('blob-top', 'blob-centered');
+            blobContainer.classList.remove('blob-top', 'blob-centered', 'blob-auth-gate');
         }
 
         // Reset funnel state
