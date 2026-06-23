@@ -19914,11 +19914,6 @@ button:active,
     transition: all 0.3s ease;
 }
 
-/* Left hand - no mirror needed (assuming PNG is left hand) */
-.maya-palm__hand-img--left {
-    /* Keep original orientation */
-}
-
 /* Right hand - mirror horizontally */
 .maya-palm__hand-img--right {
     transform: scaleX(-1);
