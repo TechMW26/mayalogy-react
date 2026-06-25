@@ -17733,7 +17733,7 @@ button:active,
 }
 
 .maya-vastu__compass--xlarge .maya-vastu__compass-dir--s {
-    bottom: 16px;
+    bottom: 18px;
     left: 50%;
     transform: translateX(-50%)
 }
