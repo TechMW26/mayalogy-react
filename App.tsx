@@ -42,6 +42,7 @@ import SavePresetModal from './src/SavePresetModal';
 import VerticalSlider from './src/VerticalSlider';
 import RadarScan from './src/RadarScan';
 import PairingOverlay from './src/PairingOverlay';
+import RoomScreen from './src/RoomScreen';
 import {
   notifyError,
   notifySuccess,
@@ -82,7 +83,7 @@ import {
   unpairCicadaDevice,
 } from './src/bluetooth';
 
-type PageName = 'welcome' | 'home' | 'devices' | 'speaker' | 'karaoke' | 'scan';
+type PageName = 'welcome' | 'home' | 'devices' | 'speaker' | 'karaoke' | 'rooms' | 'scan';
 type SoundMode = string;
 type EqBandKey = 'subBass' | 'bass' | 'mid' | 'presence' | 'treble';
 type EqState = Record<EqBandKey, number>;
@@ -614,6 +615,47 @@ function IconSpeakerSmall({ size = 16, color = t.ink }: { size?: number; color?:
   );
 }
 
+function IconHome({ size = 20, color = t.ink }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <SvgPath
+        d="M4 11 L12 4 L20 11 V20 H15 V14 H9 V20 H4 Z"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function IconDevices({ size = 20, color = t.ink }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <SvgPath
+        d="M7 5 H17 A2 2 0 0 1 19 7 V17 A2 2 0 0 1 17 19 H7 A2 2 0 0 1 5 17 V7 A2 2 0 0 1 7 5 Z"
+        stroke={color}
+        strokeWidth={2}
+      />
+      <SvgPath d="M9 9 H15 M9 13 H13" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function IconRooms({ size = 20, color = t.ink }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <SvgCircle cx={12} cy={12} r={3} fill={color} />
+      <SvgPath
+        d="M4 12 A8 8 0 0 1 20 12 M7 12 A5 5 0 0 1 17 12 M4 16 A8 8 0 0 0 20 16"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
 // ----------------------------------------------------------------------------
 // Reusable building blocks
 // ----------------------------------------------------------------------------
@@ -657,6 +699,7 @@ function AppScreen() {
 
   const [introSeen, setIntroSeen] = useState<boolean | null>(null);
   const [currentPage, setCurrentPage] = useState<PageName>('welcome');
+  const [roomsMounted, setRoomsMounted] = useState(false);
 
   // Load persisted intro flag on mount; show welcome only on the very first launch.
   useEffect(() => {
@@ -688,6 +731,10 @@ function AppScreen() {
     tapLight();
     setCurrentPage(page);
   };
+
+  useEffect(() => {
+    if (currentPage === 'rooms') setRoomsMounted(true);
+  }, [currentPage]);
 
   const [selectedMode, setSelectedMode] = useState<SoundMode>('Balanced');
   const [eq, setEq] = useState<EqState>(presets[0].eq);
@@ -2342,7 +2389,15 @@ function AppScreen() {
     { id: 'devices', label: 'Devices' },
     { id: 'speaker', label: 'Speaker' },
     { id: 'karaoke', label: 'Karaoke' },
+    { id: 'rooms', label: 'Rooms' },
   ];
+  const tabIcons: Record<string, (props: { size?: number; color?: string }) => React.JSX.Element> = {
+    home: IconHome,
+    devices: IconDevices,
+    speaker: IconSpeakerSmall,
+    karaoke: IconMic,
+    rooms: IconRooms,
+  };
 
   const showChrome = currentPage !== 'welcome' && currentPage !== 'scan';
 
@@ -2411,6 +2466,8 @@ function AppScreen() {
               />
             </View>
           </AnimatedPage>
+        ) : currentPage === 'rooms' ? (
+          <View style={{ flex: 1 }} />
         ) : (
           <AnimatedPage pageKey={currentPage}>
             <ScrollView
@@ -2434,6 +2491,21 @@ function AppScreen() {
             </ScrollView>
           </AnimatedPage>
         )}
+        {roomsMounted ? (
+          <View
+            pointerEvents={currentPage === 'rooms' ? 'auto' : 'none'}
+            style={[
+              styles.roomKeepAlive,
+              { top: insets.top },
+              currentPage === 'rooms' ? styles.roomKeepAliveVisible : styles.roomKeepAliveHidden,
+            ]}
+          >
+            <RoomScreen
+              theme={t}
+              onBack={() => goto('home')}
+            />
+          </View>
+        ) : null}
       </SafeAreaView>
 
       {/* Truly floating tab bar: lives OUTSIDE SafeAreaView, anchored to
@@ -2486,6 +2558,7 @@ function AppScreen() {
 
             {tabs.map((tab) => {
               const active = currentPage === tab.id;
+              const TabIcon = tabIcons[tab.id];
               // Both Speaker and Karaoke need a live Cicada connection.
               const requiresConnection =
                 tab.id === 'speaker' || tab.id === 'karaoke';
@@ -2494,6 +2567,8 @@ function AppScreen() {
                 <Pressable
                   key={tab.id}
                   disabled={isUnreachable}
+                  accessibilityRole="button"
+                  accessibilityLabel={tab.label}
                   onPress={() => {
                     if (isUnreachable) return;
                     goto(tab.id);
@@ -2516,20 +2591,10 @@ function AppScreen() {
                       style={StyleSheet.absoluteFill}
                     />
                   ) : null}
-                  <Text
-                    style={[
-                      styles.tabLabel,
-                      {
-                        color: active
-                          ? '#fff'
-                          : isUnreachable
-                            ? t.inkMuted
-                            : t.ink,
-                      },
-                    ]}
-                  >
-                    {tab.label}
-                  </Text>
+                  <TabIcon
+                    size={22}
+                    color={active ? '#fff' : isUnreachable ? t.inkMuted : t.ink}
+                  />
                 </Pressable>
               );
             })}
@@ -3626,6 +3691,22 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     fontWeight: '700',
   },
+  roomKeepAlive: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: t.bg,
+  },
+  roomKeepAliveVisible: {
+    opacity: 1,
+    zIndex: 3,
+  },
+  roomKeepAliveHidden: {
+    opacity: 0,
+    zIndex: 0,
+  },
 
   // ---- Tab bar (liquid glass) ----
   tabBarWrap: {
@@ -3667,7 +3748,8 @@ const styles = StyleSheet.create({
   },
   tabItem: {
     flex: 1,
-    paddingVertical: 12,
+    minHeight: 48,
+    paddingVertical: 10,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
@@ -3675,11 +3757,5 @@ const styles = StyleSheet.create({
   },
   tabItemActive: {
     backgroundColor: t.selected,
-  },
-  tabLabel: {
-    fontSize: 12,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    fontWeight: '700',
   },
 });
