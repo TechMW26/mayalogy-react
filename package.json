@@ -10,7 +10,8 @@
     "prebuild": "node scripts/sync-runtime-env.mjs production",
     "build": "vite build",
     "preview": "vite preview",
-    "dev:vercel": "vercel dev"
+    "dev:vercel": "vercel dev",
+    "test:otp": "node --test api/send-otp.test.js"
   },
   "dependencies": {
     "astronomy-engine": "^2.1.19",

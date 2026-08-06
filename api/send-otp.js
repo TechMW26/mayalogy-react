@@ -4,6 +4,7 @@
  * and sends it via Interakt WhatsApp API.
  */
 
+import { randomInt } from 'node:crypto';
 import { buildPhoneKey, isReviewDemoPhone, isValidNormalizedPhone, normalizePhoneInput } from './_phone.js';
 
 export const config = {
@@ -36,18 +37,22 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true, message: 'Review demo OTP ready' });
     }
 
-    // Generate cryptographically random 6-digit OTP
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
-    const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes
-
-    const phoneKey = buildPhoneKey(normalizedPhone, normalizedCountryCode);
-
     const firebaseUrl = getFirebaseDbUrl();
     const firebaseSecret = process.env.FIREBASE_SECRET; // Firebase legacy secret or service account token
+    const interaktApiKey = process.env.INTERAKT_API_KEY?.trim();
+    const templateName = process.env.INTERAKT_OTP_TEMPLATE?.trim() || 'maya_otp_auth';
 
     if (!firebaseUrl) {
         return res.status(500).json({ error: 'Firebase DB URL not configured' });
     }
+
+    if (!interaktApiKey) {
+        return res.status(500).json({ error: 'Interakt API key not configured' });
+    }
+
+    const otp = String(randomInt(100000, 1000000));
+    const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes
+    const phoneKey = buildPhoneKey(normalizedPhone, normalizedCountryCode);
 
     // Store OTP in Firebase RTDB
     const authParam = firebaseSecret ? `?auth=${encodeURIComponent(firebaseSecret)}` : '';
@@ -77,14 +82,6 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Failed to store OTP session' });
     }
 
-    // Send WhatsApp OTP via Interakt
-    const interaktApiKey = process.env.INTERAKT_API_KEY;
-    const templateName = process.env.INTERAKT_OTP_TEMPLATE || 'maya_otp_auth';
-
-    if (!interaktApiKey) {
-        return res.status(500).json({ error: 'Interakt API key not configured' });
-    }
-
     const looksLikeBase64Token = (() => {
         try {
             const decoded = Buffer.from(interaktApiKey, 'base64').toString('utf8');
@@ -98,7 +95,7 @@ export default async function handler(req, res) {
         ? interaktApiKey
         : Buffer.from(`${interaktApiKey}:`).toString('base64');
 
-    let interaktPayload = buildInteraktPayload({
+    const interaktPayload = buildInteraktPayload({
         countryCode: normalizedCountryCode,
         phoneNumber: normalizedPhone,
         templateName,
@@ -106,29 +103,10 @@ export default async function handler(req, res) {
     });
 
     try {
-        let interaktResult = await sendInteraktMessage(basicToken, interaktPayload);
-        let { response: interaktResp, body: errBody } = interaktResult;
+        const { response: interaktResp, body: errBody } = await sendInteraktMessage(basicToken, interaktPayload);
 
-        if (!interaktResp.ok) {
-            const missingButtonVariable = parseMissingButtonVariableError(errBody.message);
-
-            if (missingButtonVariable) {
-                interaktPayload = buildInteraktPayload({
-                    countryCode: normalizedCountryCode,
-                    phoneNumber: normalizedPhone,
-                    templateName,
-                    otp,
-                    buttonValues: buildDefaultButtonValues(missingButtonVariable.index, missingButtonVariable.count, otp)
-                });
-
-                interaktResult = await sendInteraktMessage(basicToken, interaktPayload);
-                interaktResp = interaktResult.response;
-                errBody = interaktResult.body;
-            }
-        }
-
-        if (!interaktResp.ok) {
-            const detail = errBody.message || 'Unknown error';
+        if (!interaktResp.ok || errBody?.result === false) {
+            const detail = errBody?.message || errBody?.error || 'Unknown error';
             console.error('Interakt send failed:', errBody);
             await deleteOtpSession();
 
@@ -151,8 +129,8 @@ function getFirebaseDbUrl() {
     return (process.env.FIREBASE_DB_URL || process.env.VITE_PUBLIC_FIREBASE_DB_URL || '').trim().replace(/\/+$/, '');
 }
 
-function buildInteraktPayload({ countryCode, phoneNumber, templateName, otp, buttonValues }) {
-    const payload = {
+function buildInteraktPayload({ countryCode, phoneNumber, templateName, otp }) {
+    return {
         countryCode,
         phoneNumber,
         callbackData: 'maya_otp_auth',
@@ -161,15 +139,12 @@ function buildInteraktPayload({ countryCode, phoneNumber, templateName, otp, but
             name: templateName,
             languageCode: 'en',
             headerValues: [],
-            bodyValues: [otp]
+            bodyValues: [otp],
+            buttonValues: {
+                0: [otp]
+            }
         }
     };
-
-    if (buttonValues && Object.keys(buttonValues).length > 0) {
-        payload.template.buttonValues = buttonValues;
-    }
-
-    return payload;
 }
 
 async function sendInteraktMessage(basicToken, payload) {
@@ -184,24 +159,4 @@ async function sendInteraktMessage(basicToken, payload) {
 
     const body = await response.json().catch(() => ({}));
     return { response, body };
-}
-
-function parseMissingButtonVariableError(detail) {
-    const message = String(detail || '');
-    const match = message.match(/button at index\s+(\d+).*?expected number of values(?:\s+are|\s+is)?\s+(\d+)/i);
-
-    if (!match) {
-        return null;
-    }
-
-    return {
-        index: Number(match[1]),
-        count: Number(match[2])
-    };
-}
-
-function buildDefaultButtonValues(index, count, otp) {
-    return {
-        [index]: Array.from({ length: count }, () => otp)
-    };
 }
