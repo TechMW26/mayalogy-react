@@ -37,7 +37,7 @@ function createResponse() {
 test('sends the same OTP in authentication template body and button values', async () => {
     process.env.FIREBASE_DB_URL = 'https://example.firebaseio.test';
     process.env.INTERAKT_API_KEY = Buffer.from('test-key:').toString('base64');
-    process.env.INTERAKT_OTP_TEMPLATE = 'maya_otp_auth';
+    process.env.INTERAKT_OTP_TEMPLATE = 'mayaotp';
 
     const requests = [];
     global.fetch = async (url, options = {}) => {
@@ -59,6 +59,7 @@ test('sends the same OTP in authentication template body and button values', asy
     const message = JSON.parse(requests[1].options.body);
 
     assert.match(storedSession.otp, /^\d{6}$/);
+    assert.equal(message.template.name, 'mayaotp');
     assert.deepEqual(message.template.bodyValues, [storedSession.otp]);
     assert.deepEqual(message.template.buttonValues, { 0: [storedSession.otp] });
 });

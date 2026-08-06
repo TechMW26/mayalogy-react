@@ -40,7 +40,7 @@ export default async function handler(req, res) {
     const firebaseUrl = getFirebaseDbUrl();
     const firebaseSecret = process.env.FIREBASE_SECRET; // Firebase legacy secret or service account token
     const interaktApiKey = process.env.INTERAKT_API_KEY?.trim();
-    const templateName = process.env.INTERAKT_OTP_TEMPLATE?.trim() || 'maya_otp_auth';
+    const templateName = process.env.INTERAKT_OTP_TEMPLATE?.trim() || 'mayaotp';
 
     if (!firebaseUrl) {
         return res.status(500).json({ error: 'Firebase DB URL not configured' });
