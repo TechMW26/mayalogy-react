@@ -36,6 +36,7 @@ function createResponse() {
 
 test('sends the same OTP in authentication template body and button values', async () => {
     process.env.FIREBASE_DB_URL = 'https://example.firebaseio.test';
+    process.env.FIREBASE_SECRET = 'test-secret';
     process.env.INTERAKT_API_KEY = Buffer.from('test-key:').toString('base64');
     process.env.INTERAKT_OTP_TEMPLATE = 'mayaotp';
 
@@ -66,6 +67,7 @@ test('sends the same OTP in authentication template body and button values', asy
 
 test('does not create an OTP session when Interakt is not configured', async () => {
     process.env.FIREBASE_DB_URL = 'https://example.firebaseio.test';
+    process.env.FIREBASE_SECRET = 'test-secret';
     delete process.env.INTERAKT_API_KEY;
 
     let requestCount = 0;
@@ -84,6 +86,7 @@ test('does not create an OTP session when Interakt is not configured', async () 
 
 test('removes the OTP session when Interakt reports a failed message', async () => {
     process.env.FIREBASE_DB_URL = 'https://example.firebaseio.test';
+    process.env.FIREBASE_SECRET = 'test-secret';
     process.env.INTERAKT_API_KEY = Buffer.from('test-key:').toString('base64');
 
     const methods = [];

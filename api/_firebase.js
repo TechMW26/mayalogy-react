@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getDatabase } from 'firebase-admin/database';
 import { getMessaging } from 'firebase-admin/messaging';
 
 const INVALID_FCM_TOKEN_ERRORS = new Set([
@@ -56,6 +58,35 @@ async function parseFirebaseResponse(response) {
 }
 
 export async function firebaseRequest(path, { method = 'GET', body } = {}) {
+    if (!process.env.FIREBASE_SECRET?.trim()) {
+        const normalizedPath = String(path || '').replace(/^\/+|\/+$/g, '');
+        const reference = getDatabase(getAdminApp()).ref(normalizedPath || '/');
+
+        if (method === 'GET') {
+            const snapshot = await reference.get();
+            return snapshot.exists() ? snapshot.val() : null;
+        }
+
+        if (method === 'PUT') {
+            await reference.set(body ?? null);
+            return body ?? null;
+        }
+
+        if (method === 'PATCH') {
+            await reference.update(body || {});
+            return body || {};
+        }
+
+        if (method === 'DELETE') {
+            await reference.remove();
+            return null;
+        }
+
+        const error = new Error(`Unsupported Firebase method: ${method}`);
+        error.status = 500;
+        throw error;
+    }
+
     const response = await fetch(`${getFirebaseDbUrl()}/${path}.json${getFirebaseAuthSuffix()}`, {
         method,
         headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
@@ -252,7 +283,8 @@ function getAdminApp() {
     const credentialConfig = getAdminCredentialConfig();
     adminAppInstance = initializeApp({
         credential: cert(credentialConfig),
-        projectId: credentialConfig.projectId
+        projectId: credentialConfig.projectId,
+        databaseURL: getFirebaseDbUrl()
     });
 
     return adminAppInstance;
@@ -260,6 +292,10 @@ function getAdminApp() {
 
 export function getMessagingClient() {
     return getMessaging(getAdminApp());
+}
+
+export function getAuthClient() {
+    return getAuth(getAdminApp());
 }
 
 export function isInvalidFcmTokenError(code = '') {

@@ -1,6 +1,7 @@
 import { handleRemoveBackgroundRequest, handleTextToSpeechRequest } from './mayaApi.js';
 import sendOtpHandler from '../api/send-otp.js';
 import verifyOtpHandler from '../api/verify-otp.js';
+import firebasePhoneSessionHandler from '../api/firebase-phone-session.js';
 
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {
@@ -121,6 +122,11 @@ export function mayaApiDevPlugin() {
 
         if (req.method === 'POST' && pathname === '/api/verify-otp') {
           await handleVercelRequest(req, res, verifyOtpHandler, 'verify-otp');
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/firebase-phone-session') {
+          await handleVercelRequest(req, res, firebasePhoneSessionHandler, 'firebase-phone-session');
           return;
         }
 

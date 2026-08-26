@@ -1,0 +1,14 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "maya_otp_sessions": {
+      ".read": false,
+      ".write": false
+    },
+    "maya_fcm_registrations": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}

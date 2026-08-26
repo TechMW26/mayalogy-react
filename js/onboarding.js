@@ -1206,7 +1206,7 @@ const MayaOnboarding = {
             if (!window.MayaAuth?.sendOTP) throw new Error('Authentication system not available');
             const result = await MayaAuth.sendOTP(phone, countryCode);
             if (!result.success) throw new Error(result.error || 'OTP send failed');
-            this._showOBOTPVerification(phone, countryCode);
+            this._showOBOTPVerification(phone, countryCode, result.provider);
         } catch (error) {
             if (errorDiv) {
                 errorDiv.textContent = error.message || (isHindi ? 'OTP नहीं भेजा जा सका' : 'Could not send OTP');
@@ -1223,17 +1223,20 @@ const MayaOnboarding = {
     /**
      * Show OTP verification for direct login
      */
-    _showOBOTPVerification(phone, countryCode) {
+    _showOBOTPVerification(phone, countryCode, provider = MayaAuth.pendingOtpProvider) {
         const container = document.getElementById('onboardingContent');
         if (!container) return;
 
         const isHindi = this.isHindiUI();
+        const isSmsOtp = provider === 'firebase';
+        const deliveryLabel = isSmsOtp ? (isHindi ? 'SMS' : 'SMS') : (isHindi ? 'व्हाट्सऐप' : 'WhatsApp');
+        const deliveryArticle = isSmsOtp ? 'an' : 'a';
         container.innerHTML = `
             <div class="direct-login-container">
                 <div class="onboarding-question mb-4">
-                    <i class="bi bi-whatsapp otp-whatsapp-icon d-block mb-2"></i>
+                    <i class="bi ${isSmsOtp ? 'bi-chat-dots' : 'bi-whatsapp'} otp-whatsapp-icon d-block mb-2"></i>
                     <h4 class="mb-2">${isHindi ? 'OTP दर्ज करें' : 'Enter OTP'}</h4>
-                    <p class="text-muted small">${isHindi ? `${countryCode} ${phone} पर व्हाट्सऐप ओटीपी भेजा जा रहा है। कृपया इसके आने तक कुछ सेकंड प्रतीक्षा करें।` : `We are sending a WhatsApp OTP to ${countryCode} ${phone}. Please wait a few seconds for it to arrive.`}</p>
+                    <p class="text-muted small">${isHindi ? `${countryCode} ${phone} पर ${deliveryLabel} OTP भेजा गया है। कृपया इसके आने तक कुछ सेकंड प्रतीक्षा करें।` : `We sent ${deliveryArticle} ${deliveryLabel} OTP to ${countryCode} ${phone}. Please wait a few seconds for it to arrive.`}</p>
                 </div>
 
                 <div class="otp-input-group mb-3">
@@ -1352,7 +1355,8 @@ const MayaOnboarding = {
             event.preventDefault();
             const result = await MayaAuth.sendOTP(phone, countryCode);
             if (result.success) {
-                MayaUtils.toast.success(isHindi ? 'नया व्हाट्सऐप ओटीपी भेजा जा रहा है। कृपया कुछ सेकंड प्रतीक्षा करें।' : 'A new WhatsApp OTP is being sent. Please wait a few seconds.');
+                const resendProvider = result.provider === 'firebase' ? 'SMS' : (isHindi ? 'व्हाट्सऐप' : 'WhatsApp');
+                MayaUtils.toast.success(isHindi ? `नया ${resendProvider} OTP भेजा गया है। कृपया कुछ सेकंड प्रतीक्षा करें।` : `A new ${resendProvider} OTP was sent. Please wait a few seconds.`);
                 digits.forEach((digit) => {
                     digit.value = '';
                     digit.disabled = false;

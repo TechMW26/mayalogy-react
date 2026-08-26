@@ -4,7 +4,9 @@
  * the user record in Firebase RTDB and returns a session token.
  */
 
+import { firebaseRequest } from './_firebase.js';
 import { buildPhoneKey, getReviewDemoCredentials, isReviewDemoPhone, isValidNormalizedPhone, normalizePhoneInput } from './_phone.js';
+import { createPhoneAppSession } from './_phoneSession.js';
 
 export const config = {
     api: {
@@ -41,40 +43,13 @@ export default async function handler(req, res) {
         && String(otp) === reviewDemo.otp;
 
     const phoneKey = buildPhoneKey(normalizedPhone, normalizedCountryCode);
-    const firebaseUrl = getFirebaseDbUrl();
-    const firebaseSecret = process.env.FIREBASE_SECRET;
-    const authParam = firebaseSecret ? `?auth=${encodeURIComponent(firebaseSecret)}` : '';
-
-    if (!firebaseUrl) {
-        if (isReviewDemoOtp) {
-            const now = Date.now();
-            const token = `tok_${now}_${Math.random().toString(36).slice(2, 11)}`;
-            const user = buildReviewDemoUser({
-                phoneKey,
-                normalizedPhone,
-                normalizedCountryCode,
-                token,
-                now
-            });
-
-            return res.status(200).json({
-                success: true,
-                isNewUser: false,
-                reviewDemoUsed: true,
-                token,
-                user: buildClientUser(user, now)
-            });
-        }
-
-        return res.status(500).json({ error: 'Firebase DB URL not configured' });
-    }
+    const otpSessionPath = `maya_otp_sessions/${phoneKey}`;
 
     if (!isReviewDemoOtp) {
         // Fetch stored OTP session
         let stored;
         try {
-            const resp = await fetch(`${firebaseUrl}/maya_otp_sessions/${phoneKey}.json${authParam}`);
-            stored = await resp.json();
+            stored = await firebaseRequest(otpSessionPath);
         } catch (err) {
             return res.status(500).json({ error: 'Failed to verify OTP session' });
         }
@@ -86,24 +61,23 @@ export default async function handler(req, res) {
         // Check expiry
         if (Date.now() > stored.expiry) {
             // Clean up expired session
-            await fetch(`${firebaseUrl}/maya_otp_sessions/${phoneKey}.json${authParam}`, { method: 'DELETE' }).catch(() => { });
+            await firebaseRequest(otpSessionPath, { method: 'DELETE' }).catch(() => { });
             return res.status(401).json({ error: 'OTP has expired. Please request a new one.' });
         }
 
         // Rate limit: max 3 attempts
         const attempts = (stored.attempts || 0) + 1;
         if (attempts > 3) {
-            await fetch(`${firebaseUrl}/maya_otp_sessions/${phoneKey}.json${authParam}`, { method: 'DELETE' }).catch(() => { });
+            await firebaseRequest(otpSessionPath, { method: 'DELETE' }).catch(() => { });
             return res.status(429).json({ error: 'Too many incorrect attempts. Please request a new OTP.' });
         }
 
         // Validate OTP
         if (stored.otp !== otp) {
             // Update attempt count
-            await fetch(`${firebaseUrl}/maya_otp_sessions/${phoneKey}.json${authParam}`, {
+            await firebaseRequest(otpSessionPath, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ attempts })
+                body: { attempts }
             }).catch(() => { });
             const remaining = 3 - attempts;
             return res.status(401).json({
@@ -112,70 +86,24 @@ export default async function handler(req, res) {
         }
 
         // OTP is valid -delete the session
-        await fetch(`${firebaseUrl}/maya_otp_sessions/${phoneKey}.json${authParam}`, { method: 'DELETE' }).catch(() => { });
+        await firebaseRequest(otpSessionPath, { method: 'DELETE' }).catch(() => { });
     }
 
-    // Create or retrieve user by phone
-    let user;
     try {
-        const userResp = await fetch(`${firebaseUrl}/maya_phone_users/${phoneKey}.json${authParam}`);
-        user = await userResp.json();
-    } catch (err) {
-        user = null;
-    }
-
-    const isNewUser = !user || user === null;
-    const now = Date.now();
-    const token = `tok_${now}_${Math.random().toString(36).slice(2, 11)}`;
-
-    if (isNewUser) {
-        user = {
-            id: phoneKey,
-            phone: `${normalizedCountryCode}${normalizedPhone}`,
+        const session = await createPhoneAppSession({
+            phone: normalizedPhone,
             countryCode: normalizedCountryCode,
-            phoneNumber: normalizedPhone,
-            token,
-            createdAt: now,
-            lastLogin: now
-        };
-        await fetch(`${firebaseUrl}/maya_phone_users/${phoneKey}.json${authParam}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(user)
-        }).catch(() => { });
-    } else {
-        // Update last login
-        await fetch(`${firebaseUrl}/maya_phone_users/${phoneKey}.json${authParam}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lastLogin: now, token })
-        }).catch(() => { });
-        user.token = token;
-        user.lastLogin = now;
+            profileDefaults: isReviewDemoOtp ? getReviewDemoProfile() : {}
+        });
+        return res.status(200).json({ ...session, reviewDemoUsed: isReviewDemoOtp });
+    } catch (error) {
+        console.error('Phone session creation failed:', error.message);
+        return res.status(500).json({ error: 'Failed to create phone session' });
     }
-
-    return res.status(200).json({
-        success: true,
-        isNewUser,
-        reviewDemoUsed: isReviewDemoOtp,
-        token,
-        user: buildClientUser(user, now)
-    });
 }
 
-function getFirebaseDbUrl() {
-    return (process.env.FIREBASE_DB_URL || process.env.VITE_PUBLIC_FIREBASE_DB_URL || '').trim().replace(/\/+$/, '');
-}
-
-function buildReviewDemoUser({ phoneKey, normalizedPhone, normalizedCountryCode, token, now }) {
+function getReviewDemoProfile() {
     return {
-        id: phoneKey,
-        phone: `${normalizedCountryCode}${normalizedPhone}`,
-        countryCode: normalizedCountryCode,
-        phoneNumber: normalizedPhone,
-        token,
-        createdAt: now,
-        lastLogin: now,
         name: 'App Review Demo',
         birthDate: '1990-01-01',
         birthTime: '09:00',
@@ -186,27 +114,5 @@ function buildReviewDemoUser({ phoneKey, normalizedPhone, normalizedCountryCode,
         maritalStatus: 'single',
         language: 'en',
         agentGender: 'female'
-    };
-}
-
-function buildClientUser(user, lastLogin) {
-    return {
-        id: user.id,
-        email: user.email || null,
-        name: user.name || null,
-        phone: user.phone,
-        countryCode: user.countryCode,
-        phoneNumber: user.phoneNumber,
-        createdAt: user.createdAt,
-        lastLogin,
-        birthDate: user.birthDate || null,
-        birthTime: user.birthTime || null,
-        birthPlace: user.birthPlace || null,
-        birthLat: user.birthLat ?? null,
-        birthLon: user.birthLon ?? null,
-        gender: user.gender || null,
-        maritalStatus: user.maritalStatus || null,
-        language: user.language || null,
-        agentGender: user.agentGender || null
     };
 }

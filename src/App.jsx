@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { initializeFirebaseClient } from './firebaseClient.js';
 import { bootLegacyMayalogy } from './legacyLoader.js';
 import { LEGACY_SHELL_HTML } from './legacyShell.js';
 
@@ -108,7 +109,7 @@ export default function App() {
       document.body.appendChild(shellContainer);
     }
 
-    bootLegacyMayalogy().catch((error) => {
+    initializeFirebaseClient().then(() => bootLegacyMayalogy()).catch((error) => {
       console.error('Failed to boot Mayalogy legacy runtime:', error);
       if (!cancelled) {
         setBootError(error);

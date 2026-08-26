@@ -5,6 +5,7 @@
  */
 
 import { randomInt } from 'node:crypto';
+import { firebaseRequest } from './_firebase.js';
 import { buildPhoneKey, isReviewDemoPhone, isValidNormalizedPhone, normalizePhoneInput } from './_phone.js';
 
 export const config = {
@@ -37,14 +38,8 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true, message: 'Review demo OTP ready' });
     }
 
-    const firebaseUrl = getFirebaseDbUrl();
-    const firebaseSecret = process.env.FIREBASE_SECRET; // Firebase legacy secret or service account token
     const interaktApiKey = process.env.INTERAKT_API_KEY?.trim();
     const templateName = process.env.INTERAKT_OTP_TEMPLATE?.trim() || 'mayaotp';
-
-    if (!firebaseUrl) {
-        return res.status(500).json({ error: 'Firebase DB URL not configured' });
-    }
 
     if (!interaktApiKey) {
         return res.status(500).json({ error: 'Interakt API key not configured' });
@@ -55,28 +50,20 @@ export default async function handler(req, res) {
     const phoneKey = buildPhoneKey(normalizedPhone, normalizedCountryCode);
 
     // Store OTP in Firebase RTDB
-    const authParam = firebaseSecret ? `?auth=${encodeURIComponent(firebaseSecret)}` : '';
-    const deleteOtpSession = () => fetch(`${firebaseUrl}/maya_otp_sessions/${phoneKey}.json${authParam}`, {
-        method: 'DELETE'
-    }).catch(() => { });
+    const otpSessionPath = `maya_otp_sessions/${phoneKey}`;
+    const deleteOtpSession = () => firebaseRequest(otpSessionPath, { method: 'DELETE' }).catch(() => { });
 
     try {
-        const storeResp = await fetch(`${firebaseUrl}/maya_otp_sessions/${phoneKey}.json${authParam}`, {
+        await firebaseRequest(otpSessionPath, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: {
                 otp,
                 expiry,
                 phone: normalizedPhone,
                 countryCode: normalizedCountryCode,
                 attempts: 0
-            })
+            }
         });
-        if (!storeResp.ok) {
-            const errBody = await storeResp.text();
-            console.error('Firebase OTP store failed:', errBody);
-            return res.status(500).json({ error: 'Failed to store OTP session' });
-        }
     } catch (err) {
         console.error('Firebase OTP store error:', err.message);
         return res.status(500).json({ error: 'Failed to store OTP session' });
@@ -123,10 +110,6 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({ success: true, message: 'OTP sent to WhatsApp' });
-}
-
-function getFirebaseDbUrl() {
-    return (process.env.FIREBASE_DB_URL || process.env.VITE_PUBLIC_FIREBASE_DB_URL || '').trim().replace(/\/+$/, '');
 }
 
 function buildInteraktPayload({ countryCode, phoneNumber, templateName, otp }) {

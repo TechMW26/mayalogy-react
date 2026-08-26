@@ -11,6 +11,7 @@ const MayaAuth = {
     token: null,
     pushBridgeInitialized: false,
     pendingFcmToken: null,
+    pendingOtpProvider: 'whatsapp',
 
     /**
      * Initialize auth state from storage
@@ -295,36 +296,66 @@ const MayaAuth = {
     },
 
     /**
-     * Send WhatsApp OTP via Interakt
+     * Send WhatsApp OTP via Interakt, falling back to Firebase SMS.
      */
     async sendOTP(phone, countryCode) {
+        let whatsappError = 'Failed to send WhatsApp OTP';
+
         try {
+            if (window.MayaFirebasePhoneAuth?.testMode) {
+                throw new Error('Firebase OTP test mode');
+            }
             const resp = await fetch('/api/send-otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ phone, countryCode })
             });
-            const data = await resp.json();
-            if (!resp.ok) return { success: false, error: data.error || 'Failed to send OTP' };
-            return { success: true };
+            const data = await resp.json().catch(() => ({}));
+            if (resp.ok) {
+                this.pendingOtpProvider = 'whatsapp';
+                return { success: true, provider: 'whatsapp' };
+            }
+            whatsappError = data.error || whatsappError;
         } catch (err) {
             console.error('sendOTP error:', err);
-            return { success: false, error: 'Network error. Please try again.' };
+            whatsappError = 'WhatsApp OTP is temporarily unavailable.';
         }
+
+        if (window.MayaFirebasePhoneAuth?.sendOTP) {
+            const firebaseResult = await window.MayaFirebasePhoneAuth.sendOTP(phone, countryCode);
+            if (firebaseResult.success) {
+                this.pendingOtpProvider = 'firebase';
+                return { success: true, provider: 'firebase', fallbackUsed: true };
+            }
+
+            return {
+                success: false,
+                error: firebaseResult.error || `${whatsappError} SMS fallback also failed.`,
+            };
+        }
+
+        return { success: false, error: whatsappError };
     },
 
     /**
-     * Verify WhatsApp OTP and log in / register the user
+     * Verify the active WhatsApp or Firebase SMS OTP and create an app session.
      */
     async verifyOTP(phone, countryCode, otp) {
         try {
-            const resp = await fetch('/api/verify-otp', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone, countryCode, otp })
-            });
-            const data = await resp.json();
-            if (!resp.ok) return { success: false, error: data.error || 'OTP verification failed' };
+            let data;
+
+            if (this.pendingOtpProvider === 'firebase') {
+                data = await window.MayaFirebasePhoneAuth.verifyOTP(phone, countryCode, otp);
+                if (!data.success) return data;
+            } else {
+                const resp = await fetch('/api/verify-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, countryCode, otp })
+                });
+                data = await resp.json().catch(() => ({}));
+                if (!resp.ok) return { success: false, error: data.error || 'OTP verification failed' };
+            }
 
             const { user, token, isNewUser } = data;
             this.currentUser = user;
@@ -383,6 +414,8 @@ const MayaAuth = {
         this.currentUser = null;
         this.token = null;
         this.isAuthenticated = false;
+        this.pendingOtpProvider = 'whatsapp';
+        void window.MayaFirebasePhoneAuth?.logout?.();
 
         MayaUtils.storage.remove('maya_user', { skipSync: true });
         MayaUtils.storage.remove('maya_token', { skipSync: true });

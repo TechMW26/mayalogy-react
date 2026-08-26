@@ -77,7 +77,9 @@ const MayaFirebase = {
             throw new Error('Firebase database URL is not configured');
         }
         
-        const url = `${this.dbUrl}/${path}.json`;
+        const firebaseIdToken = await window.MayaFirebasePhoneAuth?.getIdToken?.();
+        const authQuery = firebaseIdToken ? `?auth=${encodeURIComponent(firebaseIdToken)}` : '';
+        const url = `${this.dbUrl}/${path}.json${authQuery}`;
         
         const options = {
             method: method,

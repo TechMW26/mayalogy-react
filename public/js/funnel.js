@@ -7986,12 +7986,15 @@ Return ONLY JSON:
         }
 
         this.emailSubmissionInProgress = false;
-        await this.showOTPVerificationFlow(phone, countryCode);
+        await this.showOTPVerificationFlow(phone, countryCode, result.provider);
     },
 
-    async showOTPVerificationFlow(phone, countryCode) {
+    async showOTPVerificationFlow(phone, countryCode, provider = MayaAuth.pendingOtpProvider) {
         const lang = this._resolveCurrentLanguage();
         const isHindi = lang === 'hi';
+        const isSmsOtp = provider === 'firebase';
+        const deliveryLabel = isSmsOtp ? 'SMS' : (isHindi ? 'व्हाट्सऐप' : 'WhatsApp');
+        const deliveryArticle = isSmsOtp ? 'an' : 'a';
         const textDisplay = document.getElementById('maya-text-display');
 
         this.currentPhase = this.PHASES.LOGIN_OR_REGISTER;
@@ -8000,9 +8003,9 @@ Return ONLY JSON:
         textDisplay.innerHTML = `
             <div class="auth-flow-container otp-flow-container">
                 <div class="auth-header">
-                    <i class="bi bi-whatsapp otp-whatsapp-icon"></i>
+                    <i class="bi ${isSmsOtp ? 'bi-chat-dots' : 'bi-whatsapp'} otp-whatsapp-icon"></i>
                     <h3>${isHindi ? 'OTP दर्ज करें' : 'Enter OTP'}</h3>
-                    <p class="auth-phone-hint">${isHindi ? `${countryCode} ${phone} पर व्हाट्सऐप ओटीपी भेजा जा रहा है। कृपया इसके आने तक कुछ सेकंड प्रतीक्षा करें।` : `We are sending a WhatsApp OTP to ${countryCode} ${phone}. Please wait a few seconds for it to arrive.`}</p>
+                    <p class="auth-phone-hint">${isHindi ? `${countryCode} ${phone} पर ${deliveryLabel} OTP भेजा गया है। कृपया इसके आने तक कुछ सेकंड प्रतीक्षा करें।` : `We sent ${deliveryArticle} ${deliveryLabel} OTP to ${countryCode} ${phone}. Please wait a few seconds for it to arrive.`}</p>
                 </div>
                 <div class="otp-input-group" id="otp-input-group">
                     <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
@@ -8082,7 +8085,8 @@ Return ONLY JSON:
             event.preventDefault();
             const resend = await MayaAuth.sendOTP(phone, countryCode);
             if (resend.success) {
-                MayaUtils.toast.success(isHindi ? 'नया व्हाट्सऐप ओटीपी भेजा जा रहा है। कृपया कुछ सेकंड प्रतीक्षा करें।' : 'A new WhatsApp OTP is being sent. Please wait a few seconds.');
+                const resendProvider = resend.provider === 'firebase' ? 'SMS' : (isHindi ? 'व्हाट्सऐप' : 'WhatsApp');
+                MayaUtils.toast.success(isHindi ? `नया ${resendProvider} OTP भेजा गया है। कृपया कुछ सेकंड प्रतीक्षा करें।` : `A new ${resendProvider} OTP was sent. Please wait a few seconds.`);
                 digits.forEach((digit) => {
                     digit.value = '';
                     digit.disabled = false;
