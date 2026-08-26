@@ -67,14 +67,14 @@ const MayaOnboarding = {
         existingAccount: { en: 'Already have an account?', hi: 'क्या आपका पहले से खाता है?' },
         login: { en: 'Login', hi: 'प्रवेश करें' },
         welcomeBack: { en: 'Welcome Back!', hi: 'फिर से स्वागत है!' },
-        loginPrompt: { en: 'Login with your WhatsApp number', hi: 'अपने WhatsApp नंबर से प्रवेश करें' },
-        email: { en: 'WhatsApp Number', hi: 'WhatsApp नंबर' },
+        loginPrompt: { en: 'Login with your mobile number', hi: 'अपने मोबाइल नंबर से प्रवेश करें' },
+        email: { en: 'Mobile Number', hi: 'मोबाइल नंबर' },
         password: { en: 'OTP', hi: 'OTP' },
-        enterEmail: { en: 'Enter your WhatsApp number', hi: 'अपना WhatsApp नंबर दर्ज करें' },
+        enterEmail: { en: 'Enter your mobile number', hi: 'अपना मोबाइल नंबर दर्ज करें' },
         enterPassword: { en: 'Enter OTP', hi: 'OTP दर्ज करें' },
         backToReading: { en: 'Back to Reading!', hi: 'वापस जाएँ!' },
         loggingIn: { en: 'Logging in...', hi: 'प्रवेश हो रहा है...' },
-        enterEmailPassword: { en: 'Please enter a valid WhatsApp number', hi: 'कृपया सही WhatsApp नंबर भरें' },
+        enterEmailPassword: { en: 'Please enter a valid mobile number', hi: 'कृपया सही मोबाइल नंबर भरें' },
         invalidLogin: { en: 'Invalid OTP or phone number', hi: 'OTP या नंबर सही नहीं है' },
         welcomeBackToast: { en: 'Welcome back!', hi: 'फिर से स्वागत है!' },
         invalidValue: { en: 'Please enter a valid value', hi: 'कृपया सही जानकारी भरें' },
@@ -1116,8 +1116,8 @@ const MayaOnboarding = {
         container.innerHTML = `
             <div class="direct-login-container">
                 <div class="onboarding-question mb-4">
-                    <h4 class="mb-3"><i class="bi bi-whatsapp me-2"></i>${isHindi ? 'WhatsApp से लॉगिन करें' : 'Log in with WhatsApp'}</h4>
-                    <p class="text-muted">${isHindi ? 'अपना व्हाट्सऐप नंबर डालें। ओटीपी आने में कुछ सेकंड लग सकते हैं।' : 'Enter your WhatsApp number. The OTP can take a few seconds to arrive.'}</p>
+                    <h4 class="mb-3"><i class="bi bi-chat-dots me-2"></i>${isHindi ? 'SMS से लॉगिन करें' : 'Log in with SMS'}</h4>
+                    <p class="text-muted">${isHindi ? 'अपना मोबाइल नंबर डालें। ओटीपी आने में कुछ सेकंड लग सकते हैं।' : 'Enter your mobile number. The OTP can take a few seconds to arrive.'}</p>
                 </div>
 
                 <div class="login-form">
@@ -1134,7 +1134,7 @@ const MayaOnboarding = {
                                 inputmode="numeric" maxlength="15"
                                 pattern="[0-9]*"
                                 autocomplete="tel"
-                                aria-label="WhatsApp phone number"
+                                aria-label="Mobile phone number"
                                 data-form-type="other"
                                 data-lpignore="true"
                                 data-1p-ignore="true"
@@ -1148,7 +1148,7 @@ const MayaOnboarding = {
                     <div id="loginError" class="alert alert-danger d-none mb-3"></div>
 
                     <button type="button" class="btn btn-primary btn-lg w-100 mb-3" id="loginSubmitBtn">
-                        <i class="bi bi-whatsapp me-2"></i>${isHindi ? 'OTP भेजें' : 'Send OTP'}
+                        <i class="bi bi-chat-dots me-2"></i>${isHindi ? 'OTP भेजें' : 'Send OTP'}
                     </button>
 
                     <button type="button" class="btn btn-link text-muted" id="backToOnboardingBtn">
@@ -1206,7 +1206,7 @@ const MayaOnboarding = {
             if (!window.MayaAuth?.sendOTP) throw new Error('Authentication system not available');
             const result = await MayaAuth.sendOTP(phone, countryCode);
             if (!result.success) throw new Error(result.error || 'OTP send failed');
-            this._showOBOTPVerification(phone, countryCode, result.provider);
+            this._showOBOTPVerification(phone, countryCode);
         } catch (error) {
             if (errorDiv) {
                 errorDiv.textContent = error.message || (isHindi ? 'OTP नहीं भेजा जा सका' : 'Could not send OTP');
@@ -1215,7 +1215,7 @@ const MayaOnboarding = {
 
             if (loginBtn) {
                 loginBtn.disabled = false;
-                loginBtn.innerHTML = `<i class="bi bi-whatsapp me-2"></i>${isHindi ? 'OTP भेजें' : 'Send OTP'}`;
+                loginBtn.innerHTML = `<i class="bi bi-chat-dots me-2"></i>${isHindi ? 'OTP भेजें' : 'Send OTP'}`;
             }
         }
     },
@@ -1223,20 +1223,17 @@ const MayaOnboarding = {
     /**
      * Show OTP verification for direct login
      */
-    _showOBOTPVerification(phone, countryCode, provider = MayaAuth.pendingOtpProvider) {
+    _showOBOTPVerification(phone, countryCode) {
         const container = document.getElementById('onboardingContent');
         if (!container) return;
 
         const isHindi = this.isHindiUI();
-        const isSmsOtp = provider === 'firebase';
-        const deliveryLabel = isSmsOtp ? (isHindi ? 'SMS' : 'SMS') : (isHindi ? 'व्हाट्सऐप' : 'WhatsApp');
-        const deliveryArticle = isSmsOtp ? 'an' : 'a';
         container.innerHTML = `
             <div class="direct-login-container">
                 <div class="onboarding-question mb-4">
-                    <i class="bi ${isSmsOtp ? 'bi-chat-dots' : 'bi-whatsapp'} otp-whatsapp-icon d-block mb-2"></i>
+                    <i class="bi bi-chat-dots otp-delivery-icon d-block mb-2"></i>
                     <h4 class="mb-2">${isHindi ? 'OTP दर्ज करें' : 'Enter OTP'}</h4>
-                    <p class="text-muted small">${isHindi ? `${countryCode} ${phone} पर ${deliveryLabel} OTP भेजा गया है। कृपया इसके आने तक कुछ सेकंड प्रतीक्षा करें।` : `We sent ${deliveryArticle} ${deliveryLabel} OTP to ${countryCode} ${phone}. Please wait a few seconds for it to arrive.`}</p>
+                    <p class="text-muted small">${isHindi ? `${countryCode} ${phone} पर SMS OTP भेजा गया है। कृपया इसके आने तक कुछ सेकंड प्रतीक्षा करें।` : `We sent an SMS OTP to ${countryCode} ${phone}. Please wait a few seconds for it to arrive.`}</p>
                 </div>
 
                 <div class="otp-input-group mb-3">
@@ -1355,8 +1352,7 @@ const MayaOnboarding = {
             event.preventDefault();
             const result = await MayaAuth.sendOTP(phone, countryCode);
             if (result.success) {
-                const resendProvider = result.provider === 'firebase' ? 'SMS' : (isHindi ? 'व्हाट्सऐप' : 'WhatsApp');
-                MayaUtils.toast.success(isHindi ? `नया ${resendProvider} OTP भेजा गया है। कृपया कुछ सेकंड प्रतीक्षा करें।` : `A new ${resendProvider} OTP was sent. Please wait a few seconds.`);
+                MayaUtils.toast.success(isHindi ? 'नया SMS OTP भेजा गया है। कृपया कुछ सेकंड प्रतीक्षा करें।' : 'A new SMS OTP was sent. Please wait a few seconds.');
                 digits.forEach((digit) => {
                     digit.value = '';
                     digit.disabled = false;

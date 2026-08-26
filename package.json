@@ -11,7 +11,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "dev:vercel": "vercel dev",
-    "test:otp": "node --test api/send-otp.test.js"
+    "test:otp": "node --test api/firebase-otp.test.js"
   },
   "dependencies": {
     "astronomy-engine": "^2.1.19",

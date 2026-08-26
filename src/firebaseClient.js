@@ -75,7 +75,7 @@ function getFirebaseErrorMessage(error, fallback) {
     'auth/captcha-check-failed': 'Security verification failed. Please try again.',
     'auth/invalid-phone-number': 'Please enter a valid phone number.',
     'auth/missing-phone-number': 'Please enter your phone number.',
-    'auth/quota-exceeded': 'SMS limit reached. Please try WhatsApp OTP later.',
+    'auth/quota-exceeded': 'SMS limit reached. Please wait and try again later.',
     'auth/too-many-requests': 'Too many OTP requests. Please wait and try again.',
     'auth/code-expired': 'OTP has expired. Please request a new one.',
     'auth/invalid-verification-code': 'Incorrect OTP. Please try again.',

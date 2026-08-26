@@ -1,4 +1,4 @@
-const BUILD_STAMP = '20260826-firebase-otp';
+const BUILD_STAMP = '20260826-firebase-only';
 
 const SCRIPT_SOURCES = [
   { src: 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js', optional: true },

@@ -467,7 +467,7 @@ ${askMaya ? `- USER QUESTION LOCK (HIGHEST PRIORITY): This entire reading is ONL
                 `"combinedTeaser" — total 6 sentences max, तीन connected segments।\n[Segment 1 — IDENTITY TRUTH] 2 sentences। "आप ऐसे इंसान हैं जो..." format। Flattery-free pattern observation।\n[[pause-250]]\n[Segment 2 — EMOTIONAL PATTERN] 2 sentences। ONE daily inner emotional pattern, chart से confirmed।\n[[pause-250]]\n[Segment 3 — UNRESOLVED THREAD] 2 sentences। Chart से ONE open loop जो naturally resolution माँगे। User को लगे "मुझे और जानना है।"`,
                 `"accuracyShock" — 3 sentences। Chart data से ONE SPECIFIC past event predict कीजिए — approximate month/year + nature (relationship/career/health/family/emotional crisis) + emotional impact। Generic line forbidden। ज्यादा से ज्यादा एक [[pause-250]]।`,
                 `"suspenseBridge" — EXACTLY 3 sentences। (1) chart में सबसे intense unresolved pattern name कीजिए। (2) "इसका पूरा truth यहाँ खोलना ठीक नहीं" + naturally tease कीजिए कि file save होते ही love, career, timing windows, warnings खुलेंगी। (3) "आपकी पूरी file तैयार है, बस इसे save कर लीजिए।" No pause।`,
-                `"emailGate" — EXACTLY 2 sentences, soft WhatsApp OTP gate। FOMO/डर नहीं। (1) warm continuation। (2) CORE: "${firstName}, आगे की reading सुरक्षित रखने के लिए व्हाट्सऐप verification चाहिए — अपना मोबाइल नंबर डाल दीजिए; ओटीपी आने में कुछ सेकंड लग सकते हैं।" Email/password कभी नहीं। No pause।`,
+                `"emailGate" — EXACTLY 2 sentences, soft SMS OTP gate। FOMO/डर नहीं। (1) warm continuation। (2) CORE: "${firstName}, आगे की reading सुरक्षित रखने के लिए SMS verification चाहिए — अपना मोबाइल नंबर डाल दीजिए; ओटीपी आने में कुछ सेकंड लग सकते हैं।" Email/password कभी नहीं। No pause।`,
                 `"authCheck" — 1 sentence। Saved reading check करने की operational line। No pause।`,
                 `"welcomeBack" — 2 sentences। Warm recognition + saved reading mention + OTP/password ask। No pause।`,
                 `"newUser" — 2 sentences। OTP verify करके reading save और protect करने की बात। No pause।`,
@@ -493,7 +493,7 @@ ${askMaya ? `- USER QUESTION LOCK (HIGHEST PRIORITY): This entire reading is ONL
             `"combinedTeaser" — total 6 sentences max, three connected segments.\n[Segment 1 — IDENTITY TRUTH] 2 sentences. "You are someone who..." format. Flattery-free pattern observation.\n[[pause-250]]\n[Segment 2 — EMOTIONAL PATTERN] 2 sentences. ONE daily inner emotional pattern confirmed by the chart.\n[[pause-250]]\n[Segment 3 — UNRESOLVED THREAD] 2 sentences. ONE open loop from the chart that demands resolution. The user must feel "I need to know more."`,
             `"accuracyShock" — 3 sentences. From chart data predict ONE SPECIFIC past event — approximate month/year + nature (relationship/career/health/family/emotional crisis) + emotional impact. Generic lines forbidden. At most one [[pause-250]].`,
             `"suspenseBridge" — EXACTLY 3 sentences. (1) Name the most intense unresolved pattern visible in the chart. (2) Say "it would not be right to open the full truth here" AND naturally tease that once the file is saved, love, career, timing windows, warnings will all open. (3) "Your full file is ready, just save it." No pause.`,
-            `"emailGate" — EXACTLY 2 sentences, soft WhatsApp OTP gate. No FOMO/fear. (1) Warm continuation. (2) CORE: "${firstName}, to keep the rest of this reading secure I need WhatsApp verification — enter your mobile number; the OTP can take a few seconds to arrive." Never mention email or password. No pause.`,
+            `"emailGate" — EXACTLY 2 sentences, soft SMS OTP gate. No FOMO/fear. (1) Warm continuation. (2) CORE: "${firstName}, to keep the rest of this reading secure I need SMS verification — enter your mobile number; the OTP can take a few seconds to arrive." Never mention email or password. No pause.`,
             `"authCheck" — 1 sentence. Operational line that you are checking their saved reading. No pause.`,
             `"welcomeBack" — 2 sentences. Warm recognition + saved reading mention + OTP/password ask. No pause.`,
             `"newUser" — 2 sentences. Verifying via OTP saves and protects the reading. No pause.`,
@@ -2620,8 +2620,8 @@ Current section: ${sectionKey}
         const willOpen = this._isGuiderMale() ? 'खोलूँगा' : 'खोलूँगी';
         const willRead = this._isGuiderMale() ? 'पढ़ूँगा' : 'पढ़ूँगी';
         const gateLine = isHindi
-            ? `${name}, आगे की reading सुरक्षित रखने के लिए व्हाट्सऐप verification चाहिए -अपना मोबाइल नंबर डाल दीजिए; ओटीपी आने में कुछ सेकंड लग सकते हैं।`
-            : `${name}, to keep the rest of this reading secure, I need WhatsApp verification -enter your mobile number; the OTP can take a few seconds to arrive.`;
+            ? `${name}, आगे की reading सुरक्षित रखने के लिए SMS verification चाहिए -अपना मोबाइल नंबर डाल दीजिए; ओटीपी आने में कुछ सेकंड लग सकते हैं।`
+            : `${name}, to keep the rest of this reading secure, I need SMS verification -enter your mobile number; the OTP can take a few seconds to arrive.`;
 
         if (isAskMaya) {
             const askFallbacks = isHindi ? {
@@ -2643,7 +2643,7 @@ Current section: ${sectionKey}
                 emotionalPattern: `Under your ${subjectPhrase} is the worry that the right time may slip away. So the answer needs both timing and a practical next step.`,
                 unresolvedThread: `The unresolved thread is when to take the next correct move in ${topicLabel}. Once the file is saved, I will open it with an exact window.`,
                 accuracyShock: `In the recent past, pressure around this same question has increased suddenly. It is not random -the chart's timing shift is activating this area.`,
-                suspenseBridge: `The most intense pattern in your ${subjectPhrase} is timing and decision. It would not be right to open the full truth here, because the exact answer needs chart, numbers, and timing together after verification. The next layer is ready once WhatsApp OTP confirms it is you.`,
+                suspenseBridge: `The most intense pattern in your ${subjectPhrase} is timing and decision. It would not be right to open the full truth here, because the exact answer needs chart, numbers, and timing together after verification. The next layer is ready once SMS OTP confirms it is you.`,
                 emailGate: `The next layer of the reading is ready. ${gateLine}`,
                 fomoHook: `There is a serious timing signal around ${topicLabel}. The full details belong in your private reading, because a half-answer here would not be fair.`,
                 returnHook: `The next phase around ${topicLabel} is visible. Next time, we will open it with the exact month.`,
@@ -3367,7 +3367,7 @@ Rules:
                 year: 'Act 6. Timing layer. आने वाले महीनों को living timeline की तरह बोलिए, और एक window को बाकी से ज्यादा charged feel कराइए।',
                 warningIntro: 'Act 7 transition. पहले trust hold कीजिए, फिर caution खोलिए. Tone protective हो, dramatic नहीं।',
                 warning: 'Act 7. Shadow layer. एक specific trigger, उसका pattern, और protective boundary बताइए. यह same story का honest underside लगे।',
-                emailGate: 'WhatsApp OTP gate. Reading secure रखने के लिए phone verification चाहिए। साफ़ कहिए कि WhatsApp number भरें और OTP आने में कुछ seconds लग सकते हैं। Email/password का ज़िक्र कभी नहीं।',
+                emailGate: 'SMS OTP gate. Reading secure रखने के लिए phone verification चाहिए। साफ़ कहिए कि mobile number भरें और OTP आने में कुछ seconds लग सकते हैं। Email/password का ज़िक्र कभी नहीं।',
                 deepRevealPrep: 'Deep reveal threshold. User को feel होना चाहिए कि अब reading deeper और more personal होने वाली है, without sounding salesy.',
                 returnHook: 'Return trigger. एक unresolved timing shift बताइए - "अभी नहीं बता सकती, पर आपकी chart में [month] में कुछ shift है - कल इसके बारे में और बात करते हैं।"',
                 completion: 'Closing beat. Reading को softly settle कराइए, लेकिन curiosity और conversation का दरवाजा खुला रखिए।',
@@ -3394,7 +3394,7 @@ Rules:
                 year: 'Act 6. Timing layer. Speak about the coming months like a living timeline, and make one window feel more charged than the rest.',
                 warningIntro: 'Act 7 transition. Hold trust first, then open the caution. Sound protective, not dramatic.',
                 warning: 'Act 7. Shadow layer. Name one specific trigger, its repeating pattern, and a protective boundary. It must feel like the honest underside of the same story.',
-                emailGate: 'WhatsApp OTP gate. Explain that phone verification keeps the reading secure. Clearly ask for the WhatsApp number and mention the OTP can take a few seconds to arrive. Never mention email or password.',
+                emailGate: 'SMS OTP gate. Explain that phone verification keeps the reading secure. Clearly ask for the mobile number and mention the OTP can take a few seconds to arrive. Never mention email or password.',
                 deepRevealPrep: 'Deep reveal threshold. The user should feel that the reading is about to become deeper and more personal without sounding salesy.',
                 returnHook: 'Return trigger. Name one unresolved timing shift - "I cannot tell you yet, but your chart shows a shift in [month] - let us talk about this tomorrow."',
                 completion: 'Closing beat. Let the reading settle softly while leaving the door open for further conversation.',
@@ -3658,7 +3658,7 @@ No padding, no generic praise।`,
                 publicLifeIntro: `Current user के लिए public-life section का ONE transition। 1 sentence। नाम, image, leadership, या visibility की तरफ shift। No pause।`,
                 publicLife: `Current user के लिए ONE neutral public-life & leadership reading। 4-5 sentences। 10th house (status), Sun (authority), Moon (mass appeal), और कोई Raj Yoga / Neechabhanga combinations identify कीजिए। बताइए: chart genuinely public visibility support करती है या नहीं, कौनसी window में नाम/recognition rise करेगा, और कौनसी window में controversy avoid। Politically neutral -किसी party या ideology का pakshpaat नहीं। ONE leadership remedy (Surya Namaskar / Aditya Hridaya Stotra / specific daan)। ज्यादा से ज्यादा एक [[pause-250]]।`,
                 calculationRecovery: `Current user के लिए ONE short recovery line। 1 sentence। Operational tone, mystical sales copy नहीं। No pause।`,
-                emailGate: `Current user के लिए ONE soft WhatsApp OTP gate transition। EXACTLY 2 sentences। FOMO या डर नहीं। Sentence 1: warm continuation -reading का अगला layer तैयार है। Sentence 2 (CORE): "${this.firstName || 'जी'}, आगे की reading सुरक्षित रखने के लिए व्हाट्सऐप verification चाहिए -अपना मोबाइल नंबर डाल दीजिए; ओटीपी आने में कुछ सेकंड लग सकते हैं।" दोस्त वाली tone, sales pitch नहीं। Email/password का ज़िक्र कभी नहीं। No pause।`,
+                emailGate: `Current user के लिए ONE soft SMS OTP gate transition। EXACTLY 2 sentences। FOMO या डर नहीं। Sentence 1: warm continuation -reading का अगला layer तैयार है। Sentence 2 (CORE): "${this.firstName || 'जी'}, आगे की reading सुरक्षित रखने के लिए SMS verification चाहिए -अपना मोबाइल नंबर डाल दीजिए; ओटीपी आने में कुछ सेकंड लग सकते हैं।" दोस्त वाली tone, sales pitch नहीं। Email/password का ज़िक्र कभी नहीं। No pause।`,
                 fomoHook: `Current user के लिए ONE FOMO hook। 2 sentences। Chart + numbers से ONE concerning या serious pattern बताइए (upcoming challenge / hidden tension / career trap / repeating self-sabotage)। Confident और specific, vague नहीं। डराइए नहीं, urgency बनाइए। End में hint कि full details private reading में हैं। No pause।`,
                 combinedTeaser: `Current user के लिए ONE flowing teaser reading -तीन connected segments, total 6 sentences max।
 
@@ -3711,7 +3711,7 @@ No padding, no generic praise.`,
                 publicLifeIntro: `Write ONE transition into the public-life section. 1 sentence. Shift toward name, image, leadership, or visibility. No pause.`,
                 publicLife: `Write ONE neutral public-life & leadership reading. 4-5 sentences. Identify the 10th house (status), Sun (authority), Moon (mass appeal), and any Raj Yoga or Neechabhanga combinations. Say honestly whether the chart genuinely supports public visibility, in which window name/recognition will rise, and which window calls for avoiding controversy. Stay politically neutral — no party or ideology bias. Offer ONE leadership remedy (Surya Namaskar / Aditya Hridaya Stotra / specific daan). At most one [[pause-250]].`,
                 calculationRecovery: `Write ONE short recovery line. 1 sentence. Operational tone, never mystical or salesy. No pause.`,
-                emailGate: `Write ONE soft WhatsApp OTP gate transition. EXACTLY 2 sentences. Do NOT create FOMO or fear. Sentence 1: warm continuation — say the next layer of the reading is ready. Sentence 2 (CORE): "${this.firstName || 'friend'}, to keep the rest of this reading secure, I need WhatsApp verification — enter your mobile number; the OTP can take a few seconds to arrive." Friend tone, never salesperson. Never mention email or password. No pause.`,
+                emailGate: `Write ONE soft SMS OTP gate transition. EXACTLY 2 sentences. Do NOT create FOMO or fear. Sentence 1: warm continuation — say the next layer of the reading is ready. Sentence 2 (CORE): "${this.firstName || 'friend'}, to keep the rest of this reading secure, I need SMS verification — enter your mobile number; the OTP can take a few seconds to arrive." Friend tone, never salesperson. Never mention email or password. No pause.`,
                 fomoHook: `Write ONE FOMO hook. 2 sentences. From kundli + numbers, reveal ONE concerning or serious pattern (upcoming challenge / hidden tension / career trap / repeating self-sabotage). Confident and specific, never vague. Don't fear-monger; create genuine urgency. End with a hint that full details are in the private reading. No pause.`,
                 combinedTeaser: `Write ONE flowing teaser reading for the current user — three connected segments, total 6 sentences max.
 
@@ -5878,7 +5878,7 @@ Return ONLY JSON:
             this.spokenNarrations.push({ stage: 'emailGate', text: emailNarration });
         }
 
-        // Flow into the WhatsApp OTP gate
+        // Flow into the SMS OTP gate
         await this.showEmailGate();
         const phoneInput = document.getElementById('gate-phone');
         if (phoneInput && document.body.contains(phoneInput)) {
@@ -7756,8 +7756,8 @@ Return ONLY JSON:
         textDisplay.innerHTML = `
             <div class="email-gate-container phone-gate-container">
                 <div class="gate-header">
-                    <h3>${isHindi ? 'व्हाट्सऐप से रीडिंग सुरक्षित करें' : 'Secure your reading with WhatsApp'}</h3>
-                    <p class="gate-subtitle">${isHindi ? `${this.firstName}, आगे की reading आपके साथ सुरक्षित रखने के लिए व्हाट्सऐप verification चाहिए। अपना मोबाइल नंबर डालिए; ओटीपी आने में कुछ सेकंड लग सकते हैं।` : `${this.firstName}, I need WhatsApp verification to keep the rest of your reading secure with you. Enter your mobile number; the OTP can take a few seconds to arrive.`}</p>
+                    <h3>${isHindi ? 'SMS से रीडिंग सुरक्षित करें' : 'Secure your reading with SMS'}</h3>
+                    <p class="gate-subtitle">${isHindi ? `${this.firstName}, आगे की reading आपके साथ सुरक्षित रखने के लिए SMS verification चाहिए। अपना मोबाइल नंबर डालिए; ओटीपी आने में कुछ सेकंड लग सकते हैं।` : `${this.firstName}, I need SMS verification to keep the rest of your reading secure with you. Enter your mobile number; the OTP can take a few seconds to arrive.`}</p>
                 </div>
                 <div class="gate-benefits">
                     <div class="benefit-item"><i class="bi bi-heart-fill"></i><span>${isHindi ? 'प्रेम और रिश्तों का समय-संकेत' : 'Love and relationship timing'}</span></div>
@@ -7773,13 +7773,13 @@ Return ONLY JSON:
                             <i class="bi bi-chevron-down country-chevron"></i>
                         </div>
                         <input type="tel" id="gate-phone" class="form-control form-control-lg phone-number-input"
-                            placeholder="${isHindi ? 'WhatsApp नंबर' : 'WhatsApp number'}" inputmode="numeric" maxlength="15" autocomplete="tel-national">
+                            placeholder="${isHindi ? 'मोबाइल नंबर' : 'mobile number'}" inputmode="numeric" maxlength="15" autocomplete="tel-national">
                         <select id="country-code-select" class="country-code-hidden-select" aria-label="Country code">
                             ${countryOptions}
                         </select>
                     </div>
                     <button type="submit" id="phone-gate-submit" class="btn btn-primary btn-lg w-100 mt-3">
-                        <i class="bi bi-whatsapp me-2"></i>${isHindi ? 'OTP भेजें WhatsApp पर' : 'Send OTP on WhatsApp'}
+                        <i class="bi bi-chat-dots me-2"></i>${isHindi ? 'OTP भेजें SMS से' : 'Send OTP by SMS'}
                     </button>
                     <p class="gate-note mt-3">
                         <i class="bi bi-shield-check"></i> ${isHindi ? 'आपका नंबर निजी और सुरक्षित रहेगा' : 'Your number stays private and secure'}
@@ -7798,7 +7798,7 @@ Return ONLY JSON:
             const countryCode = document.getElementById('selected-code')?.textContent?.trim() || '+91';
 
             if (!this.isValidPhone(phone)) {
-                MayaUtils.toast.error(isHindi ? 'कृपया सही WhatsApp नंबर भरिए' : 'Please enter a valid WhatsApp number');
+                MayaUtils.toast.error(isHindi ? 'कृपया सही मोबाइल नंबर भरिए' : 'Please enter a valid mobile number');
                 return;
             }
 
@@ -7980,21 +7980,22 @@ Return ONLY JSON:
 
         const result = await MayaAuth.sendOTP(phone, countryCode);
         if (!result.success) {
-            // Even if API fails, still show OTP entry so master OTP can be used
-            console.warn('OTP send failed, proceeding to OTP entry anyway:', result.error);
             MayaUtils.toast.error(result.error || (isHindi ? 'OTP नहीं भेजा जा सका' : 'Could not send OTP'));
+            this.emailSubmissionInProgress = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i class="bi bi-chat-dots me-2"></i>${isHindi ? 'SMS से OTP भेजें' : 'Send OTP by SMS'}`;
+            }
+            return;
         }
 
         this.emailSubmissionInProgress = false;
-        await this.showOTPVerificationFlow(phone, countryCode, result.provider);
+        await this.showOTPVerificationFlow(phone, countryCode);
     },
 
-    async showOTPVerificationFlow(phone, countryCode, provider = MayaAuth.pendingOtpProvider) {
+    async showOTPVerificationFlow(phone, countryCode) {
         const lang = this._resolveCurrentLanguage();
         const isHindi = lang === 'hi';
-        const isSmsOtp = provider === 'firebase';
-        const deliveryLabel = isSmsOtp ? 'SMS' : (isHindi ? 'व्हाट्सऐप' : 'WhatsApp');
-        const deliveryArticle = isSmsOtp ? 'an' : 'a';
         const textDisplay = document.getElementById('maya-text-display');
 
         this.currentPhase = this.PHASES.LOGIN_OR_REGISTER;
@@ -8003,9 +8004,9 @@ Return ONLY JSON:
         textDisplay.innerHTML = `
             <div class="auth-flow-container otp-flow-container">
                 <div class="auth-header">
-                    <i class="bi ${isSmsOtp ? 'bi-chat-dots' : 'bi-whatsapp'} otp-whatsapp-icon"></i>
+                    <i class="bi bi-chat-dots otp-delivery-icon"></i>
                     <h3>${isHindi ? 'OTP दर्ज करें' : 'Enter OTP'}</h3>
-                    <p class="auth-phone-hint">${isHindi ? `${countryCode} ${phone} पर ${deliveryLabel} OTP भेजा गया है। कृपया इसके आने तक कुछ सेकंड प्रतीक्षा करें।` : `We sent ${deliveryArticle} ${deliveryLabel} OTP to ${countryCode} ${phone}. Please wait a few seconds for it to arrive.`}</p>
+                    <p class="auth-phone-hint">${isHindi ? `${countryCode} ${phone} पर SMS OTP भेजा गया है। कृपया इसके आने तक कुछ सेकंड प्रतीक्षा करें।` : `We sent an SMS OTP to ${countryCode} ${phone}. Please wait a few seconds for it to arrive.`}</p>
                 </div>
                 <div class="otp-input-group" id="otp-input-group">
                     <input type="tel" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
@@ -8085,8 +8086,7 @@ Return ONLY JSON:
             event.preventDefault();
             const resend = await MayaAuth.sendOTP(phone, countryCode);
             if (resend.success) {
-                const resendProvider = resend.provider === 'firebase' ? 'SMS' : (isHindi ? 'व्हाट्सऐप' : 'WhatsApp');
-                MayaUtils.toast.success(isHindi ? `नया ${resendProvider} OTP भेजा गया है। कृपया कुछ सेकंड प्रतीक्षा करें।` : `A new ${resendProvider} OTP was sent. Please wait a few seconds.`);
+                MayaUtils.toast.success(isHindi ? 'नया SMS OTP भेजा गया है। कृपया कुछ सेकंड प्रतीक्षा करें।' : 'A new SMS OTP was sent. Please wait a few seconds.');
                 digits.forEach((digit) => {
                     digit.value = '';
                     digit.disabled = false;
@@ -8164,7 +8164,7 @@ Return ONLY JSON:
             MayaAuth.saveBirthDetails(fullProfile).catch(() => { });
         }
 
-        MayaUtils.toast.success(isHindi ? 'WhatsApp से verify हो गया!' : 'Verified via WhatsApp!');
+        MayaUtils.toast.success(isHindi ? 'SMS से verify हो गया!' : 'Verified via SMS!');
         await this.showDeepReveal();
     },
 

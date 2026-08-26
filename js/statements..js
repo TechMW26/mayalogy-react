@@ -389,7 +389,7 @@ Include:
 - इन chart items में से 1–2 hooks speech में weave कीजिए (bullets नहीं):
 ${(predictionItems || []).map((x)=>`- ${x}`).join("\n")}
 - privacy: private + secure।
-- End: व्हाट्सऐप नंबर माँगिए और कहिए कि ओटीपी आने में कुछ सेकंड लग सकते हैं।
+- End: मोबाइल नंबर माँगिए और कहिए कि ओटीपी आने में कुछ सेकंड लग सकते हैं।
 [[pause-250]] एक बार। देवनागरी Hinglish, “आप”।
 `
     },
@@ -408,29 +408,29 @@ You are MAYA. Write ONE short spoken line while checking records for ${name}.
     },
 
         authWelcomeBack: {
-      goal: "Returning user welcome + WhatsApp OTP continuation",
+      goal: "Returning user welcome + SMS OTP continuation",
       en: ({ name }, ctx) => `
 You are MAYA. Write ONE spoken script (2–3 sentences) for returning user ${name}.
-    Warm recognition + saved reading mention + continue through WhatsApp OTP if verification is needed. Never mention email or password.
+    Warm recognition + saved reading mention + continue through SMS OTP if verification is needed. Never mention email or password.
 Include [[pause-250]] once.
 `,
       hi: ({ name }, ctx) => `
 आप MAYA हैं। returning user ${name} जी के लिए 2–3 वाक्य।
-    Warm recognition + saved reading mention + ज़रूरत हो तो WhatsApp OTP से continue करने की बात। Email या password का ज़िक्र कभी न करें।
+    Warm recognition + saved reading mention + ज़रूरत हो तो SMS OTP से continue करने की बात। Email या password का ज़िक्र कभी न करें।
 [[pause-250]] एक बार। “आप”।
 `
     },
 
     authNewUser: {
-      goal: "New user registration + WhatsApp OTP setup",
+      goal: "New user registration + SMS OTP setup",
       en: ({ name }, ctx) => `
 You are MAYA. Write ONE spoken script (2–3 sentences) for new user ${name}.
-    Explain WhatsApp OTP secures their reading + keeps it private. End with a clear ask to verify with WhatsApp OTP. Never mention email or password.
+    Explain SMS OTP secures their reading + keeps it private. End with a clear ask to verify with SMS OTP. Never mention email or password.
 Include [[pause-250]] once.
 `,
       hi: ({ name }, ctx) => `
 आप MAYA हैं। new user ${name} जी के लिए 2–3 वाक्य।
-    WhatsApp OTP से reading secure + private रहती है। End: WhatsApp OTP से verify करने को कहिए। Email या password का ज़िक्र कभी न करें।
+    SMS OTP से reading secure + private रहती है। End: SMS OTP से verify करने को कहिए। Email या password का ज़िक्र कभी न करें।
 [[pause-250]] एक बार। “आप”।
 `    },
 

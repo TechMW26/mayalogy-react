@@ -652,7 +652,7 @@ const MayaApp = {
 
         // Google login
         document.getElementById('googleLoginBtn')?.addEventListener('click', () => {
-            MayaUtils.toast.info('WhatsApp OTP login is active. Use the login button to continue.');
+            MayaUtils.toast.info('SMS OTP login is active. Use the login button to continue.');
         });
     },
 
