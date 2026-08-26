@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { buildPhoneKey, isValidNormalizedPhone, normalizePhoneInput } from './_phone.js';
+import { buildPhoneKey, isValidNormalizedPhone, normalizePhoneInput } from '../api/_phone.js';
 
 test('normalizes Firebase phone-auth input without duplicating the country code', () => {
     assert.deepEqual(normalizePhoneInput('91 80764 84222', '+91'), {
