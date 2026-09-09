@@ -1,4 +1,4 @@
-import { handleTextToSpeechRequest } from '../server/mayaApi.js';
+import { handleTextToSpeechRequest } from '../server/pollinationsApi.js';
 
 export const config = {
   api: {

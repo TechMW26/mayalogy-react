@@ -901,10 +901,15 @@ Current section: ${sectionKey}
             return x || 1;
         };
 
-        const personalYear = this.calculations?.personalYear || 1;
-        const months = Array.from({ length: 12 }, (_, i) => {
-            const month = i + 1;
-            return { month, pm: reduce(personalYear + month) };
+        const now = new Date();
+        const months = Array.from({ length: 9 }, (_, offset) => {
+            const date = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+            const month = date.getMonth() + 1;
+            const year = date.getFullYear();
+            const personalYear = window.MayaNumerology?.calculatePersonalYear
+                ? MayaNumerology.calculatePersonalYear(this.userData.birthDate, year)
+                : (this.calculations?.personalYear || 1);
+            return { month, year, date, pm: reduce(personalYear + month) };
         });
 
         // Prefer “strong” and “caution” months based on common numerology timing logic
@@ -919,10 +924,8 @@ Current section: ${sectionKey}
             .map((n) => months.find((m) => m.pm === n))
             .find(Boolean);
 
-        const monthName = (m) => {
-            const d = new Date();
-            d.setMonth(m - 1);
-            return d.toLocaleString(isHindi ? 'hi-IN' : 'en-US', { month: 'long' });
+        const monthName = (entry) => {
+            return entry.date.toLocaleString(isHindi ? 'hi-IN' : 'en-US', { month: 'long', year: 'numeric' });
         };
 
         const theme = (pm) => {
@@ -962,24 +965,26 @@ Current section: ${sectionKey}
             items.push({
                 kind: 'strong',
                 month: strong.month,
-                monthName: monthName(strong.month),
+                year: strong.year,
+                monthName: monthName(strong),
                 pm: strong.pm,
                 theme: theme(strong.pm),
                 summary: isHindi
-                    ? `${monthName(strong.month)} के आस-पास आपकी ऊर्जा ${strong.pm} जैसी होगी - ${theme(strong.pm)}.`
-                    : `Around ${monthName(strong.month)} your chart hits a ${strong.pm} phase - ${theme(strong.pm)}.`
+                    ? `${monthName(strong)} में व्यक्तिगत माह ${strong.pm} ${theme(strong.pm)} की ओर संकेत करता है।`
+                    : `${monthName(strong)} is Personal Month ${strong.pm}, associated with ${theme(strong.pm)}.`
             });
         }
         if (caution) {
             items.push({
                 kind: 'caution',
                 month: caution.month,
-                monthName: monthName(caution.month),
+                year: caution.year,
+                monthName: monthName(caution),
                 pm: caution.pm,
                 theme: theme(caution.pm),
                 summary: isHindi
-                    ? `${monthName(caution.month)} के आस-पास सावधानी रखिए - ${caution.pm} चरण में ${theme(caution.pm)} उभर सकता है।`
-                    : `Watch ${monthName(caution.month)} - a ${caution.pm} phase (${theme(caution.pm)}).`
+                    ? `${monthName(caution)} में व्यक्तिगत माह ${caution.pm} ${theme(caution.pm)} की ओर संकेत करता है।`
+                    : `${monthName(caution)} is Personal Month ${caution.pm}, associated with ${theme(caution.pm)}.`
             });
         }
 
@@ -1075,6 +1080,8 @@ Current section: ${sectionKey}
             hasExactBirthTime: this.hasExactBirthTime(),
             hasBirthCoordinates: this.hasBirthCoordinates(),
             hasReliableAscendant: canUseAscendant,
+            precisionLevel: canUseAscendant ? 'birth-time-and-location' : 'date-based',
+            timedChartClaimsAllowed: canUseAscendant,
             narrativeLens: this.selectNarrativeLens(chartSummary)
         };
     },
@@ -1133,12 +1140,12 @@ Current section: ${sectionKey}
         const isHindi = lang === 'hi';
 
         // Full kundli planetary data for AI
-        const detailedChartFacts = (this.kundliChart && window.MayaKundli?.buildDetailedChartFacts)
+        const detailedChartFacts = (profile.timedChartClaimsAllowed && this.kundliChart && window.MayaKundli?.buildDetailedChartFacts)
             ? MayaKundli.buildDetailedChartFacts(this.kundliChart, this.userData?.birthDate)
             : '';
 
         // Lal Kitab planet-in-house analysis specific to this user's chart
-        const lalKitabContext = (this.kundliChart?.planets?.length && this.kundliChart?.ascendant?.name && window.getLalKitabForChart)
+        const lalKitabContext = (profile.timedChartClaimsAllowed && this.kundliChart?.planets?.length && this.kundliChart?.ascendant?.name && window.getLalKitabForChart)
             ? getLalKitabForChart(this.kundliChart.planets, this.kundliChart.ascendant.name)
             : '';
 
@@ -1169,12 +1176,17 @@ Current section: ${sectionKey}
             moonSign: profile.moonSign,
             sunSign: profile.western?.name || '',
             dominantElement: profile.dominantElement,
-            currentDasha: profile.currentDasha?.vedic || profile.currentDasha?.planet,
-            yogaNames: profile.yogaNames || [],
+            currentDasha: profile.timedChartClaimsAllowed ? (profile.currentDasha?.vedic || profile.currentDasha?.planet) : '',
+            yogaNames: profile.timedChartClaimsAllowed ? (profile.yogaNames || []) : [],
             birthPlace: this.userData?.birthPlace || '',
             birthPlaceShort: profile.birthPlaceShort || '',
             hasExactBirthTime: profile.hasExactBirthTime,
             hasReliableAscendant: profile.hasReliableAscendant,
+            precisionLevel: profile.precisionLevel || 'date-based',
+            timedChartClaimsAllowed: Boolean(profile.timedChartClaimsAllowed),
+            calculationBasis: profile.timedChartClaimsAllowed
+                ? 'Exact birth date, time, resolved coordinates and time zone; Lahiri sidereal chart plus Pythagorean numerology.'
+                : 'Birth-date and name numerology only. Ascendant, houses, exact dashas and timed chart claims are unavailable and must not be stated.',
             narrativeLens: profile.narrativeLens || '',
             chartHighlights: profile.highlights || [],
             predictionItems: items,
@@ -1190,7 +1202,7 @@ Current section: ${sectionKey}
                 vedicZodiac: profile.vedic?.name || '',
                 ascendant: profile.hasReliableAscendant ? profile.ascendant?.name : '',
                 moonSign: profile.moonSign,
-                currentDasha: profile.currentDasha?.vedic || profile.currentDasha?.planet,
+                currentDasha: profile.timedChartClaimsAllowed ? (profile.currentDasha?.vedic || profile.currentDasha?.planet) : '',
                 birthPlaceShort: profile.birthPlaceShort || '',
                 narrativeLens: profile.narrativeLens || ''
             }
@@ -1664,17 +1676,8 @@ Current section: ${sectionKey}
             }
         } catch (error) {
             console.error('❌ Numerology calculation failed:', error);
-            // Provide fallback calculations to prevent funnel crash
-            this.calculations = {
-                lifePath: 7,
-                destiny: 5,
-                soulUrge: 3,
-                personality: 4,
-                personalYear: 1,
-                currentMonthNumber: 5,
-                currentDayNumber: 3
-            };
-            console.warn('⚠️ Using fallback calculations');
+            this.calculations = null;
+            throw new Error('Your details could not be calculated accurately. Please check the name spelling and birth date.');
         }
 
         // Save calculations to localStorage as well

@@ -1,4 +1,4 @@
-import { handleRemoveBackgroundRequest } from '../server/mayaApi.js';
+import { handleImageEditRequest } from '../server/pollinationsApi.js';
 
 export const config = {
   api: {
@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const result = await handleRemoveBackgroundRequest(req.body || {}, process.env);
+  const result = await handleImageEditRequest(req.body || {}, process.env);
 
   Object.entries(result.headers || {}).forEach(([key, value]) => {
     res.setHeader(key, value);

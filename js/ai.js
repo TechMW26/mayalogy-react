@@ -184,14 +184,14 @@ const MayaAI = {
     },
 
     /**
-     * Stale alias kept so old call sites do not crash. Routes to Gemini.
+     * Stale alias kept so old call sites do not crash.
      */
     async callOpenAI(message, options = {}) {
         return this.callGemini(message, options);
     },
 
     /**
-     * Call the AI through Gemini. Public method name is kept for existing callers.
+     * Call Pollinations through the server. Public method name is kept for existing callers.
      */
     async callGemini(message, options = {}) {
         const systemPrompt = this.buildSystemPrompt();
@@ -200,13 +200,13 @@ const MayaAI = {
             ? this.conversationHistory[this.conversationHistory.length - 1]?.content || message
             : message;
 
-        const result = await this._callGeminiProvider(systemPrompt, userMessage, includeHistory, options);
+        const result = await this._callPollinationsProvider(systemPrompt, userMessage, includeHistory, options);
         if (result) {
-            this.currentProvider = 'gemini';
+            this.currentProvider = 'pollinations';
             return result;
         }
 
-        throw new Error('Gemini AI provider failed');
+        throw new Error('Pollinations AI provider failed');
     },
 
     /**
@@ -221,29 +221,47 @@ const MayaAI = {
             ? this.conversationHistory[this.conversationHistory.length - 1]?.content || message
             : message;
         const fastTimeoutMs = Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : 4200;
-        const fastOptions = {
+        return this.callGemini(message, {
             ...options,
-            provider: 'gemini',
+            provider: 'pollinations',
             timeoutMs: fastTimeoutMs,
             maxKeyAttempts: Number(options.maxKeyAttempts) > 0 ? Number(options.maxKeyAttempts) : 2,
             fastFail: options.fastFail !== false
-        };
+        });
+    },
 
-        if (options.provider === 'gemini' || options.preferGemini || options.requireComplete || this._shouldSkipGroqForRequest(systemPrompt, userMessage, options)) {
-            return this.callGemini(message, fastOptions);
-        }
+    async _callPollinationsProvider(systemPrompt, userMessage, includeHistory = false, options = {}) {
+        const contextMessages = Array.isArray(options.contextMessages) ? options.contextMessages : [];
+        const messages = [];
+        if (includeHistory) messages.push(...contextMessages, ...this.conversationHistory);
+        else if (contextMessages.length) messages.push(...contextMessages);
+        messages.push({ role: 'user', content: String(userMessage || '') });
 
-        const groqResult = await this._callGroqProvider(systemPrompt, userMessage, includeHistory, options);
-        if (groqResult) {
-            this.currentProvider = 'groq';
-            return groqResult;
-        }
+        const response = await this._withOptionalTimeout(fetch(MAYA_CONFIG.ENDPOINTS.AI_TEXT || '/api/ai-text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                systemPrompt,
+                messages,
+                temperature: options.temperature,
+                topP: options.topP,
+                maxTokens: options.maxTokens
+            })
+        }), options.timeoutMs ?? 0, 'Pollinations');
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.text) throw new Error(data.error || 'Pollinations request failed');
+        return String(data.text).trim();
+    },
 
-        if (options.fallbackToGemini === false) {
-            throw new Error('Groq fast provider failed');
-        }
-
-        return this.callGemini(message, fastOptions);
+    async generateImage(prompt, options = {}) {
+        const response = await fetch(MAYA_CONFIG.ENDPOINTS.AI_IMAGE || '/api/ai-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, size: options.size, quality: options.quality })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.imageData) throw new Error(data.error || 'Image generation failed');
+        return data.imageData;
     },
 
     _getGroqApiKey() {

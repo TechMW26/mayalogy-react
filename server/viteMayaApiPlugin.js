@@ -1,5 +1,12 @@
-import { handleRemoveBackgroundRequest, handleTextToSpeechRequest } from './mayaApi.js';
+import {
+  handleImageEditRequest,
+  handleImageGenerationRequest,
+  handleTextGenerationRequest,
+  handleTextToSpeechRequest,
+  handleVisionRequest,
+} from './pollinationsApi.js';
 import firebasePhoneSessionHandler from '../api/firebase-phone-session.js';
+import reviewLoginHandler from '../api/review-login.js';
 
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {
@@ -109,12 +116,32 @@ export function mayaApiDevPlugin() {
         }
 
         if (req.method === 'POST' && pathname === '/api/remove-background') {
-          await handleRequest(req, res, handleRemoveBackgroundRequest, 'remove-background');
+          await handleRequest(req, res, handleImageEditRequest, 'remove-background');
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/ai-text') {
+          await handleRequest(req, res, handleTextGenerationRequest, 'ai-text');
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/ai-vision') {
+          await handleRequest(req, res, handleVisionRequest, 'ai-vision');
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/ai-image') {
+          await handleRequest(req, res, handleImageGenerationRequest, 'ai-image');
           return;
         }
 
         if (req.method === 'POST' && pathname === '/api/firebase-phone-session') {
           await handleVercelRequest(req, res, firebasePhoneSessionHandler, 'firebase-phone-session');
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/review-login') {
+          await handleVercelRequest(req, res, reviewLoginHandler, 'review-login');
           return;
         }
 

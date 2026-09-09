@@ -84,8 +84,8 @@ const MayaOnboarding = {
     steps: [
         {
             id: 'language',
-            question: "Which language should I speak to you in?",
-            questionHi: "Which language should I speak to you in?",
+            question: "How would you like Maya to speak with you?",
+            questionHi: "माया आपसे किस भाषा में बात करे?",
             field: 'language',
             type: 'select',
             options: [
@@ -96,20 +96,20 @@ const MayaOnboarding = {
         },
         {
             id: 'welcome',
-            question: "What name should I use for your astrology reading?",
-            questionHi: "आपकी कुंडली पढ़ते वक्त मैं आपको किस नाम से बुलाऊँ?",
+            question: "What should I call you? Your full everyday name also makes the name-based numbers more accurate.",
+            questionHi: "मैं आपको किस नाम से बुलाऊँ? पूरा प्रचलित नाम देने से नाम के अंक अधिक सही बनेंगे।",
             field: 'name',
             type: 'name',
             placeholder: 'First name',
             placeholderHi: 'पहला नाम',
-            placeholder2: 'Last name',
-            placeholder2Hi: 'उपनाम (सरनेम)',
+            placeholder2: 'Last name (optional)',
+            placeholder2Hi: 'उपनाम (वैकल्पिक)',
             validation: (value) => value && value.length >= 2
         },
         {
             id: 'gender',
-            question: (name) => `${name}, I want to speak to you correctly and personally. What's your gender?`,
-            questionHi: (name) => `${name}, मैं आपसे सही और व्यक्तिगत तरीके से बात करना चाहती हूँ। आपका लिंग क्या है?`,
+            question: (name) => `${name}, how should I personalise the language I use for you?`,
+            questionHi: (name) => `${name}, आपके लिए सही शब्द चुनने में मेरी सहायता करें।`,
             field: 'gender',
             type: 'select',
             options: [
@@ -121,16 +121,25 @@ const MayaOnboarding = {
         },
         {
             id: 'birthDate',
-            question: "This is where your visible timeline begins. What's your date of birth?",
-            questionHi: "यहीं से आपकी समयरेखा शुरू होती है। आपकी जन्म तिथि क्या है?",
+            question: "What is your date of birth? I use it to calculate your Life Path and timing cycle.",
+            questionHi: "आपकी जन्म तिथि क्या है? इससे जीवन पथ और समय-चक्र की गणना होगी।",
             field: 'birthDate',
             type: 'date',
-            validation: (value) => value && value.length > 0
+            validation: (value) => {
+                const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+                if (!match) return false;
+                const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+                return date.getFullYear() === Number(match[1])
+                    && date.getMonth() === Number(match[2]) - 1
+                    && date.getDate() === Number(match[3])
+                    && date.getFullYear() >= 1900
+                    && date <= new Date();
+            }
         },
         {
             id: 'birthTime',
-            question: "Do you know your birth time? (Optional, used for personalized timing)",
-            questionHi: "क्या आपको अपना जन्म समय पता है? (ज़रूरी नहीं, व्यक्तिगत समय-सुझाव के लिए)",
+            question: "Do you know your birth time? It improves house and ascendant accuracy, but you can continue without it.",
+            questionHi: "क्या आपको जन्म समय पता है? इससे भाव और लग्न अधिक सही होंगे, पर इसके बिना भी आगे बढ़ सकते हैं।",
             field: 'birthTime',
             type: 'time',
             optional: true,
@@ -139,8 +148,8 @@ const MayaOnboarding = {
         },
         {
             id: 'birthPlace',
-            question: "Where were you born? This helps personalize timing and location-aware guidance.",
-            questionHi: "आप कहाँ पैदा हुए थे? इससे समय और स्थान आधारित मार्गदर्शन बेहतर होता है।",
+            question: "Which city were you born in? I use its coordinates and time zone for the chart.",
+            questionHi: "आपका जन्म किस शहर में हुआ था? कुंडली के लिए उसके निर्देशांक और समय क्षेत्र का उपयोग होगा।",
             field: 'birthPlace',
             type: 'location',
             placeholder: 'Enter your birth city',
@@ -149,21 +158,22 @@ const MayaOnboarding = {
         },
         {
             id: 'maritalStatus',
-            question: "What's your current relationship status?",
-            questionHi: "आपकी वर्तमान रिश्ते की स्थिति क्या है?",
+            question: "If relationship guidance comes up, which context fits you today?",
+            questionHi: "यदि रिश्तों की बात आए, तो आज आपकी स्थिति क्या है?",
             field: 'maritalStatus',
             type: 'select',
             options: [
                 { value: 'married', label: 'Married', labelHi: 'विवाहित' },
                 { value: 'unmarried', label: 'Unmarried', labelHi: 'अविवाहित' },
-                { value: 'divorced', label: 'Divorced', labelHi: 'विवाह विच्छेद' }
+                { value: 'divorced', label: 'Divorced', labelHi: 'विवाह विच्छेद' },
+                { value: 'prefer_not_to_say', label: 'Prefer not to say', labelHi: 'बताना नहीं चाहते' }
             ],
-            validation: (value) => ['married', 'unmarried', 'divorced'].includes(value)
+            validation: (value) => ['married', 'unmarried', 'divorced', 'prefer_not_to_say'].includes(value)
         },
         {
             id: 'agentGender',
-            question: "One last thing -choose your guide",
-            questionHi: "आख़िरी बात -अपना मार्गदर्शक चुनिए",
+            question: "Choose the guide whose voice feels more natural to you.",
+            questionHi: "उस मार्गदर्शक को चुनिए जिसकी आवाज आपको सहज लगे।",
             field: 'agentGender',
             type: 'agentSelect',
             options: [
@@ -670,6 +680,7 @@ const MayaOnboarding = {
                                placeholder="${placeholder2}"
                                autocomplete="family-name">
                     </div>
+                    <p class="text-muted small mt-2 mb-0">${this.isHindiUI() ? 'उसी अंग्रेजी वर्तनी का उपयोग करें जिसे आप सामान्यतः लिखते हैं; उपनाम वैकल्पिक है।' : 'Use the English spelling you normally write; the last name is optional.'}</p>
                 `;
                 break;
 
@@ -1092,6 +1103,7 @@ const MayaOnboarding = {
         if (!container) return;
 
         const isHindi = this.isHindiUI();
+        const showReviewerAccess = /MAYAAstrology-Android\//i.test(navigator.userAgent || '') || Boolean(window.MayaAndroid);
         const countries = [
             { code: '+91', iso: 'in', name: 'India' },
             { code: '+1', iso: 'us', name: 'USA' },
@@ -1151,6 +1163,20 @@ const MayaOnboarding = {
                         <i class="bi bi-chat-dots me-2"></i>${isHindi ? 'OTP भेजें' : 'Send OTP'}
                     </button>
 
+                    ${showReviewerAccess ? `
+                    <button type="button" class="btn btn-link text-muted w-100 mb-2" id="reviewerAccessToggle">
+                        <i class="bi bi-shield-lock me-2"></i>Google Play reviewer access
+                    </button>
+                    <div id="reviewerAccessForm" class="d-none border rounded-3 p-3 mb-3">
+                        <label class="form-label small" for="reviewLoginId">Reviewer ID</label>
+                        <input class="form-control mb-3" id="reviewLoginId" autocomplete="username" autocapitalize="none">
+                        <label class="form-label small" for="reviewLoginPassword">Password</label>
+                        <input type="password" class="form-control mb-3" id="reviewLoginPassword" autocomplete="current-password">
+                        <button type="button" class="btn btn-outline-primary w-100" id="reviewLoginSubmit">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Open reviewer account
+                        </button>
+                    </div>` : ''}
+
                     <button type="button" class="btn btn-link text-muted" id="backToOnboardingBtn">
                         ${this.t('backToReading')}
                     </button>
@@ -1171,6 +1197,13 @@ const MayaOnboarding = {
         });
 
         document.getElementById('loginSubmitBtn')?.addEventListener('click', () => this.handleDirectLogin());
+        document.getElementById('reviewerAccessToggle')?.addEventListener('click', () => {
+            document.getElementById('reviewerAccessForm')?.classList.toggle('d-none');
+        });
+        document.getElementById('reviewLoginSubmit')?.addEventListener('click', () => this.handleReviewerLogin());
+        document.getElementById('reviewLoginPassword')?.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') this.handleReviewerLogin();
+        });
         document.getElementById('backToOnboardingBtn')?.addEventListener('click', () => this.showStep(0));
         document.getElementById('loginPhone')?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.handleDirectLogin();
@@ -1218,6 +1251,49 @@ const MayaOnboarding = {
                 loginBtn.innerHTML = `<i class="bi bi-chat-dots me-2"></i>${isHindi ? 'OTP भेजें' : 'Send OTP'}`;
             }
         }
+    },
+
+    async handleReviewerLogin() {
+        const loginId = document.getElementById('reviewLoginId')?.value?.trim() || '';
+        const password = document.getElementById('reviewLoginPassword')?.value || '';
+        const button = document.getElementById('reviewLoginSubmit');
+        const errorDiv = document.getElementById('loginError');
+
+        if (!loginId || !password) {
+            if (errorDiv) {
+                errorDiv.textContent = 'Enter the reviewer ID and password supplied in Google Play Console.';
+                errorDiv.classList.remove('d-none');
+            }
+            return;
+        }
+
+        if (button) {
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Opening reviewer account...';
+        }
+
+        const result = await window.MayaAuth?.loginForAppReview?.(loginId, password);
+        if (!result?.success) {
+            if (errorDiv) {
+                errorDiv.textContent = result?.error || 'Reviewer login failed.';
+                errorDiv.classList.remove('d-none');
+            }
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '<i class="bi bi-box-arrow-in-right me-2"></i>Open reviewer account';
+            }
+            return;
+        }
+
+        MayaUtils.storage.set(this.STORAGE_KEYS.FUNNEL_COMPLETE, true);
+        MayaUtils.toast.success(this.t('welcomeBackToast'));
+        try { window.MayaApp?.onUserAuthenticated?.(); } catch (error) {
+            console.warn('onUserAuthenticated failed after reviewer login:', error);
+        }
+        setTimeout(() => {
+            this._closeOnboardingModal();
+            window.MayaPages?.render?.('home');
+        }, 250);
     },
 
     /**
@@ -1465,22 +1541,22 @@ const MayaOnboarding = {
         const progressPct = Math.round(((stepIndex + 1) / totalSteps) * 100);
 
         const titles = {
-            name: { en: 'What should we call you?', hi: 'हम आपको क्या कहकर बुलाएँ?' },
-            gender: { en: 'Your gender', hi: 'आपका लिंग' },
-            birthDate: { en: 'Your date of birth', hi: 'आपकी जन्म तिथि' },
-            birthTime: { en: 'Your time of birth', hi: 'आपके जन्म का समय' },
-            birthPlace: { en: 'Where were you born?', hi: 'आप कहाँ पैदा हुए थे?' },
-            maritalStatus: { en: 'Relationship status', hi: 'वैवाहिक स्थिति' },
-            agentGender: { en: 'Choose your guide', hi: 'अपना मार्गदर्शक चुनिए' }
+            name: { en: 'What should I call you?', hi: 'मैं आपको किस नाम से बुलाऊँ?' },
+            gender: { en: 'How should I address you?', hi: 'मैं आपके लिए किन शब्दों का उपयोग करूँ?' },
+            birthDate: { en: 'When were you born?', hi: 'आपका जन्म कब हुआ था?' },
+            birthTime: { en: 'Do you know your birth time?', hi: 'क्या आपको जन्म समय पता है?' },
+            birthPlace: { en: 'Which city were you born in?', hi: 'आपका जन्म किस शहर में हुआ था?' },
+            maritalStatus: { en: 'What fits your relationship context?', hi: 'रिश्तों के लिए कौन-सी स्थिति सही है?' },
+            agentGender: { en: 'Which guide feels right?', hi: 'कौन-सा मार्गदर्शक सहज लगता है?' }
         };
         const subtitles = {
-            name: { en: 'A first name we can use across your readings.', hi: 'एक नाम जो आपकी रीडिंग में इस्तेमाल होगा।' },
-            gender: { en: 'Helps tailor predictions to you.', hi: 'भविष्यवाणियाँ सटीक करने में मदद करता है।' },
-            birthDate: { en: 'Required to build your chart.', hi: 'कुंडली बनाने के लिए आवश्यक।' },
-            birthTime: { en: 'Optional, but improves accuracy.', hi: 'वैकल्पिक, पर सटीकता बढ़ाता है।' },
-            birthPlace: { en: 'City of birth so we can compute the right ascendant.', hi: 'जन्म स्थान सही लग्न के लिए।' },
-            maritalStatus: { en: 'Used in love and family insights.', hi: 'रिश्तों के विश्लेषण में मददगार।' },
-            agentGender: { en: 'Pick the voice that will read your chart.', hi: 'वह आवाज़ चुनिए जो आपकी कुंडली पढ़ेगी।' }
+            name: { en: 'Your usual spelling is used for name-based numbers; surname is optional.', hi: 'नाम के अंकों के लिए अपनी सामान्य वर्तनी लिखें; उपनाम वैकल्पिक है।' },
+            gender: { en: 'This only personalises the language used in your reading.', hi: 'इससे केवल आपकी रीडिंग की भाषा सही बनती है।' },
+            birthDate: { en: 'This calculates your Life Path and yearly cycle.', hi: 'इससे जीवन पथ और वार्षिक चक्र की गणना होती है।' },
+            birthTime: { en: 'Optional. Without it, your reading stays date-based and avoids house claims.', hi: 'वैकल्पिक। इसके बिना रीडिंग जन्मतिथि पर आधारित रहेगी और भाव के दावे नहीं होंगे।' },
+            birthPlace: { en: 'Coordinates and time zone improve chart calculations.', hi: 'निर्देशांक और समय क्षेत्र कुंडली की गणना सुधारते हैं।' },
+            maritalStatus: { en: 'Choose “Prefer not to say” if you would rather skip this.', hi: 'यदि आप इसे छोड़ना चाहें तो “बताना नहीं चाहते” चुनें।' },
+            agentGender: { en: 'Choose the voice you would prefer to hear.', hi: 'वह आवाज चुनें जिसे आप सुनना पसंद करेंगे।' }
         };
 
         const backLabel = isHindi ? 'वापस' : 'Back';
@@ -1550,7 +1626,7 @@ const MayaOnboarding = {
                             placeholder="${isHindi ? 'पहला नाम' : 'First name'}"
                             value="${firstName.replace(/"/g, '&quot;')}" autocomplete="given-name" style="width:100%;">
                         <input type="text" id="plf-lastName" class="form-control form-control-lg"
-                            placeholder="${isHindi ? 'उपनाम (सरनेम)' : 'Last name'}"
+                            placeholder="${isHindi ? 'उपनाम (वैकल्पिक)' : 'Last name (optional)'}"
                             value="${lastName.replace(/"/g, '&quot;')}" autocomplete="family-name" style="width:100%;">
                     </div>
                 `;
@@ -1689,10 +1765,6 @@ const MayaOnboarding = {
                 const last = (document.getElementById('plf-lastName')?.value || '').trim();
                 if (first.length < 2) {
                     showError(isHindi ? 'कृपया पहला नाम दर्ज करें' : 'Please enter your first name');
-                    return;
-                }
-                if (last.length < 1) {
-                    showError(isHindi ? 'कृपया उपनाम दर्ज करें' : 'Please enter your last name');
                     return;
                 }
                 this.userData.firstName = first;
@@ -1988,15 +2060,9 @@ const MayaOnboarding = {
                 firstInput.classList.add('is-invalid');
                 return;
             }
-            if (!lastName || lastName.length < 2) {
-                MayaUtils.toast.error(this.t('invalidValue'));
-                lastInput.classList.add('is-invalid');
-                return;
-            }
-
             firstInput.classList.remove('is-invalid');
             lastInput.classList.remove('is-invalid');
-            value = `${firstName} ${lastName}`;
+            value = [firstName, lastName].filter(Boolean).join(' ');
 
             if (step.field) {
                 this.userData[step.field] = value;
@@ -2026,8 +2092,8 @@ const MayaOnboarding = {
 
         this.saveProgress();
 
-        // Speak ritual micro-confirmation before advancing
-        await this.speakRitualLine(step.id);
+        // Keep form navigation immediate; voice confirmations must never block a tap.
+        if (['birthDate', 'birthPlace'].includes(step.id)) void this.speakRitualLine(step.id);
 
         this.currentStep++;
 
@@ -2111,8 +2177,8 @@ const MayaOnboarding = {
 
         this.saveProgress();
 
-        // Speak ritual micro-confirmation before advancing
-        await this.speakRitualLine(step.id);
+        // Only the final guide choice is awaited so it cannot overlap the reading intro.
+        if (step.id === 'agentGender') await this.speakRitualLine(step.id);
 
         this.currentStep++;
 
@@ -2198,11 +2264,19 @@ const MayaOnboarding = {
         };
 
         if (this.userData.birthPlace) {
-            resolvedBirthPlace = await MayaUtils.location.resolveBirthPlace(this.userData.birthPlace, {
-                birthLat: this.userData.birthLat,
-                birthLon: this.userData.birthLon,
-                birthTimezone: this.userData.birthTimezone
-            });
+            try {
+                const resolution = MayaUtils.location.resolveBirthPlace(this.userData.birthPlace, {
+                    birthLat: this.userData.birthLat,
+                    birthLon: this.userData.birthLon,
+                    birthTimezone: this.userData.birthTimezone
+                });
+                resolvedBirthPlace = await Promise.race([
+                    resolution,
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Location lookup timed out')), 4500))
+                ]);
+            } catch (error) {
+                console.warn('Birth-place lookup unavailable; continuing with date-based accuracy:', error.message);
+            }
             this.userData.birthPlace = resolvedBirthPlace.birthPlace || this.userData.birthPlace;
             this.userData.birthLat = Number.isFinite(resolvedBirthPlace.birthLat) ? resolvedBirthPlace.birthLat : null;
             this.userData.birthLon = Number.isFinite(resolvedBirthPlace.birthLon) ? resolvedBirthPlace.birthLon : null;
@@ -2279,7 +2353,7 @@ const MayaOnboarding = {
                             // Continue without audio - not a critical error
                         }
 
-                        // Start Gemini warmup right after guide selection so
+                            // Start Pollinations warmup right after guide selection so
                         // first speech and data arrive with less waiting.
                         MayaFunnel.prefetchJourneyStartup?.().catch((error) => {
                             console.warn('⚠️ Startup prefetch skipped:', error?.message || error);

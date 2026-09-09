@@ -61,40 +61,8 @@ for (const [key, value] of Object.entries(process.env)) {
   }
 }
 
-function parseList(rawValue) {
-  if (!rawValue) {
-    return [];
-  }
-
-  const trimmedValue = rawValue.trim();
-
-  if (!trimmedValue) {
-    return [];
-  }
-
-  if (trimmedValue.startsWith('[')) {
-    try {
-      const parsedValue = JSON.parse(trimmedValue);
-      return Array.isArray(parsedValue)
-        ? parsedValue.map((item) => String(item).trim()).filter(Boolean)
-        : [];
-    } catch {
-      return [];
-    }
-  }
-
-  return trimmedValue
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
 const runtimeSecrets = {
-  // Groq is optional and used only for fast funnel copy.
-  GROQ_KEY: env.VITE_PUBLIC_GROQ_KEY || '',
-  // Gemini remains the deep text and vision AI provider.
-  GEMINI_KEY: env.VITE_PUBLIC_GEMINI_KEY || '',
-  GEMINI_FALLBACKS: parseList(env.VITE_PUBLIC_GEMINI_FALLBACKS),
+  // Never emit AI provider credentials into browser-readable JavaScript.
   ELEVENLABS_VOICE: env.VITE_PUBLIC_ELEVENLABS_VOICE || 'P3JECz9WQeXyyodBL3ZD',
   ELEVENLABS_MALE_VOICE: env.VITE_PUBLIC_ELEVENLABS_MALE_VOICE || '8TMmdpPgqHKvDOGYP2lN',
   ELEVENLABS_HI_VOICE: env.VITE_PUBLIC_ELEVENLABS_HI_VOICE || '',

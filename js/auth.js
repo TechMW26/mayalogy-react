@@ -340,6 +340,35 @@ const MayaAuth = {
         }
     },
 
+    /**
+     * Temporary credential login for Google Play reviewers.
+     * The server enables this only for the Android app user agent.
+     */
+    async loginForAppReview(loginId, password) {
+        try {
+            const response = await fetch('/api/review-login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ loginId, password })
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) {
+                return { success: false, error: data.error || 'Reviewer login failed' };
+            }
+
+            this.currentUser = data.user;
+            this.token = data.token;
+            this.isAuthenticated = true;
+            MayaUtils.storage.set('maya_token', data.token);
+            this.persistAuthenticatedState(data.user);
+            void this.syncFcmToken();
+            return { success: true, user: this.currentUser, reviewAccount: true };
+        } catch (error) {
+            console.error('Reviewer login error:', error);
+            return { success: false, error: 'Network error. Please try again.' };
+        }
+    },
+
     getCurrentUserStorageInfo() {
         if (this.currentUser?.email) {
             return {

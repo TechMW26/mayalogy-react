@@ -6109,6 +6109,18 @@ REMEMBER:
      * (image-analysis path only -text generation stays on Groq).
      */
     async _callGeminiVisionMulti(prompt, images) {
+        const pollinationsResponse = await fetch(MAYA_CONFIG.ENDPOINTS.AI_VISION || '/api/ai-vision', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, images, maxTokens: 8000, temperature: 0.7 })
+        });
+        const pollinationsData = await pollinationsResponse.json().catch(() => ({}));
+        if (!pollinationsResponse.ok || !pollinationsData.text) {
+            throw new Error(pollinationsData.error || 'Palm vision analysis failed');
+        }
+        return pollinationsData.text;
+
+        /* Legacy provider path retained temporarily for rollback; unreachable. */
         // Primary key first, then any configured fallbacks (rotated on 429 / 5xx).
         const apiKeys = [
             MAYA_CONFIG.API_KEYS.GEMINI,
@@ -8589,6 +8601,18 @@ Rules:
      * Includes retry logic for rate limits.
      */
     async _callGeminiVision(prompt, imageData) {
+        const pollinationsResponse = await fetch(MAYA_CONFIG.ENDPOINTS.AI_VISION || '/api/ai-vision', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, imageData, maxTokens: 12000, temperature: 0.7 })
+        });
+        const pollinationsData = await pollinationsResponse.json().catch(() => ({}));
+        if (!pollinationsResponse.ok || !pollinationsData.text) {
+            throw new Error(pollinationsData.error || 'Vision analysis failed');
+        }
+        return pollinationsData.text;
+
+        /* Legacy provider path retained temporarily for rollback; unreachable. */
         // Primary key first, then any configured fallbacks (rotated on 429 / 5xx).
         const apiKeys = [
             MAYA_CONFIG.API_KEYS.GEMINI,

@@ -13,7 +13,9 @@
     "dev:vercel": "vercel dev",
     "test:otp": "node --test tests/firebase-otp.test.js",
     "test:ui": "node --test tests/internal-ui.test.js",
-    "test": "npm run test:otp && npm run test:ui"
+    "test:ai": "node --test tests/pollinations-ai.test.js tests/review-login.test.js",
+    "test:journey": "node --test tests/prelogin-journey.test.js",
+    "test": "npm run test:otp && npm run test:ui && npm run test:ai && npm run test:journey"
   },
   "dependencies": {
     "astronomy-engine": "^2.1.19",

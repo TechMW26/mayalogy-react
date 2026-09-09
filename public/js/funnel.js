@@ -461,13 +461,13 @@ ${askMaya ? `- USER QUESTION LOCK (HIGHEST PRIORITY): This entire reading is ONL
         if (isHindi) {
             return [
                 `"opening" — 4-5 short spoken sentences. Greeting बिल्कुल नहीं। पहली line सीधे reading context से शुरू हो। "मैं ${this._guideName?.() || 'माया'} हूँ" second या third sentence में naturally आए, greeting style में नहीं। ${askMaya ? `पहले या दूसरे वाक्य में साफ कहिए कि आप ${subjectPhrase} पर locked रहेंगी।` : 'Chart, numbers, या timing से ONE standout factual clue दीजिए (जन्मतिथि literal मत पढ़िए)।'} आखिरी वाक्य: personal reading कुंडली + numbers + timing से तैयार हो रही है। Pause token के बाद ${'[[pause-500]]'} introduction के तुरंत बाद। No filler, no cosmic platitudes।`,
-                `"kundli" — 2-3 short sentences। CRITICAL: कुंडली बन रही है, "तैयार है / बन गई है" मत कहिए। Present-progressive: "विन्यास बन रहा है / ग्रह जगह ले रहे हैं"। ${askMaya ? `पहली line साफ pivot करे ${subjectPhrase} की तरफ।` : 'सिर्फ ONE chart marker name कीजिए (Lagna, Moon sign, या current dasha में से कोई एक) और एक SHORT FOMO teaser plant कीजिए ("numbers मिलते ही एक बड़ी बात खुलेगी") — prediction reveal नहीं।'} ज्यादा से ज्यादा एक [[pause-250]]।`,
+                `"kundli" — 2-3 छोटे वाक्य। साफ बताइए कि उपलब्ध जन्म जानकारी से गणना चल रही है। ${askMaya ? `पहली line ${subjectPhrase} की तरफ सहज pivot करे।` : 'अगर समय-आधारित कुंडली विश्वसनीय है तो सिर्फ ONE computed marker बताइए; वरना date-based scope बताइए।'} कोई suspense या चमत्कार का दावा नहीं। ज्यादा से ज्यादा एक [[pause-250]]।`,
                 `"preQuestionBridge" — 2-3 short sentences। पहले question से पहले की bridge। Greeting नहीं, "कुंडली बन गई" repeat नहीं। ONE concrete chart/number pattern + क्यों अगला सवाल important है। ${askMaya ? `${topicLabel} पर ही रहिए।` : ''} No pause।`,
-                `"numbersReveal" — 7-9 short sentences। Numbers: Life Path ${lp}, Destiny ${dest}, Soul Urge ${su}. STRUCTURE: (1) ONE sentence derivation बताइए। (2) हर number का 1-2 sentence reading + chart का कौनसा planet/house इसे confirm करता है + real life पर specific असर। तीनों के बीच [[pause-250]] डालें। (3) Closing ONE sentence में तीनों + chart combine करके ONE specific personal incident (past या upcoming) name कीजिए — exact time period सहित। No padding।`,
-                `"combinedTeaser" — total 6 sentences max, तीन connected segments।\n[Segment 1 — IDENTITY TRUTH] 2 sentences। "आप ऐसे इंसान हैं जो..." format। Flattery-free pattern observation।\n[[pause-250]]\n[Segment 2 — EMOTIONAL PATTERN] 2 sentences। ONE daily inner emotional pattern, chart से confirmed।\n[[pause-250]]\n[Segment 3 — UNRESOLVED THREAD] 2 sentences। Chart से ONE open loop जो naturally resolution माँगे। User को लगे "मुझे और जानना है।"`,
-                `"accuracyShock" — 3 sentences। Chart data से ONE SPECIFIC past event predict कीजिए — approximate month/year + nature (relationship/career/health/family/emotional crisis) + emotional impact। Generic line forbidden। ज्यादा से ज्यादा एक [[pause-250]]।`,
-                `"suspenseBridge" — EXACTLY 3 sentences। (1) chart में सबसे intense unresolved pattern name कीजिए। (2) "इसका पूरा truth यहाँ खोलना ठीक नहीं" + naturally tease कीजिए कि file save होते ही love, career, timing windows, warnings खुलेंगी। (3) "आपकी पूरी file तैयार है, बस इसे save कर लीजिए।" No pause।`,
-                `"emailGate" — EXACTLY 2 sentences, soft SMS OTP gate। FOMO/डर नहीं। (1) warm continuation। (2) CORE: "${firstName}, आगे की reading सुरक्षित रखने के लिए SMS verification चाहिए — अपना मोबाइल नंबर डाल दीजिए; ओटीपी आने में कुछ सेकंड लग सकते हैं।" Email/password कभी नहीं। No pause।`,
+                `"numbersReveal" — 5-7 छोटे वाक्य। Numbers: Life Path ${lp}, Destiny ${dest}, Soul Urge ${su}. पहले एक वाक्य में derivation समझाइए। फिर हर number का एक grounded अर्थ बताइए और साफ रखें कि यह interpretation है। केवल उपलब्ध computed evidence जोड़ें; कोई घटना invent न करें। तीनों के बीच [[pause-250]] डाल सकते हैं। अंत में एक practical reflection दें।`,
+                `"combinedTeaser" — अधिकतम 5 जुड़े हुए वाक्य। एक strength, एक friction, और user के अपने जवाब से ONE relevant reflection दें। हर बात को calculated fact, user-stated fact, या interpretation के रूप में ईमानदारी से रखें। कोई pressure या अधूरा रहस्य नहीं।`,
+                `"accuracyShock" — compatibility key है; shock पैदा न करें। 2-3 वाक्यों में user के बताए जवाब और computed pattern का reflective cross-check दें। नई घटना, तारीख, medical claim, या emotional impact invent न करें।`,
+                `"suspenseBridge" — EXACTLY 2 सहज वाक्य। बताइए कि calculated preview तैयार है और sign-in करने पर user इसे save करके आगे बढ़ सकता है। urgency, hidden truth, डर, या withholding नहीं।`,
+                `"emailGate" — EXACTLY 2 sentences, soft SMS OTP gate। (1) reading save और continue करने की बात। (2) CORE: "${firstName}, अपना मोबाइल नंबर डालिए; SMS OTP आने में कुछ सेकंड लग सकते हैं।" FOMO/डर नहीं, Email/password कभी नहीं।`,
                 `"authCheck" — 1 sentence। Saved reading check करने की operational line। No pause।`,
                 `"welcomeBack" — 2 sentences। Warm recognition + saved reading mention + OTP/password ask। No pause।`,
                 `"newUser" — 2 sentences। OTP verify करके reading save और protect करने की बात। No pause।`,
@@ -487,13 +487,13 @@ ${askMaya ? `- USER QUESTION LOCK (HIGHEST PRIORITY): This entire reading is ONL
 
         return [
             `"opening" — 4-5 short spoken sentences. Greeting is forbidden. Start line 1 directly from the reading context. "I am ${this._guideName?.() || 'MAYA'}" can appear naturally in sentence 2 or 3, not as a greeting opener. ${askMaya ? `Sentence 1 or 2 makes it explicit that you are staying locked on ${subjectPhrase}.` : 'Name ONE standout factual clue from chart, numbers, or timing (do not recite the literal birth date).'} The final sentence makes it clear the personal reading is being assembled from kundli + numbers + timing. Place [[pause-500]] immediately after the introduction sentence. No filler, no cosmic platitudes.`,
-            `"kundli" — 2-3 short sentences. CRITICAL: the chart is still forming, so do NOT say "your kundli is ready / chart is ready / wonderful". Use present-progressive: "the chart is forming, planets are settling". ${askMaya ? `The first sentence pivots clearly toward ${subjectPhrase}.` : 'Quote only ONE chart marker (ascendant, moon sign, or current dasha) and plant a SHORT FOMO teaser ("once the numbers line up, one big prediction will surface") — never reveal the prediction.'} At most one [[pause-250]].`,
+            `"kundli" — 2-3 short sentences. Explain that calculations are running from the birth details available. ${askMaya ? `Pivot naturally toward ${subjectPhrase}.` : 'Use only ONE computed chart marker when timed chart data is reliable; otherwise state the date-based scope.'} No suspense or extraordinary claims. At most one [[pause-250]].`,
             `"preQuestionBridge" — 2-3 short sentences. Bridge into the first MCQ. No greeting, no "your kundli is ready" repeat. Give ONE concrete chart/number pattern + why the next question matters. ${askMaya ? `Stay on ${topicLabel}.` : ''} No pause.`,
-            `"numbersReveal" — 7-9 short sentences. Numbers: Life Path ${lp}, Destiny ${dest}, Soul Urge ${su}. STRUCTURE: (1) ONE sentence on derivation. (2) 1-2 sentences per number — what it represents + which planet/house/dasha in the chart confirms it + its specific real-life effect. Insert [[pause-250]] between the three. (3) Closing ONE sentence: combine all three numbers + chart to name ONE specific personal incident (past or upcoming) with an exact time period. No padding.`,
-            `"combinedTeaser" — total 6 sentences max, three connected segments.\n[Segment 1 — IDENTITY TRUTH] 2 sentences. "You are someone who..." format. Flattery-free pattern observation.\n[[pause-250]]\n[Segment 2 — EMOTIONAL PATTERN] 2 sentences. ONE daily inner emotional pattern confirmed by the chart.\n[[pause-250]]\n[Segment 3 — UNRESOLVED THREAD] 2 sentences. ONE open loop from the chart that demands resolution. The user must feel "I need to know more."`,
-            `"accuracyShock" — 3 sentences. From chart data predict ONE SPECIFIC past event — approximate month/year + nature (relationship/career/health/family/emotional crisis) + emotional impact. Generic lines forbidden. At most one [[pause-250]].`,
-            `"suspenseBridge" — EXACTLY 3 sentences. (1) Name the most intense unresolved pattern visible in the chart. (2) Say "it would not be right to open the full truth here" AND naturally tease that once the file is saved, love, career, timing windows, warnings will all open. (3) "Your full file is ready, just save it." No pause.`,
-            `"emailGate" — EXACTLY 2 sentences, soft SMS OTP gate. No FOMO/fear. (1) Warm continuation. (2) CORE: "${firstName}, to keep the rest of this reading secure I need SMS verification — enter your mobile number; the OTP can take a few seconds to arrive." Never mention email or password. No pause.`,
+            `"numbersReveal" — 5-7 short sentences. Numbers: Life Path ${lp}, Destiny ${dest}, Soul Urge ${su}. Start with one sentence on how they were derived. Give one grounded interpretation for each, clearly framed as interpretation. Use only computed evidence; invent no incident. You may place [[pause-250]] between the numbers. End with one practical reflection.`,
+            `"combinedTeaser" — no more than 5 connected sentences. Give one strength, one friction, and ONE relevant reflection from the user's own answers. Honestly distinguish calculated facts, user-stated facts, and interpretation. No pressure or manufactured mystery.`,
+            `"accuracyShock" — this is a compatibility key; do not create shock. In 2-3 sentences, reflectively cross-check the user's own answer with a computed pattern. Invent no event, date, medical claim, or emotional impact.`,
+            `"suspenseBridge" — EXACTLY 2 natural sentences. Say the calculated preview is ready and the user can sign in to save it and continue. No urgency, hidden truth, fear, or withholding.`,
+            `"emailGate" — EXACTLY 2 sentences. Sentence 1 says the user can save the reading and continue. Sentence 2: "${firstName}, enter your mobile number; the SMS OTP can take a few seconds to arrive." No FOMO/fear and never mention email or password.`,
             `"authCheck" — 1 sentence. Operational line that you are checking their saved reading. No pause.`,
             `"welcomeBack" — 2 sentences. Warm recognition + saved reading mention + OTP/password ask. No pause.`,
             `"newUser" — 2 sentences. Verifying via OTP saves and protects the reading. No pause.`,
@@ -926,6 +926,10 @@ ${askMaya ? `- USER QUESTION LOCK (HIGHEST PRIORITY): This entire reading is ONL
         return isHindi
             ? `Rules:
 - User gender: ${genderLabel}
+- FACT GROUNDING: CALCULATED facts, USER-STATED answers, और interpretation को अलग रखें। User के जवाब को ग्रहों से निकला prediction बनाकर पेश मत कीजिए।
+- Exact month/year तभी बोलें जब वह computed context के predictionItems या chart timing में साफ दिया हो। कोई past event, diagnosis, या घटना invent करना FORBIDDEN है।
+- अगर timedChartClaimsAllowed false है, तो लग्न, भाव, दशा, योग, ग्रहों की exact position, और chart-timed claims FORBIDDEN हैं। जरूरत हो तो साफ कहें कि यह date-and-name based reading है।
+- "मैं देख सकती हूँ", psychic certainty, "आप चौंक जाएंगे", या proof/accuracy theatre FORBIDDEN। Interpretation को possibility या reflective pattern की तरह रखें, fact की तरह नहीं।
 - सिर्फ उन्हीं patterns पर बात करें जो ऊपर दिए facts से support होते हैं।
 - एक strength और एक friction point दोनों बताइए। अगर संकेत mixed हैं, तो mixed ही कहिए।
 - ⚖️ KUNDLI-FIRST BALANCE: हर reading में KUNDLI/VEDIC DATA को PRIMARY source रखिए - planetary positions, दशा periods, house analysis, yogas, transits। Numerology SECONDARY support के लिए। अगर kundli data available है तो reading 70% kundli-based, 30% numerology-based। सिर्फ numbers पर based reading FORBIDDEN है जब chart data उपलब्ध है।
@@ -948,6 +952,10 @@ ${askMaya ? `- USER QUESTION LOCK (HIGHEST PRIORITY): This entire reading is ONL
 - TTS-safe, flowing narrative - बहती कहानी, disconnected टुकड़े नहीं। Bullet points नहीं, एक continuous paragraph।`
             : `Rules:
 - User gender: ${genderLabel}
+- FACT GROUNDING: Keep CALCULATED facts, USER-STATED answers, and interpretation distinct. Never present an answer supplied by the user as if the chart predicted it.
+- Use an exact month/year only when it appears in computed predictionItems or explicit chart timing. Invented past events, diagnoses, and life incidents are forbidden.
+- When timedChartClaimsAllowed is false, do not mention ascendants, houses, dashas, yogas, exact planetary positions, or chart-timed claims. If relevant, say this is a date-and-name based reading.
+- Psychic language, certainty theatre, "I can see", surprise/accuracy claims, and pretending an interpretation is proof are forbidden. Frame interpretations as reflective possibilities.
 - Only describe patterns supported by facts above. Include one strength and one friction. Mixed evidence = say mixed.
 - ⚖️ KUNDLI-FIRST BALANCE: Make KUNDLI/VEDIC DATA the PRIMARY source - planetary positions, dasha, house analysis, yogas, transits. Numerology is SECONDARY. When chart data exists, reading ~70% kundli, ~30% numerology. Numbers-only reading FORBIDDEN when chart data exists.
 - Never conflate western zodiac, vedic moon sign, ascendant. Label clearly.
@@ -1591,10 +1599,15 @@ Current section: ${sectionKey}
             return x || 1;
         };
 
-        const personalYear = this.calculations?.personalYear || 1;
-        const months = Array.from({ length: 12 }, (_, i) => {
-            const month = i + 1;
-            return { month, pm: reduce(personalYear + month) };
+        const now = new Date();
+        const months = Array.from({ length: 9 }, (_, offset) => {
+            const date = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+            const month = date.getMonth() + 1;
+            const year = date.getFullYear();
+            const personalYear = window.MayaNumerology?.calculatePersonalYear
+                ? MayaNumerology.calculatePersonalYear(this.userData.birthDate, year)
+                : (this.calculations?.personalYear || 1);
+            return { month, year, date, pm: reduce(personalYear + month) };
         });
 
         // Prefer “strong” and “caution” months based on common numerology timing logic
@@ -1609,10 +1622,8 @@ Current section: ${sectionKey}
             .map((n) => months.find((m) => m.pm === n))
             .find(Boolean);
 
-        const monthName = (m) => {
-            const d = new Date();
-            d.setMonth(m - 1);
-            return d.toLocaleString(isHindi ? 'hi-IN' : 'en-US', { month: 'long' });
+        const monthName = (entry) => {
+            return entry.date.toLocaleString(isHindi ? 'hi-IN' : 'en-US', { month: 'long', year: 'numeric' });
         };
 
         const theme = (pm) => {
@@ -1652,24 +1663,26 @@ Current section: ${sectionKey}
             items.push({
                 kind: 'strong',
                 month: strong.month,
-                monthName: monthName(strong.month),
+                year: strong.year,
+                monthName: monthName(strong),
                 pm: strong.pm,
                 theme: theme(strong.pm),
                 summary: isHindi
-                    ? `${monthName(strong.month)} के आस-पास आपकी ऊर्जा ${strong.pm} जैसी होगी - ${theme(strong.pm)}.`
-                    : `Around ${monthName(strong.month)} your chart hits a ${strong.pm} phase - ${theme(strong.pm)}.`
+                    ? `${monthName(strong)} में व्यक्तिगत माह ${strong.pm} ${theme(strong.pm)} की ओर संकेत करता है।`
+                    : `${monthName(strong)} is Personal Month ${strong.pm}, associated with ${theme(strong.pm)}.`
             });
         }
         if (caution) {
             items.push({
                 kind: 'caution',
                 month: caution.month,
-                monthName: monthName(caution.month),
+                year: caution.year,
+                monthName: monthName(caution),
                 pm: caution.pm,
                 theme: theme(caution.pm),
                 summary: isHindi
-                    ? `${monthName(caution.month)} के आस-पास सावधानी रखिए - ${caution.pm} चरण में ${theme(caution.pm)} उभर सकता है।`
-                    : `Watch ${monthName(caution.month)} - a ${caution.pm} phase (${theme(caution.pm)}).`
+                    ? `${monthName(caution)} में व्यक्तिगत माह ${caution.pm} ${theme(caution.pm)} की ओर संकेत करता है।`
+                    : `${monthName(caution)} is Personal Month ${caution.pm}, associated with ${theme(caution.pm)}.`
             });
         }
 
@@ -1765,6 +1778,8 @@ Current section: ${sectionKey}
             hasExactBirthTime: this.hasExactBirthTime(),
             hasBirthCoordinates: this.hasBirthCoordinates(),
             hasReliableAscendant: canUseAscendant,
+            precisionLevel: canUseAscendant ? 'birth-time-and-location' : 'date-based',
+            timedChartClaimsAllowed: canUseAscendant,
             narrativeLens: this.selectNarrativeLens(chartSummary)
         };
     },
@@ -1775,6 +1790,7 @@ Current section: ${sectionKey}
     buildScriptUserData(predictionItems = null) {
         const profile = this.personalization || {};
         const items = Array.isArray(predictionItems) ? predictionItems : this.buildPredictionItems();
+        const hasFullName = Boolean(String(this.userData?.lastName || '').trim());
         const lifeStage = (window.MayaKundli?.calculateLifeStage)
             ? MayaKundli.calculateLifeStage(this.userData?.birthDate)
             : null;
@@ -1784,6 +1800,10 @@ Current section: ${sectionKey}
         return {
             name: this.firstName,
             fullName: this.userData?.name || this.firstName,
+            hasFullName,
+            nameCalculationScope: hasFullName
+                ? 'Full supplied name; Destiny and Soul Urge use all supplied letters.'
+                : 'First name only; Destiny and Soul Urge are provisional until a family name is supplied.',
             gender: this.userData?.gender || '',
             dob: this.formatDateSpoken(this.userData.birthDate),
             rawBirthDate: this.userData.birthDate,
@@ -1806,7 +1826,7 @@ Current section: ${sectionKey}
             ascendant: profile.hasReliableAscendant ? (profile.ascendant?.name || '') : '',
             moonSign: profile.moonSign || '',
             dominantElement: profile.dominantElement || '',
-            currentDasha: profile.currentDasha?.vedic || profile.currentDasha?.planet || '',
+            currentDasha: profile.timedChartClaimsAllowed ? (profile.currentDasha?.vedic || profile.currentDasha?.planet || '') : '',
             narrativeLens: profile.narrativeLens || '',
             chartHighlights: profile.highlights || [],
             predictionItems: items
@@ -1819,16 +1839,17 @@ Current section: ${sectionKey}
     buildBaseAIContext(predictionItems = null) {
         const profile = this.personalization || {};
         const items = Array.isArray(predictionItems) ? predictionItems : this.buildPredictionItems();
+        const hasFullName = Boolean(String(this.userData?.lastName || '').trim());
         const lang = this._resolveCurrentLanguage();
         const isHindi = lang === 'hi';
 
         // Full kundli planetary data for AI
-        const detailedChartFacts = (this.kundliChart && window.MayaKundli?.buildDetailedChartFacts)
+        const detailedChartFacts = (profile.timedChartClaimsAllowed && this.kundliChart && window.MayaKundli?.buildDetailedChartFacts)
             ? MayaKundli.buildDetailedChartFacts(this.kundliChart, this.userData?.birthDate)
             : '';
 
         // Lal Kitab planet-in-house analysis specific to this user's chart
-        const lalKitabContext = (this.kundliChart?.planets?.length && this.kundliChart?.ascendant?.name && window.getLalKitabForChart)
+        const lalKitabContext = (profile.timedChartClaimsAllowed && this.kundliChart?.planets?.length && this.kundliChart?.ascendant?.name && window.getLalKitabForChart)
             ? getLalKitabForChart(this.kundliChart.planets, this.kundliChart.ascendant.name)
             : '';
 
@@ -1859,12 +1880,21 @@ Current section: ${sectionKey}
             moonSign: profile.moonSign,
             sunSign: profile.western?.name || '',
             dominantElement: profile.dominantElement,
-            currentDasha: profile.currentDasha?.vedic || profile.currentDasha?.planet,
-            yogaNames: profile.yogaNames || [],
+            currentDasha: profile.timedChartClaimsAllowed ? (profile.currentDasha?.vedic || profile.currentDasha?.planet) : '',
+            yogaNames: profile.timedChartClaimsAllowed ? (profile.yogaNames || []) : [],
             birthPlace: this.userData?.birthPlace || '',
             birthPlaceShort: profile.birthPlaceShort || '',
             hasExactBirthTime: profile.hasExactBirthTime,
             hasReliableAscendant: profile.hasReliableAscendant,
+            precisionLevel: profile.precisionLevel || 'date-based',
+            timedChartClaimsAllowed: Boolean(profile.timedChartClaimsAllowed),
+            hasFullName,
+            nameCalculationScope: hasFullName
+                ? 'Full supplied name; Destiny and Soul Urge use all supplied letters.'
+                : 'First name only; Destiny and Soul Urge are provisional until a family name is supplied.',
+            calculationBasis: profile.timedChartClaimsAllowed
+                ? 'Exact birth date, time, resolved coordinates and time zone; Lahiri sidereal chart plus Pythagorean numerology.'
+                : 'Birth-date and name numerology only. Ascendant, houses, exact dashas and timed chart claims are unavailable and must not be stated.',
             narrativeLens: profile.narrativeLens || '',
             chartHighlights: profile.highlights || [],
             predictionItems: items,
@@ -1880,7 +1910,7 @@ Current section: ${sectionKey}
                 vedicZodiac: profile.vedic?.name || '',
                 ascendant: profile.hasReliableAscendant ? profile.ascendant?.name : '',
                 moonSign: profile.moonSign,
-                currentDasha: profile.currentDasha?.vedic || profile.currentDasha?.planet,
+                currentDasha: profile.timedChartClaimsAllowed ? (profile.currentDasha?.vedic || profile.currentDasha?.planet) : '',
                 birthPlaceShort: profile.birthPlaceShort || '',
                 narrativeLens: profile.narrativeLens || ''
             }
@@ -2390,17 +2420,8 @@ Current section: ${sectionKey}
             }
         } catch (error) {
             console.error('❌ Numerology calculation failed:', error);
-            // Provide fallback calculations to prevent funnel crash
-            this.calculations = {
-                lifePath: 7,
-                destiny: 5,
-                soulUrge: 3,
-                personality: 4,
-                personalYear: 1,
-                currentMonthNumber: 5,
-                currentDayNumber: 3
-            };
-            console.warn('⚠️ Using fallback calculations');
+            this.calculations = null;
+            throw new Error('Your details could not be calculated accurately. Please check the name spelling and birth date.');
         }
 
         // Save calculations to localStorage as well
@@ -2630,10 +2651,10 @@ Current section: ${sectionKey}
                 identityTruth: `${name}, यहाँ आपका सबसे बड़ा pattern clarity माँगना है, approval नहीं। Chart में ${topicLabel} से जुड़ी timing active दिख रही है।`,
                 emotionalPattern: `${subjectPhrase} के पीछे अंदर से बेचैनी है कि सही time निकल न जाए। इसलिए answer में timing और practical next step दोनों चाहिए।`,
                 unresolvedThread: `इसका खुला हुआ thread यही है कि ${topicLabel} में अगला सही move कब लेना है। File save होते ही मैं इसे exact window के साथ ${willOpen}।`,
-                accuracyShock: `पिछले कुछ समय में इसी सवाल से जुड़ा pressure अचानक बढ़ा है। यह random नहीं है -chart में timing shift इसी area को activate कर रही है।`,
-                suspenseBridge: `${subjectPhrase} में सबसे intense pattern timing और decision का है। इसका पूरा truth यहाँ खोलना ठीक नहीं होगा, क्योंकि exact answer save file में chart, numbers और timing मिलाकर खुलेगा। आपकी पूरी file तैयार है, बस इसे save कर लीजिए।`,
+                accuracyShock: `आपने ${subjectPhrase} के बारे में जो बताया है, वह आपकी calculated themes से जुड़ा एक उपयोगी reflection देता है। इसे prediction नहीं, आगे सोचने के लिए एक संकेत मानिए।`,
+                suspenseBridge: `${subjectPhrase} का calculated preview तैयार है। इसे save करके आगे की reading जारी रखने के लिए SMS से sign in कर लीजिए।`,
                 emailGate: `Reading का अगला layer तैयार है। ${gateLine}`,
-                fomoHook: `${topicLabel} में एक serious timing signal दिख रहा है। Full details private reading में खुलेंगी, क्योंकि यहाँ half-answer देना सही नहीं होगा।`,
+                fomoHook: `${topicLabel} पर आपका calculated preview तैयार है। Sign in के बाद आप इसे save करके आगे बढ़ सकते हैं।`,
                 returnHook: `${topicLabel} में अगले phase की timing साफ दिख रही है। अगली बार इसे exact month के साथ खोलेंगे।`,
                 completion: `${name}, मैंने ${subjectPhrase} को इसी direction में पढ़ा है। अब आप चाहें तो इसी topic पर follow-up पूछ सकते हैं।`
             } : {
@@ -2642,10 +2663,10 @@ Current section: ${sectionKey}
                 identityTruth: `${name}, the main pattern here is that you need clarity, not reassurance. The chart shows timing active around ${topicLabel}.`,
                 emotionalPattern: `Under your ${subjectPhrase} is the worry that the right time may slip away. So the answer needs both timing and a practical next step.`,
                 unresolvedThread: `The unresolved thread is when to take the next correct move in ${topicLabel}. Once the file is saved, I will open it with an exact window.`,
-                accuracyShock: `In the recent past, pressure around this same question has increased suddenly. It is not random -the chart's timing shift is activating this area.`,
-                suspenseBridge: `The most intense pattern in your ${subjectPhrase} is timing and decision. It would not be right to open the full truth here, because the exact answer needs chart, numbers, and timing together after verification. The next layer is ready once SMS OTP confirms it is you.`,
+                accuracyShock: `What you shared about ${subjectPhrase} offers a useful cross-check against your calculated themes. Treat it as a reflection to explore, not a prediction of something you already told me.`,
+                suspenseBridge: `Your calculated preview for ${subjectPhrase} is ready. Sign in by SMS to save it and continue the reading.`,
                 emailGate: `The next layer of the reading is ready. ${gateLine}`,
-                fomoHook: `There is a serious timing signal around ${topicLabel}. The full details belong in your private reading, because a half-answer here would not be fair.`,
+                fomoHook: `Your calculated preview for ${topicLabel} is ready. Sign in to save it and continue.`,
                 returnHook: `The next phase around ${topicLabel} is visible. Next time, we will open it with the exact month.`,
                 completion: `${name}, I read your ${subjectPhrase} in this direction. You can ask a follow-up on this same topic now.`
             };
@@ -2670,16 +2691,16 @@ Current section: ${sectionKey}
         const chartSummary = this.personalization || {};
         const localize = (value) => isHindi ? this.localizeHindiText(value) : value;
         // Use detailed chart facts if available, fall back to simple summary
-        const detailedFacts = (this.kundliChart && window.MayaKundli?.buildDetailedChartFacts)
+        const detailedFacts = (chartSummary.timedChartClaimsAllowed && this.kundliChart && window.MayaKundli?.buildDetailedChartFacts)
             ? MayaKundli.buildDetailedChartFacts(this.kundliChart, this.userData?.birthDate)
             : '';
-        const lalKitabFacts = (this.kundliChart?.planets?.length && this.kundliChart?.ascendant?.name && window.getLalKitabForChart)
+        const lalKitabFacts = (chartSummary.timedChartClaimsAllowed && this.kundliChart?.planets?.length && this.kundliChart?.ascendant?.name && window.getLalKitabForChart)
             ? getLalKitabForChart(this.kundliChart.planets, this.kundliChart.ascendant.name)
             : '';
         const chartLines = [detailedFacts, lalKitabFacts].filter(Boolean).join('\n') || [
-            chartSummary?.ascendant?.name ? `${isHindi ? 'लग्न' : 'Ascendant'}: ${localize(chartSummary.ascendant.name)}` : '',
+            chartSummary?.timedChartClaimsAllowed && chartSummary?.ascendant?.name ? `${isHindi ? 'लग्न' : 'Ascendant'}: ${localize(chartSummary.ascendant.name)}` : '',
             chartSummary?.moonSign ? `${isHindi ? 'चंद्र राशि' : 'Moon sign'}: ${localize(chartSummary.moonSign)}` : '',
-            chartSummary?.currentDasha?.vedic || chartSummary?.currentDasha?.planet
+            chartSummary?.timedChartClaimsAllowed && (chartSummary?.currentDasha?.vedic || chartSummary?.currentDasha?.planet)
                 ? `${isHindi ? 'वर्तमान दशा' : 'Current dasha'}: ${localize(chartSummary.currentDasha?.vedic || chartSummary.currentDasha?.planet)}`
                 : '',
             chartSummary?.birthPlaceShort ? `${isHindi ? 'जन्म स्थान' : 'Birth place'}: ${localize(chartSummary.birthPlaceShort)}` : '',
@@ -2720,7 +2741,7 @@ User gender: ${this.userData?.gender === 'male' ? 'Male (पुरुष)' : thi
 ⚠️ जो months बीत चुके हैं (January-${currentMonthStr} ${currentYear}) उन्हें PAST tense में refer करें। Future predictions में specific month + year बोलें।
 ${alreadySpokenBlock}${mcqBlock}
 
-अब numbers repeat मत कीजिए। इसके बजाय, नीचे दिए गए EXACT planetary positions और dasha timeline को use करके एक SPECIFIC past event predict कीजिए जो सिर्फ इस user पर fit हो।
+अब numbers repeat मत कीजिए। User के अपने जवाब और नीचे दिए computed context से एक grounded cross-check दीजिए। इसे reflection की तरह रखें, prediction की तरह नहीं।
 
 Numbers (reference): LP ${this.calculations.lifePath}, Destiny ${this.calculations.destiny}, Soul Urge ${this.calculations.soulUrge}, Year ${this.calculations.personalYear}
 ${chartLines ? `\n${chartLines}` : ''}
@@ -2729,9 +2750,9 @@ RULES:
 - सिर्फ 2-3 वाक्य लिखिए। छोटा और sharp रखिए।
 - Numbers repeat मत कीजिए - वो देख चुके हैं।
 - ऊपर "ALREADY TOLD" section में जो कुछ कहा गया वो repeat/rephrase मत कीजिए। बिल्कुल नई बात कहिए।
-- ऊपर दिए गए planetary positions और dasha transition years को EXACTLY reference करके predict कीजिए। जैसे: "आपकी कुंडली में शनि मकर राशि में 28.5° पर है और राहु दशा ${currentYear - 3} में शुरू हुई - मुझे दिख रहा है कि उस साल..."
-- ऐसा कुछ बताइए जो सुनकर user को लगे "ये तो सच में मेरे बारे में जानता/जानती है!"
-- Vague generic बातें मत कहिए जो किसी पर भी fit हो। SPECIFIC रहिए - actual planet names, signs, dasha years बोलिए।
+- User ने जो बताया है उसे USER-STATED कहकर computed pattern से जोड़िए; उसे chart prediction बनाकर पेश मत कीजिए।
+- कोई event, date, health claim, या emotional impact invent मत कीजिए।
+- एक useful, specific reflection दीजिए जो user verify या reject कर सके।
 - energy feel या mind reading claim मत कीजिए। Chart और numbers पर based rakhein।
 ${this.getBaseRules(true)}`
             : `You are MAYA - a wise female Vedic numerology expert. You're speaking to ${this.firstName} who just saw their numbers.
@@ -2741,7 +2762,7 @@ Today: ${todayStr}
 ⚠️ Months already passed (January-${currentMonthStr} ${currentYear}) must be referenced in past tense. Future predictions must include specific month + year.
 ${alreadySpokenBlock}${mcqBlock}
 
-DO NOT repeat the numbers or anything from the ALREADY TOLD section above. Instead, use the EXACT planetary positions and dasha timeline below to predict ONE SPECIFIC past event that feels deeply personal.
+Do not repeat the numbers or anything from the ALREADY TOLD section above. Cross-check one user-stated answer against the computed context and frame it as reflection, not prediction.
 
 Numbers (reference): LP ${this.calculations.lifePath}, Destiny ${this.calculations.destiny}, Soul Urge ${this.calculations.soulUrge}, Year ${this.calculations.personalYear}
 ${chartLines ? `\n${chartLines}` : ''}
@@ -2750,9 +2771,9 @@ RULES:
 - Write ONLY 2-3 sentences. Keep it short and striking.
 - DO NOT repeat numbers - they just saw them.
 - DO NOT repeat or rephrase anything from the ALREADY TOLD section. Say something completely new.
-- Use the EXACT planetary positions and dasha transition years from above to predict a SPECIFIC past event. Example: "Saturn in Capricorn at 28.5° combined with your Rahu dasha starting ${currentYear - 3} tells me that year..."
-- The user should think "how does she know this about me?!" - that is the goal.
-- Do NOT say vague things that could apply to anyone. Be SPECIFIC - name actual planets, signs, degrees, dasha years.
+- Label what the user supplied as USER-STATED and connect it to a computed pattern without pretending the chart predicted the answer.
+- Invent no event, date, health claim, or emotional impact.
+- Give one useful, specific reflection the user can accept or reject.
 - Do not claim psychic access or energy reading. Base it on chart + numbers.
 ${this.getBaseRules(false)}`);
     },
@@ -3001,7 +3022,9 @@ ${this.getBaseRules(false)}`);
         const profile = this.personalization || {};
         const moonSign = profile.moonSign || profile.vedic?.name || '';
         const ascendant = profile.ascendant?.name || '';
-        const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
+        const dasha = profile.timedChartClaimsAllowed
+            ? (profile.currentDasha?.vedic || profile.currentDasha?.planet || '')
+            : '';
         const lp = this.calculations?.lifePath || '';
         const year = this.calculations?.personalYear || '';
         const name = this.firstName || (isHindi ? 'आप' : 'you');
@@ -3352,13 +3375,13 @@ Rules:
             ? {
                 opening: 'Act 1. Invitation phase. ऐसा लगे जैसे एक sealed personal file खुल रही है. सिर्फ पहला hard clue दीजिए, पूरा verdict नहीं। आखिर में ऐसा thread छोड़िए जो kundli layer की तरफ खींचे।',
                 kundli: 'Act 2. Chart structure phase. ऐसे बोलिए जैसे chart live trace हो रहा है. Ascendant, चंद्र राशि, दशा, या planetary clustering से life structure दिखाइए, और numbers की तरफ unresolved handoff दीजिए।',
-                numbersReveal: 'Act 2b. Numbers revelation phase. तीनों numbers अभी-अभी calculate हुए हैं। पहले short calculation explanation, फिर हर number को INDIVIDUALLY kundli data के साथ जोड़कर explain करें, और end में तीनों + kundli combine करके एक personal life prediction दें। 10-14 वाक्य।',
+                numbersReveal: 'तीनों calculated numbers को 5-7 सहज वाक्यों में समझाइए। Derivation साफ रखें, हर अर्थ को interpretation की तरह रखें, और कोई life event invent न करें।',
                 identityTruth: 'Teaser segment 1. एक grounded identity observation - "आप ऐसे इंसान हैं जो..." format में। Pattern-based, flattery-free।',
                 emotionalPattern: 'Teaser segment 2. एक emotional pattern जो user daily जीता है - ऐसा कुछ जो उन्हें inside-out describe करे।',
                 unresolvedThread: 'Teaser segment 3. एक open loop - ऐसा unresolved thread जो naturally resolution माँगे और user को आगे सुनने पर मजबूर करे।',
                 combinedTeaser: 'Combined teaser arc. तीन layers: पहले identity truth ("आप ऐसे इंसान हैं जो..."), फिर emotional pattern (inside-out), फिर unresolved thread (open loop)। तीनों एक कहानी की तरह बहें, अलग-अलग टुकड़े नहीं। हर layer chart evidence पर based हो।',
-                accuracyShock: 'Act 3. "How does she know?" moment. Chart data से एक SPECIFIC past event predict कीजिए - timing (month/year), nature, और emotional impact सहित। यह reader को चौंकाने वाला हो।',
-                suspenseBridge: 'Gate transition. Controlled tension - 1 sentence जो सबसे intense unresolved pattern name करे, 1 sentence जो कहे "इसे अभी यहीं नहीं बताऊँगी", और 1 sentence जो reading save करने की sense of importance पैदा करे।',
+                accuracyShock: 'User के अपने answer और computed pattern का grounded cross-check दें। कोई past event, तारीख, या surprise claim invent न करें।',
+                suspenseBridge: 'दो सहज वाक्यों में बताएं कि calculated preview तैयार है और sign in करके इसे save व continue किया जा सकता है।',
                 loveIntro: 'Act 4 transition. Emotional layer अब खुल रही है. Tone intimate हो, लेकिन reset नहीं।',
                 love: 'Act 4. Relationship layer. User के emotional pattern का एक private but believable contradiction खोलिए. Curiosity बनी रहे।',
                 careerIntro: 'Act 5 transition. अब outer world, work, aur money pattern की तरफ lens shift हो रही है. Momentum same रहना चाहिए।',
@@ -3379,13 +3402,13 @@ Rules:
             : {
                 opening: 'Act 1. Invitation phase. Sound like a sealed personal file is being opened. Give only the first hard clue, not the whole verdict, and leave a thread that pulls naturally into the kundli layer.',
                 kundli: 'Act 2. Chart-structure phase. Speak as if the chart is being traced live. Use ascendant, moon sign, dasha, or planetary clustering to show the structure of the life, then leave an unresolved handoff toward the numbers.',
-                numbersReveal: 'Act 2b. Numbers revelation phase. All three numbers just calculated. Start with brief calculation explanation, then explain each number INDIVIDUALLY combined with kundli data, and end with a personal life prediction combining all three + kundli. 10-14 sentences.',
+                numbersReveal: 'Explain all three calculated numbers in 5-7 natural sentences. Show the derivation, frame each meaning as interpretation, and invent no life event.',
                 identityTruth: 'Teaser segment 1. A grounded identity observation - "You are someone who..." format. Pattern-based, flattery-free.',
                 emotionalPattern: 'Teaser segment 2. An emotional pattern the user lives with daily - something that describes them from the inside out.',
                 unresolvedThread: 'Teaser segment 3. An open loop - an unresolved thread that naturally demands resolution and compels the user to keep listening.',
                 combinedTeaser: 'Combined teaser arc. Three layers: identity truth ("You are someone who..."), then emotional pattern (inside-out), then unresolved thread (open loop). All three must flow as one connected narrative, not isolated observations. Every layer must be grounded in specific chart evidence.',
-                accuracyShock: 'Act 3. "How does she know?" moment. Predict a SPECIFIC past event from chart data - with timing (month/year), nature, and emotional impact. This should genuinely surprise the user.',
-                suspenseBridge: 'Gate transition. Controlled tension - 1 sentence naming the most intense unresolved pattern, 1 sentence saying "I will not tell you this here", and 1 sentence creating a sense of importance around saving the reading.',
+                accuracyShock: 'Cross-check one user-stated answer against a computed pattern. Do not invent a past event, date, or surprise claim.',
+                suspenseBridge: 'In two natural sentences, say the calculated preview is ready and the user can sign in to save and continue it.',
                 loveIntro: 'Act 4 transition. The emotional layer is opening now. Keep it intimate without resetting the scene.',
                 love: 'Act 4. Relationship layer. Reveal one private but believable contradiction in the user\'s emotional pattern and keep curiosity alive.',
                 careerIntro: 'Act 5 transition. Shift the lens toward work, money, and outer direction while keeping the same momentum.',
@@ -3630,13 +3653,13 @@ Rules:
         const sectionPrompts = isHindi
             ? {
                 opening: `Current user के लिए ONE opening narration। EXACTLY 4 short sentences। पहली line "FRESH OPENING DIRECTIVE" का shape follow करे। User का नाम पहली या दूसरी line में natural way में आए, और "मैं MAYA हूँ" introduction दूसरी line में organically फिट हो (पहली line में नहीं)। Introduction के बाद [[pause-500]]। फिर ONE line में उनके chart, numbers या timing से सबसे standout factual clue दीजिए (जन्मतिथि literal मत पढ़िए)। आखिरी line में clearly कहिए कि personal reading कुंडली + numbers + timing से तैयार हो रही है और save करना ज़रूरी है। No filler, no cosmic platitudes।`,
-                kundli: `Current user के लिए ONE kundli narration। EXACTLY 4-5 short sentences। पहली line warm, exploratory ("चलिए साथ में देखते हैं...")। फिर ascendant, moon sign, current dasha, या dominant element में से सिर्फ 2 visible markers cite कीजिए। दूसरी या तीसरी line में एक SHORT FOMO teaser plant कीजिए ("numbers मिलते ही एक बहुत बड़ी prediction खुलेगी") -prediction reveal मत कीजिए, बस build-up। अगर chart में genuinely rare yoga है (Neechabhanga / Gajakesari / Mahapurusha / Hamsa आदि), तो एक line में mystical reverence से acknowledge कीजिए ("ऐसी कुंडली बहुत समय बाद..." -genuine wonder, dramatic नहीं); rare yoga नहीं है तो skip। End में numbers की तरफ smooth pivot। ज्यादा से ज्यादा एक [[pause-250]]।`,
+                kundli: `Current user के लिए 3-4 छोटे, सहज वाक्य। उपलब्ध जन्म जानकारी और calculation scope साफ रखें। timed chart reliable हो तो अधिकतम TWO computed markers cite करें; नहीं हो तो केवल date-based scope बताएं। कोई FOMO, rare-chart theatre, या certainty claim नहीं। End में numbers की तरफ smooth pivot।`,
                 numbersReveal: `Current user के लिए numbers reading। तीनों numbers: Life Path ${this.calculations?.lifePath || ''}, Destiny ${this.calculations?.destiny || ''}, Soul Urge ${this.calculations?.soulUrge || ''}।
 
 STRUCTURE (इसी ORDER में, total 7-9 short sentences):
 1. ONE sentence: तीनों numbers कैसे derive हुए ("birth date से Life Path, full name के अक्षरों से Destiny, स्वरों से Soul Urge")।
 2. हर number का 1-2 sentence reading -क्या represent करता है + chart का कौनसा planet/house इसे confirm करता है + real life पर specific असर। तीनों के बीच [[pause-250]]।
-3. Closing ONE sentence: तीनों numbers + chart combine करके एक SPECIFIC personal incident (past या upcoming) name कीजिए -exact time period सहित।
+3. Closing ONE sentence: तीनों numbers को मिलाकर एक practical reflection दीजिए। कोई घटना या तारीख invent मत कीजिए।
 
 No padding, no generic praise।`,
                 loveIntro: `Current user के लिए love section का ONE transition। 1 sentence। Warm, direct, section-specific। No pause token।`,
@@ -3659,7 +3682,7 @@ No padding, no generic praise।`,
                 publicLife: `Current user के लिए ONE neutral public-life & leadership reading। 4-5 sentences। 10th house (status), Sun (authority), Moon (mass appeal), और कोई Raj Yoga / Neechabhanga combinations identify कीजिए। बताइए: chart genuinely public visibility support करती है या नहीं, कौनसी window में नाम/recognition rise करेगा, और कौनसी window में controversy avoid। Politically neutral -किसी party या ideology का pakshpaat नहीं। ONE leadership remedy (Surya Namaskar / Aditya Hridaya Stotra / specific daan)। ज्यादा से ज्यादा एक [[pause-250]]।`,
                 calculationRecovery: `Current user के लिए ONE short recovery line। 1 sentence। Operational tone, mystical sales copy नहीं। No pause।`,
                 emailGate: `Current user के लिए ONE soft SMS OTP gate transition। EXACTLY 2 sentences। FOMO या डर नहीं। Sentence 1: warm continuation -reading का अगला layer तैयार है। Sentence 2 (CORE): "${this.firstName || 'जी'}, आगे की reading सुरक्षित रखने के लिए SMS verification चाहिए -अपना मोबाइल नंबर डाल दीजिए; ओटीपी आने में कुछ सेकंड लग सकते हैं।" दोस्त वाली tone, sales pitch नहीं। Email/password का ज़िक्र कभी नहीं। No pause।`,
-                fomoHook: `Current user के लिए ONE FOMO hook। 2 sentences। Chart + numbers से ONE concerning या serious pattern बताइए (upcoming challenge / hidden tension / career trap / repeating self-sabotage)। Confident और specific, vague नहीं। डराइए नहीं, urgency बनाइए। End में hint कि full details private reading में हैं। No pause।`,
+                fomoHook: `Current user को 2 natural sentences में बताइए कि calculated preview तैयार है और sign in के बाद save करके आगे बढ़ सकते हैं। कोई urgency या fear नहीं।`,
                 combinedTeaser: `Current user के लिए ONE flowing teaser reading -तीन connected segments, total 6 sentences max।
 
 [Segment 1 - IDENTITY TRUTH] 2 sentences। "आप ऐसे इंसान हैं जो..." format। Chart + numbers से flattery-free pattern observation -accurate self-description जिसे user खुद पहचान ले।
@@ -3672,8 +3695,8 @@ No padding, no generic praise।`,
                 identityTruth: `Current user के लिए ONE grounded identity truth। 2 sentences। "आप ऐसे इंसान हैं जो..." format। Chart + numbers से flattery-free observation -no praise, सिर्फ accurate self-description। No pause।`,
                 emotionalPattern: `Current user के लिए ONE emotional pattern observation। 2 sentences। Daily emotional pattern जो user actually जीता है -inner conflict / recurring feeling / relationship dynamic, chart से confirmed। "Inside-out" -अंदर महसूस होने वाली बात। No pause।`,
                 unresolvedThread: `Current user के लिए ONE unresolved thread। 2 sentences। Chart से open loop जो naturally resolution माँगे (timing shift / relationship question / career crossroad)। User को लगे "मुझे और जानना है।" Deep reading में resolve होगा। No pause।`,
-                accuracyShock: `Current user के लिए ONE "how does she know?" moment। 3 sentences। Chart data (दशा transitions, planetary positions, house activations) से SPECIFIC past event predict कीजिए -approximate month/year + nature (relationship change / career shift / health issue / family event / emotional crisis) + emotional impact। इतना specific हो कि user सोचे "ये कैसे पता?"। "जिन्दगी में बदलाव आया" जैसी generic line forbidden। ज्यादा से ज्यादा एक [[pause-250]]।`,
-                suspenseBridge: `Current user के लिए ONE suspense bridge। EXACTLY 3 sentences। Sentence 1: सबसे intense unresolved pattern name कीजिए जो chart में दिखता है। Sentence 2: कहिए "इसका पूरा truth यहाँ खोलना ठीक नहीं होगा" + एक ही वाक्य में naturally tease कीजिए कि file save होते ही vitality windows, धन-investment timing, मुक़दमे के safe months, longevity के protective periods, और leadership phases -सब chart से खोलेंगी। Sentence 3: "आपकी पूरी file तैयार है, बस इसे save कर लीजिए।" No pause।`,
+                accuracyShock: `Compatibility section: 2-3 sentences में user-stated answer और computed pattern का grounded cross-check दें। Past event, exact date, diagnosis, या surprise claim invent न करें।`,
+                suspenseBridge: `EXACTLY 2 natural sentences। Calculated preview तैयार है; sign in करके user इसे save और continue कर सकता है। Urgency, hidden truth, डर, या withholding नहीं।`,
                 returnHook: `Current user के लिए ONE return hook। 2 sentences। Chart से upcoming timing shift (specific month) identify कीजिए और कहिए कि अभी इसकी पूरी बात नहीं कर सकती -"कल इसे और गहराई से देखेंगे।" अगली session के लिए natural motivation। No pause।`,
                 authCheck: `Current user के लिए ONE record-check line। 1 sentence। Saved reading check करने की बात। No pause।`,
                 welcomeBack: `Current user के लिए returning-user prompt। 2 sentences। Warm recognition + saved reading mention + password ask। No pause।`,
@@ -3683,13 +3706,13 @@ No padding, no generic praise।`,
             }
             : {
                 opening: `Write ONE opening narration for the current user. EXACTLY 4 short sentences. Sentence 1 follows the "FRESH OPENING DIRECTIVE" shape; the user's name appears naturally in sentence 1 or 2; your "I am MAYA" introduction sits organically in sentence 2 (NEVER sentence 1). Place [[pause-500]] immediately after the introduction sentence. Then ONE sentence naming the single most standout detail from chart, numbers, or timing (do not recite the literal birth date). Final sentence makes it clear that the personal reading is being assembled from kundli + numbers + timing and invites them to save it. No filler, no cosmic platitudes.`,
-                kundli: `Write ONE kundli narration for the current user. EXACTLY 4-5 short sentences. Sentence 1 is warm and exploratory ("Let's walk through your chart together..."). Then cite ONLY 2 visible markers (ascendant, moon sign, current dasha, or dominant element). In sentence 2 or 3, plant a SHORT FOMO teaser ("once your numbers line up, one big prediction will surface") -do NOT reveal the prediction, only build suspense. If the chart genuinely contains a rare yoga (Neechabhanga / Gajakesari / Mahapurusha / Hamsa, etc.), one line of mystical reverence ("I haven't seen a chart like this in a long time..." -genuine wonder, never theatrical); if no rare yoga, skip this entirely. End with a smooth pivot toward the numbers. At most one [[pause-250]].`,
+                kundli: `Write 3-4 short, natural sentences. State the available birth-data and calculation scope honestly. If timed chart data is reliable, cite at most TWO computed markers; otherwise stay date-based. No FOMO, rare-chart theatre, or certainty claim. End with a smooth pivot toward the numbers.`,
                 numbersReveal: `Write a numbers reading for the current user. The three numbers: Life Path ${this.calculations?.lifePath || ''}, Destiny ${this.calculations?.destiny || ''}, Soul Urge ${this.calculations?.soulUrge || ''}.
 
 STRUCTURE (follow this ORDER, total 7-9 short sentences):
 1. ONE sentence on derivation ("Life Path comes from your birth date, Destiny from full-name letters, Soul Urge from the vowels").
 2. 1-2 sentences per number — what it represents + which planet/house/dasha in the chart confirms it + its specific real-life effect. Place [[pause-250]] between the three.
-3. Closing ONE sentence: combine all three numbers + chart to name ONE SPECIFIC personal incident (past or upcoming) with an exact time period.
+3. Closing ONE sentence: combine the three numbers into one practical reflection. Do not invent an incident or date.
 
 No padding, no generic praise.`,
                 loveIntro: `Write ONE transition into the love section. 1 sentence. Warm, direct, section-specific. No pause token.`,
@@ -3712,7 +3735,7 @@ No padding, no generic praise.`,
                 publicLife: `Write ONE neutral public-life & leadership reading. 4-5 sentences. Identify the 10th house (status), Sun (authority), Moon (mass appeal), and any Raj Yoga or Neechabhanga combinations. Say honestly whether the chart genuinely supports public visibility, in which window name/recognition will rise, and which window calls for avoiding controversy. Stay politically neutral — no party or ideology bias. Offer ONE leadership remedy (Surya Namaskar / Aditya Hridaya Stotra / specific daan). At most one [[pause-250]].`,
                 calculationRecovery: `Write ONE short recovery line. 1 sentence. Operational tone, never mystical or salesy. No pause.`,
                 emailGate: `Write ONE soft SMS OTP gate transition. EXACTLY 2 sentences. Do NOT create FOMO or fear. Sentence 1: warm continuation — say the next layer of the reading is ready. Sentence 2 (CORE): "${this.firstName || 'friend'}, to keep the rest of this reading secure, I need SMS verification — enter your mobile number; the OTP can take a few seconds to arrive." Friend tone, never salesperson. Never mention email or password. No pause.`,
-                fomoHook: `Write ONE FOMO hook. 2 sentences. From kundli + numbers, reveal ONE concerning or serious pattern (upcoming challenge / hidden tension / career trap / repeating self-sabotage). Confident and specific, never vague. Don't fear-monger; create genuine urgency. End with a hint that full details are in the private reading. No pause.`,
+                fomoHook: `In 2 natural sentences, say the calculated preview is ready and the user can sign in to save and continue. No urgency or fear.`,
                 combinedTeaser: `Write ONE flowing teaser reading for the current user — three connected segments, total 6 sentences max.
 
 [Segment 1 - IDENTITY TRUTH] 2 sentences. "You are someone who..." format. Flattery-free pattern observation from chart + numbers — accurate self-description the user would immediately recognize.
@@ -3725,8 +3748,8 @@ All three segments must connect as one flowing story. Include at least TWO decla
                 identityTruth: `Write ONE grounded identity truth. 2 sentences. "You are someone who..." format. Flattery-free observation from chart + numbers — no praise, just accurate self-description. No pause.`,
                 emotionalPattern: `Write ONE emotional pattern observation. 2 sentences. A daily emotional pattern the user actually lives with — inner conflict / recurring feeling / relationship dynamic confirmed by the chart. "Inside-out" — what they feel privately. No pause.`,
                 unresolvedThread: `Write ONE unresolved thread. 2 sentences. An open loop from the chart that naturally demands resolution (timing shift / relationship question / career crossroad). The user must feel "I need to know more." This thread will be resolved in the deep reading. No pause.`,
-                accuracyShock: `Write ONE "how does she know?" moment. 3 sentences. From chart data (dasha transitions, planetary positions, house activations) predict ONE SPECIFIC past event — approximate month/year + nature (relationship change / career shift / health issue / family event / emotional crisis) + emotional impact. Specific enough that the user thinks "how does she know?". Generic "you went through a change" is forbidden. At most one [[pause-250]].`,
-                suspenseBridge: `Write ONE suspense bridge. EXACTLY 3 sentences. Sentence 1: name the most intense unresolved pattern visible in the chart. Sentence 2: say "it would not be right to open the full truth here" AND naturally tease in the same sentence that once the file is saved you'll open vitality windows, wealth & investment timing, safe months for legal matters, longevity's protective periods, and leadership phases — all read straight from the chart. Sentence 3: "Your full file is ready, just save it." No pause.`,
+                accuracyShock: `Compatibility section: in 2-3 sentences, cross-check a user-stated answer against a computed pattern. Invent no past event, exact date, diagnosis, or surprise claim.`,
+                suspenseBridge: `EXACTLY 2 natural sentences. The calculated preview is ready; the user can sign in to save and continue it. No urgency, hidden truth, fear, or withholding.`,
                 returnHook: `Write ONE return hook. 2 sentences. Identify an upcoming timing shift (specific month) and say you can't fully discuss it now — "Let's go deeper next time." Naturally motivate them to return. No pause.`,
                 authCheck: `Write ONE record-check line. 1 sentence. Say you are checking their saved reading. No pause.`,
                 welcomeBack: `Write ONE returning-user prompt. 2 sentences. Warm recognition + saved reading mention + password ask. No pause.`,
@@ -5815,7 +5838,7 @@ Return ONLY JSON:
     },
 
     /**
-     * Run the "How does she know?" moment - predict a past event.
+     * Reflect a user answer against calculated context without inventing history.
      */
     async showAccuracyShockMoment() {
         const isHindi = this._isHindiMode();
@@ -6480,7 +6503,7 @@ Return ONLY JSON:
     /**
      * Begin the cosmic journey - CONVERSATIONAL flowing narrative
      * Questions are distributed throughout the funnel with AI conversations in between.
-     * Flow: Intro → Kundli + Q1 → LifePath + Q2 → Destiny + Q3 → SoulUrge + Q4 → Teaser + Q5 → Gate
+     * Flow: Intro → calculation + one or two focused questions → grounded preview → gate
      */
     async beginJourney() {
         console.log('🌟 Beginning cosmic journey...');
@@ -6631,8 +6654,8 @@ Return ONLY JSON:
             // ═══ STEP 5: Second question -after numbers (current phase) ═══
             if (!askMayaActive) {
                 const transQ2 = isHindi
-                    ? 'अच्छा, अब numbers और कुंडली दोनों ने अपनी बात कह दी है। पर एक बात बताइए।'
-                    : 'Now both the numbers and the chart have shared what they see. But tell me one thing.';
+                    ? 'गणना पूरी हो गई है। इसे आपकी आज की स्थिति से जोड़ने के लिए एक आखिरी बात बताइए।'
+                    : 'The calculation is complete. One last detail will help connect it to where you are today.';
                 // Generate question + prefetch transition TTS in parallel
                 if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(transQ2);
                 const q2 = await this.getAdaptiveQuestionForStage('q2_numbers', askedProfileKeys);
@@ -6646,10 +6669,9 @@ Return ONLY JSON:
                 }
             }
 
-            // ═══ STEP 6: Third question -money pattern ═══
-            // In Ask-Maya flow we DO NOT open unrelated topic doors (money, relationships, etc).
-            // Instead we ask one focused follow-up that stays on the user's question topic, then
-            // skip Q3/Q4/Q5 entirely and head into the teaser + email gate.
+            // Ask-Maya uses one focused follow-up. The standard journey already
+            // has two answers, which is enough to personalise the preview without
+            // turning onboarding into an interview.
             if (askMayaActive) {
                 const focusedTrans = isHindi
                     ? `अब ${topicLabel} पर एक छोटा सवाल — जिससे जवाब और सटीक हो जाए।`
@@ -6663,48 +6685,13 @@ Return ONLY JSON:
                     await this.askSingleProfileQuestion(qFocus);
                     if (qFocus.key) askedProfileKeys.add(qFocus.key);
                 }
-            } else {
-                const transQ3 = isHindi
-                    ? 'पैसों से जुड़ा एक pattern दिख रहा है कुंडली में। ये बताइए।'
-                    : 'I see a pattern around money in your chart. Tell me this.';
-                if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(transQ3);
-                const q3 = await this.getAdaptiveQuestionForStage('q3_money', askedProfileKeys);
-                if (q3) {
-                    console.log('🎯 Q3: adaptive...');
-                    await this.speak(transQ3);
-                    this.spokenNarrations.push({ stage: 'transition_q3', text: transQ3 });
-                    this.recordStepContext('transition_q3', transQ3);
-                    await this.askSingleProfileQuestion(q3);
-                    if (q3.key) askedProfileKeys.add(q3.key);
-                }
-
-                // ═══ STEP 7: Fourth question -relationship status ═══
-                const transQ4 = isHindi
-                    ? 'रिश्तों के बारे में भी कुछ दिख रहा है। एक छोटा सवाल और पूछ लूँ?'
-                    : 'I can see something about your relationships too. May I ask one more thing?';
-                if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(transQ4);
-                const q4 = await this.getAdaptiveQuestionForStage('q4_relationship', askedProfileKeys);
-                if (q4) {
-                    console.log('🎯 Q4: adaptive...');
-                    await this.speak(transQ4);
-                    this.spokenNarrations.push({ stage: 'transition_q4', text: transQ4 });
-                    this.recordStepContext('transition_q4', transQ4);
-                    await this.askSingleProfileQuestion(q4);
-                    if (q4.key) askedProfileKeys.add(q4.key);
-                }
             }
 
             // ═══ STEP 8: Hide overlay ═══
             console.log('📊 Hiding overlay...');
             await this.hideCalculationOverlay();
 
-            // ═══ STEP 9: Personalized validation (yes/somewhat/no) ═══
-            console.log('✅ Personalized validation...');
-            this.currentPhase = this.PHASES.VALIDATION;
-            const personalQ = this.buildPersonalizedValidation();
-            await this.showMiniCheck(personalQ);
-
-            // ═══ STEP 10: Teaser reveal (accuracy shock + identity + emotional pattern) ═══
+            // ═══ STEP 9: Grounded preview ═══
             console.log('🎁 Showing teaser reveal...');
             await this.showTeaserReveal();
             this.advanceProgress('accuracy_hit');
@@ -6713,8 +6700,8 @@ Return ONLY JSON:
             // The teaser is the proof moment. Do not dilute it with another
             // generic question before authentication.
 
-            // ═══ STEP 11: Suspense bridge → email gate ═══
-            console.log('🌉 Suspense bridge...');
+            // ═══ STEP 10: Save-and-continue bridge → SMS gate ═══
+            console.log('🌉 Save-and-continue bridge...');
             await this.showSuspenseBridge();
             this.advanceProgress('full_reading');
 
@@ -7589,7 +7576,9 @@ Return ONLY JSON:
         const answers = this.sessionMemory?.profileAnswers || {};
         const getValue = (key) => String(answers[key] || '').split(' (')[0].trim();
         const profile = this.personalization || {};
-        const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
+        const dasha = profile.timedChartClaimsAllowed
+            ? (profile.currentDasha?.vedic || profile.currentDasha?.planet || '')
+            : '';
         const moonSign = profile.moonSign || profile.vedic?.name || '';
         const lifePath = this.calculations?.lifePath || '';
         const facts = [];
@@ -7639,8 +7628,8 @@ Return ONLY JSON:
         }
 
         const chartLine = isHindi
-            ? `${moonSign ? `${moonSign} चन्द्र राशि` : 'आपकी भावनात्मक बनावट'}${dasha ? ` और ${dasha} समय-चक्र` : ''} यही अंदर-बाहर का अंतर दिखाते हैं${lifePath ? `; जीवन पथ ${lifePath} इसे आपके फैसलों में और स्पष्ट करता है` : ''}।`
-            : `${moonSign ? `Your ${moonSign} Moon` : 'Your emotional pattern'}${dasha ? ` and ${dasha} timing cycle` : ''} show this same gap between the inner and outer life${lifePath ? `; Life Path ${lifePath} makes it especially visible in your decisions` : ''}.`;
+            ? `आपके बताए जवाबों को ${moonSign ? `${moonSign} चन्द्र राशि की interpretation` : 'जन्मतिथि-आधारित interpretation'}${dasha ? ` और ${dasha} समय-चक्र` : ''} के साथ पढ़ने पर यही theme दोबारा आती है${lifePath ? `; जीवन पथ ${lifePath} इसमें एक दूसरा दृष्टिकोण जोड़ता है` : ''}।`
+            : `Reading what you told me alongside ${moonSign ? `the interpretation of your ${moonSign} Moon` : 'the date-based interpretation'}${dasha ? ` and ${dasha} timing cycle` : ''} brings up the same theme${lifePath ? `; Life Path ${lifePath} adds a second lens` : ''}.`;
         facts.push(chartLine);
 
         return facts.slice(0, 4).join(' [[pause-250]] ');
@@ -7756,14 +7745,14 @@ Return ONLY JSON:
         textDisplay.innerHTML = `
             <div class="email-gate-container phone-gate-container">
                 <div class="gate-header">
-                    <h3>${isHindi ? 'SMS से रीडिंग सुरक्षित करें' : 'Secure your reading with SMS'}</h3>
-                    <p class="gate-subtitle">${isHindi ? `${this.firstName}, आगे की reading आपके साथ सुरक्षित रखने के लिए SMS verification चाहिए। अपना मोबाइल नंबर डालिए; ओटीपी आने में कुछ सेकंड लग सकते हैं।` : `${this.firstName}, I need SMS verification to keep the rest of your reading secure with you. Enter your mobile number; the OTP can take a few seconds to arrive.`}</p>
+                    <h3>${isHindi ? 'अपनी रीडिंग सेव करें और आगे बढ़ें' : 'Save your reading and continue'}</h3>
+                    <p class="gate-subtitle">${isHindi ? `${this.firstName}, अपना मोबाइल नंबर डालिए। SMS ओटीपी आने में कुछ सेकंड लग सकते हैं।` : `${this.firstName}, enter your mobile number. The SMS OTP can take a few seconds to arrive.`}</p>
                 </div>
                 <div class="gate-benefits">
-                    <div class="benefit-item"><i class="bi bi-heart-fill"></i><span>${isHindi ? 'प्रेम और रिश्तों का समय-संकेत' : 'Love and relationship timing'}</span></div>
-                    <div class="benefit-item"><i class="bi bi-briefcase-fill"></i><span>${isHindi ? 'करियर और धन का अनुमान' : 'Career and wealth forecast'}</span></div>
-                    <div class="benefit-item"><i class="bi bi-exclamation-triangle-fill"></i><span>${isHindi ? 'सावधानी वाले बिंदु' : 'Pressure points and cautions'}</span></div>
-                    <div class="benefit-item"><i class="bi bi-calendar-event-fill"></i><span>${isHindi ? 'आने वाले चरणों की समय-रेखा' : 'Your next chapters timing map'}</span></div>
+                    <div class="benefit-item"><i class="bi bi-heart-fill"></i><span>${isHindi ? 'साइन इन के बाद: रिश्तों की रीडिंग' : 'After sign-in: relationship reading'}</span></div>
+                    <div class="benefit-item"><i class="bi bi-briefcase-fill"></i><span>${isHindi ? 'साइन इन के बाद: काम और धन' : 'After sign-in: work and money'}</span></div>
+                    <div class="benefit-item"><i class="bi bi-exclamation-triangle-fill"></i><span>${isHindi ? 'साइन इन के बाद: ध्यान देने वाले बिंदु' : 'After sign-in: points to watch'}</span></div>
+                    <div class="benefit-item"><i class="bi bi-calendar-event-fill"></i><span>${isHindi ? 'साइन इन के बाद: आने वाले महीने' : 'After sign-in: upcoming months'}</span></div>
                 </div>
                 <form id="phone-gate-form" class="gate-form" autocomplete="off">
                     <div class="phone-input-wrapper">

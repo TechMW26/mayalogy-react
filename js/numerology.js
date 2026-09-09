@@ -19,6 +19,14 @@ const MayaNumerology = {
         return MAYA_CONFIG.NUMEROLOGY.VOWELS.includes(letter.toUpperCase());
     },
 
+    normalizeNameLetters(fullName) {
+        return String(fullName || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toUpperCase()
+            .replace(/[^A-Z]/g, '');
+    },
+
     /**
      * Reduce a number to a single digit (or master number)
      */
@@ -56,7 +64,7 @@ const MayaNumerology = {
      * Calculate Destiny/Expression Number from full name
      */
     calculateDestinyNumber(fullName) {
-        const letters = fullName.toUpperCase().replace(/[^A-Z]/g, '');
+        const letters = this.normalizeNameLetters(fullName);
         let sum = 0;
         
         for (const letter of letters) {
@@ -70,7 +78,7 @@ const MayaNumerology = {
      * Calculate Soul Urge/Heart's Desire Number (from vowels)
      */
     calculateSoulUrge(fullName) {
-        const letters = fullName.toUpperCase().replace(/[^A-Z]/g, '');
+        const letters = this.normalizeNameLetters(fullName);
         let sum = 0;
         
         for (const letter of letters) {
@@ -86,7 +94,7 @@ const MayaNumerology = {
      * Calculate Personality Number (from consonants)
      */
     calculatePersonalityNumber(fullName) {
-        const letters = fullName.toUpperCase().replace(/[^A-Z]/g, '');
+        const letters = this.normalizeNameLetters(fullName);
         let sum = 0;
         
         for (const letter of letters) {
@@ -189,7 +197,7 @@ const MayaNumerology = {
         }
         
         // Check Destiny Number
-        const letters = fullName.toUpperCase().replace(/[^A-Z]/g, '');
+        const letters = this.normalizeNameLetters(fullName);
         let destinySum = 0;
         for (const letter of letters) {
             destinySum += this.getLetterValue(letter);
@@ -327,6 +335,13 @@ const MayaNumerology = {
      * Calculate all numerology numbers - Extended
      */
     calculateAll(fullName, birthDate) {
+        const parsedDate = window.MayaAstrology ? MayaAstrology.parseDate(birthDate) : new Date(birthDate);
+        if (!parsedDate || Number.isNaN(parsedDate.getTime?.())) {
+            throw new Error('A valid birth date is required for numerology');
+        }
+        if (!this.normalizeNameLetters(fullName)) {
+            throw new Error('A Latin-alphabet name spelling is required for name numerology');
+        }
         return {
             lifePath: this.calculateLifePath(birthDate),
             destiny: this.calculateDestinyNumber(fullName),
@@ -348,7 +363,7 @@ const MayaNumerology = {
      * Get detailed breakdown of name calculation
      */
     getNameBreakdown(fullName) {
-        const letters = fullName.toUpperCase().replace(/[^A-Z]/g, '');
+        const letters = this.normalizeNameLetters(fullName);
         const breakdown = [];
         
         for (const letter of letters) {

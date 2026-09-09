@@ -1,4 +1,4 @@
-const BUILD_STAMP = '20260909-minimal-internal-ui';
+const BUILD_STAMP = '20260909-pollinations-grounded-journey';
 
 const SCRIPT_SOURCES = [
   { src: 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js', optional: true },

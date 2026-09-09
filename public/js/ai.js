@@ -1,6 +1,6 @@
 /**
  * MAYA - AI Module
- * Gemini handles deep text generation; Groq is an optional fast lane.
+ * Pollinations provides server-side text and media generation.
  */
 
 const MayaAI = {
@@ -407,17 +407,9 @@ const MayaAI = {
             const _gn = _isMale ? 'Moksh' : 'MAYA';
 
             systemPrompt += `\n\n## ${_gn} VOICE & PERSONALITY REFINEMENTS`;
-            systemPrompt += _isMale
-                ? `\n24. SIGNATURE PHRASING: Use these naturally - "I am not guessing. I am reading." / "This is not a prediction. This is already running." / "Most people do not know this about themselves. But your chart makes it obvious." In Hindi: "मैं अंदाज़ा नहीं लगा रहा। मैं पढ़ रहा हूँ।" / "ये भविष्यवाणी नहीं है। ये पहले से चल रहा है।" / "ज़्यादातर लोग ये ख़ुद के बारे में नहीं जानते। पर आपकी chart में ये बिल्कुल साफ़ है।"`
-                : `\n24. SIGNATURE PHRASING: Use these naturally - "I am not guessing. I am reading." / "This is not a prediction. This is already running." / "Most people do not know this about themselves. But your chart makes it obvious." In Hindi: "मैं अंदाज़ा नहीं लगा रही। मैं पढ़ रही हूँ।" / "ये भविष्यवाणी नहीं है। ये पहले से चल रहा है।" / "ज़्यादातर लोग ये ख़ुद के बारे में नहीं जानते। पर आपकी chart में ये बिल्कुल साफ़ है।"`;
-
-            systemPrompt += _isMale
-                ? `\n25. EMOTIONAL TEXTURE: ${_gn} notices before he explains. Before making a claim, hint that you noticed something ("There is something in your seventh house that caught my attention" / "सातवें भाव में कुछ दिखा जिसने मेरा ध्यान खींचा"). This creates a "he sees me" moment.`
-                : `\n25. EMOTIONAL TEXTURE: ${_gn} notices before she explains. Before making a claim, hint that you noticed something ("There is something in your seventh house that caught my attention" / "सातवें भाव में कुछ दिखा जिसने मेरा ध्यान खींचा"). This creates a "she sees me" moment.`;
-
-            systemPrompt += _isMale
-                ? `\n26. PROTECTIVE CAUTION STYLE: When warning, express reluctance to say it ("I do not like saying this, but your chart is clear" / "ये कहना मुझे अच्छा नहीं लग रहा, पर chart साफ़ बोल रहा है"). Never fear-monger - always pair a warning with a protective boundary or an action step.`
-                : `\n26. PROTECTIVE CAUTION STYLE: When warning, express reluctance to say it ("I do not like saying this, but your chart is clear" / "ये कहना मुझे अच्छा नहीं लग रहा, पर chart साफ़ बोल रही है"). Never fear-monger - always pair a warning with a protective boundary or an action step.`;
+            systemPrompt += `\n24. GROUNDING: Label the basis naturally: calculated birth/name fact, user-stated answer, or interpretation. Never turn something the user told you into a chart discovery. Never invent a past event, date, diagnosis, or certainty.`;
+            systemPrompt += `\n25. HUMAN VOICE: Speak like a thoughtful guide responding to this person, not a script. Prefer plain acknowledgement, one clear insight, and one useful next step. Avoid psychic phrasing, surprise theatre, sales pressure, and repeated mystical claims.`;
+            systemPrompt += `\n26. CAUTION STYLE: State uncertainty and practical limits directly. Pair any caution with an actionable boundary; never use reluctance, fear, or "the chart is clear" as persuasion.`;
 
             systemPrompt += `\n27. PAUSE DESIGN: Use [[pause-250]] after emotionally heavy lines. Use [[pause-500]] after a major reveal or before the user's name in an important address. Maximum 3 pauses per response.`;
             systemPrompt += `\n28. NO RESET BETWEEN SECTIONS: Each new section of the reading must feel like a continuation, not a fresh start. Reference what was just said: "And this connects to what I just showed you about..." / "वही pattern जो अभी दिखाया..."`;
@@ -436,14 +428,14 @@ const MayaAI = {
     },
 
     /**
-     * Stale alias kept so old call sites do not crash. Routes to Gemini.
+     * Stale alias kept so old call sites do not crash.
      */
     async callOpenAI(message, options = {}) {
         return this.callGemini(message, options);
     },
 
     /**
-     * Call the AI through Gemini. Public method name is kept for existing callers.
+     * Call Pollinations through the server. Public method name is kept for existing callers.
      */
     async callGemini(message, options = {}) {
         const systemPrompt = this.buildSystemPrompt();
@@ -452,13 +444,13 @@ const MayaAI = {
             ? this.conversationHistory[this.conversationHistory.length - 1]?.content || message
             : message;
 
-        const result = await this._callGeminiProvider(systemPrompt, userMessage, includeHistory, options);
+        const result = await this._callPollinationsProvider(systemPrompt, userMessage, includeHistory, options);
         if (result) {
-            this.currentProvider = 'gemini';
+            this.currentProvider = 'pollinations';
             return result;
         }
 
-        throw new Error('Gemini AI provider failed');
+        throw new Error('Pollinations AI provider failed');
     },
 
     /**
@@ -466,17 +458,49 @@ const MayaAI = {
      */
     async callFast(message, options = {}) {
         const fastTimeoutMs = Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : 4200;
-        // Groq fast-lane is intentionally disabled.
-        // All spoken/narration content must come from Gemini so sentence completion is consistent.
+        // Lightweight requests use the same server-side Pollinations route.
         return this.callGemini(message, {
             ...options,
-            provider: 'gemini',
-            preferGemini: true,
+            provider: 'pollinations',
             requireComplete: options.requireComplete !== false,
             timeoutMs: fastTimeoutMs,
             maxKeyAttempts: Number(options.maxKeyAttempts) > 0 ? Number(options.maxKeyAttempts) : 2,
             fastFail: options.fastFail !== false
         });
+    },
+
+    async _callPollinationsProvider(systemPrompt, userMessage, includeHistory = false, options = {}) {
+        const contextMessages = Array.isArray(options.contextMessages) ? options.contextMessages : [];
+        const messages = [];
+        if (includeHistory) messages.push(...contextMessages, ...this.conversationHistory);
+        else if (contextMessages.length) messages.push(...contextMessages);
+        messages.push({ role: 'user', content: String(userMessage || '') });
+
+        const response = await this._withOptionalTimeout(fetch(MAYA_CONFIG.ENDPOINTS.AI_TEXT || '/api/ai-text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                systemPrompt,
+                messages,
+                temperature: options.temperature,
+                topP: options.topP,
+                maxTokens: options.maxTokens
+            })
+        }), options.timeoutMs ?? 0, 'Pollinations');
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.text) throw new Error(data.error || 'Pollinations request failed');
+        return String(data.text).trim();
+    },
+
+    async generateImage(prompt, options = {}) {
+        const response = await fetch(MAYA_CONFIG.ENDPOINTS.AI_IMAGE || '/api/ai-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, size: options.size, quality: options.quality })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.imageData) throw new Error(data.error || 'Image generation failed');
+        return data.imageData;
     },
 
     _getGroqApiKey() {
@@ -796,10 +820,10 @@ Regenerate the same answer as complete spoken narration. Return the full correct
         let response;
 
         try {
-            this.currentProvider = 'gemini';
+            this.currentProvider = 'pollinations';
             response = await this.callGemini(message, { includeHistory: true });
         } catch (aiError) {
-            console.error('Gemini AI failed:', aiError);
+            console.error('Pollinations AI failed:', aiError);
             response = "I apologize, but I'm having trouble connecting to my cosmic wisdom right now. Please try again in a moment.";
         }
 

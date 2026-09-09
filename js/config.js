@@ -9,14 +9,8 @@ console.log('🔧 config.js loading...');
 const _secrets = window.MAYA_SECRETS || {};
 
 const MAYA_CONFIG = {
-    // Public browser keys only. Server-side secrets stay in Vercel functions.
+    // Only non-secret browser configuration belongs here. AI credentials stay server-side.
     API_KEYS: {
-        // Groq is used only as a fast lane for short funnel copy.
-        GROQ: _secrets.GROQ_KEY || '',
-        // Gemini powers deep text generation plus Palm Reading + Vastu image analysis.
-        GEMINI: _secrets.GEMINI_KEY || '',
-        GEMINI_FALLBACKS: Array.isArray(_secrets.GEMINI_FALLBACKS) ? _secrets.GEMINI_FALLBACKS : [],
-        ELEVENLABS: '',
         ELEVENLABS_VOICE_ID: _secrets.ELEVENLABS_VOICE || 'P3JECz9WQeXyyodBL3ZD',
         ELEVENLABS_HI_VOICE_ID: _secrets.ELEVENLABS_HI_VOICE || '',
         ELEVENLABS_EN_VOICE_ID: _secrets.ELEVENLABS_EN_VOICE || '',
@@ -26,33 +20,11 @@ const MAYA_CONFIG = {
         GOOGLE_CLIENT_ID: _secrets.GOOGLE_CLIENT_ID || ''
     },
 
-    // Groq fast-lane models. Used only for short intros, fillers, MCQs, and acks.
-    GROQ_MODELS: [
-        'llama-3.1-8b-instant',
-        'llama-3.3-70b-versatile',
-        'meta-llama/llama-4-scout-17b-16e-instruct'
-    ],
-
-    // Gemini text models. Tried in order; the first valid response wins.
-    GEMINI_TEXT_MODELS: [
-        'gemini-2.5-flash-lite',
-        'gemini-2.5-flash',
-        'gemini-2.0-flash'
-    ],
-
-    // Vision-capable Gemini models for palm + vastu image analysis.
-    // Tried in order; the first one that returns a valid response wins.
-    GEMINI_MODELS: [
-        'gemini-2.5-flash-lite',
-        'gemini-2.5-flash',
-        'gemini-2.0-flash'
-    ],
-
     // API Endpoints
     ENDPOINTS: {
-        GROQ: 'https://api.groq.com/openai/v1/chat/completions',
-        // Gemini base URL for text and vision callers.
-        GEMINI_BASE: 'https://generativelanguage.googleapis.com/v1beta/models',
+        AI_TEXT: '/api/ai-text',
+        AI_VISION: '/api/ai-vision',
+        AI_IMAGE: '/api/ai-image',
         ELEVENLABS: '/api/tts',
         REMOVE_BACKGROUND: '/api/remove-background',
         FIREBASE: _secrets.FIREBASE_DB_URL || ''
