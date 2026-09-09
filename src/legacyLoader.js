@@ -1,4 +1,4 @@
-const BUILD_STAMP = '20260909-daily-horoscope-chat-blob-grid';
+const BUILD_STAMP = '20260909-compass-preload-poppins';
 
 const SCRIPT_SOURCES = [
   { src: 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js', optional: true },

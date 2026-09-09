@@ -4169,7 +4169,7 @@ const MayaPages = {
                                 <div class="maya-compass-img__dial" id="compassDial"></div>
                                 <!-- Compass needle (fixed, points to direction you're facing) -->
                                 <div class="maya-compass-img__needle">
-                                    <img src="19-194340_compass-needle-png-circle.png" alt="Compass Needle">
+                                    <img src="${window.MayaAssets?.compassNeedle || '/19-194340_compass-needle-png-circle.png'}" alt="Compass Needle">
                                 </div>
                             </div>
                             

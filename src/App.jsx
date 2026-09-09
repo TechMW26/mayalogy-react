@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { initializeFirebaseClient } from './firebaseClient.js';
 import { bootLegacyMayalogy } from './legacyLoader.js';
 import { LEGACY_SHELL_HTML } from './legacyShell.js';
+import { preloadCompassAssets } from './assetPreloader.js';
 
 const GENERATED_ICON = '/images/maya-logo.png';
 
@@ -109,7 +110,7 @@ export default function App() {
       document.body.appendChild(shellContainer);
     }
 
-    initializeFirebaseClient().then(() => bootLegacyMayalogy()).catch((error) => {
+    Promise.all([initializeFirebaseClient(), preloadCompassAssets()]).then(() => bootLegacyMayalogy()).catch((error) => {
       console.error('Failed to boot Mayalogy legacy runtime:', error);
       if (!cancelled) {
         setBootError(error);

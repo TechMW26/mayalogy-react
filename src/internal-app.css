@@ -25,7 +25,7 @@
     min-height: 100dvh;
     color: var(--maya-text-primary);
     background: var(--maya-bg-primary) !important;
-    font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: 'Poppins', sans-serif;
 }
 
 #app-container *,
@@ -1253,7 +1253,7 @@ body:not(.guest-mode) .maya-aspect-modal {
     border-radius: 16px !important;
     background: #fff !important;
     box-shadow: 0 20px 60px rgba(37, 34, 31, 0.18) !important;
-    font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: 'Poppins', sans-serif;
     overflow: hidden !important;
 }
 
@@ -1349,4 +1349,17 @@ html[data-bs-theme="dark"] body:not(.guest-mode) .maya-lucky-modal__tips {
     body:not(.guest-mode) .maya-overlay--chat .maya-blob-container.blob-top::before {
         animation: none !important;
     }
+}
+
+/* One type system across the complete product. Icon-font elements are excluded
+   so Bootstrap and country-flag glyphs keep their dedicated font files. */
+html,
+body,
+button,
+input,
+select,
+textarea,
+optgroup,
+body *:not(.bi):not([class^="fi"]):not([class*=" fi"]) {
+    font-family: 'Poppins', sans-serif !important;
 }

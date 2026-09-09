@@ -22,10 +22,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Raleway:wght@400;500;600;700;800&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link href="/css/maya.css?v=20260909-pollinations-grounded-journey" rel="stylesheet">
+    <link href="/css/maya.css?v=20260909-compass-preload-poppins" rel="stylesheet">
 
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png">
@@ -34,6 +33,8 @@
     <!-- Preload language-choice voice prompt so it's already on the device when onboarding opens -->
     <link rel="preload" as="audio" href="/Language-choice.mp3" type="audio/mpeg">
     <link rel="preload" as="image" href="/background.jpeg" type="image/jpeg" fetchpriority="high">
+    <link rel="preload" as="image" href="/compass-black-background_1063-119.avif" type="image/avif">
+    <link rel="preload" as="image" href="/19-194340_compass-needle-png-circle.png" type="image/png">
 </head>
 
 <body>
@@ -43,14 +44,12 @@
         if ('serviceWorker' in navigator || 'caches' in window) {
             window.addEventListener('load', async () => {
                 try {
-                    const buildStamp = '20260909-pollinations-grounded-journey';
+                    const buildStamp = '20260909-compass-preload-poppins';
                     const hadController = !!navigator.serviceWorker?.controller;
 
                     const localCacheKeyPatterns = [
                         /translation_cache/i,
-                        /stmt_cache/i,
-                        /daily_horoscope/i,
-                        /network-only-build/i
+                        /stmt_cache/i
                     ];
 
                     Object.keys(localStorage).forEach((key) => {

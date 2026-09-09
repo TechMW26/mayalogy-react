@@ -26,11 +26,12 @@
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <!-- Google Fonts -->
-    <link
-        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Raleway:wght@400;500;600;700;800&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
+    <link rel="preload" as="image" href="/compass-black-background_1063-119.avif" type="image/avif">
+    <link rel="preload" as="image" href="/19-194340_compass-needle-png-circle.png" type="image/png">
     <!-- Custom CSS -->
-    <link href="css/maya.css?v=20260505a-review" rel="stylesheet">
+    <link href="css/maya.css?v=20260909-compass-preload-poppins" rel="stylesheet">
 
     <!-- Favicon & Icons -->
     <link rel="icon" type="image/png" href="favicon.png">
@@ -411,14 +412,12 @@
         if ('serviceWorker' in navigator || 'caches' in window) {
             window.addEventListener('load', async () => {
                 try {
-                    const buildStamp = '20260505a-review';
+                    const buildStamp = '20260909-compass-preload-poppins';
                     const hadController = !!navigator.serviceWorker?.controller;
 
                     const localCacheKeyPatterns = [
                         /translation_cache/i,
-                        /stmt_cache/i,
-                        /daily_horoscope/i,
-                        /network-only-build/i
+                        /stmt_cache/i
                     ];
 
                     Object.keys(localStorage).forEach((key) => {

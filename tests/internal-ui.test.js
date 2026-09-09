@@ -116,6 +116,44 @@ test('authenticated detail modals match dark mode and remain scrollable', async 
     assert.match(pages, /returnFocusTo\?\.focus\?\.\(\)/);
 });
 
+test('compass artwork is preloaded, persisted locally, and has a static fallback', async () => {
+    const [index, app, preloader, pages, styles] = await Promise.all([
+        read('../index.html'),
+        read('../src/App.jsx'),
+        read('../src/assetPreloader.js'),
+        read('../public/js/pages.js'),
+        read('../public/css/maya.css')
+    ]);
+
+    assert.match(index, /rel="preload" as="image" href="\/compass-black-background_1063-119\.avif"/);
+    assert.match(index, /rel="preload" as="image" href="\/19-194340_compass-needle-png-circle\.png"/);
+    const startupCleanup = index.split('const localCacheKeyPatterns = [')[1].split('];')[0];
+    assert.doesNotMatch(startupCleanup, /daily_horoscope|network-only-build/);
+    assert.match(app, /Promise\.all\(\[initializeFirebaseClient\(\), preloadCompassAssets\(\)\]\)/);
+    assert.match(preloader, /maya_compass_assets_v1/);
+    assert.match(preloader, /localStorage\.setItem\(COMPASS_CACHE_KEY/);
+    assert.match(preloader, /MAX_COMPASS_ASSET_BYTES/);
+    assert.match(pages, /window\.MayaAssets\?\.compassNeedle \|\| '\/19-194340_compass-needle-png-circle\.png'/);
+    assert.match(styles, /--maya-compass-dial-image, url\('\.\.\/compass-black-background_1063-119\.avif'\)/);
+});
+
+test('Poppins is the single application text family while icon fonts stay intact', async () => {
+    const [index, theme, internal, legal] = await Promise.all([
+        read('../index.html'),
+        read('../src/temple-theme.css'),
+        read('../src/internal-app.css'),
+        read('../public/_legal-shared.css')
+    ]);
+
+    assert.match(index, /family=Poppins/);
+    assert.doesNotMatch(index, /family=(?:Raleway|Montserrat|Cormorant)/);
+    assert.match(theme, /--font-primary:\s*'Poppins'/);
+    assert.match(theme, /--font-display:\s*'Poppins'/);
+    assert.match(internal, /body \*:not\(\.bi\)[\s\S]*?font-family:\s*'Poppins', sans-serif !important/);
+    assert.doesNotMatch(internal, /font-family:\s*Inter/);
+    assert.doesNotMatch(legal, /Montserrat/);
+});
+
 test('pre-login modal and funnel own the temple background layer', async () => {
   const theme = await readFile(new URL('../src/temple-theme.css', import.meta.url), 'utf8');
   const index = await readFile(new URL('../index.html', import.meta.url), 'utf8');
