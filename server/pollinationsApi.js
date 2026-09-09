@@ -1,14 +1,20 @@
 import { Buffer } from 'node:buffer';
 
 const API_BASE = 'https://gen.pollinations.ai/v1';
+const MAX_TEXT_CONTENT_CHARS = 20000;
+const MAX_TEXT_REQUEST_CHARS = 100000;
+const MAX_VISION_IMAGE_BYTES = 7 * 1024 * 1024;
+const MAX_EDIT_IMAGE_BYTES = 10 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const ALLOWED_IMAGE_SIZES = new Set(['512x512', '768x768', '1024x1024']);
 const DEFAULT_MODELS = Object.freeze({
   text: [
-    'openai/gpt-5.4-nano',
     'mistralai/mistral-small-3.2',
+    'openai/gpt-5.4-nano',
   ],
   vision: [
-    'deepseek/deepseek-v4-flash-vision-exp',
     'qwen/qwen3-vl-30b-a3b-instruct',
+    'deepseek/deepseek-v4-flash-vision-exp',
     'openai/gpt-5.4-nano',
   ],
   image: [
@@ -55,7 +61,8 @@ function getModels(env, kind) {
   const configured = getEnv(env, envName)
     .split(',')
     .map((value) => value.trim())
-    .filter(Boolean);
+    .filter((value) => /^[a-z0-9._-]+\/[a-z0-9._-]+$/i.test(value))
+    .slice(0, 5);
   return configured.length ? configured : DEFAULT_MODELS[kind];
 }
 
@@ -74,22 +81,49 @@ function sanitizeSpeechInput(value) {
 }
 
 function normalizeMessages(payload) {
-  const messages = Array.isArray(payload?.messages) ? payload.messages : [];
-  const normalized = messages
+  const messages = (Array.isArray(payload?.messages) ? payload.messages : [])
     .slice(-24)
     .map((message) => ({
       role: ['system', 'assistant', 'user'].includes(message?.role) ? message.role : 'user',
-      content: String(message?.content || '').slice(0, 50000),
+      content: String(message?.content || '').slice(0, MAX_TEXT_CONTENT_CHARS),
     }))
     .filter((message) => message.content.trim());
 
-  if (payload?.systemPrompt) {
-    normalized.unshift({ role: 'system', content: String(payload.systemPrompt).slice(0, 50000) });
-  }
   if (payload?.prompt) {
-    normalized.push({ role: 'user', content: String(payload.prompt).slice(0, 50000) });
+    messages.push({ role: 'user', content: String(payload.prompt).slice(0, MAX_TEXT_CONTENT_CHARS) });
   }
+
+  const systemMessage = payload?.systemPrompt
+    ? { role: 'system', content: String(payload.systemPrompt).slice(0, MAX_TEXT_CONTENT_CHARS) }
+    : null;
+  let remaining = MAX_TEXT_REQUEST_CHARS - (systemMessage?.content.length || 0);
+  const normalized = [];
+  for (let index = messages.length - 1; index >= 0 && remaining > 0; index -= 1) {
+    const message = messages[index];
+    const content = message.content.slice(-remaining);
+    if (content.trim()) normalized.unshift({ ...message, content });
+    remaining -= content.length;
+  }
+  if (systemMessage?.content.trim()) normalized.unshift(systemMessage);
   return normalized;
+}
+
+function parseImageDataUrl(value, maxBytes) {
+  const match = String(value || '').trim().match(/^data:(image\/[\w.+-]+);base64,([A-Za-z0-9+/]+={0,2})$/);
+  if (!match) return null;
+  const mimeType = match[1].toLowerCase();
+  if (!ALLOWED_IMAGE_TYPES.has(mimeType)) return null;
+  const base64 = match[2];
+  if (base64.length % 4 !== 0) return null;
+  const bytes = Buffer.from(base64, 'base64');
+  if (!bytes.length || bytes.length > maxBytes) return null;
+  return { dataUrl: `data:${mimeType};base64,${base64}`, mimeType, bytes };
+}
+
+function safeUpstreamMessage(message) {
+  return String(message || 'Pollinations request failed')
+    .replace(/sk_[A-Za-z0-9_-]+/g, '[redacted]')
+    .slice(0, 500);
 }
 
 async function readUpstreamError(response) {
@@ -133,7 +167,7 @@ async function callWithFallback({ env, kind, path, makeInit, parseResponse }) {
     }
   }
 
-  const error = new Error(lastMessage);
+  const error = new Error(safeUpstreamMessage(lastMessage));
   error.status = lastStatus;
   error.code = lastStatus === 402 ? 'POLLINATIONS_BUDGET_EXHAUSTED' : 'POLLINATIONS_REQUEST_FAILED';
   throw error;
@@ -173,8 +207,10 @@ export async function handleTextGenerationRequest(payload, env = process.env) {
 
 export async function handleVisionRequest(payload, env = process.env) {
   const prompt = String(payload?.prompt || '').trim();
-  const images = (Array.isArray(payload?.images) ? payload.images : [payload?.imageData])
-    .filter((image) => typeof image === 'string' && /^data:image\/[\w.+-]+;base64,/.test(image))
+  const candidates = Array.isArray(payload?.images) ? payload.images : [payload?.imageData];
+  const images = candidates
+    .map((image) => parseImageDataUrl(image, MAX_VISION_IMAGE_BYTES))
+    .filter(Boolean)
     .slice(0, 2);
 
   if (!prompt || !images.length) return jsonResponse(400, { error: 'prompt and at least one base64 image are required' });
@@ -192,8 +228,8 @@ export async function handleVisionRequest(payload, env = process.env) {
           messages: [{
             role: 'user',
             content: [
-              { type: 'text', text: prompt.slice(0, 50000) },
-              ...images.map((url) => ({ type: 'image_url', image_url: { url, detail: 'high' } })),
+              { type: 'text', text: prompt.slice(0, MAX_TEXT_CONTENT_CHARS) },
+              ...images.map(({ dataUrl }) => ({ type: 'image_url', image_url: { url: dataUrl, detail: 'high' } })),
             ],
           }],
           temperature: safeNumber(payload?.temperature, 0.7, 0, 2),
@@ -215,6 +251,10 @@ export async function handleVisionRequest(payload, env = process.env) {
 export async function handleImageGenerationRequest(payload, env = process.env) {
   const prompt = String(payload?.prompt || '').trim();
   if (!prompt) return jsonResponse(400, { error: 'prompt is required' });
+  const size = payload?.size || '1024x1024';
+  if (!ALLOWED_IMAGE_SIZES.has(size)) {
+    return jsonResponse(400, { error: 'size must be 512x512, 768x768, or 1024x1024' });
+  }
 
   try {
     return await callWithFallback({
@@ -228,7 +268,7 @@ export async function handleImageGenerationRequest(payload, env = process.env) {
           model,
           prompt: prompt.slice(0, 32000),
           n: 1,
-          size: /^\d{3,4}x\d{3,4}$/.test(payload?.size || '') ? payload.size : '1024x1024',
+          size,
           quality: ['low', 'medium', 'high'].includes(payload?.quality) ? payload.quality : 'medium',
           response_format: 'b64_json',
           safe: true,
@@ -248,12 +288,11 @@ export async function handleImageGenerationRequest(payload, env = process.env) {
 }
 
 export async function handleImageEditRequest(payload, env = process.env) {
-  const imageData = String(payload?.imageData || '').trim();
-  if (!/^data:image\/[\w.+-]+;base64,/.test(imageData)) {
-    return jsonResponse(400, { error: 'imageData must be a base64 image data URL' });
+  const image = parseImageDataUrl(payload?.imageData, MAX_EDIT_IMAGE_BYTES);
+  if (!image) {
+    return jsonResponse(400, { error: 'imageData must be a supported base64 image up to 10 MB' });
   }
 
-  const [, mimeType, base64] = imageData.match(/^data:(image\/[\w.+-]+);base64,(.+)$/) || [];
   try {
     return await callWithFallback({
       env,
@@ -261,7 +300,7 @@ export async function handleImageEditRequest(payload, env = process.env) {
       path: '/images/edits',
       makeInit: (model) => {
         const formData = new FormData();
-        formData.append('image', new Blob([Buffer.from(base64, 'base64')], { type: mimeType }), 'source.png');
+        formData.append('image', new Blob([image.bytes], { type: image.mimeType }), 'source.png');
         formData.append('prompt', String(payload?.prompt || 'Remove the background cleanly. Keep the subject unchanged on a transparent background.').slice(0, 32000));
         formData.append('model', model);
         formData.append('size', '1024x1024');
@@ -292,7 +331,13 @@ export async function handleTextToSpeechRequest(payload, env = process.env) {
       makeInit: (model) => ({
         method: 'POST',
         headers: { Accept: 'audio/mpeg', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, input, voice: payload?.voice || 'nova', response_format: 'mp3', safe: true }),
+        body: JSON.stringify({
+          model,
+          input,
+          voice: /^[A-Za-z0-9._-]{1,100}$/.test(payload?.voice || '') ? payload.voice : 'nova',
+          response_format: 'mp3',
+          safe: true,
+        }),
       }),
       parseResponse: async (response, model) => binaryResponse(200, Buffer.from(await response.arrayBuffer()), {
         'Cache-Control': 'no-store',

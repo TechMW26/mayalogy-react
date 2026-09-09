@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "sync:runtime-env": "node scripts/sync-runtime-env.mjs",
+    "sync:vercel-env": "node scripts/vercel-env-sync.mjs",
     "predev": "node scripts/sync-runtime-env.mjs development",
     "dev": "vite",
     "prebuild": "node scripts/sync-runtime-env.mjs production",

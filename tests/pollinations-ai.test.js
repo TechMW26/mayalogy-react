@@ -12,8 +12,8 @@ import {
 } from '../server/pollinationsApi.js';
 
 test('uses economical capability-specific Pollinations model routes', () => {
-  assert.equal(DEFAULT_MODELS.text[0], 'openai/gpt-5.4-nano');
-  assert.equal(DEFAULT_MODELS.vision[0], 'deepseek/deepseek-v4-flash-vision-exp');
+  assert.equal(DEFAULT_MODELS.text[0], 'mistralai/mistral-small-3.2');
+  assert.equal(DEFAULT_MODELS.vision[0], 'qwen/qwen3-vl-30b-a3b-instruct');
   assert.equal(DEFAULT_MODELS.image[0], 'black-forest-labs/flux.1-schnell');
   assert.equal(DEFAULT_MODELS.speech[0], 'elevenlabs/eleven-flash-v2.5');
 });
@@ -60,6 +60,38 @@ test('routes text, vision, image and speech through Pollinations bearer auth', a
 
 test('speech input removes orchestration tags before synthesis', () => {
   assert.equal(sanitizeSpeechInput('[warm] Hello [[pause-500]] there'), 'Hello … there');
+});
+
+test('rejects malformed, oversized, and unexpectedly costly media inputs', async () => {
+  const env = { POLLINATIONS_API_KEY: 'sk_test_only' };
+  assert.equal((await handleVisionRequest({ prompt: 'Inspect', imageData: 'data:image/svg+xml;base64,PHN2Zz4=' }, env)).status, 400);
+  assert.equal((await handleVisionRequest({ prompt: 'Inspect', imageData: 'data:image/png;base64,not_base64!' }, env)).status, 400);
+  assert.equal((await handleImageGenerationRequest({ prompt: 'A moon', size: '9999x9999' }, env)).status, 400);
+  assert.equal((await handleImageEditRequest({ imageData: 'data:image/svg+xml;base64,PHN2Zz4=' }, env)).status, 400);
+});
+
+test('bounds text context while preserving the system prompt and newest request', async (t) => {
+  const originalFetch = globalThis.fetch;
+  let requestBody;
+  globalThis.fetch = async (_url, init) => {
+    requestBody = JSON.parse(init.body);
+    return new Response(JSON.stringify({ choices: [{ message: { content: 'OK' } }] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+  t.after(() => { globalThis.fetch = originalFetch; });
+
+  const result = await handleTextGenerationRequest({
+    systemPrompt: `SYSTEM-${'s'.repeat(50000)}`,
+    messages: Array.from({ length: 40 }, (_, index) => ({ role: 'user', content: `${index}-${'x'.repeat(50000)}` })),
+    prompt: `LATEST-${'z'.repeat(50000)}`,
+  }, { POLLINATIONS_API_KEY: 'sk_test_only' });
+
+  assert.equal(result.status, 200);
+  assert.ok(requestBody.messages.reduce((total, message) => total + message.content.length, 0) <= 100000);
+  assert.match(requestBody.messages[0].content, /^SYSTEM-/);
+  assert.match(requestBody.messages.at(-1).content, /^LATEST-/);
 });
 
 test('browser runtime contains no AI provider secret values', async () => {
