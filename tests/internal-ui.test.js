@@ -37,7 +37,7 @@ test('authenticated app and Talk to MAYA expose dedicated touch scroll regions',
 
     assert.match(styles, /main-content:not\(\.main-content--fullscreen\)[\s\S]*?overflow-y:\s*auto/);
     assert.match(styles, /maya-overlay--chat \.maya-chat-messages[\s\S]*?touch-action:\s*pan-y/);
-    assert.match(styles, /maya-overlay--chat \.maya-blob-container\.blob-top canvas[\s\S]*?transform:\s*none/);
+    assert.match(styles, /maya-overlay--chat \.maya-blob-container\.blob-top canvas[\s\S]*?position:\s*absolute !important;[\s\S]*?inset:\s*0 !important;[\s\S]*?transform:\s*none/);
     assert.match(shell, /aria-labelledby="maya-overlay-title"/);
     assert.match(shell, /Talk to MAYA/);
     assert.match(app, /document\.body\.classList\.add\('maya-chat-open'\)/);
