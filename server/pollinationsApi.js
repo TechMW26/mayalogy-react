@@ -322,6 +322,7 @@ export async function handleImageEditRequest(payload, env = process.env) {
 export async function handleTextToSpeechRequest(payload, env = process.env) {
   const input = sanitizeSpeechInput(payload?.text || payload?.input);
   if (!input) return jsonResponse(400, { error: 'text is required' });
+  const requestedVoice = payload?.voice || payload?.voiceId;
 
   try {
     return await callWithFallback({
@@ -334,7 +335,7 @@ export async function handleTextToSpeechRequest(payload, env = process.env) {
         body: JSON.stringify({
           model,
           input,
-          voice: /^[A-Za-z0-9._-]{1,100}$/.test(payload?.voice || '') ? payload.voice : 'nova',
+          voice: /^[A-Za-z0-9._-]{1,100}$/.test(requestedVoice || '') ? requestedVoice : 'nova',
           response_format: 'mp3',
           safe: true,
         }),

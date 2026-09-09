@@ -62,6 +62,20 @@ test('speech input removes orchestration tags before synthesis', () => {
   assert.equal(sanitizeSpeechInput('[warm] Hello [[pause-500]] there'), 'Hello … there');
 });
 
+test('speech preserves the existing browser voiceId contract', async (t) => {
+  const originalFetch = globalThis.fetch;
+  let requestBody;
+  globalThis.fetch = async (_url, init) => {
+    requestBody = JSON.parse(init.body);
+    return new Response(Buffer.from('audio'), { status: 200, headers: { 'Content-Type': 'audio/mpeg' } });
+  };
+  t.after(() => { globalThis.fetch = originalFetch; });
+
+  const result = await handleTextToSpeechRequest({ text: 'Hello', voiceId: 'P3JECz9WQeXyyodBL3ZD' }, { POLLINATIONS_API_KEY: 'sk_test_only' });
+  assert.equal(result.status, 200);
+  assert.equal(requestBody.voice, 'P3JECz9WQeXyyodBL3ZD');
+});
+
 test('rejects malformed, oversized, and unexpectedly costly media inputs', async () => {
   const env = { POLLINATIONS_API_KEY: 'sk_test_only' };
   assert.equal((await handleVisionRequest({ prompt: 'Inspect', imageData: 'data:image/svg+xml;base64,PHN2Zz4=' }, env)).status, 400);
