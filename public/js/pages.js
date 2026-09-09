@@ -10,9 +10,13 @@ const MayaPages = {
     // Centralized horoscope cache manager to prevent duplicate requests
     _horoscopeCache: {
         pending: null, // Promise for in-flight request
+        pendingDate: null,
+        pendingIdentity: null,
         data: null,    // Cached horoscope data
-        date: null     // Date of cached data
+        date: null,    // Date of cached data
+        identity: null
     },
+    _dailyGuidePending: null,
 
     /**
      * Get user email for Firebase operations
@@ -36,6 +40,64 @@ const MayaPages = {
         return `${year}-${month}-${day}`;
     },
 
+    _getHoroscopeIdentity(email = this._getUserEmail()) {
+        const profile = MayaUtils.storage.get('maya_profile') || {};
+        return JSON.stringify([
+            email || 'local',
+            profile.birthDate || '',
+            profile.birthTime || '',
+            profile.birthPlace || '',
+            MayaAstrology?.getZodiacSystem?.() || 'western',
+            MayaUtils.storage.get('maya_language') || 'en'
+        ]);
+    },
+
+    _isUsableHoroscope(data) {
+        const text = String(data?.text || '').trim();
+        const errorPhrases = ['i apologize', 'trouble connecting', 'try again later', 'having trouble', 'something went wrong', 'unavailable right now'];
+        return text.length >= 60
+            && data?.source !== 'unavailable'
+            && !errorPhrases.some((phrase) => text.toLowerCase().includes(phrase));
+    },
+
+    _getPersistentDailyHoroscope(today, email = this._getUserEmail()) {
+        const cached = MayaUtils.storage.get('daily_horoscope_cache');
+        const isCurrent = cached
+            && cached.date === today
+            && cached.identity === this._getHoroscopeIdentity(email)
+            && this._isUsableHoroscope(cached.data);
+
+        if (isCurrent) return cached.data;
+        if (cached && cached.date !== today) {
+            MayaUtils.storage.remove('daily_horoscope_cache', { skipSync: true });
+        }
+        return null;
+    },
+
+    _storePersistentDailyHoroscope(today, email, data) {
+        if (!this._isUsableHoroscope(data)) return;
+        MayaUtils.storage.set('daily_horoscope_cache', {
+            date: today,
+            identity: this._getHoroscopeIdentity(email),
+            data: { ...data, date: today }
+        }, { skipSync: true });
+    },
+
+    async _resolveDailyHoroscope(today, email) {
+        if (email && window.MayaFirebase) {
+            try {
+                const fbResult = await MayaFirebase.getDailyHoroscope(email, today);
+                if (fbResult.success && this._isUsableHoroscope(fbResult.horoscope)) {
+                    return { ...fbResult.horoscope, date: today };
+                }
+            } catch (error) {
+                console.warn('Firebase horoscope fetch failed:', error);
+            }
+        }
+
+        return this._generateHoroscope(today);
+    },
+
     /**
      * Get or generate daily guidance plan
      * - Fetches from Firebase DB using today's date as key
@@ -45,56 +107,42 @@ const MayaPages = {
     async getDailyHoroscope() {
         const today = this._getLocalDate();
         const email = this._getUserEmail();
+        const identity = this._getHoroscopeIdentity(email);
 
-        if (!this._lastHoroscopeCall) {
-            this._lastHoroscopeCall = 0;
-        }
-
-        const now = Date.now();
-        if (now - this._lastHoroscopeCall < 500) {
-            console.warn(' getDailyHoroscope called too frequently!');
-            return this._horoscopeCache.data || { text: 'Loading...' };
-        }
-        this._lastHoroscopeCall = now;
-
-        console.log(' Horoscope: Today is', today);
-
-        if (this._horoscopeCache.pending) {
-            console.log(' Horoscope: Waiting for in-flight request');
-            return await this._horoscopeCache.pending;
-        }
-
-        if (this._horoscopeCache.date === today && this._horoscopeCache.data) {
-            console.log(' Horoscope:  Using memory cache (no DB call)');
+        if (this._horoscopeCache.date === today && this._horoscopeCache.identity === identity && this._horoscopeCache.data) {
             return this._horoscopeCache.data;
         }
 
-        if (email && window.MayaFirebase) {
-            try {
-                console.log(' Horoscope: Fetching from DB for', today);
-                const fbResult = await MayaFirebase.getDailyHoroscope(email, today);
-                if (fbResult.success && fbResult.horoscope && fbResult.horoscope.text) {
-                    console.log(' Horoscope:  Found in DB! Using saved horoscope');
-                    fbResult.horoscope.date = today;
-                    this._horoscopeCache.data = fbResult.horoscope;
-                    this._horoscopeCache.date = today;
-                    return fbResult.horoscope;
-                }
-            } catch (error) {
-                console.warn('Firebase horoscope fetch failed:', error);
-            }
+        const persisted = this._getPersistentDailyHoroscope(today, email);
+        if (persisted) {
+            this._horoscopeCache.data = persisted;
+            this._horoscopeCache.date = today;
+            this._horoscopeCache.identity = identity;
+            return persisted;
         }
 
-        console.log(' Horoscope:  Generating NEW horoscope for', today);
-        this._horoscopeCache.pending = this._generateHoroscope(today);
+        if (this._horoscopeCache.pending && this._horoscopeCache.pendingDate === today && this._horoscopeCache.pendingIdentity === identity) {
+            return this._horoscopeCache.pending;
+        }
+
+        const request = this._resolveDailyHoroscope(today, email);
+        this._horoscopeCache.pending = request;
+        this._horoscopeCache.pendingDate = today;
+        this._horoscopeCache.pendingIdentity = identity;
 
         try {
-            const result = await this._horoscopeCache.pending;
+            const result = await request;
             this._horoscopeCache.data = result;
             this._horoscopeCache.date = today;
+            this._horoscopeCache.identity = identity;
+            this._storePersistentDailyHoroscope(today, email, result);
             return result;
         } finally {
-            this._horoscopeCache.pending = null;
+            if (this._horoscopeCache.pending === request) {
+                this._horoscopeCache.pending = null;
+                this._horoscopeCache.pendingDate = null;
+                this._horoscopeCache.pendingIdentity = null;
+            }
         }
     },
 
@@ -119,7 +167,7 @@ const MayaPages = {
             try {
                 console.log(' Horoscope: Trying free horoscope API for', zodiac.name);
                 const horoscope = await MayaHoroscopeAPI.getPersonalizedHoroscope(profile, zodiac.name);
-                if (horoscope && horoscope.combined) {
+                if (horoscope?.combined && this._isUsableHoroscope({ text: horoscope.combined, source: horoscope.source })) {
                     console.log(' Horoscope:  Free API succeeded!');
                     const result = {
                         date: today,
@@ -185,6 +233,75 @@ const MayaPages = {
         const insightText = document.getElementById('dailyInsight');
         if (skeleton) skeleton.style.display = 'none';
         if (insightText) insightText.style.display = 'block';
+    },
+
+    _getDefaultDailyGuide(isHindi = false) {
+        return {
+            dos: isHindi
+                ? ['आज की एक प्राथमिकता चुनें', 'बड़े निर्णय से पहले थोड़ा रुकें', 'अपनी ऊर्जा के लिए समय रखें']
+                : ['Choose one clear priority for today', 'Pause before making major decisions', 'Protect time for your energy'],
+            donts: isHindi
+                ? ['जल्दबाज़ी में वादा न करें', 'हर संदेश पर तुरंत प्रतिक्रिया न दें', 'आराम को न टालें']
+                : ['Do not make rushed commitments', 'Avoid reacting to every message', 'Do not postpone essential rest'],
+            source: 'baseline'
+        };
+    },
+
+    _getPersistentDailyGuide(today, zodiacName, email = this._getUserEmail()) {
+        const cached = MayaUtils.storage.get('daily_horoscope_guide_cache');
+        const isCurrent = cached
+            && cached.date === today
+            && cached.zodiac === zodiacName
+            && cached.identity === this._getHoroscopeIdentity(email)
+            && Array.isArray(cached.data?.dos)
+            && cached.data.dos.length
+            && Array.isArray(cached.data?.donts)
+            && cached.data.donts.length;
+        if (isCurrent) return cached.data;
+        if (cached && cached.date !== today) {
+            MayaUtils.storage.remove('daily_horoscope_guide_cache', { skipSync: true });
+        }
+        return null;
+    },
+
+    _storePersistentDailyGuide(today, zodiacName, data, email = this._getUserEmail()) {
+        if (!Array.isArray(data?.dos) || !data.dos.length || !Array.isArray(data?.donts) || !data.donts.length) return;
+        MayaUtils.storage.set('daily_horoscope_guide_cache', {
+            date: today,
+            zodiac: zodiacName,
+            identity: this._getHoroscopeIdentity(email),
+            data
+        }, { skipSync: true });
+    },
+
+    _renderDailyGuideItems(items, iconClass) {
+        return items.slice(0, 5).map((item) => `<li><i class="bi ${iconClass}"></i> ${this._escapeHtml(item)}</li>`).join('');
+    },
+
+    _refreshDailyGuide() {
+        const context = this._dailyGuideContext;
+        if (!context || !window.MayaHoroscopeAPI) return;
+        const { today, zodiacName, horoscope, profile } = context;
+        if (this._getPersistentDailyGuide(today, zodiacName)) return;
+        const key = `${today}:${zodiacName}:${this._getHoroscopeIdentity()}`;
+        if (this._dailyGuidePending?.key === key) return;
+
+        const request = MayaHoroscopeAPI.generateDosAndDonts(horoscope, zodiacName, profile);
+        this._dailyGuidePending = { key, request };
+        request.then((result) => {
+            if (!result || result.source === 'unavailable') return;
+            this._storePersistentDailyGuide(today, zodiacName, result);
+            const dosList = document.getElementById('dailyDosList');
+            const dontsList = document.getElementById('dailyDontsList');
+            if (this.currentPage === 'horoscope' && dosList && dontsList) {
+                dosList.innerHTML = this._renderDailyGuideItems(result.dos, 'bi-check2');
+                dontsList.innerHTML = this._renderDailyGuideItems(result.donts, 'bi-x');
+            }
+        }).catch((error) => {
+            console.warn('Daily guide enrichment failed:', error);
+        }).finally(() => {
+            if (this._dailyGuidePending?.request === request) this._dailyGuidePending = null;
+        });
     },
 
     /**
@@ -517,12 +634,6 @@ const MayaPages = {
                         ${homeLabels.speedDial}
                     </h3>
                     <div class="maya-action-grid">
-                        <a href="#" class="maya-action-tile maya-action-tile--highlight" data-action="showMaya">
-                            <div class="maya-action-tile__icon">
-                                <i class="bi bi-chat-heart"></i>
-                            </div>
-                            <span class="maya-action-tile__label">${homeLabels.askMaya}</span>
-                        </a>
                         <a href="#" class="maya-action-tile" data-page="vastu">
                             <div class="maya-action-tile__icon">
                                 <i class="bi bi-compass"></i>
@@ -570,6 +681,12 @@ const MayaPages = {
                                 <i class="bi bi-music-note-beamed"></i>
                             </div>
                             <span class="maya-action-tile__label">${isHindi ? 'आध्यात्मिक संगीत' : 'Spiritual Music'}</span>
+                        </a>
+                        <a href="#" class="maya-action-tile" data-page="remedies">
+                            <div class="maya-action-tile__icon">
+                                <i class="bi bi-gem"></i>
+                            </div>
+                            <span class="maya-action-tile__label">${isHindi ? 'उपाय' : 'Remedies'}</span>
                         </a>
                     </div>
                 </div>
@@ -654,10 +771,11 @@ const MayaPages = {
         const focusLabel = focusLabels[focus] || focusLabels.clarity;
         const localizedFocus = isHindi ? focusLabel.hi : focusLabel.en;
 
+        const cached = this._getPersistentDailyHoroscope(this._getLocalDate(), this._getUserEmail());
         return {
             summary: isHindi
-                ? `${firstName}, आज के ग्रह आपको ${localizedFocus} की ओर इशारा कर रहे हैं। आपका दैनिक राशिफल कुछ ही पल में तैयार हो रहा है।`
-                : `${firstName}, today's planets are pointing you toward ${localizedFocus}. Your daily horoscope is being prepared.`,
+                ? (cached?.text || `${firstName}, आज के ग्रह आपको ${localizedFocus} की ओर इशारा कर रहे हैं। आपका दैनिक राशिफल कुछ ही पल में तैयार हो रहा है।`)
+                : (cached?.text || `${firstName}, today's planets are pointing you toward ${localizedFocus}. Your daily horoscope is being prepared.`),
             steps: []
         };
     },
@@ -826,7 +944,7 @@ const MayaPages = {
     async renderDailyHoroscope(profile, isHindi) {
         // Use user's preferred zodiac system (Western or Vedic)
         const zodiac = profile && profile.birthDate ? MayaAstrology.getZodiac(profile.birthDate, profile) : null;
-        const today = new Date().toISOString().split('T')[0];
+        const today = this._getLocalDate();
 
         // Get user's first name for personalization
         const userName = profile?.name || '';
@@ -834,7 +952,7 @@ const MayaPages = {
 
         let horoscope = '';
         let isAIGenerated = false;
-        let dosAndDonts = { dos: [], donts: [], source: 'loading' };
+        let dosAndDonts = this._getDefaultDailyGuide(isHindi);
 
         if (zodiac) {
             // Use centralized cache manager
@@ -842,15 +960,8 @@ const MayaPages = {
             horoscope = cached.text;
             isAIGenerated = cached.isAI === true;
 
-            // Generate Do's and Don'ts based on horoscope (async, will update UI)
-            if (window.MayaHoroscopeAPI) {
-                try {
-                    dosAndDonts = await MayaHoroscopeAPI.generateDosAndDonts(horoscope, zodiac.name, profile);
-                } catch (e) {
-                    console.warn('Do\'s & Don\'ts generation failed:', e);
-                    dosAndDonts = MayaHoroscopeAPI.getUnavailableDosAndDonts();
-                }
-            }
+            dosAndDonts = this._getPersistentDailyGuide(today, zodiac.name) || dosAndDonts;
+            this._dailyGuideContext = { today, zodiacName: zodiac.name, horoscope, profile };
         }
 
         // Generate ratings
@@ -898,7 +1009,7 @@ const MayaPages = {
                                 <i class="bi bi-volume-up-fill"></i>
                             </button>
                         </div>
-                        <p id="horoscopeText">${horoscope}</p>
+                        <p id="horoscopeText">${this._escapeHtml(horoscope)}</p>
                         <div class="maya-horoscope-subtitle" id="horoscopeSubtitle"></div>
                     </div>
 
@@ -913,8 +1024,8 @@ const MayaPages = {
                                     <i class="bi bi-check-circle-fill"></i>
                                     <span>${isHindi ? 'करें' : "Do's"}</span>
                                 </div>
-                                <ul class="maya-dos-card__list">
-                                    ${dosAndDonts.dos.map(item => `<li><i class="bi bi-check2"></i> ${item}</li>`).join('')}
+                                <ul class="maya-dos-card__list" id="dailyDosList">
+                                    ${this._renderDailyGuideItems(dosAndDonts.dos, 'bi-check2')}
                                 </ul>
                             </div>
                             <div class="maya-donts-card">
@@ -922,8 +1033,8 @@ const MayaPages = {
                                     <i class="bi bi-x-circle-fill"></i>
                                     <span>${isHindi ? 'न करें' : "Don'ts"}</span>
                                 </div>
-                                <ul class="maya-donts-card__list">
-                                    ${dosAndDonts.donts.map(item => `<li><i class="bi bi-x"></i> ${item}</li>`).join('')}
+                                <ul class="maya-donts-card__list" id="dailyDontsList">
+                                    ${this._renderDailyGuideItems(dosAndDonts.donts, 'bi-x')}
                                 </ul>
                             </div>
                         </div>
@@ -9467,6 +9578,7 @@ Rules:
      */
     initHoroscopePage() {
         console.log('🎤 initHoroscopePage called');
+        this._refreshDailyGuide();
         const speakBtn = document.getElementById('speakHoroscope');
         const horoscopeText = document.getElementById('horoscopeText');
         const subtitleEl = document.getElementById('horoscopeSubtitle');
@@ -9766,6 +9878,7 @@ Rules:
         const isHindi = false; // UI always English
 
         const modalData = this.getLuckyModalData(type, value, name, isHindi);
+        const returnFocusTo = document.activeElement;
 
         // Create modal HTML - show display name for colors, not hex value
         const displayValue = type === 'color' ? (name || value) : value;
@@ -9799,6 +9912,7 @@ Rules:
 
         // Add modal to body
         document.body.insertAdjacentHTML('beforeend', modalHTML);
+        document.body.classList.add('maya-modal-open');
 
         // Get elements
         const modal = document.getElementById('luckyModal');
@@ -9808,12 +9922,17 @@ Rules:
         // Show modal with animation
         requestAnimationFrame(() => {
             modal.classList.add('show');
+            closeBtn?.focus();
         });
 
         const closeModal = () => {
             if (modal) {
                 modal.classList.remove('show');
-                setTimeout(() => modal.remove(), 300);
+                setTimeout(() => {
+                    modal.remove();
+                    document.body.classList.remove('maya-modal-open');
+                    returnFocusTo?.focus?.();
+                }, 300);
             }
             document.removeEventListener('keydown', escHandler);
         };

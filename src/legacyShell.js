@@ -179,8 +179,7 @@ export const LEGACY_SHELL_HTML = String.raw`
             <span data-i18n="Horoscope">Horoscope</span>
         </a>
         <button class="nav-item maya-btn" id="maya-nav-btn" aria-label="Ask MAYA">
-            <span class="maya-nav-icon"><i class="bi bi-chat-square-text"></i></span>
-            <span>MAYA</span>
+            <span class="maya-nav-blob" aria-hidden="true"><span></span></span>
         </button>
         <a href="#" class="nav-item" data-page="kundli">
             <i class="bi bi-diagram-3"></i>

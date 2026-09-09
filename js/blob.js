@@ -17,7 +17,18 @@ const MayaBlob = {
     targetMouseX: 0,
     targetMouseY: 0,
 
+    isChatMode() {
+        return Boolean(this.container?.closest('.maya-overlay--chat'));
+    },
+
     getRenderSize() {
+        if (this.isChatMode()) {
+            const rect = this.container.getBoundingClientRect();
+            return {
+                width: Math.max(64, Math.round(rect.width || 84)),
+                height: Math.max(64, Math.round(rect.height || 84))
+            };
+        }
         return {
             width: Math.max(320, window.innerWidth || 320),
             height: Math.max(568, window.innerHeight || 568)
@@ -26,6 +37,11 @@ const MayaBlob = {
 
     updateCameraDistance(width, height) {
         if (!this.camera) return;
+
+        if (this.isChatMode()) {
+            this.camera.position.z = 4.8;
+            return;
+        }
 
         const targetDiameter = Math.min(430, Math.max(240, width * 0.7, height * 0.34));
         const verticalFov = THREE.MathUtils.degToRad(this.camera.fov);
@@ -369,6 +385,10 @@ const MayaBlob = {
         this.updateCameraDistance(width, height);
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(width, height);
+    },
+
+    refreshLayout() {
+        if (this.renderer && this.camera && this.container) this.onResize();
     },
 
     /**

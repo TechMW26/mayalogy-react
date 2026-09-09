@@ -1038,15 +1038,17 @@ const MayaApp = {
             document.body.classList.add('maya-chat-open');
             console.log('MAYA overlay shown');
 
-            // Initialize blob if not already
-            if (window.MayaBlob && !MayaBlob.isAnimating) {
-                MayaBlob.init('maya-blob-container');
-            }
-
             // Blob at top - chat bubbles fill below
             if (blobContainer) {
                 blobContainer.classList.remove('blob-centered');
                 blobContainer.classList.add('blob-top');
+            }
+
+            // Initialize or resize the real WebGL Maya blob after chat sizing is active.
+            if (window.MayaBlob && !MayaBlob.isAnimating) {
+                MayaBlob.init('maya-blob-container');
+            } else {
+                window.MayaBlob?.refreshLayout?.();
             }
 
             // Set up chat-bubble mode (same as funnel-end chat)
