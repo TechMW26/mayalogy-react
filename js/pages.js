@@ -52,29 +52,29 @@ const MayaPages = {
 
         const now = Date.now();
         if (now - this._lastHoroscopeCall < 500) {
-            console.warn('⚠️ getDailyHoroscope called too frequently!');
+            console.warn(' getDailyHoroscope called too frequently!');
             return this._horoscopeCache.data || { text: 'Loading...' };
         }
         this._lastHoroscopeCall = now;
 
-        console.log('📅 Horoscope: Today is', today);
+        console.log(' Horoscope: Today is', today);
 
         if (this._horoscopeCache.pending) {
-            console.log('📅 Horoscope: Waiting for in-flight request');
+            console.log(' Horoscope: Waiting for in-flight request');
             return await this._horoscopeCache.pending;
         }
 
         if (this._horoscopeCache.date === today && this._horoscopeCache.data) {
-            console.log('📅 Horoscope: ✅ Using memory cache (no DB call)');
+            console.log(' Horoscope:  Using memory cache (no DB call)');
             return this._horoscopeCache.data;
         }
 
         if (email && window.MayaFirebase) {
             try {
-                console.log('📅 Horoscope: Fetching from DB for', today);
+                console.log(' Horoscope: Fetching from DB for', today);
                 const fbResult = await MayaFirebase.getDailyHoroscope(email, today);
                 if (fbResult.success && fbResult.horoscope && fbResult.horoscope.text) {
-                    console.log('📅 Horoscope: ✅ Found in DB! Using saved horoscope');
+                    console.log(' Horoscope:  Found in DB! Using saved horoscope');
                     fbResult.horoscope.date = today;
                     this._horoscopeCache.data = fbResult.horoscope;
                     this._horoscopeCache.date = today;
@@ -85,7 +85,7 @@ const MayaPages = {
             }
         }
 
-        console.log('📅 Horoscope: 🔄 Generating NEW horoscope for', today);
+        console.log(' Horoscope:  Generating NEW horoscope for', today);
         this._horoscopeCache.pending = this._generateHoroscope(today);
 
         try {
@@ -117,10 +117,10 @@ const MayaPages = {
 
         if (window.MayaHoroscopeAPI) {
             try {
-                console.log('📅 Horoscope: Trying free horoscope API for', zodiac.name);
+                console.log(' Horoscope: Trying free horoscope API for', zodiac.name);
                 const horoscope = await MayaHoroscopeAPI.getPersonalizedHoroscope(profile, zodiac.name);
                 if (horoscope && horoscope.combined) {
-                    console.log('📅 Horoscope: ✅ Free API succeeded!');
+                    console.log(' Horoscope:  Free API succeeded!');
                     const result = {
                         date: today,
                         zodiac: zodiac.name,
@@ -139,7 +139,7 @@ const MayaPages = {
                     return result;
                 }
             } catch (error) {
-                console.warn('📅 Horoscope: Free API failed, trying AI fallback:', error.message);
+                console.warn(' Horoscope: Free API failed, trying AI fallback:', error.message);
             }
         }
 
@@ -169,7 +169,7 @@ const MayaPages = {
                     return result;
                 }
             } catch (error) {
-                console.warn('📅 Horoscope: AI generation also failed', error);
+                console.warn(' Horoscope: AI generation also failed', error);
             }
         }
 
@@ -211,11 +211,9 @@ const MayaPages = {
             item.classList.add('active');
         });
 
-        // Special case: settings page maps to profile button in bottom nav
-        if (pageId === 'settings' || pageId === 'profile') {
-            document.querySelectorAll('[data-page="settings"], [data-page="profile"]').forEach(item => {
-                item.classList.add('active');
-            });
+        // Settings shares the Profile destination only in the compact bottom nav.
+        if (pageId === 'settings') {
+            document.querySelector('.bottom-nav [data-page="profile"]')?.classList.add('active');
         }
     },
 
@@ -293,6 +291,24 @@ const MayaPages = {
         window.scrollTo(0, 0);
         content.scrollTop = 0;
         this.updateActiveNav(pageId);
+        const pageTitles = {
+            home: 'Home',
+            horoscope: 'Daily Horoscope',
+            kundli: 'Kundli',
+            numerology: 'Numerology',
+            compatibility: 'Compatibility',
+            remedies: 'Remedies',
+            muhurat: 'Muhurat',
+            panchang: 'Panchang',
+            'spiritual-music': 'Spiritual Music',
+            vastu: 'Vastu',
+            'palm-reading': 'Palm Reading',
+            'chat-history': 'Chat History',
+            profile: 'Profile',
+            settings: 'Settings'
+        };
+        const pageTitle = document.getElementById('current-page-title');
+        if (pageTitle) pageTitle.textContent = pageTitles[pageId] || 'Mayalogy';
 
         const skeletonType = ['home'].includes(pageId)
             ? 'home'
@@ -425,7 +441,7 @@ const MayaPages = {
             calculate: t('Calculate'),
             todayMessage: isHindi ? 'दैनिक राशिफल' : 'Daily Horoscope',
             readFullHoroscope: isHindi ? 'पूरा राशिफल देखें' : 'Open Full Horoscope',
-            speedDial: isHindi ? 'कार्य उपकरण' : 'Action Tools',
+            speedDial: isHindi ? 'सभी उपकरण' : 'Explore',
             askMaya: t('Ask MAYA'),
             fullReading: isHindi ? 'आज का मार्गदर्शन MAYA से लें' : 'Get Today\'s Guidance from MAYA',
             fullReadingText: isHindi ? 'अपने ग्रहों, समय और प्रोफाइल संकेतों को एक स्पष्ट अगले कदम में बदलें।' : 'Turn your planets, timing, and profile signals into one clear next step.',
@@ -454,9 +470,29 @@ const MayaPages = {
                     </div>
                 </div>
 
+                <div class="maya-home__summary" aria-label="Personal profile summary">
+                    <button class="maya-summary-item" type="button" data-page="horoscope">
+                        <span class="maya-summary-item__icon"><i class="bi bi-moon-stars"></i></span>
+                        <span class="maya-summary-item__copy">
+                            <small>${homeLabels.moonSign}</small>
+                            <strong>${localizedMoonSign}</strong>
+                        </span>
+                        <i class="bi bi-chevron-right maya-summary-item__arrow"></i>
+                    </button>
+                    <button class="maya-summary-item" type="button" data-page="numerology">
+                        <span class="maya-summary-item__icon"><i class="bi bi-123"></i></span>
+                        <span class="maya-summary-item__copy">
+                            <small>${homeLabels.lifePath}</small>
+                            <strong>${lifePath ? `${lifePath} · ${localizedLifePathMeaning}` : homeLabels.calculate}</strong>
+                        </span>
+                        <i class="bi bi-chevron-right maya-summary-item__arrow"></i>
+                    </button>
+                </div>
+
                 <!-- Today's Message Card -->
                 <div class="maya-insight-card">
                     <div class="maya-insight-card__header">
+                        <i class="bi bi-sun"></i>
                         <span>${homeLabels.todayMessage}</span>
                     </div>
                     <div id="dailyInsightSkeleton" class="maya-insight-skeleton" style="display: none;">
@@ -535,19 +571,6 @@ const MayaPages = {
                             </div>
                             <span class="maya-action-tile__label">${isHindi ? 'आध्यात्मिक संगीत' : 'Spiritual Music'}</span>
                         </a>
-                    </div>
-                </div>
-
-                <!-- Featured CTA -->
-                <div class="maya-cta-card">
-                    <div class="maya-cta-card__bg"></div>
-                    <div class="maya-cta-card__content">
-                        <h4 class="maya-cta-card__title">${homeLabels.fullReading}</h4>
-                        <p class="maya-cta-card__text">${homeLabels.fullReadingText}</p>
-                        <button class="maya-btn maya-btn--sm" id="getFullReading" style="background: white; color: #1a1a2e; font-weight: 600;">
-                            ${homeLabels.startReading}
-                            <i class="bi bi-arrow-right"></i>
-                        </button>
                     </div>
                 </div>
 
@@ -3224,7 +3247,7 @@ const MayaPages = {
                             </p>
                         </div>
                         <div class="maya-spiritual-music__today-deity">
-                            <div class="maya-spiritual-music__deity-icon">${todayData.icon}</div>
+                            <div class="maya-spiritual-music__deity-icon"><i class="bi ${todayData.icon}"></i></div>
                             <div class="maya-spiritual-music__deity-info">
                                 <span class="maya-spiritual-music__day-name">${todayData.dayName}</span>
                                 <span class="maya-spiritual-music__deity-name">${todayData.deity}</span>
@@ -3472,49 +3495,49 @@ const MayaPages = {
             { // Sunday
                 dayName: isHindi ? 'रविवार' : 'Sunday',
                 deity: isHindi ? 'सूर्य देव' : 'Lord Surya',
-                icon: '☀️',
+                icon: 'bi-sun',
                 searchQueries: ['Surya Dev Aarti', 'Aditya Hridaya Stotra', 'Sun God Mantra', 'Gayatri Mantra'],
                 color: '#FF6B35'
             },
             { // Monday
                 dayName: isHindi ? 'सोमवार' : 'Monday',
                 deity: isHindi ? 'भगवान शिव' : 'Lord Shiva',
-                icon: '🔱',
+                icon: 'bi-peace',
                 searchQueries: ['Shiv Aarti', 'Om Namah Shivaya', 'Shiv Tandav Stotram', 'Maha Mrityunjaya Mantra'],
                 color: '#4A90D9'
             },
             { // Tuesday
                 dayName: isHindi ? 'मंगलवार' : 'Tuesday',
                 deity: isHindi ? 'हनुमान जी' : 'Lord Hanuman',
-                icon: '🙏',
+                icon: 'bi-person-raised-hand',
                 searchQueries: ['Hanuman Chalisa', 'Hanuman Aarti', 'Bajrang Baan', 'Hanuman Bhajan'],
                 color: '#FF4500'
             },
             { // Wednesday
                 dayName: isHindi ? 'बुधवार' : 'Wednesday',
                 deity: isHindi ? 'श्री गणेश' : 'Lord Ganesha',
-                icon: '🐘',
+                icon: 'bi-flower1',
                 searchQueries: ['Ganesh Aarti', 'Ganesh Mantra', 'Vakratunda Mahakaya', 'Ganpati Bappa Morya'],
                 color: '#FF8C00'
             },
             { // Thursday
                 dayName: isHindi ? 'गुरुवार' : 'Thursday',
                 deity: isHindi ? 'साईं बाबा / विष्णु' : 'Sai Baba / Vishnu',
-                icon: '🙏',
+                icon: 'bi-person-raised-hand',
                 searchQueries: ['Sai Baba Aarti', 'Vishnu Sahasranama', 'Om Jai Jagdish Hare', 'Guru Brahma Mantra'],
                 color: '#FFD700'
             },
             { // Friday
                 dayName: isHindi ? 'शुक्रवार' : 'Friday',
                 deity: isHindi ? 'माता संतोषी / दुर्गा' : 'Goddess Santoshi / Durga',
-                icon: '🪷',
+                icon: 'bi-flower2',
                 searchQueries: ['Santoshi Mata Aarti', 'Durga Aarti', 'Lakshmi Mantra', 'Devi Bhajan'],
                 color: '#FF69B4'
             },
             { // Saturday
                 dayName: isHindi ? 'शनिवार' : 'Saturday',
                 deity: isHindi ? 'शनि देव' : 'Lord Shani',
-                icon: '⚫',
+                icon: 'bi-circle-fill',
                 searchQueries: ['Shani Dev Aarti', 'Shani Mantra', 'Hanuman Chalisa', 'Shani Chalisa'],
                 color: '#4B0082'
             }
@@ -3979,7 +4002,7 @@ const MayaPages = {
                                     <span>${isHindi ? 'उत्तर' : 'N'}</span>
                                 </button>
                                 <button class="maya-vastu__dir-btn" data-dir="NE" data-deg="45">
-                                    <span class="maya-vastu__dir-icon">↗</span>
+                                    <span class="maya-vastu__dir-icon"><i class="bi bi-arrow-up-right"></i></span>
                                     <span>${isHindi ? 'ईशान' : 'NE'}</span>
                                 </button>
                                 <button class="maya-vastu__dir-btn" data-dir="E" data-deg="90">
@@ -3987,7 +4010,7 @@ const MayaPages = {
                                     <span>${isHindi ? 'पूर्व' : 'E'}</span>
                                 </button>
                                 <button class="maya-vastu__dir-btn" data-dir="SE" data-deg="135">
-                                    <span class="maya-vastu__dir-icon">↘</span>
+                                    <span class="maya-vastu__dir-icon"><i class="bi bi-arrow-down-right"></i></span>
                                     <span>${isHindi ? 'आग्नेय' : 'SE'}</span>
                                 </button>
                                 <button class="maya-vastu__dir-btn" data-dir="S" data-deg="180">
@@ -3995,7 +4018,7 @@ const MayaPages = {
                                     <span>${isHindi ? 'दक्षिण' : 'S'}</span>
                                 </button>
                                 <button class="maya-vastu__dir-btn" data-dir="SW" data-deg="225">
-                                    <span class="maya-vastu__dir-icon">↙</span>
+                                    <span class="maya-vastu__dir-icon"><i class="bi bi-arrow-down-left"></i></span>
                                     <span>${isHindi ? 'नैऋत्य' : 'SW'}</span>
                                 </button>
                                 <button class="maya-vastu__dir-btn" data-dir="W" data-deg="270">
@@ -4003,7 +4026,7 @@ const MayaPages = {
                                     <span>${isHindi ? 'पश्चिम' : 'W'}</span>
                                 </button>
                                 <button class="maya-vastu__dir-btn" data-dir="NW" data-deg="315">
-                                    <span class="maya-vastu__dir-icon">↖</span>
+                                    <span class="maya-vastu__dir-icon"><i class="bi bi-arrow-up-left"></i></span>
                                     <span>${isHindi ? 'वायव्य' : 'NW'}</span>
                                 </button>
                             </div>
@@ -4024,7 +4047,7 @@ const MayaPages = {
                         
                         <!-- Instruction - more compact -->
                         <div class="maya-vastu__direction-header maya-vastu__direction-header--compact">
-                            <p class="maya-vastu__step-hint">${isHindi ? '📍 फ़ोन को स्कैन क्षेत्र की ओर इशारा करें' : '📍 Point phone towards area to scan'}</p>
+                            <p class="maya-vastu__step-hint"><i class="bi bi-geo-alt"></i> ${isHindi ? 'फ़ोन को स्कैन क्षेत्र की ओर इशारा करें' : 'Point phone towards area to scan'}</p>
                         </div>
                         
                         <!-- Large Compass -->
@@ -5557,7 +5580,7 @@ Respond with ONLY this JSON, nothing else:
             const result = await response.json();
             return result?.imageData?.startsWith('data:') ? result.imageData : imageData;
         } catch (error) {
-            console.warn('⚠️ Background removal failed:', error.message);
+            console.warn(' Background removal failed:', error.message);
             return imageData;
         }
     },
@@ -6173,20 +6196,20 @@ REMEMBER:
 
                     // Handle rate limit (429) without cycling through fallback keys.
                     if (response.status === 429) {
-                        console.warn(`⚠️ Gemini [${keyLabel}] rate limited on ${model}. No fallback keys will be tried.`);
+                        console.warn(` Gemini [${keyLabel}] rate limited on ${model}. No fallback keys will be tried.`);
                         lastError = data.error?.message || 'Rate limited';
                         break;
                     }
 
                     // Handle 404 - model not found
                     if (response.status === 404) {
-                        console.warn(`⚠️ Gemini [${keyLabel}] model ${model} not found, trying next...`);
+                        console.warn(` Gemini [${keyLabel}] model ${model} not found, trying next...`);
                         continue;
                     }
 
                     // Handle 503 - overloaded
                     if (response.status === 503) {
-                        console.warn(`⚠️ Gemini [${keyLabel}] model ${model} overloaded, trying next...`);
+                        console.warn(` Gemini [${keyLabel}] model ${model} overloaded, trying next...`);
                         continue;
                     }
 
@@ -6197,7 +6220,7 @@ REMEMBER:
                     }
 
                     if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-                        console.log(`✅ Palm Vision success [${keyLabel}] with ${model}`);
+                        console.log(` Palm Vision success [${keyLabel}] with ${model}`);
                         return data.candidates[0].content.parts[0].text;
                     } else {
                         console.warn(`Gemini [${keyLabel}] ${model} - No text in response`, data);
@@ -6210,7 +6233,7 @@ REMEMBER:
             }
         }
 
-        console.error(`❌ Gemini Vision failed with the configured key/model. Last error:`, lastError);
+        console.error(` Gemini Vision failed with the configured key/model. Last error:`, lastError);
         throw new Error(`Palm vision analysis failed: ${lastError}`);
     },
 
@@ -6619,11 +6642,11 @@ REMEMBER:
      */
     initVastuPage() {
         const isHindi = false; // UI always English
-        console.log('🏠 Initializing Vastu Page');
+        console.log(' Initializing Vastu Page');
 
         // New calibration button
         const newCalibrationBtn = document.getElementById('startNewCalibration');
-        console.log('🔘 New Calibration Button found:', !!newCalibrationBtn);
+        console.log(' New Calibration Button found:', !!newCalibrationBtn);
 
         if (newCalibrationBtn) {
             // Remove any existing listeners first
@@ -6633,7 +6656,7 @@ REMEMBER:
             freshBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('🚀 Starting Vastu Calibration...');
+                console.log(' Starting Vastu Calibration...');
                 this._startVastuCalibration(isHindi);
             });
         }
@@ -6660,14 +6683,14 @@ REMEMBER:
      * Start Vastu Calibration (fullscreen flow)
      */
     _startVastuCalibration(isHindi) {
-        console.log('🏠 _startVastuCalibration called');
+        console.log(' _startVastuCalibration called');
         const mainContent = document.querySelector('#main-content');
-        console.log('🏠 mainContent found:', mainContent);
+        console.log(' mainContent found:', mainContent);
         if (mainContent) {
             mainContent.innerHTML = this.renderVastuCalibration(isHindi);
             this._initVastuCalibrationPage(isHindi);
         } else {
-            console.error('🏠 Could not find #main-content element!');
+            console.error(' Could not find #main-content element!');
         }
     },
 
@@ -6849,7 +6872,7 @@ REMEMBER:
                 getLocationBtn.disabled = true;
                 getLocationBtn.innerHTML = `<i class="bi bi-hourglass-split"></i> <span>${isHindi ? 'प्राप्त हो रहा है...' : 'Getting location...'}</span>`;
 
-                console.log('📍 Location button clicked');
+                console.log(' Location button clicked');
 
                 // Helper: try geolocation with given options + manual timeout
                 const tryGeolocation = (options, label) => {
@@ -6859,23 +6882,23 @@ REMEMBER:
                             return;
                         }
 
-                        console.log(`📍 Trying ${label}...`);
+                        console.log(` Trying ${label}...`);
 
                         // Manual timeout safety net (in case browser timeout doesn't fire)
                         const safetyTimer = setTimeout(() => {
-                            console.warn(`📍 ${label} safety timeout hit`);
+                            console.warn(` ${label} safety timeout hit`);
                             reject(new Error('Manual timeout'));
                         }, (options.timeout || 10000) + 3000);
 
                         navigator.geolocation.getCurrentPosition(
                             (pos) => {
                                 clearTimeout(safetyTimer);
-                                console.log(`📍 ${label} success:`, pos.coords.latitude, pos.coords.longitude);
+                                console.log(` ${label} success:`, pos.coords.latitude, pos.coords.longitude);
                                 resolve(pos);
                             },
                             (err) => {
                                 clearTimeout(safetyTimer);
-                                console.warn(`📍 ${label} failed:`, err.code, err.message);
+                                console.warn(` ${label} failed:`, err.code, err.message);
                                 reject(err);
                             },
                             options
@@ -6885,14 +6908,14 @@ REMEMBER:
 
                 // Helper: IP-based fallback
                 const tryIPGeolocation = async () => {
-                    console.log('📍 Trying IP-based geolocation fallback...');
+                    console.log(' Trying IP-based geolocation fallback...');
                     try {
                         const resp = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(8000) });
                         const data = await resp.json();
                         if (data.latitude && data.longitude) {
                             return { coords: { latitude: data.latitude, longitude: data.longitude } };
                         }
-                    } catch (e) { console.warn('📍 ipapi.co failed:', e); }
+                    } catch (e) { console.warn(' ipapi.co failed:', e); }
 
                     try {
                         const resp = await fetch('https://ip-api.com/json/?fields=lat,lon', { signal: AbortSignal.timeout(8000) });
@@ -6900,7 +6923,7 @@ REMEMBER:
                         if (data.lat && data.lon) {
                             return { coords: { latitude: data.lat, longitude: data.lon } };
                         }
-                    } catch (e) { console.warn('📍 ip-api.com failed:', e); }
+                    } catch (e) { console.warn(' ip-api.com failed:', e); }
 
                     throw new Error('All location methods failed');
                 };
@@ -6954,7 +6977,7 @@ REMEMBER:
                     }, 400);
 
                 } catch (error) {
-                    console.error('📍 All location attempts failed:', error);
+                    console.error(' All location attempts failed:', error);
                     let errorMsg = isHindi ? 'स्थान प्राप्त करने में विफल' : 'Failed to get location';
                     if (error.code === 1) {
                         errorMsg = isHindi ? 'कृपया सेटिंग्स में स्थान की अनुमति दें' : 'Please allow location access in settings';
@@ -7002,7 +7025,7 @@ REMEMBER:
         const hasDeviceOrientation = typeof DeviceOrientationEvent !== 'undefined';
         const requiresPermission = hasDeviceOrientation && typeof DeviceOrientationEvent.requestPermission === 'function';
 
-        console.log('🧭 Compass Enable Step - hasDeviceOrientation:', hasDeviceOrientation, 'requiresPermission:', requiresPermission);
+        console.log(' Compass Enable Step - hasDeviceOrientation:', hasDeviceOrientation, 'requiresPermission:', requiresPermission);
 
         // Reset UI state
         compassIcon.classList.remove('maya-vastu__panel-icon--success', 'maya-vastu__panel-icon--warning');
@@ -7047,7 +7070,7 @@ REMEMBER:
                     // Request permission if needed (iOS 13+)
                     if (requiresPermission) {
                         const permission = await DeviceOrientationEvent.requestPermission();
-                        console.log('🧭 Compass permission result:', permission);
+                        console.log(' Compass permission result:', permission);
 
                         if (permission === 'granted') {
                             this._vastuState.compassPermissionGranted = true;
@@ -7094,7 +7117,7 @@ REMEMBER:
                         enableCompassBtn.innerHTML = isHindi ? 'पुनः प्रयास' : 'Try Again';
                     }
                 } catch (error) {
-                    console.error('🧭 Compass enable error:', error);
+                    console.error(' Compass enable error:', error);
                     MayaUtils.toast.error(isHindi ? 'कंपास त्रुटि' : 'Compass error');
                     this._showCompassManualFallbackInEnableStep(isHindi);
                     enableCompassBtn.disabled = false;
@@ -7167,7 +7190,7 @@ REMEMBER:
      */
     async _requestCameraPermission(isHindi) {
         try {
-            console.log('📷 Requesting camera permission early...');
+            console.log(' Requesting camera permission early...');
 
             // Request camera access to trigger permission prompt
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -7179,11 +7202,11 @@ REMEMBER:
             // Stop the stream immediately - we just needed the permission
             stream.getTracks().forEach(track => track.stop());
 
-            console.log('📷 Camera permission granted!');
+            console.log(' Camera permission granted!');
             MayaUtils.toast.success(isHindi ? 'कैमरा अनुमति मिली!' : 'Camera permission granted!');
             return true;
         } catch (error) {
-            console.warn('📷 Camera permission not granted:', error.message);
+            console.warn(' Camera permission not granted:', error.message);
             // Don't show error - the file input will handle it
             return false;
         }
@@ -7244,7 +7267,7 @@ REMEMBER:
         const hasDeviceOrientation = typeof DeviceOrientationEvent !== 'undefined';
         const requiresPermission = hasDeviceOrientation && typeof DeviceOrientationEvent.requestPermission === 'function';
 
-        console.log('🧭 Compass check - hasDeviceOrientation:', hasDeviceOrientation, 'requiresPermission:', requiresPermission);
+        console.log(' Compass check - hasDeviceOrientation:', hasDeviceOrientation, 'requiresPermission:', requiresPermission);
 
         // If permission required (iOS 13+), show the enable button
         if (requiresPermission) {
@@ -7268,7 +7291,7 @@ REMEMBER:
 
                 try {
                     const permission = await DeviceOrientationEvent.requestPermission();
-                    console.log('🧭 Compass permission result:', permission);
+                    console.log(' Compass permission result:', permission);
 
                     if (permission === 'granted') {
                         await this._tryInitializeCompass(isHindi, 0);
@@ -7277,7 +7300,7 @@ REMEMBER:
                         this._showCompassManualFallback(isHindi);
                     }
                 } catch (error) {
-                    console.error('🧭 Compass permission error:', error);
+                    console.error(' Compass permission error:', error);
                     MayaUtils.toast.error(isHindi ? 'कंपास त्रुटि' : 'Compass error');
                     this._showCompassManualFallback(isHindi);
                 }
@@ -7347,7 +7370,7 @@ REMEMBER:
             const timeout = setTimeout(() => {
                 if (!dataReceived) {
                     window.removeEventListener('deviceorientation', testHandler);
-                    console.log(`🧭 Compass timeout - retry ${retryCount + 1}/${maxRetries}`);
+                    console.log(` Compass timeout - retry ${retryCount + 1}/${maxRetries}`);
 
                     if (retryCount < maxRetries - 1) {
                         // Retry
@@ -7355,7 +7378,7 @@ REMEMBER:
                         setTimeout(() => this._tryInitializeCompass(isHindi, retryCount + 1).then(resolve), 500);
                     } else {
                         // Max retries reached - show manual fallback
-                        console.log('🧭 Compass failed after max retries');
+                        console.log(' Compass failed after max retries');
                         this._showCompassManualFallback(isHindi);
                         resolve(false);
                     }
@@ -7370,7 +7393,7 @@ REMEMBER:
                     clearTimeout(timeout);
                     window.removeEventListener('deviceorientation', testHandler);
 
-                    console.log('🧭 Compass working!');
+                    console.log(' Compass working!');
                     this._vastuState.compassMode = 'auto';
 
                     // Success! Update UI
@@ -7449,7 +7472,7 @@ REMEMBER:
         // Update instructions - now says "Lock Direction" then camera opens
         if (directionHeader) {
             directionHeader.innerHTML = `
-                <h3>${isHindi ? '📍 दिशा सेट करें' : '📍 Set Direction'}</h3>
+                <h3><i class="bi bi-geo-alt"></i> ${isHindi ? 'दिशा सेट करें' : 'Set Direction'}</h3>
                 <p>${isHindi ? 'फोन को स्कैन करने वाले क्षेत्र की ओर इशारा करें, फिर "दिशा लॉक करें" दबाएं' : 'Point phone towards area to scan, then tap "Lock Direction"'}</p>
             `;
         }
@@ -7476,10 +7499,10 @@ REMEMBER:
             nativeInput.onclick = null;
 
             nativeInput.onchange = (e) => {
-                console.log('📷 Camera input changed, files:', e.target.files?.length);
+                console.log(' Camera input changed, files:', e.target.files?.length);
                 if (e.target.files && e.target.files[0]) {
                     const file = e.target.files[0];
-                    console.log('📷 File selected:', file.name, file.type, Math.round(file.size / 1024) + 'KB');
+                    console.log(' File selected:', file.name, file.type, Math.round(file.size / 1024) + 'KB');
                     this._processNativePhoto(file, isHindi);
                 }
             };
@@ -7522,7 +7545,7 @@ REMEMBER:
         const hasDeviceOrientation = 'DeviceOrientationEvent' in window;
         const requiresPermission = typeof DeviceOrientationEvent?.requestPermission === 'function';
 
-        console.log('🧭 Requesting compass permission - hasDeviceOrientation:', hasDeviceOrientation, 'requiresPermission:', requiresPermission);
+        console.log(' Requesting compass permission - hasDeviceOrientation:', hasDeviceOrientation, 'requiresPermission:', requiresPermission);
 
         if (!hasDeviceOrientation) {
             MayaUtils.toast.info(isHindi ? 'कंपास उपलब्ध नहीं' : 'Compass not available');
@@ -7533,7 +7556,7 @@ REMEMBER:
             // iOS 13+ - request permission
             try {
                 const permission = await DeviceOrientationEvent.requestPermission();
-                console.log('🧭 Compass permission result:', permission);
+                console.log(' Compass permission result:', permission);
 
                 if (permission === 'granted') {
                     this._vastuState.compassPermissionGranted = true;
@@ -7544,7 +7567,7 @@ REMEMBER:
                     return false;
                 }
             } catch (error) {
-                console.error('🧭 Compass permission error:', error);
+                console.error(' Compass permission error:', error);
                 // On some devices, this may fail silently - still allow proceeding
                 return false;
             }
@@ -7616,7 +7639,7 @@ REMEMBER:
      * Converts all to JPEG for maximum compatibility
      */
     async _processNativePhoto(file, isHindi) {
-        console.log('📷 Processing photo:', file.name, file.type, Math.round(file.size / 1024) + 'KB');
+        console.log(' Processing photo:', file.name, file.type, Math.round(file.size / 1024) + 'KB');
 
         // Show loading indicator
         MayaUtils.toast.info(isHindi ? 'फोटो प्रोसेस हो रही है...' : 'Processing photo...');
@@ -7631,7 +7654,7 @@ REMEMBER:
                 file.name.toLowerCase().endsWith('.heif');
 
             if (isHEIC && typeof heic2any !== 'undefined') {
-                console.log('📷 Converting HEIC to JPEG...');
+                console.log(' Converting HEIC to JPEG...');
                 try {
                     const convertedBlob = await heic2any({
                         blob: file,
@@ -7640,11 +7663,11 @@ REMEMBER:
                     });
                     // heic2any may return array for multi-image HEIC
                     processedFile = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
-                    console.log('📷 HEIC converted successfully:', Math.round(processedFile.size / 1024) + 'KB');
+                    console.log(' HEIC converted successfully:', Math.round(processedFile.size / 1024) + 'KB');
                     // Mark that we successfully converted - not raw HEIC anymore
                     this._vastuState.heicConverted = true;
                 } catch (heicError) {
-                    console.warn('📷 HEIC conversion failed, trying fallback:', heicError);
+                    console.warn(' HEIC conversion failed, trying fallback:', heicError);
                     this._vastuState.heicConverted = false;
                     // Continue with original file - will try other methods
                 }
@@ -7652,7 +7675,7 @@ REMEMBER:
 
             // Read file and process
             const dataUrl = await this._readFileAsDataURL(processedFile);
-            console.log('📷 File read, size:', Math.round(dataUrl.length / 1024) + 'KB');
+            console.log(' File read, size:', Math.round(dataUrl.length / 1024) + 'KB');
 
             // Try to decode and resize using canvas (pass original file for HEIC detection)
             const finalDataUrl = await this._decodeAndResizeImage(dataUrl, file.type, file);
@@ -7660,14 +7683,14 @@ REMEMBER:
             this._vastuState.photoData = finalDataUrl;
             this._vastuState.photoIsHEIC = file.type === 'image/heic' || file.type === 'image/heif' ||
                 file.name?.toLowerCase().endsWith('.heic');
-            console.log('📷 Final image ready:', Math.round(finalDataUrl.length / 1024) + 'KB',
+            console.log(' Final image ready:', Math.round(finalDataUrl.length / 1024) + 'KB',
                 this._vastuState.photoIsHEIC ? '(HEIC)' : '(JPEG)');
 
             this._goToVastuStep('2b');
             this._showPhotoConfirmation(isHindi);
 
         } catch (error) {
-            console.error('📷 Photo processing error:', error);
+            console.error(' Photo processing error:', error);
             MayaUtils.toast.error(isHindi ? 'फोटो प्रोसेस नहीं हुई, कृपया JPEG फोटो लें' : 'Photo processing failed, please take a JPEG photo');
         }
     },
@@ -7693,7 +7716,7 @@ REMEMBER:
             const img = new Image();
 
             img.onload = () => {
-                console.log('📷 Image decoded:', img.width, 'x', img.height);
+                console.log(' Image decoded:', img.width, 'x', img.height);
 
                 // Resize to reduce API token usage
                 // 1024px max provides good quality while keeping size reasonable
@@ -7724,20 +7747,20 @@ REMEMBER:
 
                 // Convert to JPEG - target ~200-400KB for optimal Gemini token usage
                 const jpeg = canvas.toDataURL('image/jpeg', 0.8);
-                console.log('📷 Resized to:', width, 'x', height, 'Size:', Math.round(jpeg.length / 1024), 'KB');
+                console.log(' Resized to:', width, 'x', height, 'Size:', Math.round(jpeg.length / 1024), 'KB');
                 resolve(jpeg);
             };
 
             img.onerror = () => {
                 // Browser can't decode (HEIC on Chrome/Firefox)
-                console.warn('📷 Browser cannot decode image');
+                console.warn(' Browser cannot decode image');
 
                 // Check file size - if too large, we need to compress
                 const sizeKB = Math.round(dataUrl.length / 1024);
 
                 if (sizeKB > 500) {
                     // File is too large - Gemini will use too many input tokens
-                    console.warn(`📷 Image too large (${sizeKB}KB), need compression`);
+                    console.warn(` Image too large (${sizeKB}KB), need compression`);
 
                     // For HEIC, try using heic2any one more time with lower quality
                     const isHEIC = originalType === 'image/heic' || originalType === 'image/heif' ||
@@ -7745,7 +7768,7 @@ REMEMBER:
                         (originalFile?.name?.toLowerCase().endsWith('.heif'));
 
                     if (isHEIC && typeof heic2any !== 'undefined' && originalFile) {
-                        console.log('📷 Retrying HEIC conversion with lower quality...');
+                        console.log(' Retrying HEIC conversion with lower quality...');
                         heic2any({
                             blob: originalFile,
                             toType: 'image/jpeg',
@@ -7755,7 +7778,7 @@ REMEMBER:
                             const reader = new FileReader();
                             reader.onload = (e) => {
                                 const result = e.target.result;
-                                console.log('📷 HEIC retry successful:', Math.round(result.length / 1024), 'KB');
+                                console.log(' HEIC retry successful:', Math.round(result.length / 1024), 'KB');
                                 // Try to resize the converted image
                                 this._decodeAndResizeImage(result, 'image/jpeg', null).then(resolve).catch(() => resolve(result));
                             };
@@ -7763,7 +7786,7 @@ REMEMBER:
                             reader.readAsDataURL(blob);
                         }).catch(() => {
                             // heic2any completely failed - send original but warn
-                            console.warn('📷 HEIC conversion failed completely, using original');
+                            console.warn(' HEIC conversion failed completely, using original');
                             const correctedUrl = dataUrl.replace(/^data:application\/octet-stream/, 'data:image/heic');
                             resolve(correctedUrl);
                         });
@@ -7779,7 +7802,7 @@ REMEMBER:
                 if (isHEIC) {
                     const correctedUrl = dataUrl.replace(/^data:application\/octet-stream/, 'data:image/heic')
                         .replace(/^data:image\/heif/, 'data:image/heic');
-                    console.log('📷 Preserved HEIC format for Gemini API');
+                    console.log(' Preserved HEIC format for Gemini API');
                     resolve(correctedUrl);
                 } else {
                     resolve(dataUrl);
@@ -7802,7 +7825,7 @@ REMEMBER:
 
         // For HEIC that browser can't display, show placeholder immediately
         if (this._vastuState.photoIsHEIC && capturedPhoto) {
-            console.log('📷 HEIC detected, showing placeholder');
+            console.log(' HEIC detected, showing placeholder');
             capturedPhoto.style.display = 'none';
 
             // Remove any existing placeholder
@@ -7821,7 +7844,7 @@ REMEMBER:
         } else if (capturedPhoto && this._vastuState.photoData) {
             // For displayable formats (JPEG, PNG)
             capturedPhoto.onerror = () => {
-                console.warn('📷 Cannot display image, showing placeholder');
+                console.warn(' Cannot display image, showing placeholder');
                 capturedPhoto.style.display = 'none';
 
                 const existingPlaceholder = capturedPhoto.parentNode.querySelector('.maya-vastu__photo-placeholder');
@@ -7838,7 +7861,7 @@ REMEMBER:
             };
 
             capturedPhoto.onload = () => {
-                console.log('📷 Photo displayed successfully');
+                console.log(' Photo displayed successfully');
                 capturedPhoto.style.display = 'block';
             };
 
@@ -7871,7 +7894,7 @@ REMEMBER:
      * Stop compass
      */
     _stopCompass() {
-        console.log('🧭 Stopping compass...');
+        console.log(' Stopping compass...');
         this._vastuState.compassActive = false;
         if (this._vastuState && this._vastuState.compassHandler) {
             window.removeEventListener('deviceorientation', this._vastuState.compassHandler, true);
@@ -7900,7 +7923,7 @@ REMEMBER:
         const directionDegree = document.getElementById('directionDegree');
         const directionName = document.getElementById('directionName');
 
-        console.log('🧭 Starting live compass...');
+        console.log(' Starting live compass...');
         this._vastuState.compassActive = true;
 
         // Low-pass filter variables for smooth compass readings
@@ -7972,13 +7995,13 @@ REMEMBER:
 
         // Try deviceorientationabsolute first (more accurate on Android)
         if ('ondeviceorientationabsolute' in window) {
-            console.log('🧭 Using deviceorientationabsolute');
+            console.log(' Using deviceorientationabsolute');
             window.addEventListener('deviceorientationabsolute', this._vastuState.compassHandler, true);
         }
         // Always also listen to deviceorientation for iOS
         window.addEventListener('deviceorientation', this._vastuState.compassHandler, true);
 
-        console.log('🧭 Compass listeners attached with low-pass filter');
+        console.log(' Compass listeners attached with low-pass filter');
     },
 
     /**
@@ -8390,17 +8413,17 @@ REMEMBER:
                 errorMsg.includes('exceeded') ||
                 errorMsg.includes('too many requests');
 
-            console.log('🔍 Rate limit detection:', { isRateLimitError, errorMsg: error.message?.substring(0, 100) });
+            console.log(' Rate limit detection:', { isRateLimitError, errorMsg: error.message?.substring(0, 100) });
 
             // For rate limits, use fallback immediately instead of retrying
             if (isRateLimitError) {
-                console.log('⚠️ Rate limited - using fallback Vastu analysis');
+                console.log(' Rate limited - using fallback Vastu analysis');
                 MayaUtils.toast.warning(isHindi ? 'AI व्यस्त है, बेसिक विश्लेषण दिखा रहे हैं' : 'AI busy, showing basic analysis');
 
                 try {
                     // Use fallback analysis
                     const { analysisHtml, score } = await this._fallbackVastuAnalysis(isHindi);
-                    console.log('✅ Fallback analysis generated, score:', score);
+                    console.log(' Fallback analysis generated, score:', score);
                     this._saveVastuAnalysis(analysisHtml, score);
 
                     if (loadingDiv) loadingDiv.style.display = 'none';
@@ -8418,7 +8441,7 @@ REMEMBER:
 
             // Retry if we haven't exceeded max retries (for non-rate-limit errors)
             if (retryCount < maxRetries && !isRateLimitError) {
-                console.log(`🔄 Retrying Vastu analysis (${retryCount + 1}/${maxRetries})...`);
+                console.log(` Retrying Vastu analysis (${retryCount + 1}/${maxRetries})...`);
                 MayaUtils.toast.warning(isHindi ? `पुनः प्रयास हो रहा है...` : `Retrying analysis...`);
 
                 // Wait a bit before retrying
@@ -8549,8 +8572,8 @@ Rules:
         try {
             // Call Gemini with vision capability
             const response = await this._callGeminiVision(vastuPrompt, this._vastuState.photoData);
-            console.log('📝 Gemini response length:', response?.length, 'chars');
-            console.log('📝 Response preview:', response?.substring(0, 500));
+            console.log(' Gemini response length:', response?.length, 'chars');
+            console.log(' Response preview:', response?.substring(0, 500));
             const { html, score } = this._formatVastuResponse(response, isHindi);
             return { analysisHtml: html, score };
         } catch (error) {
@@ -8572,7 +8595,7 @@ Rules:
             ...(MAYA_CONFIG.API_KEYS.GEMINI_FALLBACKS || [])
         ].filter(Boolean);
 
-        console.log(`🔑 Using ${apiKeys.length} Gemini API key(s) for vastu vision`);
+        console.log(` Using ${apiKeys.length} Gemini API key(s) for vastu vision`);
 
         // Recommended models for image analysis (multimodal understanding)
         const models = MAYA_CONFIG.GEMINI_MODELS || [
@@ -8594,7 +8617,7 @@ Rules:
 
         const base64Image = imageData.replace(/^data:image\/[\w-]+;base64,/, '');
 
-        console.log('🖼️ Gemini Vision - Image size:', Math.round(base64Image.length / 1024), 'KB, MIME:', mimeType);
+        console.log(' Gemini Vision - Image size:', Math.round(base64Image.length / 1024), 'KB, MIME:', mimeType);
 
         const payload = {
             contents: [{
@@ -8631,7 +8654,7 @@ Rules:
             for (const model of models) {
                 try {
                     const url = `${MAYA_CONFIG.ENDPOINTS.GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
-                    console.log(`🤖 Trying Gemini [${keyLabel}] model: ${model}`);
+                    console.log(` Trying Gemini [${keyLabel}] model: ${model}`);
 
                     const response = await fetch(url, {
                         method: 'POST',
@@ -8643,20 +8666,20 @@ Rules:
 
                     // Handle rate limit (429) without cycling through fallback keys.
                     if (response.status === 429) {
-                        console.warn(`⚠️ Gemini [${keyLabel}] rate limited on ${model}. No fallback keys will be tried.`);
+                        console.warn(` Gemini [${keyLabel}] rate limited on ${model}. No fallback keys will be tried.`);
                         lastError = data.error?.message || 'Rate limited';
                         break;
                     }
 
                     // Handle 404 - model not found
                     if (response.status === 404) {
-                        console.warn(`⚠️ Gemini [${keyLabel}] model ${model} not found, trying next...`);
+                        console.warn(` Gemini [${keyLabel}] model ${model} not found, trying next...`);
                         continue;
                     }
 
                     // Handle 503 - overloaded
                     if (response.status === 503) {
-                        console.warn(`⚠️ Gemini [${keyLabel}] model ${model} overloaded, trying next...`);
+                        console.warn(` Gemini [${keyLabel}] model ${model} overloaded, trying next...`);
                         continue;
                     }
 
@@ -8667,7 +8690,7 @@ Rules:
                     }
 
                     if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-                        console.log(`✅ Gemini Vision success [${keyLabel}] with ${model}`);
+                        console.log(` Gemini Vision success [${keyLabel}] with ${model}`);
                         return data.candidates[0].content.parts[0].text;
                     } else {
                         console.warn(`Gemini [${keyLabel}] ${model} - No text in response`, data);
@@ -8680,7 +8703,7 @@ Rules:
             }
         }
 
-        console.error(`❌ Gemini Vision failed with the configured key/model. Last error:`, lastError);
+        console.error(` Gemini Vision failed with the configured key/model. Last error:`, lastError);
         throw new Error(`Vision analysis failed: ${lastError}`);
     },
 
@@ -8717,20 +8740,20 @@ Rules:
                 avoid: ['South', 'South-West'],
                 tips: isHindi
                     ? [
-                        '🚪 मुख्य द्वार पर शुभ स्वास्तिक या ॐ चिन्ह लगाएं',
-                        '🌺 तोरण या बंदनवार लगाएं',
-                        '👟 जूते-चप्पल रैक द्वार के बाईं ओर रखें',
-                        '💡 प्रवेश द्वार हमेशा रोशन रखें',
-                        '🪴 तुलसी या मनी प्लांट रखें',
-                        '🔔 घंटी या विंड चाइम लगाएं'
+                        ' मुख्य द्वार पर शुभ स्वास्तिक या ॐ चिन्ह लगाएं',
+                        ' तोरण या बंदनवार लगाएं',
+                        ' जूते-चप्पल रैक द्वार के बाईं ओर रखें',
+                        ' प्रवेश द्वार हमेशा रोशन रखें',
+                        ' तुलसी या मनी प्लांट रखें',
+                        ' घंटी या विंड चाइम लगाएं'
                     ]
                     : [
-                        '🚪 Place Swastik or Om symbol at entrance',
-                        '🌺 Hang a toran or decorative bandanwar',
-                        '👟 Keep shoe rack on the left side of door',
-                        '💡 Keep entrance well-lit always',
-                        '🪴 Place Tulsi or Money plant near entrance',
-                        '🔔 Hang a bell or wind chime'
+                        ' Place Swastik or Om symbol at entrance',
+                        ' Hang a toran or decorative bandanwar',
+                        ' Keep shoe rack on the left side of door',
+                        ' Keep entrance well-lit always',
+                        ' Place Tulsi or Money plant near entrance',
+                        ' Hang a bell or wind chime'
                     ],
                 remedies: isHindi
                     ? ['द्वार के बाहर गणेश जी की प्रतिमा रखें', 'नमक-पानी से साप्ताहिक सफाई करें']
@@ -8741,20 +8764,20 @@ Rules:
                 avoid: ['South-East'],
                 tips: isHindi
                     ? [
-                        '🛋️ भारी फर्नीचर दक्षिण-पश्चिम कोने में रखें',
-                        '📺 TV पूर्व या उत्तर दीवार पर लगाएं',
-                        '🪞 दर्पण उत्तर दीवार पर लगाएं',
-                        '🪴 पौधे उत्तर-पूर्व कोने में रखें',
-                        '🎨 पारिवारिक फोटो दक्षिण-पश्चिम में लगाएं',
-                        '💡 उत्तर-पूर्व कोना खुला और रोशन रखें'
+                        ' भारी फर्नीचर दक्षिण-पश्चिम कोने में रखें',
+                        ' TV पूर्व या उत्तर दीवार पर लगाएं',
+                        ' दर्पण उत्तर दीवार पर लगाएं',
+                        ' पौधे उत्तर-पूर्व कोने में रखें',
+                        ' पारिवारिक फोटो दक्षिण-पश्चिम में लगाएं',
+                        ' उत्तर-पूर्व कोना खुला और रोशन रखें'
                     ]
                     : [
-                        '🛋️ Place heavy furniture in South-West corner',
-                        '📺 Mount TV on East or North wall',
-                        '🪞 Place mirror on North wall only',
-                        '🪴 Keep plants in North-East corner',
-                        '🎨 Family photos should be in South-West',
-                        '💡 Keep North-East corner open and bright'
+                        ' Place heavy furniture in South-West corner',
+                        ' Mount TV on East or North wall',
+                        ' Place mirror on North wall only',
+                        ' Keep plants in North-East corner',
+                        ' Family photos should be in South-West',
+                        ' Keep North-East corner open and bright'
                     ],
                 remedies: isHindi
                     ? ['क्रिस्टल या पिरामिड रखें', 'सप्ताह में एक बार धूप-दीप जलाएं']
@@ -8765,20 +8788,20 @@ Rules:
                 avoid: ['North-East'],
                 tips: isHindi
                     ? [
-                        '🛏️ सिर दक्षिण या पूर्व दिशा में रखकर सोएं',
-                        '🪞 बिस्तर के सामने दर्पण न रखें',
-                        '📱 इलेक्ट्रॉनिक्स बिस्तर से दूर रखें',
-                        '🚪 बिस्तर को दरवाजे के सीधे सामने न रखें',
-                        '🎨 हल्के और सुखदायक रंग चुनें',
-                        '💑 जोड़े की फोटो दक्षिण-पश्चिम में रखें'
+                        ' सिर दक्षिण या पूर्व दिशा में रखकर सोएं',
+                        ' बिस्तर के सामने दर्पण न रखें',
+                        ' इलेक्ट्रॉनिक्स बिस्तर से दूर रखें',
+                        ' बिस्तर को दरवाजे के सीधे सामने न रखें',
+                        ' हल्के और सुखदायक रंग चुनें',
+                        ' जोड़े की फोटो दक्षिण-पश्चिम में रखें'
                     ]
                     : [
-                        '🛏️ Sleep with head towards South or East',
-                        '🪞 Avoid mirror facing the bed',
-                        '📱 Keep electronics away from bed',
-                        '🚪 Don\'t place bed directly facing door',
-                        '🎨 Choose light and soothing colors',
-                        '💑 Couple\'s photo in South-West'
+                        ' Sleep with head towards South or East',
+                        ' Avoid mirror facing the bed',
+                        ' Keep electronics away from bed',
+                        ' Don\'t place bed directly facing door',
+                        ' Choose light and soothing colors',
+                        ' Couple\'s photo in South-West'
                     ],
                 remedies: isHindi
                     ? ['शयनकक्ष में गुलाबी रंग की वस्तुएं रखें', 'लैवेंडर या चंदन की खुशबू रखें']
@@ -8789,20 +8812,20 @@ Rules:
                 avoid: ['North-East', 'South-West'],
                 tips: isHindi
                     ? [
-                        '🔥 चूल्हा दक्षिण-पूर्व कोने में रखें',
-                        '🚰 सिंक और चूल्हे के बीच दूरी रखें',
-                        '❄️ फ्रिज दक्षिण-पश्चिम में रखें',
-                        '💨 एग्जॉस्ट पूर्व दिशा में लगाएं',
-                        '🍽️ पूर्व की ओर मुख करके खाना बनाएं',
-                        '🌿 तुलसी या अन्य जड़ी-बूटी रखें'
+                        ' चूल्हा दक्षिण-पूर्व कोने में रखें',
+                        ' सिंक और चूल्हे के बीच दूरी रखें',
+                        ' फ्रिज दक्षिण-पश्चिम में रखें',
+                        ' एग्जॉस्ट पूर्व दिशा में लगाएं',
+                        ' पूर्व की ओर मुख करके खाना बनाएं',
+                        ' तुलसी या अन्य जड़ी-बूटी रखें'
                     ]
                     : [
-                        '🔥 Place stove in South-East corner',
-                        '🚰 Keep distance between sink and stove',
-                        '❄️ Refrigerator in South-West',
-                        '💨 Exhaust fan towards East',
-                        '🍽️ Cook facing East direction',
-                        '🌿 Keep Tulsi or herbs in kitchen'
+                        ' Place stove in South-East corner',
+                        ' Keep distance between sink and stove',
+                        ' Refrigerator in South-West',
+                        ' Exhaust fan towards East',
+                        ' Cook facing East direction',
+                        ' Keep Tulsi or herbs in kitchen'
                     ],
                 remedies: isHindi
                     ? ['रसोई में पीले रंग का उपयोग करें', 'नमक का कटोरा रखें']
@@ -8813,20 +8836,20 @@ Rules:
                 avoid: ['North-East', 'South-West'],
                 tips: isHindi
                     ? [
-                        '🚽 शौचालय उत्तर-दक्षिण दिशा में रखें',
-                        '🚿 शॉवर पूर्व या उत्तर में हो',
-                        '🪞 दर्पण उत्तर या पूर्व दीवार पर',
-                        '💧 नल टपकना नहीं चाहिए',
-                        '🪟 हवादार और सूखा रखें',
-                        '🚪 दरवाजा हमेशा बंद रखें'
+                        ' शौचालय उत्तर-दक्षिण दिशा में रखें',
+                        ' शॉवर पूर्व या उत्तर में हो',
+                        ' दर्पण उत्तर या पूर्व दीवार पर',
+                        ' नल टपकना नहीं चाहिए',
+                        ' हवादार और सूखा रखें',
+                        ' दरवाजा हमेशा बंद रखें'
                     ]
                     : [
-                        '🚽 Toilet seat in North-South direction',
-                        '🚿 Shower in East or North',
-                        '🪞 Mirror on North or East wall',
-                        '💧 No leaking taps (drains wealth)',
-                        '🪟 Keep well-ventilated and dry',
-                        '🚪 Always keep door closed'
+                        ' Toilet seat in North-South direction',
+                        ' Shower in East or North',
+                        ' Mirror on North or East wall',
+                        ' No leaking taps (drains wealth)',
+                        ' Keep well-ventilated and dry',
+                        ' Always keep door closed'
                     ],
                 remedies: isHindi
                     ? ['समुद्री नमक से साप्ताहिक सफाई', 'ताजे फूल या पौधे रखें']
@@ -8837,20 +8860,20 @@ Rules:
                 avoid: ['South', 'South-West'],
                 tips: isHindi
                     ? [
-                        '🕉️ देवता का मुख पूर्व या पश्चिम की ओर हो',
-                        '🙏 पूजा करते समय पूर्व या उत्तर की ओर मुख करें',
-                        '🪔 दीपक दक्षिण-पूर्व में रखें',
-                        '🌸 ताजे फूल और जल रोज बदलें',
-                        '📿 मूर्तियां जमीन से ऊपर रखें',
-                        '🧹 नियमित स्वच्छता बनाए रखें'
+                        ' देवता का मुख पूर्व या पश्चिम की ओर हो',
+                        ' पूजा करते समय पूर्व या उत्तर की ओर मुख करें',
+                        ' दीपक दक्षिण-पूर्व में रखें',
+                        ' ताजे फूल और जल रोज बदलें',
+                        ' मूर्तियां जमीन से ऊपर रखें',
+                        ' नियमित स्वच्छता बनाए रखें'
                     ]
                     : [
-                        '🕉️ Deity should face East or West',
-                        '🙏 Face East or North while praying',
-                        '🪔 Place lamp in South-East',
-                        '🌸 Change flowers and water daily',
-                        '📿 Keep idols above ground level',
-                        '🧹 Maintain regular cleanliness'
+                        ' Deity should face East or West',
+                        ' Face East or North while praying',
+                        ' Place lamp in South-East',
+                        ' Change flowers and water daily',
+                        ' Keep idols above ground level',
+                        ' Maintain regular cleanliness'
                     ],
                 remedies: isHindi
                     ? ['रोज घी का दीपक जलाएं', 'गंगाजल छिड़कें']
@@ -8861,20 +8884,20 @@ Rules:
                 avoid: ['South-West for sitting'],
                 tips: isHindi
                     ? [
-                        '💼 उत्तर या पूर्व की ओर मुख करके बैठें',
-                        '🖥️ कंप्यूटर दक्षिण-पूर्व में रखें',
-                        '📚 किताबें दक्षिण-पश्चिम में रखें',
-                        '🪴 मनी प्लांट उत्तर में रखें',
-                        '⏰ घड़ी उत्तर या पूर्व दीवार पर',
-                        '🎯 प्रेरणादायक चित्र उत्तर में'
+                        ' उत्तर या पूर्व की ओर मुख करके बैठें',
+                        ' कंप्यूटर दक्षिण-पूर्व में रखें',
+                        ' किताबें दक्षिण-पश्चिम में रखें',
+                        ' मनी प्लांट उत्तर में रखें',
+                        ' घड़ी उत्तर या पूर्व दीवार पर',
+                        ' प्रेरणादायक चित्र उत्तर में'
                     ]
                     : [
-                        '💼 Sit facing North or East',
-                        '🖥️ Place computer in South-East',
-                        '📚 Books in South-West',
-                        '🪴 Money plant in North',
-                        '⏰ Clock on North or East wall',
-                        '🎯 Inspirational images in North'
+                        ' Sit facing North or East',
+                        ' Place computer in South-East',
+                        ' Books in South-West',
+                        ' Money plant in North',
+                        ' Clock on North or East wall',
+                        ' Inspirational images in North'
                     ],
                 remedies: isHindi
                     ? ['क्रिस्टल पिरामिड रखें', 'लाफिंग बुद्धा उत्तर में रखें']
@@ -8885,20 +8908,20 @@ Rules:
                 avoid: ['South-West for main activities'],
                 tips: isHindi
                     ? [
-                        '✨ उत्तर-पूर्व कोना साफ और खुला रखें',
-                        '🌿 पौधे लगाएं जो सकारात्मक ऊर्जा लाएं',
-                        '💡 पर्याप्त रोशनी रखें',
-                        '🧹 अनावश्यक सामान हटाएं',
-                        '🎨 सुखदायक रंग चुनें',
-                        '🔔 सकारात्मक ध्वनियां रखें'
+                        ' उत्तर-पूर्व कोना साफ और खुला रखें',
+                        ' पौधे लगाएं जो सकारात्मक ऊर्जा लाएं',
+                        ' पर्याप्त रोशनी रखें',
+                        ' अनावश्यक सामान हटाएं',
+                        ' सुखदायक रंग चुनें',
+                        ' सकारात्मक ध्वनियां रखें'
                     ]
                     : [
-                        '✨ Keep North-East corner clean and open',
-                        '🌿 Place plants that bring positive energy',
-                        '💡 Ensure adequate lighting',
-                        '🧹 Remove unnecessary clutter',
-                        '🎨 Choose soothing colors',
-                        '🔔 Keep positive sounds'
+                        ' Keep North-East corner clean and open',
+                        ' Place plants that bring positive energy',
+                        ' Ensure adequate lighting',
+                        ' Remove unnecessary clutter',
+                        ' Choose soothing colors',
+                        ' Keep positive sounds'
                     ],
                 remedies: isHindi
                     ? ['समुद्री नमक से सफाई', 'कपूर जलाएं']
@@ -8955,11 +8978,12 @@ Rules:
                         ${direction} • ${this._vastuState.directionDegree}°
                     </div>
                     <span class="maya-vastu-result__status-tag">
+                        <i class="bi ${score >= 7 ? 'bi-check-circle' : score >= 5 ? 'bi-dash-circle' : 'bi-exclamation-triangle'}"></i>
                         ${score >= 7
-                ? (isHindi ? '✨ शुभ' : '✨ Auspicious')
+                ? (isHindi ? 'शुभ' : 'Auspicious')
                 : score >= 5
-                    ? (isHindi ? '⚖️ तटस्थ' : '⚖️ Neutral')
-                    : (isHindi ? '⚠️ सुधार आवश्यक' : '⚠️ Needs Improvement')}
+                    ? (isHindi ? 'तटस्थ' : 'Neutral')
+                    : (isHindi ? 'सुधार आवश्यक' : 'Needs Improvement')}
                     </span>
                 </div>
             </div>
@@ -9060,7 +9084,7 @@ Rules:
             cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '');
             data = JSON.parse(cleaned);
         } catch (e) {
-            console.warn('⚠️ Failed to parse Vastu JSON, falling back to text format:', e.message);
+            console.warn(' Failed to parse Vastu JSON, falling back to text format:', e.message);
             // Fallback: extract what we can from raw text
             let score = 5;
             const scoreMatch = response.match(/SCORE:\s*(\d+)\/10/i) || response.match(/["']?score["']?\s*:\s*(\d+)/i) || response.match(/(\d+)\/10/);
@@ -9071,7 +9095,7 @@ Rules:
                 scoreSummary: isHindi ? 'वास्तु विश्लेषण पूर्ण' : 'Vastu analysis complete',
                 positives: [{ title: isHindi ? 'विश्लेषण' : 'Analysis', desc: response.substring(0, 300) }],
                 doshas: [],
-                remedies: [{ action: isHindi ? 'विस्तार के लिए MAYA से पूछें' : 'Ask MAYA for detailed consultation', icon: '💬' }],
+                remedies: [{ action: isHindi ? 'विस्तार के लिए MAYA से पूछें' : 'Ask MAYA for detailed consultation' }],
                 placements: []
             };
         }
@@ -9080,10 +9104,10 @@ Rules:
         const scoreClass = score >= 7 ? 'good' : score >= 5 ? 'neutral' : 'improve';
         const scoreColor = score >= 7 ? '#22c55e' : score >= 5 ? '#f59e0b' : '#ef4444';
         const scoreLabel = score >= 7
-            ? (isHindi ? '✨ शुभ' : '✨ Auspicious')
+            ? `<i class="bi bi-check-circle"></i> ${isHindi ? 'शुभ' : 'Auspicious'}`
             : score >= 5
-                ? (isHindi ? '⚖️ ठीक है' : '⚖️ Moderate')
-                : (isHindi ? '⚠️ सुधार आवश्यक' : '⚠️ Needs Improvement');
+                ? `<i class="bi bi-dash-circle"></i> ${isHindi ? 'ठीक है' : 'Moderate'}`
+                : `<i class="bi bi-exclamation-triangle"></i> ${isHindi ? 'सुधार आवश्यक' : 'Needs Improvement'}`;
 
         // Get area name
         const areaName = this._vastuState.customAreaName || this._vastuState.areaType?.replace('_', ' ') || 'Space';
@@ -9169,7 +9193,7 @@ Rules:
                 <div class="vastu-r__remedies">
                     ${data.remedies.map((r, i) => `
                         <div class="vastu-r__remedy">
-                            <span class="vastu-r__remedy-icon">${r.icon || '🔮'}</span>
+                            <span class="vastu-r__remedy-icon"><i class="bi bi-check2-circle"></i></span>
                             <span class="vastu-r__remedy-text">${r.action}</span>
                         </div>
                     `).join('')}
@@ -9186,7 +9210,7 @@ Rules:
                 <div class="vastu-r__placements">
                     ${data.placements.map(p => `
                         <div class="vastu-r__placement">
-                            <span class="vastu-r__placement-icon">${p.icon || '📍'}</span>
+                            <span class="vastu-r__placement-icon"><i class="bi bi-geo-alt"></i></span>
                             <div>
                                 <strong>${p.item}</strong>
                                 <span>${p.where}</span>
@@ -9627,8 +9651,8 @@ Rules:
                 </div>
                 <div class="maya-aspect-modal__content">
                     <p>${insight.explanation}</p>
-                    ${insight.advice ? `<div class="maya-aspect-modal__advice"><strong>${isHindi ? '💡 सलाह:' : '💡 Advice:'}</strong> ${insight.advice}</div>` : ''}
-                    ${insight.timing ? `<div class="maya-aspect-modal__timing"><strong>${isHindi ? '⏰ समय:' : '⏰ Timing:'}</strong> ${insight.timing}</div>` : ''}
+                    ${insight.advice ? `<div class="maya-aspect-modal__advice"><strong><i class="bi bi-lightbulb"></i> ${isHindi ? 'सलाह:' : 'Advice:'}</strong> ${insight.advice}</div>` : ''}
+                    ${insight.timing ? `<div class="maya-aspect-modal__timing"><strong><i class="bi bi-clock"></i> ${isHindi ? 'समय:' : 'Timing:'}</strong> ${insight.timing}</div>` : ''}
                 </div>
             `;
         } catch (error) {
@@ -9930,7 +9954,7 @@ Rules:
                         if (tzInput) tzInput.value = timezone;
                     }
 
-                    console.log(`📍 Place selected: ${place.formatted_address} (${lat}, ${lng})`);
+                    console.log(` Place selected: ${place.formatted_address} (${lat}, ${lng})`);
                 }
             });
         });
@@ -10019,7 +10043,7 @@ Rules:
                                 if (tzInput) tzInput.value = Math.round(parseFloat(place.lon) / 15) * 60;
                             }
 
-                            console.log(`📍 Place selected: ${place.display_name} (${place.lat}, ${place.lon})`);
+                            console.log(` Place selected: ${place.display_name} (${place.lat}, ${place.lon})`);
                             hideDropdown();
                         };
 
@@ -10125,9 +10149,9 @@ Rules:
                 const getZodiacImage = (zodiac) => {
                     if (zodiac.image) {
                         return `<img src="${zodiac.image}" alt="${zodiac.name}" class="maya-compat-result__sign-image" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
-                                <span class="maya-compat-result__sign-fallback" style="display:none;">${zodiac.symbol || '♈'}</span>`;
+                                <span class="maya-compat-result__sign-fallback" style="display:none;"><i class="bi bi-stars"></i></span>`;
                     }
-                    return `<span class="maya-compat-result__sign-fallback">${zodiac.symbol || '♈'}</span>`;
+                    return '<span class="maya-compat-result__sign-fallback"><i class="bi bi-stars"></i></span>';
                 };
 
                 // Get guna score color
@@ -10172,7 +10196,7 @@ Rules:
                             
                             ${compatibility.doshas && compatibility.doshas.length > 0 ? `
                                 <div class="maya-compat-result__doshas">
-                                    <span class="maya-compat-result__dosha-label">⚠️ Doshas:</span>
+                                    <span class="maya-compat-result__dosha-label"><i class="bi bi-exclamation-triangle"></i> Doshas:</span>
                                     ${compatibility.doshas.map(d => `<span class="maya-compat-result__dosha">${d}</span>`).join('')}
                                 </div>
                             ` : ''}
@@ -10275,10 +10299,13 @@ Rules:
             ctx.fillText(zodiac1.name, 150, 170);
             ctx.fillText(zodiac2.name, 450, 170);
 
-            // Heart in the middle
+            // Heart icon in the middle (drawn directly; no emoji glyphs)
             ctx.fillStyle = '#ef4444';
-            ctx.font = '40px Arial';
-            ctx.fillText('❤️', canvas.width / 2, 155);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 166);
+            ctx.bezierCurveTo(canvas.width / 2 - 34, 144, canvas.width / 2 - 28, 116, canvas.width / 2, 136);
+            ctx.bezierCurveTo(canvas.width / 2 + 28, 116, canvas.width / 2 + 34, 144, canvas.width / 2, 166);
+            ctx.fill();
 
             // Score circle
             const centerX = canvas.width / 2;

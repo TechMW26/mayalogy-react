@@ -1,0 +1,1009 @@
+/* Authenticated application workspace.
+   Everything is scoped to #app-container so the pre-login and signup flow
+   keeps its existing visual treatment. */
+
+#app-container {
+    --maya-primary: #9a5d19;
+    --maya-primary-light: #bd7a2d;
+    --maya-primary-dark: #75400b;
+    --maya-secondary: #5f5142;
+    --maya-accent: #8a641e;
+    --maya-text-primary: #25221f;
+    --maya-text-secondary: #66605a;
+    --maya-text-muted: #888078;
+    --maya-bg-primary: #f5f4f1;
+    --maya-bg-secondary: #ffffff;
+    --maya-bg-tertiary: #f1eee9;
+    --maya-bg-card: #ffffff;
+    --maya-border: #dcd7cf;
+    --maya-border-light: #e9e5df;
+    --maya-shadow: 0 1px 2px rgba(37, 34, 31, 0.05), 0 8px 24px rgba(37, 34, 31, 0.05);
+    --maya-shadow-glow: 0 8px 24px rgba(117, 64, 11, 0.10);
+    --header-height: 64px;
+    --sidebar-width: 248px;
+    --bottom-nav-height: 66px;
+    min-height: 100dvh;
+    color: var(--maya-text-primary);
+    background: var(--maya-bg-primary) !important;
+    font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+#app-container *,
+#app-container *::before,
+#app-container *::after {
+    box-sizing: border-box;
+}
+
+#app-container h1,
+#app-container h2,
+#app-container h3,
+#app-container h4,
+#app-container h5,
+#app-container h6,
+#app-container .page-title,
+#app-container .maya-page__title,
+#app-container .logo-name {
+    color: var(--maya-text-primary) !important;
+    font-family: inherit;
+    letter-spacing: -0.02em;
+}
+
+#app-container .main-header,
+#app-container .sidebar,
+#app-container .bottom-nav,
+#app-container .notifications-panel {
+    color: var(--maya-text-primary);
+    background: rgba(255, 255, 255, 0.97) !important;
+    border-color: var(--maya-border-light) !important;
+    box-shadow: none;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+
+#app-container .main-header::after,
+#app-container .bottom-nav::before {
+    display: none;
+}
+
+#app-container .main-header {
+    height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
+    border-bottom: 1px solid var(--maya-border-light);
+}
+
+#app-container .header-content {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    padding: 0 18px;
+}
+
+#app-container .menu-toggle,
+#app-container .header-actions .btn {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    display: inline-grid;
+    place-items: center;
+    padding: 0 !important;
+    color: #5e5851 !important;
+    border: 0 !important;
+    border-radius: 10px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+#app-container .menu-toggle:hover,
+#app-container .header-actions .btn:hover {
+    color: var(--maya-primary) !important;
+    background: #f3efe9 !important;
+}
+
+#app-container .header-logo {
+    align-items: center;
+    gap: 10px;
+}
+
+#app-container .header-logo .logo-icon {
+    width: 32px;
+    height: 32px;
+    margin: 0;
+    border-radius: 9px;
+    filter: none;
+}
+
+#app-container .header-brand-copy {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    min-width: 0;
+}
+
+#app-container .logo-name {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+#app-container .header-section-name {
+    padding-left: 12px;
+    color: var(--maya-text-muted);
+    border-left: 1px solid var(--maya-border);
+    font-size: 0.84rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+#app-container .header-actions {
+    gap: 2px;
+}
+
+#app-container .notification-badge {
+    top: 5px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    color: transparent;
+    border: 2px solid #fff;
+    background: #b44932;
+}
+
+#app-container .sidebar {
+    top: calc(var(--header-height) + env(safe-area-inset-top, 0px));
+    height: calc(100dvh - var(--header-height) - env(safe-area-inset-top, 0px));
+    border-right: 1px solid var(--maya-border-light);
+    overflow-x: hidden;
+}
+
+#app-container .sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--maya-border-light);
+}
+
+#app-container .user-profile {
+    width: 100%;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 12px;
+}
+
+#app-container .user-profile:hover {
+    background: #f5f2ed;
+}
+
+#app-container .avatar-circle {
+    width: 38px;
+    height: 38px;
+    color: #fff;
+    background: #72502d;
+    border-radius: 11px;
+    font-size: 1rem;
+}
+
+#app-container .user-name {
+    color: var(--maya-text-primary);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+#app-container .day-status-pill {
+    gap: 4px;
+    padding: 0;
+    color: var(--maya-text-muted);
+    border: 0;
+    background: transparent;
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+#app-container .sidebar-nav {
+    padding: 12px;
+}
+
+#app-container .sidebar-nav__label {
+    margin: 14px 10px 5px;
+    color: #9a938b;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+}
+
+#app-container .sidebar-nav__label:first-child {
+    margin-top: 2px;
+}
+
+#app-container .sidebar-nav .nav {
+    gap: 2px;
+}
+
+#app-container .sidebar-nav .nav-link {
+    min-height: 42px;
+    gap: 11px;
+    padding: 9px 11px;
+    color: #625c55;
+    border: 0;
+    border-radius: 10px;
+    font-size: 0.86rem;
+    font-weight: 550;
+    text-shadow: none;
+    transition: color 160ms ease, background 160ms ease;
+}
+
+#app-container .sidebar-nav .nav-link i {
+    width: 20px;
+    color: #8c847c;
+    font-size: 1rem;
+    text-align: center;
+}
+
+#app-container .sidebar-nav .nav-link:hover {
+    color: #2f2a25;
+    background: #f3f0eb;
+}
+
+#app-container .sidebar-nav .nav-link.active {
+    color: #75400b;
+    background: #f4eadc;
+    box-shadow: inset 3px 0 0 #a96b20;
+}
+
+#app-container .sidebar-nav .nav-link.active i {
+    color: #925817;
+}
+
+#app-container .main-content {
+    min-height: calc(100dvh - var(--header-height));
+    padding: 0;
+    background: var(--maya-bg-primary) !important;
+}
+
+#app-container .maya-page,
+#app-container .page-container,
+#app-container .page-wrapper {
+    width: 100%;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: clamp(20px, 3vw, 38px);
+    background: transparent !important;
+    animation: internalPageEnter 220ms ease-out;
+}
+
+@keyframes internalPageEnter {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#app-container .maya-page__header {
+    max-width: 760px;
+    margin: 0 0 24px;
+}
+
+#app-container .maya-page__title {
+    margin: 0 0 6px;
+    font-size: clamp(1.45rem, 2.8vw, 2rem);
+    font-weight: 720;
+}
+
+#app-container .maya-page__subtitle,
+#app-container .page-subtitle,
+#app-container .maya-section__desc {
+    color: var(--maya-text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.55;
+}
+
+#app-container .maya-section {
+    margin-bottom: 28px;
+}
+
+#app-container .maya-section__title {
+    margin: 0 0 12px;
+    color: var(--maya-text-primary);
+    font-size: 0.78rem;
+    font-weight: 750;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+#app-container .maya-section__title i {
+    color: var(--maya-primary);
+    font-size: 0.92rem;
+}
+
+#app-container .maya-card,
+#app-container .maya-panel,
+#app-container .quick-action-card,
+#app-container .maya-insight-card,
+#app-container .maya-action-tile,
+#app-container .maya-info-card,
+#app-container .maya-profile__card,
+#app-container .maya-settings__group {
+    color: var(--maya-text-primary);
+    background: #fff !important;
+    border: 1px solid var(--maya-border-light) !important;
+    border-radius: 14px !important;
+    box-shadow: var(--maya-shadow) !important;
+    overflow: hidden !important;
+}
+
+#app-container .maya-card::before,
+#app-container .maya-card::after,
+#app-container .maya-panel::before,
+#app-container .maya-panel::after,
+#app-container .quick-action-card::before,
+#app-container .quick-action-card::after,
+#app-container .maya-insight-card::before,
+#app-container .maya-insight-card::after,
+#app-container .maya-action-tile::before,
+#app-container .maya-action-tile::after,
+#app-container .maya-info-card::before,
+#app-container .maya-info-card::after {
+    display: none !important;
+}
+
+#app-container .maya-home {
+    max-width: 980px;
+}
+
+#app-container .maya-home__header {
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+#app-container .maya-home__greeting-text {
+    color: var(--maya-text-muted);
+    font-size: 0.82rem;
+}
+
+#app-container .maya-home__name {
+    margin-top: 2px;
+    font-size: clamp(1.55rem, 3vw, 2rem);
+    font-weight: 750;
+}
+
+#app-container .maya-home__date {
+    padding: 7px 10px;
+    color: #6d665f;
+    border: 1px solid var(--maya-border-light);
+    border-radius: 9px;
+    background: #fff;
+    font-size: 0.78rem;
+}
+
+#app-container .maya-home__summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+#app-container .maya-summary-item {
+    min-width: 0;
+    min-height: 76px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 14px;
+    color: var(--maya-text-primary);
+    border: 1px solid var(--maya-border-light);
+    border-radius: 13px;
+    background: #fff;
+    box-shadow: none;
+    text-align: left;
+    cursor: pointer;
+}
+
+#app-container .maya-summary-item:hover {
+    border-color: #cfbda8;
+    background: #fcfaf7;
+}
+
+#app-container .maya-summary-item__icon {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    display: grid;
+    place-items: center;
+    color: #8b5416;
+    border-radius: 10px;
+    background: #f5eadc;
+    font-size: 1.05rem;
+}
+
+#app-container .maya-summary-item__copy {
+    min-width: 0;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+}
+
+#app-container .maya-summary-item__copy small {
+    color: var(--maya-text-muted);
+    font-size: 0.7rem;
+}
+
+#app-container .maya-summary-item__copy strong {
+    overflow: hidden;
+    color: var(--maya-text-primary);
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#app-container .maya-summary-item__arrow {
+    color: #a39b92;
+    font-size: 0.8rem;
+}
+
+#app-container .maya-insight-card {
+    padding: 18px;
+    margin-bottom: 28px;
+}
+
+#app-container .maya-insight-card__header {
+    margin-bottom: 9px;
+    color: #75400b;
+    font-size: 0.78rem;
+    font-weight: 750;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+#app-container .maya-insight-card__text {
+    max-width: 760px;
+    color: #4f4943;
+    font-size: 0.95rem;
+    line-height: 1.65;
+}
+
+#app-container .maya-insight-card__footer {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-color: var(--maya-border-light);
+}
+
+#app-container .maya-action-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+#app-container .maya-action-tile {
+    min-height: 104px;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 10px;
+    color: var(--maya-text-primary);
+    box-shadow: none !important;
+    transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+#app-container .maya-action-tile:hover {
+    transform: translateY(-2px);
+    border-color: #cfbda8 !important;
+    background: #fcfaf7 !important;
+}
+
+#app-container .maya-action-tile--highlight {
+    grid-column: span 2;
+    min-height: 104px;
+    align-items: flex-start;
+    padding: 17px;
+    background: #33271d !important;
+    border-color: #33271d !important;
+}
+
+#app-container .maya-action-tile--highlight:hover {
+    background: #433225 !important;
+    border-color: #433225 !important;
+}
+
+#app-container .maya-action-tile__icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: #f3eee7;
+}
+
+#app-container .maya-action-tile__icon i {
+    color: #875117;
+    font-size: 1.05rem;
+}
+
+#app-container .maya-action-tile--highlight .maya-action-tile__icon {
+    color: #33271d;
+    background: #e9c994;
+}
+
+#app-container .maya-action-tile--highlight .maya-action-tile__icon i {
+    color: #33271d;
+}
+
+#app-container .maya-action-tile__label {
+    color: #4c4640;
+    font-size: 0.8rem;
+    font-weight: 650;
+    text-align: center;
+}
+
+#app-container .maya-action-tile--highlight .maya-action-tile__label {
+    color: #fff;
+    font-size: 0.92rem;
+    text-align: left;
+}
+
+#app-container .maya-lucky-cards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+#app-container .maya-lucky-card {
+    min-width: 0;
+    padding: 13px;
+    border: 1px solid var(--maya-border-light);
+    border-radius: 13px;
+    background: #fff;
+    box-shadow: none;
+}
+
+#app-container .maya-lucky-card__icon-wrap {
+    width: 34px;
+    height: 34px;
+    background: #f4f1ec;
+    border-radius: 9px;
+}
+
+#app-container .maya-lucky-card__value {
+    color: var(--maya-text-primary);
+    font-family: inherit;
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+#app-container .maya-lucky-card__label {
+    color: var(--maya-text-muted);
+    font-size: 0.68rem;
+}
+
+#app-container .maya-lucky-card__arrow {
+    display: none;
+}
+
+#app-container .maya-btn,
+#app-container .btn-primary,
+#app-container .btn-outline-primary,
+#app-container .btn-outline-secondary {
+    min-height: 40px;
+    padding: 8px 13px;
+    border-radius: 10px !important;
+    font-family: inherit;
+    font-size: 0.84rem;
+    font-weight: 650;
+    box-shadow: none !important;
+}
+
+#app-container .maya-btn--primary,
+#app-container .btn-primary {
+    color: #fff !important;
+    border: 1px solid #75400b !important;
+    background: #875117 !important;
+}
+
+#app-container .maya-btn--primary:hover,
+#app-container .btn-primary:hover {
+    background: #6f410f !important;
+}
+
+#app-container .maya-btn--outline,
+#app-container .btn-outline-primary,
+#app-container .btn-outline-secondary {
+    color: #5b5148 !important;
+    border: 1px solid var(--maya-border) !important;
+    background: #fff !important;
+}
+
+#app-container .maya-input,
+#app-container .form-control,
+#app-container textarea,
+#app-container select {
+    min-height: 44px;
+    padding: 9px 12px !important;
+    color: var(--maya-text-primary) !important;
+    caret-color: var(--maya-primary);
+    border: 1px solid var(--maya-border) !important;
+    border-radius: 10px !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    font-family: inherit;
+    font-size: 0.9rem !important;
+}
+
+#app-container .maya-input:focus,
+#app-container .form-control:focus,
+#app-container textarea:focus,
+#app-container select:focus {
+    border-color: #a96b20 !important;
+    box-shadow: 0 0 0 3px rgba(169, 107, 32, 0.12) !important;
+}
+
+#app-container .maya-profile__card {
+    max-width: 760px;
+    padding: 18px;
+    text-align: left;
+}
+
+#app-container .maya-profile__avatar {
+    color: #fff;
+    background: #72502d;
+    box-shadow: none;
+}
+
+#app-container .maya-profile__photo-btn {
+    color: #fff;
+    background: #875117;
+}
+
+#app-container .maya-settings__groups {
+    max-width: 760px;
+    gap: 14px;
+}
+
+#app-container .maya-settings__group-title {
+    padding: 13px 16px;
+    color: var(--maya-text-primary);
+    background: #faf8f5;
+    font-size: 0.78rem;
+    font-weight: 750;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+#app-container .maya-settings__item {
+    min-height: 66px;
+    padding: 12px 16px;
+    border-color: var(--maya-border-light);
+}
+
+#app-container .maya-settings__item-icon {
+    width: 36px;
+    height: 36px;
+    color: #875117;
+    border-radius: 9px;
+    background: #f5eadc;
+}
+
+#app-container .maya-toggle__slider {
+    border-color: var(--maya-border);
+    background: #ddd8d1;
+}
+
+#app-container .maya-toggle input:checked + .maya-toggle__slider {
+    border-color: #875117;
+    background: #875117;
+}
+
+#app-container .notifications-panel {
+    width: min(360px, 92vw);
+    border-left: 1px solid var(--maya-border-light);
+    box-shadow: -14px 0 34px rgba(37, 34, 31, 0.09);
+}
+
+#app-container .notifications-header {
+    padding: 16px;
+    background: #fff !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--maya-border-light) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+#app-container .notification-item {
+    padding: 14px 16px;
+    border-color: var(--maya-border-light);
+}
+
+#app-container .notification-item.unread {
+    border-left: 3px solid #9a5d19;
+    background: #fbf6ef;
+}
+
+#app-container .notification-icon {
+    color: #875117;
+    background: #f5eadc;
+}
+
+#app-container .bottom-nav {
+    align-items: stretch;
+    height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+    padding: 0 4px env(safe-area-inset-bottom, 0px);
+    border-top: 1px solid var(--maya-border-light);
+}
+
+#app-container .bottom-nav .nav-item,
+#app-container .bottom-nav .maya-btn {
+    min-height: 58px;
+    margin: 0;
+    padding: 7px 2px 5px;
+    justify-content: center;
+    gap: 3px;
+    color: #77716a;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    font-size: 0.64rem;
+    font-weight: 600;
+}
+
+#app-container .bottom-nav .nav-item i {
+    font-size: 1.18rem;
+}
+
+#app-container .bottom-nav .nav-item.active {
+    color: #875117;
+    background: transparent !important;
+}
+
+#app-container .maya-nav-icon {
+    width: 34px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    border-radius: 9px;
+    background: #33271d;
+}
+
+#app-container .bottom-nav .maya-btn .maya-nav-icon i {
+    color: #fff;
+    font-size: 1rem;
+}
+
+#app-container :focus-visible {
+    outline: 3px solid rgba(169, 107, 32, 0.28);
+    outline-offset: 2px;
+}
+
+/* Preserve the existing appearance preference with the same minimal hierarchy. */
+html[data-bs-theme="dark"] #app-container {
+    --maya-text-primary: #f2efea;
+    --maya-text-secondary: #c2bbb3;
+    --maya-text-muted: #938b82;
+    --maya-bg-primary: #151513;
+    --maya-bg-secondary: #201f1d;
+    --maya-bg-tertiary: #292724;
+    --maya-bg-card: #201f1d;
+    --maya-border: #47433e;
+    --maya-border-light: #34312e;
+    --maya-shadow: 0 1px 2px rgba(0, 0, 0, 0.22), 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+
+html[data-bs-theme="dark"] #app-container .main-header,
+html[data-bs-theme="dark"] #app-container .sidebar,
+html[data-bs-theme="dark"] #app-container .bottom-nav,
+html[data-bs-theme="dark"] #app-container .notifications-panel {
+    background: rgba(29, 28, 26, 0.97) !important;
+}
+
+html[data-bs-theme="dark"] #app-container .menu-toggle,
+html[data-bs-theme="dark"] #app-container .header-actions .btn,
+html[data-bs-theme="dark"] #app-container .sidebar-nav .nav-link,
+html[data-bs-theme="dark"] #app-container .bottom-nav .nav-item,
+html[data-bs-theme="dark"] #app-container .bottom-nav .maya-btn {
+    color: #aaa39b !important;
+}
+
+html[data-bs-theme="dark"] #app-container .menu-toggle:hover,
+html[data-bs-theme="dark"] #app-container .header-actions .btn:hover,
+html[data-bs-theme="dark"] #app-container .user-profile:hover,
+html[data-bs-theme="dark"] #app-container .sidebar-nav .nav-link:hover {
+    color: #f2efea !important;
+    background: #2a2825 !important;
+}
+
+html[data-bs-theme="dark"] #app-container .sidebar-nav .nav-link.active {
+    color: #f1c98d !important;
+    background: #3b3024 !important;
+    box-shadow: inset 3px 0 0 #c68a42;
+}
+
+html[data-bs-theme="dark"] #app-container .sidebar-nav .nav-link.active i,
+html[data-bs-theme="dark"] #app-container .maya-section__title i,
+html[data-bs-theme="dark"] #app-container .maya-insight-card__header,
+html[data-bs-theme="dark"] #app-container .bottom-nav .nav-item.active {
+    color: #d39b55 !important;
+}
+
+html[data-bs-theme="dark"] #app-container .maya-card,
+html[data-bs-theme="dark"] #app-container .maya-panel,
+html[data-bs-theme="dark"] #app-container .quick-action-card,
+html[data-bs-theme="dark"] #app-container .maya-insight-card,
+html[data-bs-theme="dark"] #app-container .maya-action-tile,
+html[data-bs-theme="dark"] #app-container .maya-info-card,
+html[data-bs-theme="dark"] #app-container .maya-profile__card,
+html[data-bs-theme="dark"] #app-container .maya-settings__group,
+html[data-bs-theme="dark"] #app-container .maya-summary-item,
+html[data-bs-theme="dark"] #app-container .maya-lucky-card,
+html[data-bs-theme="dark"] #app-container .maya-home__date,
+html[data-bs-theme="dark"] #app-container .notifications-header,
+html[data-bs-theme="dark"] #app-container .maya-input,
+html[data-bs-theme="dark"] #app-container .form-control,
+html[data-bs-theme="dark"] #app-container textarea,
+html[data-bs-theme="dark"] #app-container select,
+html[data-bs-theme="dark"] #app-container .maya-btn--outline,
+html[data-bs-theme="dark"] #app-container .btn-outline-primary,
+html[data-bs-theme="dark"] #app-container .btn-outline-secondary {
+    color: var(--maya-text-primary) !important;
+    background: var(--maya-bg-secondary) !important;
+}
+
+html[data-bs-theme="dark"] #app-container .maya-settings__group-title,
+html[data-bs-theme="dark"] #app-container .maya-lucky-card__icon-wrap,
+html[data-bs-theme="dark"] #app-container .maya-action-tile__icon,
+html[data-bs-theme="dark"] #app-container .maya-settings__item-icon,
+html[data-bs-theme="dark"] #app-container .notification-icon,
+html[data-bs-theme="dark"] #app-container .maya-summary-item__icon {
+    color: #d39b55;
+    background: var(--maya-bg-tertiary);
+}
+
+html[data-bs-theme="dark"] #app-container .maya-summary-item:hover,
+html[data-bs-theme="dark"] #app-container .maya-action-tile:hover {
+    border-color: #65584a !important;
+    background: #292622 !important;
+}
+
+html[data-bs-theme="dark"] #app-container .maya-insight-card__text,
+html[data-bs-theme="dark"] #app-container .maya-action-tile__label,
+html[data-bs-theme="dark"] #app-container .maya-home__date {
+    color: var(--maya-text-secondary);
+}
+
+html[data-bs-theme="dark"] #app-container .notification-badge {
+    border-color: #1d1c1a;
+}
+
+html[data-bs-theme="dark"] #app-container .notification-item.unread {
+    background: #2b241d;
+}
+
+html[data-bs-theme="dark"] #app-container .maya-action-tile--highlight,
+html[data-bs-theme="dark"] #app-container .maya-action-tile--highlight:hover {
+    background: #3b2e20 !important;
+    border-color: #8b5b26 !important;
+}
+
+html[data-bs-theme="dark"] #app-container .maya-action-tile--highlight .maya-action-tile__label {
+    color: #fff;
+}
+
+@media (min-width: 992px) {
+    #app-container .header-content {
+        padding-left: calc(var(--sidebar-width) + 18px);
+    }
+
+    #app-container .main-content {
+        margin-left: var(--sidebar-width);
+    }
+
+    #app-container .sidebar {
+        transform: translateX(0);
+    }
+}
+
+@media (max-width: 991px) {
+    #app-container .sidebar {
+        top: 0;
+        height: 100dvh;
+        z-index: 9999;
+        box-shadow: 18px 0 42px rgba(37, 34, 31, 0.14);
+    }
+
+    #app-container .sidebar-header {
+        padding-top: calc(14px + env(safe-area-inset-top));
+    }
+}
+
+@media (max-width: 767px) {
+    #app-container .main-content {
+        padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+    }
+
+    #app-container .maya-page,
+    #app-container .page-container,
+    #app-container .page-wrapper {
+        padding: 20px 16px 28px;
+    }
+
+    #app-container .header-profile-btn {
+        display: none;
+    }
+
+    #app-container .header-section-name {
+        display: none;
+    }
+
+    #app-container .maya-action-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    #app-container .maya-action-tile--highlight {
+        grid-column: span 2;
+    }
+
+    #app-container .maya-lucky-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 520px) {
+    #app-container .maya-home__summary {
+        grid-template-columns: 1fr;
+    }
+
+    #app-container .maya-action-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #app-container .maya-action-tile--highlight {
+        grid-column: 1 / -1;
+        min-height: 82px;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+    }
+
+    #app-container .maya-home__date {
+        align-self: flex-start;
+    }
+
+    #app-container .maya-form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #app-container *,
+    #app-container *::before,
+    #app-container *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Internal detail overlays live outside #app-container. The guest-mode guard
+   prevents these rules from touching login or onboarding. */
+body:not(.guest-mode) .modal-content:not(.onboarding-modal),
+body:not(.guest-mode) .maya-modal__container:not(.maya-modal__container--fullscreen),
+body:not(.guest-mode) .maya-modal__content,
+body:not(.guest-mode) .maya-lucky-modal__content,
+body:not(.guest-mode) .maya-aspect-modal {
+    color: #25221f !important;
+    border: 1px solid #e4dfd8 !important;
+    border-radius: 16px !important;
+    background: #fff !important;
+    box-shadow: 0 20px 60px rgba(37, 34, 31, 0.18) !important;
+    font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    overflow: hidden !important;
+}
+
+body:not(.guest-mode) .modal-content:not(.onboarding-modal)::before,
+body:not(.guest-mode) .modal-content:not(.onboarding-modal)::after,
+body:not(.guest-mode) .maya-modal__container:not(.maya-modal__container--fullscreen)::before,
+body:not(.guest-mode) .maya-modal__container:not(.maya-modal__container--fullscreen)::after,
+body:not(.guest-mode) .maya-modal__content::before,
+body:not(.guest-mode) .maya-modal__content::after,
+body:not(.guest-mode) .maya-lucky-modal__content::before,
+body:not(.guest-mode) .maya-lucky-modal__content::after,
+body:not(.guest-mode) .maya-aspect-modal::before,
+body:not(.guest-mode) .maya-aspect-modal::after {
+    display: none !important;
+}

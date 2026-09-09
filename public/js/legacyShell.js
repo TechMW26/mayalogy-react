@@ -7,9 +7,15 @@ export const LEGACY_SHELL_HTML = String.raw`
             </button>
             <div class="header-logo">
                 <img src="/images/maya-logo.png" alt="Mayalogy" class="logo-icon">
-                <span class="logo-name">Mayalogy</span>
+                <div class="header-brand-copy">
+                    <span class="logo-name">Mayalogy</span>
+                    <span class="header-section-name" id="current-page-title">Home</span>
+                </div>
             </div>
             <div class="header-actions">
+                <button class="btn btn-link header-profile-btn" data-page="profile" aria-label="Open profile" title="Profile">
+                    <i class="bi bi-person-circle"></i>
+                </button>
                 <button class="btn btn-link" id="notifications-btn" aria-label="Notifications" title="Notifications" data-i18n-aria-label="Notifications" data-i18n-title="Notifications">
                     <i class="bi bi-bell"></i>
                     <span class="notification-badge d-none">3</span>
@@ -34,7 +40,8 @@ export const LEGACY_SHELL_HTML = String.raw`
             </button>
         </div>
 
-        <nav class="sidebar-nav">
+        <nav class="sidebar-nav" aria-label="Main navigation">
+            <p class="sidebar-nav__label">Today</p>
             <ul class="nav flex-column">
                 <li class="nav-item">
                     <a class="nav-link active" href="#" data-page="home">
@@ -44,10 +51,19 @@ export const LEGACY_SHELL_HTML = String.raw`
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#" data-page="horoscope">
-                        <i class="bi bi-signpost-split"></i>
+                        <i class="bi bi-sun"></i>
                         <span data-i18n="Daily Horoscope">Daily Horoscope</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-action="showMaya">
+                        <i class="bi bi-chat-square-text"></i>
+                        <span>Ask MAYA</span>
+                    </a>
+                </li>
+            </ul>
+            <p class="sidebar-nav__label">Charts &amp; insights</p>
+            <ul class="nav flex-column">
                 <li class="nav-item">
                     <a class="nav-link" href="#" data-page="kundli">
                         <i class="bi bi-diagram-3"></i>
@@ -67,12 +83,6 @@ export const LEGACY_SHELL_HTML = String.raw`
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="remedies">
-                        <i class="bi bi-gem"></i>
-                        <span data-i18n="Remedies">Remedies</span>
-                    </a>
-                </li>
-                <li class="nav-item">
                     <a class="nav-link" href="#" data-page="muhurat">
                         <i class="bi bi-calendar-check"></i>
                         <span data-i18n="Muhurat">Muhurat</span>
@@ -84,10 +94,13 @@ export const LEGACY_SHELL_HTML = String.raw`
                         <span data-i18n="Panchang">Panchang</span>
                     </a>
                 </li>
+            </ul>
+            <p class="sidebar-nav__label">Guidance tools</p>
+            <ul class="nav flex-column">
                 <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="spiritual-music">
-                        <i class="bi bi-music-note-beamed"></i>
-                        <span data-i18n="Spiritual Music">Spiritual Music</span>
+                    <a class="nav-link" href="#" data-page="remedies">
+                        <i class="bi bi-gem"></i>
+                        <span data-i18n="Remedies">Remedies</span>
                     </a>
                 </li>
                 <li class="nav-item">
@@ -103,9 +116,24 @@ export const LEGACY_SHELL_HTML = String.raw`
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="spiritual-music">
+                        <i class="bi bi-music-note-beamed"></i>
+                        <span data-i18n="Spiritual Music">Spiritual Music</span>
+                    </a>
+                </li>
+            </ul>
+            <p class="sidebar-nav__label">Account</p>
+            <ul class="nav flex-column">
+                <li class="nav-item">
                     <a class="nav-link" href="#" data-page="chat-history">
                         <i class="bi bi-chat-dots"></i>
                         <span data-i18n="Chat History">Chat History</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="profile">
+                        <i class="bi bi-person"></i>
+                        <span data-i18n="Profile">Profile</span>
                     </a>
                 </li>
                 <li class="nav-item">
@@ -147,13 +175,12 @@ export const LEGACY_SHELL_HTML = String.raw`
             <span data-i18n="Home">Home</span>
         </a>
         <a href="#" class="nav-item" data-page="horoscope">
-            <i class="bi bi-signpost-split"></i>
+            <i class="bi bi-sun"></i>
             <span data-i18n="Horoscope">Horoscope</span>
         </a>
-        <button class="nav-item maya-btn" id="maya-nav-btn">
-            <div class="maya-blob-mini" id="maya-blob-mini">
-                <div class="blob-glow"></div>
-            </div>
+        <button class="nav-item maya-btn" id="maya-nav-btn" aria-label="Ask MAYA">
+            <span class="maya-nav-icon"><i class="bi bi-chat-square-text"></i></span>
+            <span>MAYA</span>
         </button>
         <a href="#" class="nav-item" data-page="kundli">
             <i class="bi bi-diagram-3"></i>

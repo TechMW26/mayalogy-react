@@ -514,7 +514,7 @@ const MayaApp = {
         }
 
         // Navigation - Sidebar and Bottom Nav
-        document.querySelectorAll('.sidebar-nav .nav-link, .bottom-nav .nav-item').forEach(link => {
+        document.querySelectorAll('.sidebar-nav .nav-link, .bottom-nav .nav-item, .header-actions [data-page]').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const page = e.currentTarget.dataset.page;
