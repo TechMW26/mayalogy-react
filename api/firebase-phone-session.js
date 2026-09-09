@@ -8,6 +8,18 @@ export const config = {
     }
 };
 
+export function getVerifiedPhoneIdentity(decodedToken, requestedCountryCode) {
+    const phoneClaim = String(decodedToken?.phone_number || '').trim();
+    const normalized = normalizePhoneInput(phoneClaim, requestedCountryCode);
+    const verifiedE164 = `${normalized.countryCode}${normalized.phone}`;
+
+    if (!phoneClaim || !isValidNormalizedPhone(normalized.phone, normalized.countryCode) || verifiedE164 !== phoneClaim) {
+        return null;
+    }
+
+    return normalized;
+}
+
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         res.setHeader('Allow', 'POST');
@@ -21,22 +33,40 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'phone, countryCode and Firebase ID token are required' });
     }
 
+    let decodedToken;
+
     try {
-        const decodedToken = await getAuthClient().verifyIdToken(String(idToken), true);
-        const verifiedPhone = String(decodedToken.phone_number || '').replace(/\s/g, '');
-        const expectedPhone = `${normalized.countryCode}${normalized.phone}`;
+        // This is an immediate exchange of a freshly issued Firebase ID token.
+        // Signature, audience, issuer and expiry are still verified; a separate
+        // revocation lookup only adds another failure point here.
+        decodedToken = await getAuthClient().verifyIdToken(String(idToken));
+    } catch (error) {
+        console.error('Firebase phone token verification failed:', error.code || error.message);
+        return res.status(401).json({
+            code: 'FIREBASE_TOKEN_INVALID',
+            error: 'Firebase OTP session is invalid or expired'
+        });
+    }
 
-        if (!verifiedPhone || verifiedPhone !== expectedPhone) {
-            return res.status(401).json({ error: 'Verified phone number does not match this OTP request' });
-        }
+    const verifiedIdentity = getVerifiedPhoneIdentity(decodedToken, normalized.countryCode);
+    const expectedPhone = `${normalized.countryCode}${normalized.phone}`;
 
-        const session = await createPhoneAppSession(normalized);
+    if (!verifiedIdentity || `${verifiedIdentity.countryCode}${verifiedIdentity.phone}` !== expectedPhone) {
+        console.error('Firebase phone claim did not match the requested phone number');
+        return res.status(401).json({
+            code: 'FIREBASE_PHONE_MISMATCH',
+            error: 'Verified phone number does not match this OTP request'
+        });
+    }
+
+    try {
+        const session = await createPhoneAppSession(verifiedIdentity);
         return res.status(200).json(session);
     } catch (error) {
-        console.error('Firebase phone session error:', error.code || error.message);
-        const status = /^auth\//.test(error.code || '') ? 401 : (error.status || 500);
-        return res.status(status).json({
-            error: status === 401 ? 'Firebase OTP session is invalid or expired' : 'Could not create app session'
+        console.error('Firebase phone session creation failed:', error.code || error.message);
+        return res.status(error.status || 500).json({
+            code: 'APP_SESSION_CREATE_FAILED',
+            error: 'Could not create app session'
         });
     }
 }

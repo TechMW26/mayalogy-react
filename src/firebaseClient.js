@@ -21,6 +21,7 @@ let auth = null;
 let initializePromise = null;
 let recaptchaVerifier = null;
 let confirmationResult = null;
+let confirmedPhoneUser = null;
 
 function requireFirebaseConfig() {
   const requiredKeys = ['apiKey', 'authDomain', 'projectId', 'appId'];
@@ -118,6 +119,7 @@ export function initializeFirebaseClient() {
       async sendOTP(phone, countryCode) {
         await initializeFirebaseClient();
         confirmationResult = null;
+        confirmedPhoneUser = null;
         resetRecaptcha();
 
         try {
@@ -137,13 +139,19 @@ export function initializeFirebaseClient() {
       },
 
       async verifyOTP(phone, countryCode, otp) {
-        if (!confirmationResult) {
+        const requestedPhone = toE164(phone, countryCode);
+
+        if (!confirmationResult && confirmedPhoneUser?.phoneNumber !== requestedPhone) {
           return { success: false, error: 'OTP session not found. Please request a new OTP.' };
         }
 
         try {
-          const credential = await confirmationResult.confirm(String(otp));
-          const idToken = await credential.user.getIdToken(true);
+          if (!confirmedPhoneUser || confirmedPhoneUser.phoneNumber !== requestedPhone) {
+            const credential = await confirmationResult.confirm(String(otp));
+            confirmedPhoneUser = credential.user;
+          }
+
+          const idToken = await confirmedPhoneUser.getIdToken(true);
           const response = await fetch('/api/firebase-phone-session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -152,10 +160,13 @@ export function initializeFirebaseClient() {
           const body = await response.json().catch(() => ({}));
 
           if (!response.ok) {
-            throw new Error(body.error || 'Could not start your Mayalogy session.');
+            const error = new Error(body.error || 'Could not start your Mayalogy session.');
+            error.code = body.code;
+            throw error;
           }
 
           confirmationResult = null;
+          confirmedPhoneUser = null;
           resetRecaptcha();
           return body;
         } catch (error) {
@@ -163,6 +174,7 @@ export function initializeFirebaseClient() {
           return {
             success: false,
             error: getFirebaseErrorMessage(error, error?.message || 'OTP verification failed.'),
+            firebaseVerified: Boolean(confirmedPhoneUser),
           };
         }
       },
@@ -170,6 +182,7 @@ export function initializeFirebaseClient() {
       async logout() {
         await initializeFirebaseClient();
         confirmationResult = null;
+        confirmedPhoneUser = null;
         resetRecaptcha();
         await signOut(auth);
         await ensureAnonymousSession();
