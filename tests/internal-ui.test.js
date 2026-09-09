@@ -22,6 +22,20 @@ test('minimal theme is isolated from pre-login and signup UI', async () => {
     assert.doesNotMatch(source, /\.onboarding-main|\.onboarding-content|\.direct-login-container|\.auth-flow-container|\.email-gate-container/);
 });
 
+test('authenticated app and Talk to MAYA expose dedicated touch scroll regions', async () => {
+    const styles = await readFile(new URL('../src/internal-app.css', import.meta.url), 'utf8');
+    const shell = await readFile(new URL('../src/legacyShell.js', import.meta.url), 'utf8');
+    const app = await readFile(new URL('../public/js/app.js', import.meta.url), 'utf8');
+
+    assert.match(styles, /main-content:not\(\.main-content--fullscreen\)[\s\S]*?overflow-y:\s*auto/);
+    assert.match(styles, /maya-overlay--chat \.maya-chat-messages[\s\S]*?touch-action:\s*pan-y/);
+    assert.match(styles, /maya-overlay--chat \.maya-blob-container\.blob-top canvas[\s\S]*?scale\(0\.18\)/);
+    assert.match(shell, /aria-labelledby="maya-overlay-title"/);
+    assert.match(shell, /Talk to MAYA/);
+    assert.match(app, /document\.body\.classList\.add\('maya-chat-open'\)/);
+    assert.match(app, /document\.body\.classList\.remove\('maya-chat-open'\)/);
+});
+
 test('pre-login modal and funnel own the temple background layer', async () => {
   const theme = await readFile(new URL('../src/temple-theme.css', import.meta.url), 'utf8');
   const index = await readFile(new URL('../index.html', import.meta.url), 'utf8');

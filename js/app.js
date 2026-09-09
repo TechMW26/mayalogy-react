@@ -1034,6 +1034,8 @@ const MayaApp = {
             overlay.classList.add('show');
             overlay.classList.remove('funnel-mode');
             overlay.classList.add('maya-overlay--chat');
+            overlay.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('maya-chat-open');
             console.log('MAYA overlay shown');
 
             // Initialize blob if not already
@@ -1442,6 +1444,8 @@ const MayaApp = {
         if (overlay) {
             overlay.classList.remove('show');
             overlay.classList.remove('maya-overlay--chat');
+            overlay.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('maya-chat-open');
         }
 
         // Clean up chat-mode on text display

@@ -979,6 +979,188 @@ html[data-bs-theme="dark"] #app-container .maya-action-tile--highlight .maya-act
     }
 }
 
+/* Authenticated content scrolls inside the app shell. This avoids relying on
+   body scrolling, which is easily left locked by Bootstrap and is unreliable
+   in installed iOS/Android WebViews. */
+body:not(.guest-mode) #app-container .main-content:not(.main-content--fullscreen) {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    height: calc(100dvh - var(--header-height) - env(safe-area-inset-top, 0px));
+    max-height: calc(100dvh - var(--header-height) - env(safe-area-inset-top, 0px));
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+}
+
+/* Talk to MAYA is an independent, opaque workspace. The WebGL renderer is
+   intentionally viewport-sized for the funnel; scale that canvas only in chat
+   mode so the orb cannot cover the conversation. */
+body:not(.guest-mode) .maya-overlay.maya-overlay--chat {
+    height: 100dvh;
+    color: #f5efe7;
+    background: #0c0b0a !important;
+    overflow: hidden !important;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+}
+
+body:not(.guest-mode) .maya-overlay--chat .maya-overlay-header {
+    min-height: calc(72px + env(safe-area-inset-top, 0px));
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(12, 11, 10, 0.94) !important;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    z-index: 2200;
+}
+
+body:not(.guest-mode) .maya-overlay--chat .maya-overlay-header__identity {
+    position: absolute;
+    left: 50%;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    transform: translateX(-50%);
+    white-space: nowrap;
+}
+
+body:not(.guest-mode) .maya-overlay--chat .maya-overlay-header__identity > span:last-child {
+    display: flex;
+    flex-direction: column;
+}
+
+body:not(.guest-mode) .maya-overlay--chat .maya-overlay-header__identity strong {
+    color: #f7f1e8;
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.025em;
+}
+
+body:not(.guest-mode) .maya-overlay--chat .maya-overlay-header__identity small {
+    color: #9e968c;
+    font-size: 0.65rem;
+}
+
+body:not(.guest-mode) .maya-overlay--chat .maya-overlay-header__mark {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    color: #e0b760;
+    border: 1px solid rgba(224, 183, 96, 0.28);
+    border-radius: 9px;
+    background: rgba(224, 183, 96, 0.08);
+}
+
+body:not(.guest-mode) .maya-overlay--chat .maya-overlay-header .btn {
+    width: 42px;
+    height: 42px;
+    color: #d8d1c9;
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+body:not(.guest-mode) .maya-overlay--chat .maya-blob-container.blob-top {
+    top: calc(116px + env(safe-area-inset-top, 0px)) !important;
+    width: 76px !important;
+    height: 76px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 24px;
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+    filter: drop-shadow(0 0 18px rgba(222, 170, 91, 0.22));
+    pointer-events: none;
+}
+
+body:not(.guest-mode) .maya-overlay--chat .maya-blob-container.blob-top::before,
+body:not(.guest-mode) .maya-overlay--chat .maya-blob-container.blob-top .maya-orb-flares {
+    display: none !important;
+}
+
+body:not(.guest-mode) .maya-overlay--chat .maya-blob-container.blob-top canvas,
+body:not(.guest-mode) .maya-overlay--chat .maya-blob-container.blob-top #maya-blob-canvas {
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-width: none !important;
+    max-height: none !important;
+    transform: translate(-50%, -50%) scale(0.18) !important;
+    transform-origin: center !important;
+    pointer-events: none;
+}
+
+body:not(.guest-mode) .maya-overlay--chat .maya-text-display.maya-chat-mode {
+    top: calc(158px + env(safe-area-inset-top, 0px)) !important;
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    min-height: 0;
+    padding: 10px 14px 14px !important;
+    background: transparent !important;
+    overflow: hidden !important;
+}
+
+body:not(.guest-mode) .maya-overlay--chat .maya-text-display.maya-chat-mode::before {
+    display: none;
+}
+
+body:not(.guest-mode) .maya-overlay--chat .maya-chat-messages {
+    height: 100%;
+    min-height: 0;
+    display: block;
+    padding: 8px 2px 14px;
+    overflow-x: hidden;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+}
+
+body:not(.guest-mode) .maya-overlay--chat .maya-chat-messages > *:first-child {
+    margin-top: 0;
+}
+
+body:not(.guest-mode) .maya-overlay--chat .maya-chat-bubble {
+    width: fit-content;
+    margin-bottom: 10px;
+}
+
+body:not(.guest-mode) .maya-overlay--chat .maya-chat-bubble--maya {
+    margin-right: auto;
+}
+
+body:not(.guest-mode) .maya-overlay--chat .maya-chat-bubble--user {
+    margin-left: auto;
+}
+
+body:not(.guest-mode) .maya-overlay--chat .maya-input-area {
+    min-height: calc(80px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: rgba(15, 14, 13, 0.98);
+    border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+body:not(.guest-mode) .maya-overlay--chat .maya-input-area input {
+    min-width: 0;
+}
+
+@media (max-width: 430px) {
+    body:not(.guest-mode) .maya-overlay--chat .maya-overlay-header__identity small {
+        display: none;
+    }
+
+    body:not(.guest-mode) .maya-overlay--chat .maya-overlay-header__identity {
+        gap: 7px;
+    }
+
+    body:not(.guest-mode) .maya-overlay--chat .maya-overlay-header__mark {
+        width: 28px;
+        height: 28px;
+    }
+}
+
 /* Internal detail overlays live outside #app-container. The guest-mode guard
    prevents these rules from touching login or onboarding. */
 body:not(.guest-mode) .modal-content:not(.onboarding-modal),
