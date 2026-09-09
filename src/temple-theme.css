@@ -51,6 +51,22 @@ body::before {
         linear-gradient(90deg, rgba(0, 0, 0, 0.18), transparent 18%, transparent 82%, rgba(0, 0, 0, 0.18));
 }
 
+/* The authenticated workspace has its own opaque surface. Onboarding and the
+   pre-auth reading sit above that workspace, so they must own the temple
+   background instead of depending on the body layer underneath. Keeping the
+   image on these fixed surfaces also avoids background-attachment issues in
+   Android WebView. */
+#onboardingModal,
+.maya-overlay.funnel-mode {
+    background-color: #050405 !important;
+    background-image:
+        linear-gradient(180deg, rgba(1, 2, 5, 0.10), rgba(2, 2, 5, 0.26)),
+        url('/background.jpeg') !important;
+    background-position: center top !important;
+    background-size: cover !important;
+    background-repeat: no-repeat !important;
+}
+
 .app-container,
 .main-content,
 .maya-page,

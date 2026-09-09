@@ -22,6 +22,15 @@ test('minimal theme is isolated from pre-login and signup UI', async () => {
     assert.doesNotMatch(source, /\.onboarding-main|\.onboarding-content|\.direct-login-container|\.auth-flow-container|\.email-gate-container/);
 });
 
+test('pre-login modal and funnel own the temple background layer', async () => {
+  const theme = await readFile(new URL('../src/temple-theme.css', import.meta.url), 'utf8');
+  const index = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+
+  assert.match(theme, /#onboardingModal,\s*\n\.maya-overlay\.funnel-mode/);
+  assert.match(theme, /url\('\/background\.jpeg'\)/);
+  assert.match(index, /rel="preload" as="image" href="\/background\.jpeg"/);
+});
+
 test('internal page renderers use Bootstrap icons instead of emoji glyphs', async () => {
     for (const relativePath of ['../js/pages.js', '../public/js/pages.js']) {
         const source = await read(relativePath);
