@@ -766,12 +766,13 @@
 
 #app-container .maya-nav-blob {
     position: relative;
-    width: 40px;
-    height: 40px;
+    width: 58px;
+    height: 58px;
     display: grid;
     place-items: center;
     isolation: isolate;
-    filter: drop-shadow(0 0 8px rgba(233, 183, 99, 0.45));
+    margin-block: -4px;
+    filter: drop-shadow(0 0 12px rgba(233, 183, 99, 0.52));
 }
 
 #app-container .maya-nav-blob::before,
@@ -783,7 +784,7 @@
 }
 
 #app-container .maya-nav-blob > span {
-    inset: 6px;
+    inset: 5px;
     z-index: 2;
     background:
         radial-gradient(circle at 68% 26%, rgba(255, 255, 244, 0.95) 0 7%, transparent 23%),
@@ -792,7 +793,7 @@
 }
 
 #app-container .maya-nav-blob::before {
-    inset: 3px;
+    inset: 2px;
     z-index: 1;
     border: 1px solid rgba(255, 225, 169, 0.56);
     background: rgba(204, 134, 57, 0.16);

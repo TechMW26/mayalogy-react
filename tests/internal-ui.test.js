@@ -18,6 +18,12 @@ test('authenticated shell uses grouped, icon-only navigation', async () => {
     }
 });
 
+test('center Maya navigation blob has a prominent touch-friendly visual size', async () => {
+    const styles = await read('../src/internal-app.css');
+    assert.match(styles, /#app-container \.maya-nav-blob \{[\s\S]*?width:\s*58px;[\s\S]*?height:\s*58px;/);
+    assert.match(styles, /#app-container \.maya-nav-blob > span \{\s*inset:\s*5px;/);
+});
+
 test('minimal theme is isolated from pre-login and signup UI', async () => {
     const source = await read('../src/internal-app.css');
     assert.match(source, /#app-container/);
