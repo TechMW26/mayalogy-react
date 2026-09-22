@@ -14,6 +14,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.provider.Settings
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
@@ -63,6 +64,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "MAYAAstrology"
+        private const val NOTIFICATION_PERMISSION_REQUESTED = "notification_permission_requested"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -96,7 +98,6 @@ class MainActivity : AppCompatActivity() {
         setupOfflinePage()
         MayaPushNotifications.ensureChannel(this)
         extractNotificationIntent(intent)
-        requestNotificationPermissionIfNeeded()
         refreshFirebaseToken()
         
         // Check initial network state and load appropriate content
@@ -166,6 +167,7 @@ class MainActivity : AppCompatActivity() {
             if (!granted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 Log.w(TAG, "Notification permission denied")
             }
+            injectNotificationPermissionState()
         }
     }
 
@@ -249,6 +251,7 @@ class MainActivity : AppCompatActivity() {
                     hideLoading()
                     hideOfflinePage()
                     injectFcmTokenToWebView()
+                    injectNotificationPermissionState()
                 }
                 
                 override fun onReceivedError(
@@ -482,6 +485,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || hasNotificationPermission()) {
+            injectNotificationPermissionState()
             return
         }
 
@@ -496,9 +500,30 @@ class MainActivity : AppCompatActivity() {
                     dialog.dismiss()
                 }
                 .show()
+        } else if (getPreferences(MODE_PRIVATE).getBoolean(NOTIFICATION_PERMISSION_REQUESTED, false)) {
+            openNotificationSettings()
         } else {
+            getPreferences(MODE_PRIVATE).edit().putBoolean(NOTIFICATION_PERMISSION_REQUESTED, true).apply()
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+    }
+
+    private fun getNotificationPermissionState(): String {
+        if (hasNotificationPermission()) return "granted"
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return "granted"
+        val requested = getPreferences(MODE_PRIVATE).getBoolean(NOTIFICATION_PERMISSION_REQUESTED, false)
+        return if (!requested || shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
+            "prompt"
+        } else {
+            "blocked"
+        }
+    }
+
+    private fun openNotificationSettings() {
+        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+        }
+        startActivity(intent)
     }
 
     private fun refreshFirebaseToken() {
@@ -571,6 +596,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun injectNotificationPermissionState() {
+        val stateJson = JSONObject.quote(getNotificationPermissionState())
+        val script = """
+            window.dispatchEvent(new CustomEvent('maya:notification-permission', {
+                detail: { state: $stateJson }
+            }));
+        """.trimIndent()
+
+        binding.webView.post {
+            binding.webView.evaluateJavascript(script, null)
+        }
+    }
+
     private inner class MayaWebAppBridge {
         @JavascriptInterface
         fun getFcmToken(): String {
@@ -580,6 +618,18 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun getAppBaseUrl(): String {
             return webAppUrl
+        }
+
+        @JavascriptInterface
+        fun getNotificationPermissionState(): String {
+            return this@MainActivity.getNotificationPermissionState()
+        }
+
+        @JavascriptInterface
+        fun requestNotificationPermission() {
+            runOnUiThread {
+                requestNotificationPermissionIfNeeded()
+            }
         }
     }
 
@@ -649,6 +699,7 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         binding.webView.onResume()
         injectFcmTokenToWebView()
+        injectNotificationPermissionState()
     }
 
     override fun onNewIntent(intent: Intent) {

@@ -28,9 +28,16 @@ const MayaPushNotifications = {
     async init() {
         if (this.initialized) return;
         this.initialized = true;
+        window.addEventListener('maya:notification-permission', () => {
+            sessionStorage.removeItem('maya_push_prompt_dismissed');
+            void this.handleAuthStateChanged();
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) void this.handleAuthStateChanged();
+        });
         if ('serviceWorker' in navigator) {
             try {
-                await navigator.serviceWorker.register('/sw.js?v=20260922-notifications-v1', { scope: '/' });
+                await navigator.serviceWorker.register('/sw.js?v=20260922-notifications-v2', { scope: '/' });
             } catch (error) {
                 console.warn('Mayalogy service worker registration failed:', error);
             }
@@ -47,9 +54,15 @@ const MayaPushNotifications = {
 
     async handleAuthStateChanged() {
         this.removePrompt();
-        if (this.isNativeAndroid() || !this.getRegistrationContext() || !this.isIosDevice()) return;
+        if (!this.getRegistrationContext()) return;
 
-        if (!this.isStandalone()) {
+        if (this.isNativeAndroid()) {
+            const permission = this.getNativePermissionState();
+            if (permission !== 'granted') this.showPrompt(permission === 'blocked' ? 'native-settings' : 'native');
+            return;
+        }
+
+        if (this.isIosDevice() && !this.isStandalone()) {
             this.showPrompt('install');
             return;
         }
@@ -59,6 +72,16 @@ const MayaPushNotifications = {
             await this.syncExistingSubscription();
         } else if (Notification.permission === 'default') {
             this.showPrompt('enable');
+        } else {
+            this.showPrompt('web-settings');
+        }
+    },
+
+    getNativePermissionState() {
+        try {
+            return window.MayaAndroid?.getNotificationPermissionState?.() || 'prompt';
+        } catch {
+            return 'prompt';
         }
     },
 
@@ -67,6 +90,35 @@ const MayaPushNotifications = {
         window.setTimeout(() => {
             if (this.promptElement || !this.getRegistrationContext()) return;
             const install = kind === 'install';
+            const native = kind === 'native' || kind === 'native-settings';
+            const settings = kind === 'native-settings' || kind === 'web-settings';
+            const title = install
+                ? 'Get Mayalogy notifications on iPhone'
+                : kind === 'native-settings'
+                    ? 'Turn on your Mayalogy subscription'
+                    : native
+                    ? 'Subscribe to Mayalogy updates'
+                    : settings
+                        ? 'Allow notifications in settings'
+                        : 'Allow Mayalogy notifications';
+            const copy = install
+                ? 'Tap Share, choose Add to Home Screen, then open Mayalogy from the new icon.'
+                : kind === 'native-settings'
+                    ? 'Your notification subscription is off. Open Android settings and allow Mayalogy notifications to continue.'
+                    : native
+                    ? 'Subscribe for personal readings, reminders, and important updates. You can change this at any time in Android settings.'
+                    : settings
+                        ? 'Notifications are currently blocked. Allow Mayalogy notifications in your device or browser settings to receive updates.'
+                        : 'Allow personal readings, reminders, and important updates to reach you even when Mayalogy is closed.';
+            const actionLabel = install
+                ? 'Got it'
+                : kind === 'native-settings'
+                    ? 'Open settings'
+                    : kind === 'web-settings'
+                        ? 'Check again'
+                        : native
+                            ? 'Subscribe'
+                            : 'Allow notifications';
             const element = document.createElement('section');
             element.className = 'maya-push-prompt';
             element.setAttribute('role', 'dialog');
@@ -75,13 +127,11 @@ const MayaPushNotifications = {
                 <button class="maya-push-prompt__close" type="button" aria-label="Dismiss notification setup"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
                 <div class="maya-push-prompt__icon"><i class="bi ${install ? 'bi-box-arrow-up' : 'bi-bell'}" aria-hidden="true"></i></div>
                 <div class="maya-push-prompt__copy">
-                    <h2 id="maya-push-title">${install ? 'Get Mayalogy notifications on iPhone' : 'Stay updated with Mayalogy'}</h2>
-                    <p>${install
-                        ? 'Tap Share, choose Add to Home Screen, then open Mayalogy from the new icon.'
-                        : 'Enable notifications for personal readings, reminders, and important updates.'}</p>
+                    <h2 id="maya-push-title">${title}</h2>
+                    <p>${copy}</p>
                     <div class="maya-push-prompt__actions">
                         <button type="button" data-push-dismiss>Not now</button>
-                        <button type="button" class="maya-push-prompt__primary" data-push-action>${install ? 'Got it' : 'Enable notifications'}</button>
+                        <button type="button" class="maya-push-prompt__primary" data-push-action>${actionLabel}</button>
                     </div>
                 </div>`;
             document.body.appendChild(element);
@@ -96,13 +146,18 @@ const MayaPushNotifications = {
                 const button = event.currentTarget;
                 button.disabled = true;
                 button.textContent = 'Enabling…';
-                const result = await this.enableFromUserGesture();
+                const result = native
+                    ? await this.enableNativeFromUserGesture()
+                    : await this.enableFromUserGesture();
                 if (result.success) {
                     this.removePrompt();
                     window.MayaUtils?.toast?.success?.('Notifications enabled');
+                } else if (result.pending) {
+                    button.disabled = false;
+                    button.textContent = actionLabel;
                 } else {
                     button.disabled = false;
-                    button.textContent = 'Enable notifications';
+                    button.textContent = actionLabel;
                     window.MayaUtils?.toast?.error?.(result.error || 'Could not enable notifications');
                 }
             });
@@ -125,8 +180,19 @@ const MayaPushNotifications = {
         return Uint8Array.from(binary, (character) => character.charCodeAt(0));
     },
 
+    async enableNativeFromUserGesture() {
+        try {
+            if (this.getNativePermissionState() === 'granted') return { success: true };
+            window.MayaAndroid?.requestNotificationPermission?.();
+            return { success: false, pending: true };
+        } catch (error) {
+            console.error('Could not request Android notification permission:', error);
+            return { success: false, error: 'Open Android settings and allow notifications for Mayalogy.' };
+        }
+    },
+
     async enableFromUserGesture() {
-        if (!this.isStandalone()) return { success: false, error: 'Add Mayalogy to your Home Screen first.' };
+        if (this.isIosDevice() && !this.isStandalone()) return { success: false, error: 'Add Mayalogy to your Home Screen first.' };
         if (!this.isSupported()) return { success: false, error: 'Web Push is not supported on this device.' };
 
         try {
@@ -134,7 +200,7 @@ const MayaPushNotifications = {
             if (permission === 'default') permission = await Notification.requestPermission();
             if (permission !== 'granted') return { success: false, error: 'Notifications are blocked in device settings.' };
 
-            const registration = await navigator.serviceWorker.register('/sw.js?v=20260922-notifications-v1', { scope: '/' });
+            const registration = await navigator.serviceWorker.register('/sw.js?v=20260922-notifications-v2', { scope: '/' });
             let subscription = await registration.pushManager.getSubscription();
             if (!subscription) {
                 subscription = await registration.pushManager.subscribe({
@@ -169,7 +235,7 @@ const MayaPushNotifications = {
             body: JSON.stringify({
                 email: context.email,
                 userId: context.userId,
-                platform: 'ios-web',
+                platform: this.isIosDevice() ? 'ios-web' : 'web',
                 subscription: subscription.toJSON()
             })
         });

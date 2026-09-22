@@ -1,9 +1,9 @@
 /**
  * MAYA - Service Worker
- * Network-only worker with Web Push delivery for installed iOS web apps.
+ * Network-only worker with standards-based Web Push delivery.
  */
 
-const CACHE_VERSION = '20260922-notifications-v1';
+const CACHE_VERSION = '20260922-notifications-v2';
 
 async function clearAllCaches() {
     const cacheNames = await caches.keys();

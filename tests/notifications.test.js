@@ -27,6 +27,11 @@ test('native Android notification wiring targets the Mayalogy Firebase project',
     assert.match(service, /override fun onMessageReceived/);
     assert.match(activity, /window\.dispatchEvent\(new CustomEvent\('maya:fcm-token'/);
     assert.match(activity, /getFcmToken\(\)/);
+    assert.match(activity, /fun getNotificationPermissionState\(\): String/);
+    assert.match(activity, /fun requestNotificationPermission\(\)/);
+    assert.match(activity, /Settings\.ACTION_APP_NOTIFICATION_SETTINGS/);
+    const onCreateBody = activity.split('override fun onCreate')[1].split('private fun setupPermissionLaunchers')[0];
+    assert.doesNotMatch(onCreateBody, /requestNotificationPermissionIfNeeded\(\)/);
     const browserAuth = await read('../public/js/auth.js');
     assert.match(browserAuth, /detachFcmTokenFromCurrentUser/);
     const detachBody = browserAuth.split('async detachFcmTokenFromCurrentUser()')[1].split('async hydrateAuthenticatedState')[0];
@@ -34,7 +39,7 @@ test('native Android notification wiring targets the Mayalogy Firebase project',
     assert.match(detachBody, /method: 'DELETE'/);
 });
 
-test('iOS Web Push uses one persistent root service worker and a user-tap permission request', async () => {
+test('Web Push uses one persistent root service worker and a user-tap permission request', async () => {
     const [rootWorker, publicWorker, rootPush, publicPush, index, loader, manifest] = await Promise.all([
         read('../sw.js'),
         read('../public/sw.js'),
@@ -58,8 +63,14 @@ test('iOS Web Push uses one persistent root service worker and a user-tap permis
     const initBody = rootPush.split('async init()')[1].split('getRegistrationContext()')[0];
     assert.match(enableBody, /Notification\.requestPermission\(\)/);
     assert.match(enableBody, /pushManager\.subscribe/);
+    assert.match(enableBody, /this\.isIosDevice\(\) && !this\.isStandalone\(\)/);
     assert.doesNotMatch(initBody, /Notification\.requestPermission\(\)/);
     assert.match(rootPush, /Add to Home Screen/);
+    assert.match(rootPush, /Allow Mayalogy notifications/);
+    assert.match(rootPush, /showPrompt\('web-settings'\)/);
+    assert.match(rootPush, /Subscribe to Mayalogy updates/);
+    assert.match(rootPush, /requestNotificationPermission/);
+    assert.match(rootPush, /sessionStorage\.setItem\('maya_push_prompt_dismissed'/);
     assert.equal(manifest.display, 'standalone');
     assert.equal(manifest.id, '/');
 });
