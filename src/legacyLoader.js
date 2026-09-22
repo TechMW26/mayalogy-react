@@ -1,4 +1,4 @@
-const BUILD_STAMP = '20260909-chat-blob-canvas-fit';
+const BUILD_STAMP = '20260922-palm-reading-upload-fix';
 
 const SCRIPT_SOURCES = [
   { src: 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js', optional: true },

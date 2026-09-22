@@ -207,11 +207,15 @@ export async function handleTextGenerationRequest(payload, env = process.env) {
 
 export async function handleVisionRequest(payload, env = process.env) {
   const prompt = String(payload?.prompt || '').trim();
-  const candidates = Array.isArray(payload?.images) ? payload.images : [payload?.imageData];
-  const images = candidates
-    .map((image) => parseImageDataUrl(image, MAX_VISION_IMAGE_BYTES))
-    .filter(Boolean)
-    .slice(0, 2);
+  const isMultiImageRequest = Array.isArray(payload?.images);
+  const candidates = isMultiImageRequest ? payload.images.slice(0, 3) : [payload?.imageData];
+  const parsedImages = candidates.map((image) => parseImageDataUrl(image, MAX_VISION_IMAGE_BYTES));
+
+  if (isMultiImageRequest && (candidates.length < 1 || candidates.length > 2 || parsedImages.some((image) => !image))) {
+    return jsonResponse(400, { error: 'images must contain one or two supported base64 images up to 7 MB each' });
+  }
+
+  const images = parsedImages.filter(Boolean);
 
   if (!prompt || !images.length) return jsonResponse(400, { error: 'prompt and at least one base64 image are required' });
 

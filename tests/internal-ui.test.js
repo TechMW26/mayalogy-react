@@ -160,6 +160,18 @@ test('Poppins is the single application text family while icon fonts stay intact
     assert.doesNotMatch(legal, /Montserrat/);
 });
 
+test('palm reading optimizes both camera images before the two-image vision request', async () => {
+    const rootPages = await read('../js/pages.js');
+    const publicPages = await read('../public/js/pages.js');
+    assert.equal(rootPages, publicPages);
+    assert.match(publicPages, /imageData = await this\._preparePalmImage\(imageData\)/);
+    assert.match(publicPages, /const maxDimension = 1600/);
+    assert.match(publicPages, /const maxDataUrlLength = 1_650_000/);
+    assert.match(publicPages, /toDataURL\('image\/jpeg', quality\)/);
+    assert.match(publicPages, /JSON\.stringify\(\{ prompt, images, maxTokens: 8000/);
+    assert.match(publicPages, /const leftBgRemovalPromise = Promise\.resolve\(leftImageForAI\)/);
+});
+
 test('pre-login modal and funnel own the temple background layer', async () => {
   const theme = await readFile(new URL('../src/temple-theme.css', import.meta.url), 'utf8');
   const index = await readFile(new URL('../index.html', import.meta.url), 'utf8');

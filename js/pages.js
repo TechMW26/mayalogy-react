@@ -5287,7 +5287,14 @@ const MayaPages = {
                                 }
                             }
 
-                            this._palmHandleImageLoaded(imageData, isHindi, palmImage, instructionsCard, rightHandInstructions, previewCard, loadingCard, resultsCard);
+                            try {
+                                imageData = await this._preparePalmImage(imageData);
+                                console.log(' Palm image optimized, length:', imageData.length);
+                                this._palmHandleImageLoaded(imageData, isHindi, palmImage, instructionsCard, rightHandInstructions, previewCard, loadingCard, resultsCard);
+                            } catch (imageError) {
+                                console.error(' Palm image preparation failed:', imageError);
+                                MayaUtils.toast.error('This photo could not be prepared. Please try another image.');
+                            }
                         };
                         reader.onerror = (error) => {
                             console.error(' FileReader error:', error);
@@ -5396,6 +5403,57 @@ const MayaPages = {
             currentHand: 'left',
             analysisData: null
         };
+    },
+
+    /**
+     * Resize camera photos before they are sent to Vercel. Modern phones can
+     * produce 5-15 MB images; sending two originals exceeds the serverless
+     * request limit before /api/ai-vision can inspect them. 1600 px retains
+     * enough palm-line detail while keeping the complete request below 4 MB.
+     */
+    async _preparePalmImage(imageData) {
+        if (!String(imageData || '').startsWith('data:image/')) {
+            throw new Error('Invalid palm image');
+        }
+
+        const loadImage = (src) => new Promise((resolve, reject) => {
+            const image = new Image();
+            image.onload = () => resolve(image);
+            image.onerror = () => reject(new Error('Unable to decode palm image'));
+            image.src = src;
+        });
+
+        const image = await loadImage(imageData);
+        const maxDimension = 1600;
+        const maxDataUrlLength = 1_650_000;
+        const largestSide = Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height);
+        const initialScale = Math.min(1, maxDimension / Math.max(1, largestSide));
+        let width = Math.max(1, Math.round((image.naturalWidth || image.width) * initialScale));
+        let height = Math.max(1, Math.round((image.naturalHeight || image.height) * initialScale));
+        let quality = 0.88;
+        let optimized = imageData;
+
+        for (let attempt = 0; attempt < 6; attempt++) {
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const context = canvas.getContext('2d', { alpha: false });
+            if (!context) throw new Error('Image canvas is unavailable');
+            context.fillStyle = '#ffffff';
+            context.fillRect(0, 0, width, height);
+            context.drawImage(image, 0, 0, width, height);
+            optimized = canvas.toDataURL('image/jpeg', quality);
+
+            if (optimized.length <= maxDataUrlLength) return optimized;
+            quality = Math.max(0.68, quality - 0.06);
+            width = Math.max(1, Math.round(width * 0.88));
+            height = Math.max(1, Math.round(height * 0.88));
+        }
+
+        if (optimized.length > maxDataUrlLength) {
+            throw new Error('Palm image remains too large after optimization');
+        }
+        return optimized;
     },
 
     /**
@@ -5543,30 +5601,17 @@ Respond with ONLY this JSON, nothing else:
         if (leftCutout) leftCutout.src = leftImageForAI;
         if (rightCutout) rightCutout.src = rightImageForAI;
 
-        // Prefer cleaned hand images for AI when they are ready quickly.
+        // Palm photos are already normalized during capture. Avoid two extra
+        // image-edit requests here: they add latency/cost and can erase the
+        // fine creases that the reading needs.
         const withTimeout = (promise, timeoutMs, fallbackValue) =>
             Promise.race([
                 promise.catch(() => fallbackValue),
                 new Promise(resolve => setTimeout(() => resolve(fallbackValue), timeoutMs))
             ]);
 
-        const leftBgRemovalPromise = this._removeBackground(leftImageForAI)
-            .then(img => {
-                const refinedImage = img || leftImageForAI;
-                this._palmState.leftHandProcessed = refinedImage;
-                if (leftCutout) leftCutout.src = refinedImage;
-                return refinedImage;
-            })
-            .catch(() => leftImageForAI);
-
-        const rightBgRemovalPromise = this._removeBackground(rightImageForAI)
-            .then(img => {
-                const refinedImage = img || rightImageForAI;
-                this._palmState.rightHandProcessed = refinedImage;
-                if (rightCutout) rightCutout.src = refinedImage;
-                return refinedImage;
-            })
-            .catch(() => rightImageForAI);
+        const leftBgRemovalPromise = Promise.resolve(leftImageForAI);
+        const rightBgRemovalPromise = Promise.resolve(rightImageForAI);
 
         const bgRemovalPromise = Promise.allSettled([leftBgRemovalPromise, rightBgRemovalPromise]);
 

@@ -62,6 +62,27 @@ test('speech input removes orchestration tags before synthesis', () => {
   assert.equal(sanitizeSpeechInput('[warm] Hello [[pause-500]] there'), 'Hello … there');
 });
 
+test('preserves both palm images in the Pollinations vision request', async (t) => {
+  const originalFetch = globalThis.fetch;
+  let requestBody;
+  globalThis.fetch = async (_url, init) => {
+    requestBody = JSON.parse(init.body);
+    return new Response(JSON.stringify({ choices: [{ message: { content: '{"lines":[]}' } }] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+  t.after(() => { globalThis.fetch = originalFetch; });
+
+  const left = 'data:image/png;base64,bGVmdA==';
+  const right = 'data:image/png;base64,cmlnaHQ=';
+  const result = await handleVisionRequest({ prompt: 'Compare both palms', images: [left, right] }, { POLLINATIONS_API_KEY: 'sk_test_only' });
+
+  assert.equal(result.status, 200);
+  const imageParts = requestBody.messages[0].content.filter((part) => part.type === 'image_url');
+  assert.deepEqual(imageParts.map((part) => part.image_url.url), [left, right]);
+});
+
 test('speech preserves the existing browser voiceId contract', async (t) => {
   const originalFetch = globalThis.fetch;
   let requestBody;
@@ -80,6 +101,14 @@ test('rejects malformed, oversized, and unexpectedly costly media inputs', async
   const env = { POLLINATIONS_API_KEY: 'sk_test_only' };
   assert.equal((await handleVisionRequest({ prompt: 'Inspect', imageData: 'data:image/svg+xml;base64,PHN2Zz4=' }, env)).status, 400);
   assert.equal((await handleVisionRequest({ prompt: 'Inspect', imageData: 'data:image/png;base64,not_base64!' }, env)).status, 400);
+  assert.equal((await handleVisionRequest({
+    prompt: 'Compare both palms',
+    images: ['data:image/png;base64,aW1hZ2U=', 'data:image/png;base64,not_base64!'],
+  }, env)).status, 400);
+  assert.equal((await handleVisionRequest({
+    prompt: 'Compare palms',
+    images: Array(3).fill('data:image/png;base64,aW1hZ2U='),
+  }, env)).status, 400);
   assert.equal((await handleImageGenerationRequest({ prompt: 'A moon', size: '9999x9999' }, env)).status, 400);
   assert.equal((await handleImageEditRequest({ imageData: 'data:image/svg+xml;base64,PHN2Zz4=' }, env)).status, 400);
 });
