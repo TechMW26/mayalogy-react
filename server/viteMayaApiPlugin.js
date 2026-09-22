@@ -7,6 +7,9 @@ import {
 } from './pollinationsApi.js';
 import firebasePhoneSessionHandler from '../api/firebase-phone-session.js';
 import reviewLoginHandler from '../api/review-login.js';
+import saveFcmTokenHandler from '../api/save-fcm-token.js';
+import sendNotificationHandler from '../api/send-notification.js';
+import webPushSubscriptionHandler from '../api/web-push-subscription.js';
 
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {
@@ -142,6 +145,21 @@ export function mayaApiDevPlugin() {
 
         if (req.method === 'POST' && pathname === '/api/review-login') {
           await handleVercelRequest(req, res, reviewLoginHandler, 'review-login');
+          return;
+        }
+
+        if (['POST', 'DELETE'].includes(req.method) && pathname === '/api/save-fcm-token') {
+          await handleVercelRequest(req, res, saveFcmTokenHandler, 'save-fcm-token');
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/send-notification') {
+          await handleVercelRequest(req, res, sendNotificationHandler, 'send-notification');
+          return;
+        }
+
+        if (['POST', 'DELETE'].includes(req.method) && pathname === '/api/web-push-subscription') {
+          await handleVercelRequest(req, res, webPushSubscriptionHandler, 'web-push-subscription');
           return;
         }
 

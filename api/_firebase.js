@@ -127,6 +127,10 @@ export function getFcmTokenKey(token) {
     return createHash('sha256').update(token).digest('hex');
 }
 
+export function getWebPushSubscriptionKey(endpoint) {
+    return createHash('sha256').update(String(endpoint || '')).digest('hex');
+}
+
 export function getAuthTokenFromRequest(req) {
     const authHeader = req.headers.authorization || '';
 

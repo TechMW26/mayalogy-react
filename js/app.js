@@ -126,6 +126,12 @@ const MayaApp = {
 
         // Check authentication and onboarding
         await this.checkUserState();
+
+        // Notification prompts belong to the authenticated app, never the
+        // pre-login funnel or the startup animation.
+        if (window.MayaPushNotifications) {
+            await MayaPushNotifications.init();
+        }
     },
 
     /**
@@ -154,6 +160,7 @@ const MayaApp = {
         document.body.classList.remove('guest-mode');
         this.updateSidebarUserInfo();
         void this.applyLanguagePreference(MayaUtils.storage.get('maya_language') || MayaUtils.storage.get('maya_profile')?.language || 'en', { force: true });
+        void window.MayaPushNotifications?.handleAuthStateChanged?.();
     },
 
     async applyLanguagePreference(language = MayaUtils.storage.get('maya_language') || 'en', { rerenderCurrentPage = false, force = false, syncProfile = false } = {}) {

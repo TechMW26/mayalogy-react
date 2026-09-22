@@ -1,4 +1,6 @@
 import {
+    firebaseRequest,
+    getFcmTokenKey,
     getAuthTokenFromRequest,
     normalizeFcmToken,
     registerFcmToken,
@@ -12,8 +14,8 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-    if (req.method !== 'POST') {
-        res.setHeader('Allow', 'POST');
+    if (!['POST', 'DELETE'].includes(req.method)) {
+        res.setHeader('Allow', 'POST, DELETE');
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
@@ -28,6 +30,17 @@ export default async function handler(req, res) {
 
     try {
         const { user, path, type } = await resolveAuthenticatedUser({ email, userId, authToken });
+        if (req.method === 'DELETE') {
+            const tokenKey = getFcmTokenKey(fcmToken);
+            const registrationPath = `maya_fcm_registrations/${tokenKey}`;
+            const registration = await firebaseRequest(registrationPath).catch(() => null);
+            await firebaseRequest(`${path}/fcmTokens/${tokenKey}`, { method: 'DELETE' });
+            if (registration?.userPath === path) {
+                await firebaseRequest(registrationPath, { method: 'DELETE' });
+            }
+            return res.status(200).json({ success: true });
+        }
+
         const { tokenKey } = await registerFcmToken({
             path,
             userId: type === 'phone' ? user.id : userId,

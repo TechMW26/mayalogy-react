@@ -1,4 +1,4 @@
-const BUILD_STAMP = '20260922-palm-reading-upload-fix';
+const BUILD_STAMP = '20260922-notifications-v1';
 
 const SCRIPT_SOURCES = [
   { src: 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js', optional: true },
@@ -22,6 +22,7 @@ const SCRIPT_SOURCES = [
   { src: `/js/firebase.js?v=${BUILD_STAMP}` },
   { src: `/js/dbSync.js?v=${BUILD_STAMP}` },
   { src: `/js/auth.js?v=${BUILD_STAMP}` },
+  { src: `/js/pushNotifications.js?v=${BUILD_STAMP}` },
   { src: `/js/dynamicContent.js?v=${BUILD_STAMP}` },
   { src: `/js/statements.js?v=${BUILD_STAMP}` },
   { src: `/js/funnel.js?v=${BUILD_STAMP}` },

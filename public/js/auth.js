@@ -186,6 +186,18 @@ const MayaAuth = {
         return { success: true, tokenKey: responseBody.tokenKey || null };
     },
 
+    async detachFcmTokenFromCurrentUser() {
+        const fcmToken = this.normalizeFcmToken(this.pendingFcmToken || this.readNativeFcmToken());
+        const registrationContext = this.getPushRegistrationContext();
+        if (!this.isAuthenticated || !this.token || !registrationContext || !fcmToken) return;
+        MayaUtils.storage.remove('maya_fcm_registration', { skipSync: true });
+        await fetch('/api/save-fcm-token', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.token}` },
+            body: JSON.stringify({ ...registrationContext, fcmToken })
+        }).catch(() => null);
+    },
+
     mergeKnownFields(target, source, keys) {
         const merged = { ...(target || {}) };
 
@@ -395,6 +407,8 @@ const MayaAuth = {
      * Logout user
      */
     logout() {
+        void window.MayaPushNotifications?.detachFromCurrentUser?.();
+        void this.detachFcmTokenFromCurrentUser();
         if (window.MayaDBSync) {
             MayaDBSync.clearLocalCache();
             MayaDBSync.onUserLogout();

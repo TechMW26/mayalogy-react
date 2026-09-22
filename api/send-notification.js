@@ -7,6 +7,7 @@ import {
     normalizeFcmToken,
     normalizeMessageData
 } from './_firebase.js';
+import { collectWebPushSubscriptions, sendWebPushSubscriptions } from '../server/webPush.js';
 
 export const config = {
     api: {
@@ -67,8 +68,9 @@ export default async function handler(req, res) {
             tokenEntries = collectFcmTokenEntries(userContext.user);
         }
 
-        if (tokenEntries.length === 0) {
-            return res.status(404).json({ error: 'No registered FCM tokens found for this target' });
+        const webPushEntries = userContext ? collectWebPushSubscriptions(userContext.user) : [];
+        if (tokenEntries.length === 0 && webPushEntries.length === 0) {
+            return res.status(404).json({ error: 'No registered notification destinations found for this target' });
         }
 
         const payloadData = normalizeMessageData({
@@ -78,13 +80,17 @@ export default async function handler(req, res) {
             ...((req.body?.data && typeof req.body.data === 'object' && !Array.isArray(req.body.data)) ? req.body.data : {})
         });
 
-        const response = await getMessagingClient().sendEachForMulticast({
+        const response = tokenEntries.length > 0 ? await getMessagingClient().sendEachForMulticast({
             tokens: tokenEntries.map(({ token }) => token),
             data: payloadData,
             android: {
                 priority: 'high'
             }
-        }, Boolean(req.body?.dryRun));
+        }, Boolean(req.body?.dryRun)) : { successCount: 0, failureCount: 0, responses: [] };
+
+        const webPushResponse = userContext && !req.body?.dryRun
+            ? await sendWebPushSubscriptions(userContext.path, webPushEntries, payloadData, process.env)
+            : { sentCount: 0, failedCount: 0, results: [] };
 
         if (userContext) {
             const staleTokens = response.responses
@@ -98,9 +104,13 @@ export default async function handler(req, res) {
         }
 
         return res.status(200).json({
-            success: response.successCount > 0,
-            sentCount: response.successCount,
-            failedCount: response.failureCount,
+            success: response.successCount + webPushResponse.sentCount > 0,
+            sentCount: response.successCount + webPushResponse.sentCount,
+            failedCount: response.failureCount + webPushResponse.failedCount,
+            channels: {
+                firebase: { sentCount: response.successCount, failedCount: response.failureCount },
+                webPush: { sentCount: webPushResponse.sentCount, failedCount: webPushResponse.failedCount }
+            },
             results: response.responses.map((result, index) => ({
                 token: tokenEntries[index].token,
                 success: result.success,

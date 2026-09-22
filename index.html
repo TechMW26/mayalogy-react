@@ -24,7 +24,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link href="/css/maya.css?v=20260922-palm-reading-upload-fix" rel="stylesheet">
+    <link href="/css/maya.css?v=20260922-notifications-v1" rel="stylesheet">
 
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png">
@@ -44,8 +44,7 @@
         if ('serviceWorker' in navigator || 'caches' in window) {
             window.addEventListener('load', async () => {
                 try {
-                    const buildStamp = '20260922-palm-reading-upload-fix';
-                    const hadController = !!navigator.serviceWorker?.controller;
+                    const buildStamp = '20260922-notifications-v1';
 
                     const localCacheKeyPatterns = [
                         /translation_cache/i,
@@ -59,8 +58,7 @@
                     });
 
                     if ('serviceWorker' in navigator) {
-                        const registrations = await navigator.serviceWorker.getRegistrations();
-                        await Promise.all(registrations.map((registration) => registration.unregister()));
+                        await navigator.serviceWorker.register(`/sw.js?v=${buildStamp}`, { scope: '/' });
                     }
 
                     if ('caches' in window) {
@@ -69,7 +67,7 @@
                     }
 
                     const currentBuild = localStorage.getItem('maya-network-only-build');
-                    const needsReload = hadController || currentBuild !== buildStamp;
+                    const needsReload = currentBuild !== buildStamp;
 
                     if (needsReload && !sessionStorage.getItem('maya-network-only-reloaded')) {
                         sessionStorage.setItem('maya-network-only-reloaded', 'true');
@@ -80,7 +78,7 @@
 
                     sessionStorage.removeItem('maya-network-only-reloaded');
                     localStorage.setItem('maya-network-only-build', buildStamp);
-                    console.log('🌐 Network-only mode active');
+                    console.log('🌐 Network-only mode with notifications active');
                 } catch (error) {
                     console.error('❌ Failed to enforce network-only mode:', error);
                 }
