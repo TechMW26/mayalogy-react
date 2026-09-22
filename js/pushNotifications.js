@@ -79,9 +79,10 @@ const MayaPushNotifications = {
 
     getNativePermissionState() {
         try {
-            return window.MayaAndroid?.getNotificationPermissionState?.() || 'prompt';
+            if (typeof window.MayaAndroid?.getNotificationPermissionState !== 'function') return 'blocked';
+            return window.MayaAndroid.getNotificationPermissionState() || 'prompt';
         } catch {
-            return 'prompt';
+            return 'blocked';
         }
     },
 
@@ -183,7 +184,10 @@ const MayaPushNotifications = {
     async enableNativeFromUserGesture() {
         try {
             if (this.getNativePermissionState() === 'granted') return { success: true };
-            window.MayaAndroid?.requestNotificationPermission?.();
+            if (typeof window.MayaAndroid?.requestNotificationPermission !== 'function') {
+                return { success: false, error: 'Open Android Settings, choose Apps, Mayalogy, Notifications, then allow notifications.' };
+            }
+            window.MayaAndroid.requestNotificationPermission();
             return { success: false, pending: true };
         } catch (error) {
             console.error('Could not request Android notification permission:', error);

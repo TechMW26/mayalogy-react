@@ -70,6 +70,7 @@ test('Web Push uses one persistent root service worker and a user-tap permission
     assert.match(rootPush, /showPrompt\('web-settings'\)/);
     assert.match(rootPush, /Subscribe to Mayalogy updates/);
     assert.match(rootPush, /requestNotificationPermission/);
+    assert.match(rootPush, /Open Android Settings, choose Apps, Mayalogy, Notifications/);
     assert.match(rootPush, /sessionStorage\.setItem\('maya_push_prompt_dismissed'/);
     assert.equal(manifest.display, 'standalone');
     assert.equal(manifest.id, '/');
