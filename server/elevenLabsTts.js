@@ -5,7 +5,7 @@ const ELEVENLABS_BASE = 'https://api.elevenlabs.io/v1/text-to-speech';
 const DEFAULT_VOICE = 'P3JECz9WQeXyyodBL3ZD';
 const DEFAULT_MALE_VOICE = '8TMmdpPgqHKvDOGYP2lN';
 const DEFAULT_MODEL = 'eleven_multilingual_v2';
-const LANGUAGE_CODE_MODELS = new Set(['eleven_v3', 'eleven_flash_v2_5', 'eleven_turbo_v2_5']);
+const LANGUAGE_CODE_MODELS = new Set(['eleven_v3', 'eleven_flash_v2_5', 'eleven_turbo_v2_5', 'eleven_v4_turbo']);
 const OUTPUT_FORMATS = new Set(['mp3_44100_64', 'mp3_44100_96', 'mp3_44100_128']);
 
 function env(source, name, fallback = '') {
