@@ -1075,7 +1075,42 @@ const MayaVoice = {
         return result;
     },
 
+    // Hindi uses doubled words on purpose (एक-एक, साथ-साथ, धीरे-धीरे). These must
+    // survive the stutter cleanup, otherwise MAYA says "एक" instead of "एक-एक".
+    _isReduplicativeWord(word) {
+        const w = String(word || '').toLowerCase();
+        if (!w) return false;
+        if (/^[ऀ-ॿ]{2,}ते$/.test(w)) return true; // देखते-देखते, चलते-चलते
+        if (!this._reduplicativeWords) {
+            this._reduplicativeWords = new Set(('एक दो तीन चार पाँच साथ धीरे धीमे बार अलग घर कभी क्या कौन कहाँ कहां कहीं कोई किसी जैसे जल्दी सच थोड़ा थोड़ी थोड़े बीच आगे पास रोज़ रोज हर दिन छोटी छोटे छोटा बड़े बड़ी बड़ा नए नई नया अपने अपनी अपना तरह पल कदम बात बातों साफ़ साफ ज़रा जरा खुद ख़ुद कुछ रंग जगह दूर ऊपर नीचे अंदर भीतर बहुत हाँ नहीं शहर गाँव टुकड़े सुबह रात कई '
+                + 'ek do saath sath dheere dhire baar alag ghar kabhi kya kaun kahin koi jaldi sach thoda thodi beech aage paas roz har din chhote bade naye apne tarah pal kadam baat saaf zara khud kuch door bahut haan nahi')
+                .split(/\s+/).filter(Boolean));
+        }
+        return this._reduplicativeWords.has(w);
+    },
+
+    protectReduplication(text) {
+        const kept = [];
+        const wch = 'A-Za-z\\u0900-\\u097F';
+        const re = new RegExp(`(?<![${wch}])([${wch}]+)(\\s*[-\\u2010\\u2011\\u2013\\u2014]\\s*|\\s+)\\1(?![${wch}])`, 'gi');
+        const guarded = String(text || '').replace(re, (match, word, sep) => {
+            const hyphenated = /[-‐‑–—]/.test(sep);
+            if (kept.length >= 26 || (!hyphenated && !this._isReduplicativeWord(word))) return match;
+            kept.push(match);
+            return `zzrdp${String.fromCharCode(96 + kept.length)}zz`;
+        });
+        return {
+            text: guarded,
+            restore: (value) => String(value || '').replace(/zzrdp([a-z])zz/g, (_, k) => kept[k.charCodeAt(0) - 97] || '')
+        };
+    },
+
     removeAdjacentPhraseRepetition(text) {
+        const guard = this.protectReduplication(text);
+        return guard.restore(this._removeAdjacentPhraseRepetitionRaw(guard.text));
+    },
+
+    _removeAdjacentPhraseRepetitionRaw(text) {
         let cleaned = String(text || '');
         const separator = '(?:\\s*[,.!?।;:\\-]\\s*|\\s+)';
         // Unicode-aware boundary: \b fails for Devanagari (treated as \W by JS).

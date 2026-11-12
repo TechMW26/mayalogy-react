@@ -1282,8 +1282,20 @@ const MayaApp = {
      */
     greetOnChatOpen() {
         try {
-            if (sessionStorage.getItem('maya_chat_greeted') === '1') return;
-            sessionStorage.setItem('maya_chat_greeted', '1');
+            const lastGreetAt = Number(sessionStorage.getItem('maya_chat_greeted_at')) || 0;
+            if (Date.now() - lastGreetAt < 60 * 1000) {
+                // Re-opened within a minute: show the same greeting again quietly instead of the English default line.
+                const lastText = sessionStorage.getItem('maya_chat_greet_text');
+                const box = document.getElementById('maya-chat-messages');
+                if (lastText && box) {
+                    [...box.children].forEach((bubble) => {
+                        if (/^I am here\. Ask me/.test((bubble.textContent || '').trim())) bubble.remove();
+                    });
+                    this._addChatBubble('maya', lastText);
+                }
+                return;
+            }
+            sessionStorage.setItem('maya_chat_greeted_at', String(Date.now()));
 
             const profile = MayaUtils.storage.get('maya_profile') || {};
             const name = String(profile.firstName || profile.name || profile.fullName || '').trim().split(/\s+/)[0] || '';
@@ -1307,7 +1319,8 @@ const MayaApp = {
             const lines = isHindi ? hi : en;
             const index = (Number(localStorage.getItem('maya_greet_index')) || 0) % lines.length;
             localStorage.setItem('maya_greet_index', String(index + 1));
-            const text = lines[index];
+            const text = (window.MayaFunnel?.buildGreeting?.({ context: 'chat', isHindi, name, userFemale, guideMale: !!window.MayaFunnel?._isGuiderMale?.() })) || lines[index];
+            sessionStorage.setItem('maya_chat_greet_text', text);
 
             const container = document.getElementById('maya-chat-messages');
             if (container) {

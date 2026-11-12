@@ -29,6 +29,91 @@ const MayaAstrology = {
      * Get zodiac based on user's preferred system (Western or Vedic)
      * This is the main function to use throughout the app
      */
+    /**
+     * Naam rashi: the rashi read from the first sound of a person's name
+     * (traditional nakshatra syllables). Krishna -> "Kri" (क) -> Mithun / Gemini.
+     * This is different from the birth-chart Moon sign (janma rashi).
+     */
+    getNameRashi(name) {
+        const raw = String(name || '').trim().split(/\s+/)[0] || '';
+        if (!raw) return null;
+        const sign = /[ऀ-ॿ]/.test(raw)
+            ? this._nameRashiFromDevanagari(raw)
+            : this._nameRashiFromLatin(raw);
+        if (!sign) return null;
+        const config = (typeof MAYA_CONFIG !== 'undefined' ? MAYA_CONFIG : window.MAYA_CONFIG) || {};
+        const found = (config.ZODIAC?.SIGNS || []).find((item) => item.name === sign) || {};
+        return { name: sign, hindi: found.hindi || '', symbol: found.symbol || '', basis: 'name' };
+    },
+
+    _nameRashiFromLatin(raw) {
+        const n = String(raw || '').toLowerCase().replace(/[^a-z]/g, '');
+        if (!n) return null;
+        if (/^[aeiou]/.test(n)) {
+            return /^a(?![iu])/.test(n) ? 'Aries' : 'Taurus';
+        }
+        const parts = n.match(/^([^aeiou]+)([aeiou]?)/) || [];
+        const onset = parts[1] || '';
+        const v = parts[2] || 'a';
+        const base = ['chh', 'ksh', 'shr', 'sh', 'ch', 'kh', 'gh', 'jh', 'th', 'dh', 'bh', 'ph']
+            .find((d) => onset.startsWith(d)) || onset[0];
+        switch (base) {
+            case 'k': case 'ksh': case 'q': case 'c': case 'x': case 'gh': case 'chh': return 'Gemini';
+            case 'h': return v === 'a' ? 'Gemini' : 'Cancer';
+            case 'kh': case 'j': return 'Capricorn';
+            case 'g': return (v === 'a' || v === 'i') ? 'Capricorn' : 'Aquarius';
+            case 'ch': return (v === 'u' || v === 'e' || v === 'o') ? 'Aries' : 'Pisces';
+            case 'jh': case 'z': case 'th': return 'Pisces';
+            case 't': return v === 'o' ? 'Scorpio' : 'Libra';
+            case 'd': return v === 'a' ? 'Aquarius' : 'Pisces';
+            case 'dh': case 'ph': case 'f': return 'Sagittarius';
+            case 'bh': return v === 'o' ? 'Capricorn' : 'Sagittarius';
+            case 'y': return (v === 'e' || v === 'o') ? 'Sagittarius' : 'Scorpio';
+            case 'n': return 'Scorpio';
+            case 'p': return 'Virgo';
+            case 'm': return 'Leo';
+            case 'r': return 'Libra';
+            case 'l': return 'Aries';
+            case 'v': case 'w': case 'b': return 'Taurus';
+            case 's': case 'sh': case 'shr': return 'Aquarius';
+            default: return null;
+        }
+    },
+
+    _nameRashiFromDevanagari(raw) {
+        const text = String(raw || '').trim();
+        const first = text.charAt(0);
+        if (/[अआ]/.test(first)) return 'Aries';
+        if (/[इईउऊएऐओऔ]/.test(first)) return 'Taurus';
+        const sign = text.match(/^[क-हक़-य़](?:़)?(?:्[क-ह])*([ा-ौ]?)/);
+        if (!sign) return null;
+        const matra = sign[1] || '';
+        const v = /[िीृ]/.test(matra) ? 'i'
+            : /[ुू]/.test(matra) ? 'u'
+                : /[ेै]/.test(matra) ? 'e'
+                    : /[ोौ]/.test(matra) ? 'o' : 'a';
+        const map = {
+            'क': 'Gemini', 'घ': 'Gemini', 'ङ': 'Gemini', 'छ': 'Gemini',
+            'ख': 'Capricorn', 'ज': 'Capricorn',
+            'झ': 'Pisces', 'ञ': 'Pisces', 'थ': 'Pisces',
+            'ठ': 'Virgo', 'ण': 'Virgo', 'प': 'Virgo', 'ष': 'Virgo',
+            'ड': 'Cancer', 'ढ': 'Sagittarius', 'ध': 'Sagittarius', 'फ': 'Sagittarius',
+            'न': 'Scorpio', 'म': 'Leo', 'र': 'Libra', 'ल': 'Aries',
+            'व': 'Taurus', 'ब': 'Taurus', 'श': 'Aquarius', 'स': 'Aquarius'
+        };
+        const c = first;
+        if (map[c]) return map[c];
+        if (c === 'ग') return (v === 'a' || v === 'i') ? 'Capricorn' : 'Aquarius';
+        if (c === 'च') return (v === 'u' || v === 'e' || v === 'o') ? 'Aries' : 'Pisces';
+        if (c === 'ट') return v === 'o' ? 'Virgo' : 'Leo';
+        if (c === 'त') return v === 'o' ? 'Scorpio' : 'Libra';
+        if (c === 'द') return v === 'a' ? 'Aquarius' : 'Pisces';
+        if (c === 'भ') return v === 'o' ? 'Capricorn' : 'Sagittarius';
+        if (c === 'य') return (v === 'e' || v === 'o') ? 'Sagittarius' : 'Scorpio';
+        if (c === 'ह') return v === 'a' ? 'Gemini' : 'Cancer';
+        return null;
+    },
+
     getZodiac(birthDate, birthContext = {}) {
         const system = this.getZodiacSystem();
         if (system === 'vedic') {

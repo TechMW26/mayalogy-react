@@ -343,8 +343,8 @@ const MayaKundli = {
 
     renderSouthIndianCanvasFrame(ctx, data, frameState = {}) {
         const dpr = window.devicePixelRatio || 1;
-        const w = ctx.canvas.width / dpr;
-        const h = ctx.canvas.height / dpr;
+        const w = ctx.canvas.width / (ctx.canvas._mayaDpr || dpr);
+        const h = ctx.canvas.height / (ctx.canvas._mayaDpr || dpr);
         const lineColor = '#d4a732';
         const textColor = getComputedStyle(document.documentElement).getPropertyValue('--maya-text-primary').trim() || '#ffffff';
         const mutedColor = getComputedStyle(document.documentElement).getPropertyValue('--maya-text-muted').trim() || '#888888';
@@ -556,7 +556,7 @@ const MayaKundli = {
         const container = canvas.parentElement;
         const size = container.offsetWidth || 400;
         const dpr = window.devicePixelRatio || 1;
-        canvas.width = size * dpr;
+        canvas._mayaDpr = dpr; canvas.width = size * dpr;
         canvas.height = size * dpr;
         canvas.style.width = size + 'px';
         canvas.style.height = size + 'px';
@@ -678,8 +678,8 @@ const MayaKundli = {
 
     renderNorthIndianCanvasFrame(ctx, data, frameState = {}) {
         const dpr = window.devicePixelRatio || 1;
-        const canvasWidth = ctx.canvas.width / dpr;
-        const canvasHeight = ctx.canvas.height / dpr;
+        const canvasWidth = ctx.canvas.width / (ctx.canvas._mayaDpr || dpr);
+        const canvasHeight = ctx.canvas.height / (ctx.canvas._mayaDpr || dpr);
         const size = Math.min(canvasWidth, canvasHeight);
         const lineProgress = this.clamp01(frameState.lineProgress ?? 1);
         const labelOpacity = this.clamp01(frameState.labelOpacity ?? 1);
@@ -887,7 +887,7 @@ const MayaKundli = {
         const container = canvas.parentElement;
         const size = container.offsetWidth || 400;
         const dpr = window.devicePixelRatio || 1;
-        canvas.width = size * dpr;
+        canvas._mayaDpr = dpr; canvas.width = size * dpr;
         canvas.height = size * dpr;
         canvas.style.width = size + 'px';
         canvas.style.height = size + 'px';
