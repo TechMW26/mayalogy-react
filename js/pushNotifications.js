@@ -4,7 +4,7 @@
  * the installed Home Screen app (required by iOS 16.4+).
  */
 const MayaPushNotifications = {
-    publicKey: 'BB4ftFsgbK3ozJuiuRa8A_-pRnzjf0npedtLAdMeDaRADujGvdzACGu8p9aeDn0v7keK0IgOxzjf_fLty_yV73E',
+    publicKey: 'BMAwfVYLem73IZhHcWyVTbaji5YHc6Uoe0YmK1OC_bDxBqEMABqIDQY9qpmCV_p_BkNWyAhncJZrWLpwhI5NWw4',
     initialized: false,
     promptElement: null,
 
@@ -37,7 +37,7 @@ const MayaPushNotifications = {
         });
         if ('serviceWorker' in navigator) {
             try {
-                await navigator.serviceWorker.register('/sw.js?v=20260922-notifications-v2', { scope: '/' });
+                await navigator.serviceWorker.register('/sw.js?v=20261112-env-sync-v3', { scope: '/' });
             } catch (error) {
                 console.warn('Mayalogy service worker registration failed:', error);
             }
@@ -181,6 +181,29 @@ const MayaPushNotifications = {
         return Uint8Array.from(binary, (character) => character.charCodeAt(0));
     },
 
+    subscriptionUsesCurrentKey(subscription) {
+        const activeKey = subscription?.options?.applicationServerKey;
+        if (!activeKey) return false;
+        const currentKey = this.decodePublicKey();
+        const activeBytes = new Uint8Array(activeKey);
+        return activeBytes.length === currentKey.length && activeBytes.every((byte, index) => byte === currentKey[index]);
+    },
+
+    async ensureCurrentSubscription(registration) {
+        let subscription = await registration.pushManager.getSubscription();
+        if (subscription && !this.subscriptionUsesCurrentKey(subscription)) {
+            await subscription.unsubscribe();
+            subscription = null;
+        }
+        if (!subscription) {
+            subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: this.decodePublicKey()
+            });
+        }
+        return subscription;
+    },
+
     async enableNativeFromUserGesture() {
         try {
             if (this.getNativePermissionState() === 'granted') return { success: true };
@@ -204,14 +227,8 @@ const MayaPushNotifications = {
             if (permission === 'default') permission = await Notification.requestPermission();
             if (permission !== 'granted') return { success: false, error: 'Notifications are blocked in device settings.' };
 
-            const registration = await navigator.serviceWorker.register('/sw.js?v=20260922-notifications-v2', { scope: '/' });
-            let subscription = await registration.pushManager.getSubscription();
-            if (!subscription) {
-                subscription = await registration.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: this.decodePublicKey()
-                });
-            }
+            const registration = await navigator.serviceWorker.register('/sw.js?v=20261112-env-sync-v3', { scope: '/' });
+            const subscription = await this.ensureCurrentSubscription(registration);
             await this.saveSubscription(subscription);
             return { success: true };
         } catch (error) {
@@ -223,7 +240,7 @@ const MayaPushNotifications = {
     async syncExistingSubscription() {
         try {
             const registration = await navigator.serviceWorker.getRegistration('/');
-            const subscription = await registration?.pushManager.getSubscription();
+            const subscription = registration ? await this.ensureCurrentSubscription(registration) : null;
             if (subscription) await this.saveSubscription(subscription);
         } catch (error) {
             console.warn('Could not refresh Web Push subscription:', error);

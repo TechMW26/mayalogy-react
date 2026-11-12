@@ -3,7 +3,7 @@
  * Network-only worker with standards-based Web Push delivery.
  */
 
-const CACHE_VERSION = '20260922-notifications-v2';
+const CACHE_VERSION = '20261112-env-sync-v3';
 
 async function clearAllCaches() {
     const cacheNames = await caches.keys();

@@ -62,7 +62,9 @@ test('Web Push uses one persistent root service worker and a user-tap permission
     const enableBody = rootPush.split('async enableFromUserGesture()')[1].split('async syncExistingSubscription()')[0];
     const initBody = rootPush.split('async init()')[1].split('getRegistrationContext()')[0];
     assert.match(enableBody, /Notification\.requestPermission\(\)/);
-    assert.match(enableBody, /pushManager\.subscribe/);
+    assert.match(rootPush, /subscriptionUsesCurrentKey/);
+    assert.match(rootPush, /subscription\.unsubscribe\(\)/);
+    assert.match(rootPush, /pushManager\.subscribe/);
     assert.match(enableBody, /this\.isIosDevice\(\) && !this\.isStandalone\(\)/);
     assert.doesNotMatch(initBody, /Notification\.requestPermission\(\)/);
     assert.match(rootPush, /Add to Home Screen/);

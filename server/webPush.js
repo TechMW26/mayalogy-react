@@ -1,7 +1,7 @@
 import webPush from 'web-push';
 import { firebaseRequest } from '../api/_firebase.js';
 
-const PUBLIC_KEY = 'BB4ftFsgbK3ozJuiuRa8A_-pRnzjf0npedtLAdMeDaRADujGvdzACGu8p9aeDn0v7keK0IgOxzjf_fLty_yV73E';
+const PUBLIC_KEY = 'BMAwfVYLem73IZhHcWyVTbaji5YHc6Uoe0YmK1OC_bDxBqEMABqIDQY9qpmCV_p_BkNWyAhncJZrWLpwhI5NWw4';
 let configuredPrivateKey = '';
 
 function configure(env = process.env) {
