@@ -2146,6 +2146,13 @@ Current section: ${sectionKey}
     // Collapse back-to-back repeated tokens & 2-4 word phrases (Latin + Devanagari).
     // "Taurus Taurus" -> "Taurus" ; "rahu ki dasha rahu ki dasha" -> "rahu ki dasha"
     _collapseAdjacentRepeats(text) {
+        const guard = window.MayaVoice?.protectReduplication
+            ? window.MayaVoice.protectReduplication(text)
+            : { text, restore: (value) => value };
+        return guard.restore(this._collapseAdjacentRepeatsRaw(guard.text));
+    },
+
+    _collapseAdjacentRepeatsRaw(text) {
         let cleaned = String(text || '');
         const sep = '(?:\\s*[,.!?।;:\\-]\\s*|\\s+)';
         // Unicode-aware word boundary: \b doesn't work for Devanagari (\u0900-\u097F)
@@ -2586,7 +2593,302 @@ Current section: ${sectionKey}
      * is rate-limited (HTTP 429) or otherwise unreachable. Keeps the funnel
      * narrating instead of jumping ahead in silence.
      */
+    // Speak the question only once. If the lead-in already asks (has "?", "बताइए",
+    // "tell me", or repeats the question's words), the on-screen question is not
+    // read again - that double read is what made the first question sound repeated.
+    _composeSpokenQuestion(lead, question) {
+        const spokenLead = String(lead || '').trim();
+        const shown = String(question || '').trim();
+        if (!spokenLead) return shown;
+        if (!shown || spokenLead === shown) return spokenLead;
+        if (/[?؟]/.test(spokenLead)) return spokenLead;
+        if (/(बताइए|बताइये|बताएँ|बताएं|बताओ|चुनिए|चुनें|tell me|share|choose|pick)/i.test(spokenLead)) return spokenLead;
+        const words = (value) => String(value || '').toLowerCase()
+            .replace(/[^a-zऀ-ॿ\s]/g, ' ')
+            .split(/\s+/)
+            .filter((word) => word.length > 2);
+        const leadWords = new Set(words(spokenLead));
+        const questionWords = words(shown);
+        if (questionWords.length) {
+            const shared = questionWords.filter((word) => leadWords.has(word)).length;
+            if (shared / questionWords.length >= 0.5) return spokenLead;
+        }
+        return `${spokenLead} ${shown}`;
+    },
+
+    // Shuffle-bag picker: every variant is used once before any repeats, and the
+    // same line never plays twice in a row (even across visits).
+    _pickFromBag(bagKey, size) {
+        const count = Math.max(1, Number(size) || 1);
+        try {
+            const storeKey = `maya_bag_${bagKey}`;
+            let state = {};
+            try { state = JSON.parse(localStorage.getItem(storeKey) || '{}') || {}; } catch (_e) { state = {}; }
+            let bag = Array.isArray(state.bag) ? state.bag.filter((i) => Number.isInteger(i) && i >= 0 && i < count) : [];
+            if (state.size !== count || !bag.length) {
+                bag = Array.from({ length: count }, (_, i) => i);
+                for (let i = bag.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [bag[i], bag[j]] = [bag[j], bag[i]];
+                }
+                if (bag.length > 1 && bag[0] === state.last) bag.push(bag.shift());
+            }
+            const pick = bag.shift();
+            localStorage.setItem(storeKey, JSON.stringify({ size: count, bag, last: pick }));
+            return pick;
+        } catch (_error) {
+            return Math.floor(Math.random() * count);
+        }
+    },
+
+    _timeSlot(date = new Date()) {
+        const h = date.getHours();
+        if (h >= 5 && h < 12) return 'morning';
+        if (h >= 12 && h < 17) return 'afternoon';
+        if (h >= 17 && h < 21) return 'evening';
+        return 'night';
+    },
+
+    /**
+     * Greeting pool for MAYA / Moksh. context: 'funnel' (start of a reading) or 'chat'.
+     * 12 variants per language and context, time-of-day and weekday aware,
+     * gender-correct for the user and the guide, never the same twice in a row.
+     */
+    buildGreeting({ context = 'funnel', isHindi = false, name = '', userFemale = false, guideMale = false } = {}) {
+        try {
+            const now = new Date();
+            const slot = this._timeSlot(now);
+            const n = name ? ` ${name}` : '';
+            const g = (male, female) => (userFemale ? female : male);
+            const me = (male, female) => (guideMale ? male : female);
+            const dayHi = ['रविवार', 'सोमवार', 'मंगलवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार'][now.getDay()];
+            const dayEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][now.getDay()];
+            const timeHi = {
+                morning: 'सुप्रभात! आज के दिन की शुरुआत कैसी रही?',
+                afternoon: 'दोपहर कैसी चल रही है? उम्मीद है दिन अच्छा जा रहा है।',
+                evening: 'शुभ संध्या! आज का दिन कैसा रहा?',
+                night: 'इतनी रात को भी आप यहाँ हैं... लगता है मन में कुछ खास चल रहा है।'
+            }[slot];
+            const timeEn = {
+                morning: 'Good morning! How has your day started?',
+                afternoon: 'How is your afternoon going? I hope the day has been kind.',
+                evening: 'Good evening! How was your day?',
+                night: 'You are here this late... something must be on your mind.'
+            }[slot];
+
+            const funnelHi = [
+                `नमस्ते! ${timeHi}`,
+                'नमस्ते, आपका स्वागत है! आज आपसे बात करके सच में अच्छा लग रहा है।',
+                `प्रणाम! आज आप ${g('कैसे', 'कैसी')} हैं? आराम से बैठिए, बात शुरू करते हैं।`,
+                'अरे, नमस्ते! आपका ही इंतज़ार था। आज मन कैसा है?',
+                'नमस्कार! उम्मीद है आप और आपका परिवार सब अच्छे होंगे।',
+                `नमस्ते! आज ${dayHi} है, और आज के ग्रह आपसे कुछ कहना चाहते हैं।`,
+                `स्वागत है! आज मैं पूरा ध्यान सिर्फ आप पर ${me('दूँगा', 'दूँगी')}।`,
+                'नमस्ते! एक गहरी साँस लीजिए... चलिए, सितारों की बात शुरू करते हैं।',
+                `नमस्ते जी! आप आए, बहुत अच्छा लगा। ${timeHi}`,
+                `आइए, आइए! आपसे मिलकर ${me('खुश हूँ', 'खुश हूँ')}। आज आपकी कहानी आपकी कुंडली से सुनते हैं।`,
+                'नमस्ते! हर दिन कुछ नया लेकर आता है, देखते हैं आज आपके लिए क्या है।',
+                `राम राम जी! ${g('कैसे', 'कैसी')} हैं आप? चलिए, आज की बात शुरू करते हैं।`
+            ];
+            const funnelEn = [
+                `Namaste! ${timeEn}`,
+                'Namaste, and welcome! It is really lovely to talk with you today.',
+                'Hello and welcome! Get comfortable, let us begin.',
+                'Oh, namaste! I was hoping you would come. How is your mind today?',
+                'Namaskar! I hope you and your family are all well.',
+                `Namaste! It is ${dayEn}, and today's planets have something to tell you.`,
+                'Welcome! Today my full attention is on you.',
+                'Namaste! Take a slow breath... and let us start with the stars.',
+                `So good to see you! ${timeEn}`,
+                'Come in, come in! Today we will hear your story through your chart.',
+                'Namaste! Every day brings something new, let us see what today holds for you.',
+                'Hello! How are you feeling? Let us begin today\'s reading.'
+            ];
+            const chatHi = [
+                `नमस्ते${n}! ${timeHi} बताइए, आज किस बारे में बात करें?`,
+                `अरे${n}, नमस्ते! आपसे फिर मिलकर अच्छा लगा... आज मन में क्या चल रहा है?`,
+                `नमस्ते${n}! ${g('कैसे', 'कैसी')} हैं आप? आपकी कुंडली मेरे सामने खुली है... जो भी जानना ${g('चाहते', 'चाहती')} हैं, बेझिझक पूछिए।`,
+                `प्रणाम${n}! आज career, रिश्ते, पैसा या सेहत... किस पर बात करें?`,
+                `नमस्कार${n}! आज का दिन कैसा रहा? कोई भी सवाल हो, मैं यहीं हूँ।`,
+                `नमस्ते${n}! आज ${dayHi} है... देखते हैं आज के ग्रह आपके लिए क्या कह रहे हैं। क्या पूछना ${g('चाहेंगे', 'चाहेंगी')}?`,
+                `स्वागत है${n}! आराम से पूछिए, आज मैं सिर्फ आपकी बात सुनने के लिए हूँ।`,
+                `अरे वाह${n}, आप ${g('आ गए', 'आ गईं')}! बताइए, आज कौनसी उलझन सुलझाएँ?`,
+                `नमस्ते${n}! ${timeHi} आज कोई खास सवाल है, या बस मन हल्का करना है?`,
+                `नमस्ते${n}! एक बात बताइए... आज आपका मन किस बात को लेकर सबसे ज़्यादा सोच रहा है?`,
+                `राम राम${n}! आज मैं आपकी किस बात में मदद करूँ?`,
+                `नमस्ते${n}! आपको देखकर अच्छा लगा। आज आपके सितारों से क्या पूछें?`
+            ];
+            const chatEn = [
+                `Namaste${n}! ${timeEn} Tell me, what shall we talk about today?`,
+                `Hey${n}, namaste! So good to see you again... what is on your mind today?`,
+                `Namaste${n}! How are you feeling? Your chart is open in front of me, ask me anything.`,
+                `Hello${n}! Career, relationships, money or health... where shall we start?`,
+                `Namaskar${n}! How was your day? Whatever the question, I am right here.`,
+                `Namaste${n}! It is ${dayEn}... let us see what today's planets are saying for you. What would you like to ask?`,
+                `Welcome${n}! Take your time, today I am here just to listen to you.`,
+                `Oh, you are here${n}! Tell me, which knot shall we untie today?`,
+                `Namaste${n}! ${timeEn} Is there something specific, or do you just want to talk?`,
+                `Namaste${n}! Tell me... what is your mind thinking about most today?`,
+                `Hello${n}! How can I help you today?`,
+                `Namaste${n}! Lovely to see you. What shall we ask your stars today?`
+            ];
+            const pool = context === 'chat'
+                ? (isHindi ? chatHi : chatEn)
+                : (isHindi ? funnelHi : funnelEn);
+            const index = this._pickFromBag(`greet_${context}_${isHindi ? 'hi' : 'en'}`, pool.length);
+            return pool[index] || pool[0];
+        } catch (error) {
+            console.warn('Greeting build failed:', error?.message || error);
+            return '';
+        }
+    },
+
+    _getOpeningGreeting(isHindi) {
+        const greeting = this.buildGreeting({
+            context: 'funnel',
+            isHindi,
+            userFemale: String(this.userData?.gender || '').toLowerCase() === 'female',
+            guideMale: this._isGuiderMale()
+        });
+        return greeting || this._getOpeningGreetingLegacy(isHindi);
+    },
+
+    _nameRashiMetaHtml(isHindi) {
+        try {
+            const rashi = window.MayaAstrology?.getNameRashi?.(this.userData?.name || this.firstName);
+            if (!rashi) return '';
+            const value = isHindi ? (rashi.hindi || this.localizeHindiText(rashi.name)) : rashi.name;
+            return `<span class="kundli-formation-meta__item"><span class="kundli-formation-meta__label">${isHindi ? 'नाम राशि' : 'Name Rashi'}</span><strong class="kundli-formation-meta__value">${value}</strong></span>`;
+        } catch (_error) {
+            return '';
+        }
+    },
+
+    _numberTheme(num, isHindi) {
+        const hi = {
+            1: 'नेतृत्व और अपनी राह खुद बनाने', 2: 'साझेदारी, धैर्य और भावनात्मक समझ', 3: 'अभिव्यक्ति, रचनात्मकता और लोगों से जुड़ने',
+            4: 'मेहनत, अनुशासन और मज़बूत नींव', 5: 'बदलाव, आज़ादी और नए अनुभवों', 6: 'ज़िम्मेदारी, परिवार और देखभाल',
+            7: 'गहरी सोच, खोज और भीतर की समझ', 8: 'महत्वाकांक्षा, पैसा और अधिकार', 9: 'सेवा, करुणा और बड़े उद्देश्य',
+            11: 'अंतर्ज्ञान और दूसरों को प्रेरित करने', 22: 'बड़े सपनों को ज़मीन पर उतारने', 33: 'सिखाने और दूसरों को ऊपर उठाने'
+        };
+        const en = {
+            1: 'leadership and carving your own path', 2: 'partnership, patience and emotional insight', 3: 'expression, creativity and connecting with people',
+            4: 'hard work, discipline and solid foundations', 5: 'change, freedom and new experiences', 6: 'responsibility, family and care',
+            7: 'deep thinking, search and inner understanding', 8: 'ambition, money and authority', 9: 'service, compassion and a bigger purpose',
+            11: 'intuition and inspiring others', 22: 'turning big dreams into real structures', 33: 'teaching and lifting others up'
+        };
+        const key = Number(num);
+        return (isHindi ? hi : en)[key] || '';
+    },
+
+    // Chart-driven, multi-variant fallback lines used when the AI is slow or out of
+    // quota. Different charts give different text, and the wording rotates per visit.
+    _getVariedNarrationFallback(key) {
+        if (this._isAskMayaFlow?.()) return '';
+        const isHindi = this._isHindiMode();
+        const profile = this.personalization || {};
+        const calc = this.calculations || {};
+        const name = this.firstName || (isHindi ? 'आप' : 'friend');
+        const moonRaw = profile.moonSign || profile.vedic?.name || '';
+        const moon = isHindi ? (moonRaw ? this.localizeHindiText(moonRaw) : '') : moonRaw;
+        const dashaRaw = profile.timedChartClaimsAllowed ? (profile.currentDasha?.vedic || profile.currentDasha?.planet || '') : '';
+        const dasha = isHindi ? (dashaRaw ? this.localizeHindiText(dashaRaw) : '') : dashaRaw;
+        const nameRashi = window.MayaAstrology?.getNameRashi?.(this.userData?.name || this.firstName);
+        const nameSign = nameRashi ? (isHindi ? (nameRashi.hindi || nameRashi.name) : nameRashi.name) : '';
+        const lp = calc.lifePath; const destiny = calc.destiny; const soul = calc.soulUrge;
+        const lpT = this._numberTheme(lp, isHindi); const dT = this._numberTheme(destiny, isHindi); const sT = this._numberTheme(soul, isHindi);
+        const see = this._isGuiderMale() ? 'देख रहा हूँ' : 'देख रही हूँ';
+        const uf = String(this.userData?.gender || '').toLowerCase() === 'female';
+        const v = (male, female) => (uf ? female : male);
+        const moonHi = moon ? `${moon} चंद्र राशि` : 'आपकी चंद्र राशि';
+        const moonEn = moon ? `your ${moon} Moon` : 'your Moon sign';
+        const dashaHi = dasha ? `${dasha} की दशा` : 'अभी का समय-चक्र';
+        const dashaEn = dasha ? `the ${dasha} dasha` : 'your current time cycle';
+
+        const hi = {
+            kundliStageNarrative: [
+                `${name}, आपकी कुंडली अब आकार ले रही है। ${moonHi} मन की बनावट दिखा रही है, और ${dashaHi} बता रहा है कि इस वक़्त ज़िंदगी किस तरफ़ मुड़ रही है। चलिए, एक-एक करके खोलते हैं।`,
+                `ग्रह अपनी जगह ले रहे हैं, ${name}... सबसे पहले मेरी नज़र ${moonHi} पर जाती है। यहीं से समझ आता है कि आप फैसले दिल से ${v('लेते', 'लेती')} हैं या दिमाग से।`,
+                `अब तस्वीर बनने लगी है। ${dashaHi} इस समय सबसे ज़्यादा असर डाल रहा है, और ${moonHi} उसके साथ मिलकर एक खास pattern बना रही है।`,
+                `${name}, कुंडली के खाने भर रहे हैं। मैं ${see} कि ${moonHi} और ${dashaHi} साथ-साथ एक ही कहानी कह रहे हैं... आगे उसी को खोलते हैं।`
+            ],
+            teaserRevealNarration: [
+                `${name}, पिछले कुछ समय से एक बदलाव धीरे-धीरे चल रहा है। ${dashaHi} उसकी वजह दिखा रहा है, और आगे उसका असर साफ़ होगा।`,
+                `एक बात बार-बार सामने आ रही है... आप जितना ${v('दिखाते', 'दिखाती')} हैं, अंदर उससे ज़्यादा ${v('सोचते', 'सोचती')} हैं। ${moonHi} में यही झलकता है।`,
+                `आपकी कुंडली में एक मोड़ दिख रहा है, ${name}। ये रुकावट नहीं, एक नई दिशा की तैयारी है।`,
+                `सच कहूँ तो एक pattern साफ़ है... जो चीज़ें पहले अटकी थीं, अब धीरे-धीरे खुलने की तरफ़ हैं।`
+            ],
+            allNumbersNarrative: [
+                `अब numbers भी बोल रहे हैं, ${name}। Life Path ${lp || ''} ${lpT ? `${lpT} की तरफ़ इशारा करता है` : 'आपकी मूल दिशा दिखाता है'}, और Destiny ${destiny || ''} बताता है कि दुनिया आपको किस रूप में देखती है।`,
+                `आपके numbers और कुंडली एक ही बात कह रहे हैं। Life Path ${lp || ''} और Soul Urge ${soul || ''} मिलकर दिखाते हैं कि आप बाहर क्या ${v('करते', 'करती')} हैं और अंदर सच में क्या ${v('चाहते', 'चाहती')} हैं।`,
+                `numbers ने अपनी कहानी कह दी है। ${lpT ? `${lpT} आपका मूल स्वभाव है` : 'आपका मूल स्वभाव साफ़ है'}, और ${dT ? `${dT} आपकी आगे की भूमिका` : 'आगे की भूमिका भी दिख रही है'}।`,
+                `${name}, जब Life Path ${lp || ''} को आपकी ${moonHi} के साथ रखती हूँ, तो एक साफ़ theme उभरती है... अब उसे विस्तार से देखते हैं।`.replace('रखती हूँ', this._isGuiderMale() ? 'रखता हूँ' : 'रखती हूँ')
+            ],
+            lifePathCalculationNarrative: [
+                `आपका Life Path ${lp || ''} है। ${lpT ? `यह ${lpT} का अंक है` : 'यह आपके होने का मूल है'}, यही वो रास्ता है जिस पर आप सबसे सहज महसूस ${v('करते', 'करती')} हैं।`,
+                `Life Path ${lp || ''}... ${lpT ? `इसका सीधा मतलब है ${lpT} की ताकत` : 'इसका मतलब है आपकी असली दिशा'}। जब आप इससे ${v('हटते', 'हटती')} हैं, तभी चीज़ें भारी लगती हैं।`,
+                `आपकी जन्म तिथि से Life Path ${lp || ''} निकलता है। ${lpT ? `${lpT} में आपकी सबसे बड़ी ताकत छुपी है।` : 'इसमें आपकी सबसे बड़ी ताकत छुपी है।'}`
+            ],
+            destinyCalculationNarrative: [
+                `आपके पूरे नाम से Destiny ${destiny || ''} बनता है। ${dT ? `यह ${dT} की भूमिका दिखाता है` : 'यह आपकी आगे की भूमिका दिखाता है'}।`,
+                `Destiny ${destiny || ''} बताता है कि ज़िंदगी आपसे क्या करवाना चाहती है... ${dT ? `और यहाँ बात ${dT} की है।` : 'और यह भूमिका धीरे-धीरे साफ़ हो रही है।'}`,
+                `नाम के अक्षर Destiny ${destiny || ''} बनाते हैं${nameSign ? `, और आपकी नाम राशि ${nameSign} भी इसी ओर इशारा करती है` : ''}।`
+            ],
+            soulUrgeCalculationNarrative: [
+                `Soul Urge ${soul || ''} आपकी अंदर की चाह है। ${sT ? `दिल से आप ${sT} की तरफ़ ${v('खिंचते', 'खिंचती')} हैं।` : `जो आप सच में ${v('चाहते', 'चाहती')} हैं, वो यहीं छुपा है।`}`,
+                `अब सबसे निजी अंक... Soul Urge ${soul || ''}। ${sT ? `अंदर से आपको ${sT} में ही सुकून मिलता है।` : 'यह बताता है कि अंदर से सुकून कहाँ मिलता है।'}`,
+                `Soul Urge ${soul || ''} बताता है कि भीड़ के शोर के नीचे आप असल में क्या ${v('चाहते', 'चाहती')} हैं${sT ? `... और वो है ${sT}` : ''}।`
+            ]
+        };
+        const en = {
+            kundliStageNarrative: [
+                `${name}, your chart is taking shape now. ${moonEn} shows how your mind works, and ${dashaEn} shows where life is turning right now. Let us open it one step at a time.`,
+                `The planets are settling into place, ${name}... my eyes go first to ${moonEn}. That is where I see whether you decide with the heart or the head.`,
+                `The picture is forming. ${dashaEn} carries the most weight right now, and together with ${moonEn} it creates a very specific pattern.`,
+                `${name}, the houses are filling in. ${moonEn} and ${dashaEn} are telling the same story... let us open that next.`
+            ],
+            teaserRevealNarration: [
+                `${name}, a quiet shift has been building for a while. ${dashaEn} shows why, and its effect becomes clearer ahead.`,
+                `One thing keeps coming up... you think far more deeply than you show. ${moonEn} reflects exactly that.`,
+                `There is a turning point in your chart, ${name}. It is not a block, it is preparation for a new direction.`,
+                `Honestly, one pattern is clear... things that were stuck are slowly starting to open.`
+            ],
+            allNumbersNarrative: [
+                `Now the numbers speak too, ${name}. Life Path ${lp || ''} points to ${lpT || 'your core direction'}, and Destiny ${destiny || ''} shows how the world sees you.`,
+                `Your numbers and your chart say the same thing. Life Path ${lp || ''} and Soul Urge ${soul || ''} show what you do outside and what you truly want inside.`,
+                `The numbers have told their story. ${lpT ? `${lpT[0].toUpperCase()}${lpT.slice(1)} is your core nature` : 'Your core nature is clear'}, and ${dT || 'your future role'} is where you are heading.`,
+                `${name}, when I place Life Path ${lp || ''} next to ${moonEn}, one clear theme rises... let us look at it closely.`
+            ],
+            lifePathCalculationNarrative: [
+                `Your Life Path is ${lp || ''}. ${lpT ? `It is the number of ${lpT}` : 'It is the core of who you are'}, the road where you feel most natural.`,
+                `Life Path ${lp || ''}... ${lpT ? `simply put, your strength is ${lpT}` : 'simply put, it is your true direction'}. Whenever you drift from it, life feels heavier.`,
+                `Your birth date gives Life Path ${lp || ''}. ${lpT ? `Your biggest strength hides in ${lpT}.` : 'Your biggest strength hides here.'}`
+            ],
+            destinyCalculationNarrative: [
+                `Your full name gives Destiny ${destiny || ''}. ${dT ? `It shows a role built on ${dT}.` : 'It shows the role you are growing into.'}`,
+                `Destiny ${destiny || ''} shows what life is asking of you... ${dT ? `and here it is about ${dT}.` : 'and that role is slowly becoming clear.'}`,
+                `The letters of your name make Destiny ${destiny || ''}${nameSign ? `, and your name rashi ${nameSign} points the same way` : ''}.`
+            ],
+            soulUrgeCalculationNarrative: [
+                `Soul Urge ${soul || ''} is your inner pull. ${sT ? `At heart you are drawn to ${sT}.` : 'What you truly want is hidden here.'}`,
+                `Now the most private number... Soul Urge ${soul || ''}. ${sT ? `Deep down, you find peace in ${sT}.` : 'It shows where you find peace inside.'}`,
+                `Soul Urge ${soul || ''} shows what you really want beneath all the noise${sT ? `... and that is ${sT}` : ''}.`
+            ]
+        };
+        const pool = (isHindi ? hi : en)[key];
+        if (!Array.isArray(pool) || !pool.length) return '';
+        const needsNumber = /Calculation|allNumbers/.test(key);
+        if (needsNumber && !lp) return '';
+        const pick = this._pickFromBag(`narr_${key}_${isHindi ? 'hi' : 'en'}`, pool.length);
+        return String(pool[pick] || '').replace(/\s+/g, ' ').replace(/\s+([,.!?।])/g, '$1').trim();
+    },
+
     _getLocalNarrationFallback(key) {
+        const varied = this._getVariedNarrationFallback(key);
+        return varied || this._getLocalNarrationFallbackLegacy(key);
+    },
+
+    _getLocalNarrationFallbackLegacy(key) {
         const isHindi = (MayaUtils?.storage?.get('maya_language') || this.userData?.language || 'en') === 'hi';
         const name = this.firstName || (isHindi ? 'दोस्त' : 'friend');
         const sign = this.personalization?.vedic?.hindi
@@ -3033,7 +3335,7 @@ ${this.getBaseRules(false)}`);
     /**
      * Short, warm, rotating greeting spoken before the first reading line.
      */
-    _getOpeningGreeting(isHindi) {
+    _getOpeningGreetingLegacy(isHindi) {
         try {
             const morning = new Date().getHours() < 12;
             const hi = [
@@ -4664,26 +4966,149 @@ All three segments must connect as one flowing story. Include at least TWO decla
             return `${answer ? `"${answer}" identifies the real tension inside ` : 'That identifies the real tension inside '}your ${subjectPhrase}. I will open the next layer from that exact point, not from a generic conclusion.`;
         }
 
-        const isPressureAnswer = /(stuck|isolated|underpaid|distance|confused|volatile|flows_out|health|family|relationship_shift|career_shift|नहीं|अटका|दूरी|अकेला)/i.test(value);
-        const hiTemplates = [
-            () => `"${answer}" उस संकेत से मेल खाता है जो आपकी कुंडली के व्यवहार वाले हिस्से में दिख रहा था। यह केवल परिस्थिति नहीं, आपके फैसले लेने के ढंग का भी हिस्सा है।`,
-            () => `${moonSign ? `${moonSign} चन्द्र राशि` : 'आपकी भावनात्मक बनावट'} के साथ "${answer}" का अर्थ है कि बाहर की स्थिति से पहले भीतर का दबाव बढ़ता है। अगली परत उसी दबाव की जड़ बताएगी।`,
-            () => isPressureAnswer
-                ? `"${answer}" में एक थकाने वाला चक्र दिखता है, लेकिन यह स्थायी नहीं है। समय-चक्र में इसका टूटने वाला बिंदु भी मौजूद है।`
-                : `"${answer}" स्थिरता दिखाता है, पर उसके नीचे बदलाव की तैयारी चल रही है। कुंडली में दोनों संकेत एक साथ आ रहे हैं।`,
-            () => `${ascendant ? `${ascendant} लग्न` : 'आपकी कुंडली की बाहरी बनावट'} और आपके इस जवाब में एक दिलचस्प विरोध है—दूसरों को जो दिखता है, भीतर अनुभव वैसा नहीं है।`,
-            () => `${dasha ? `${dasha} दशा` : 'वर्तमान समय-चक्र'} को केवल एक बार संदर्भ में ${this._isGuiderMale() ? 'रखूँगा' : 'रखूँगी'}: "${answer}" बताता है कि उसका असर जीवन के किस हिस्से में उतर रहा है। अब आगे परिणाम की बात होगी, कारण दोहराया नहीं जाएगा।`
+        // Explain what the chosen option MEANS - never read the option back to the user.
+        return this._explainMcqAnswer(answer, value, isHindi);
+    },
+
+    _mcqAnswerTheme(answer, value) {
+        const text = `${value} ${answer}`.toLowerCase();
+        if (/^custom:/.test(value)) return 'general';
+        if (/(पर नहीं|focus\s.*नहीं|नहीं है\s*$|not (a )?focus|not right now)/.test(text)) return 'general';
+        const themes = [
+            ['pattern', /(बार-बार|बार बार|चले जाते|हाथ से निकल|ending|गलती|pattern|repeat|again and again|छोड़ कर|छोड़कर)/],
+            ['lonely', /(isolated|lonely|alone|disconnect|distance|अकेल|दूरी|डिस्कनेक्ट)/],
+            ['health', /(health|stress|sleep|tired|सेहत|स्वास्थ्य|तनाव|नींद|थकान|बीमार)/],
+            ['stuck', /(stuck|underpaid|stagnant|blocked|अटक|रुका|रुकी|आगे नहीं|कम सैलरी|कम तनख्वाह)/],
+            ['money', /(money|finance|financial|income|debt|loan|flows_out|अचानक|टिकता|टिकती|पैसा|पैसे|कर्ज|लोन|खर्च|कमाई|आमदनी)/],
+            ['career', /(career|job|work|business|promotion|salary|office|नौकरी|काम|व्यापार|बिज़नेस|बिजनेस|सैलरी|प्रमोशन)/],
+            ['relationship', /(relationship|partner|marriage|love|dating|spouse|right person|रिश्त|शादी|प्यार|पति|पत्नी|सही इंसान|साथी)/],
+            ['family', /(family|parent|children|home|परिवार|घर|माता|पिता|बच्च)/],
+            ['change', /(change|shift|new|rapid|move|start|बदलाव|बदल|नया|नई|शुरू)/],
+            ['confused', /(confus|missing|unsure|lost|उलझन|कन्फ्यूज|समझ नहीं|कमी|missing)/],
+            ['stable', /(stable|fine|good|okay|growth|happy|ठीक|अच्छा|अच्छी|स्थिर|खुश|stable)/]
         ];
-        const enTemplates = [
-            () => `"${answer}" matches the behavioural signal already visible in your chart. This is not only a circumstance; it also reflects how you make decisions under pressure.`,
-            () => `With ${moonSign ? `your ${moonSign} Moon` : 'your emotional pattern'}, "${answer}" suggests the pressure builds internally before the outside situation changes. The next layer is about the source of that pressure.`,
-            () => isPressureAnswer
-                ? `"${answer}" points to a tiring cycle, but not a permanent one. Your timing pattern also shows where that cycle begins to break.`
-                : `"${answer}" shows stability on the surface while a change is preparing underneath. Both signals appear together in your chart.`,
-            () => `${ascendant ? `Your ${ascendant} ascendant` : 'Your outer chart pattern'} and this answer reveal a useful contrast: what others see is not the full experience you carry inside.`,
-            () => `I will use ${dasha ? `the ${dasha} dasha` : 'your current timing cycle'} once here: "${answer}" shows where its effect is landing in real life. From here, the reading moves to the outcome instead of repeating the cause.`
-        ];
-        return (isHindi ? hiTemplates : enTemplates)[turn]();
+        const hit = themes.find(([, re]) => re.test(text));
+        return hit ? hit[0] : 'general';
+    },
+
+    _explainMcqAnswer(answer, value, isHindi) {
+        const profile = this.personalization || {};
+        const moonRaw = profile.moonSign || profile.vedic?.name || '';
+        const dashaRaw = profile.timedChartClaimsAllowed ? (profile.currentDasha?.vedic || profile.currentDasha?.planet || '') : '';
+        const moonHiName = moonRaw ? this.localizeHindiText(moonRaw) : '';
+        const dashaHiName = dashaRaw ? this.localizeHindiText(dashaRaw) : '';
+        const moonHi = moonHiName ? `${moonHiName} चंद्र राशि` : 'आपकी चंद्र राशि';
+        const dashaHi = dashaHiName ? `${dashaHiName} की दशा` : 'अभी का समय-चक्र';
+        const moonEn = moonRaw ? `your ${moonRaw} Moon` : 'your Moon sign';
+        const dashaEn = dashaRaw ? `the ${dashaRaw} dasha` : 'your current time cycle';
+        const uf = String(this.userData?.gender || '').toLowerCase() === 'female';
+        const v = (male, female) => (uf ? female : male);
+        const me = (male, female) => (this._isGuiderMale() ? male : female);
+        const theme = this._mcqAnswerTheme(answer, value);
+
+        const hi = {
+            career: [
+                `काम के मामले में आपकी मेहनत दिख रही है, बस उसका फल थोड़ा देर से आ रहा है। ${dashaHi} इस वक़्त धैर्य की परीक्षा ले रहा है, लेकिन यही दौर आपको अगली बड़ी ज़िम्मेदारी के लिए तैयार कर रहा है।`,
+                `career को लेकर जो खिंचाव आप महसूस कर ${v('रहे', 'रही')} हैं, वो ${moonHi} की बेचैनी से आता है... मन आगे भागता है, हालात धीरे चलते हैं। आने वाले महीनों में एक साफ़ मौका बनेगा, बस फैसला जल्दबाज़ी में मत लीजिए।`
+            ],
+            money: [
+                `पैसे का आना-जाना अभी बराबर नहीं बैठ रहा, और ये सिर्फ़ खर्च की बात नहीं है। ${dashaHi} में पैसा तब टिकता है जब योजना पक्की हो... छोटी बचत की आदत यहाँ सबसे बड़ा फ़र्क लाएगी।`,
+                `आपकी कुंडली में कमाने की ताकत है, बस पैसा टिकने में समय लग रहा है। ${moonHi} भावनाओं में आकर खर्च करवाती है... थोड़ा रुककर फैसले लेंगे तो हालात जल्दी सँभलेंगे।`
+            ],
+            relationship: [
+                `रिश्तों में आप दिल से निभाने ${v('वाले', 'वाली')} हैं, इसलिए छोटी दूरी भी गहरी चुभती है। ${moonHi} भावनाओं को बहुत गहराई से महसूस करवाती है... आने वाला समय बातचीत से चीज़ें सुधारने का है।`,
+                `दिल के मामले में आप जो ${v('चाहते', 'चाहती')} हैं, वो साफ़ है, बस सही समय का इंतज़ार है। ${dashaHi} रिश्तों में पहले समझ और फिर नज़दीकी लाता है... जल्दबाज़ी नहीं, भरोसा यहाँ काम करेगा।`
+            ],
+            family: [
+                `परिवार की ज़िम्मेदारी आपके कंधों पर ज़्यादा है, और आप उसे चुपचाप निभा ${v('रहे', 'रही')} हैं। ${moonHi} में यही अपनापन दिखता है... बस अपने लिए भी थोड़ा वक़्त निकालना ज़रूरी है।`,
+                `घर के माहौल का असर आपके मन पर सीधा पड़ता है। ${dashaHi} इस समय परिवार में धीरे-धीरे संतुलन ला रहा है... एक खुली बातचीत बहुत कुछ आसान कर देगी।`
+            ],
+            health: [
+                `अंदर का तनाव शरीर तक पहुँच रहा है, और ये संकेत अनदेखा नहीं करना चाहिए। ${moonHi} मन की थकान को जल्दी पकड़ती है... अच्छी नींद और रोज़ की छोटी दिनचर्या यहाँ सबसे बड़ा उपाय है।`,
+                `आप दूसरों का ध्यान ${v('रखते-रखते', 'रखती-रखती')} खुद को पीछे छोड़ ${v('देते', 'देती')} हैं। ${dashaHi} अब कह रहा है कि पहले अपनी सेहत, फिर बाकी सब।`
+            ],
+            stuck: [
+                `ये अटकाव आपकी कमी नहीं है, समय का एक पड़ाव है। ${dashaHi} में चीज़ें पहले रुकती हैं, फिर एक साथ खुलती हैं... जो मेहनत अभी दिख नहीं रही, वो आगे ज़रूर गिनी जाएगी।`,
+                `जब मेहनत के बराबर नतीजा नहीं मिलता, तो मन थकता है... और ${moonHi} ये थकान गहराई से महसूस करवाती है। रास्ता बंद नहीं है, बस दिशा थोड़ी बदलनी होगी।`
+            ],
+            change: [
+                `आप बदलाव के दौर में ${v('खड़े', 'खड़ी')} हैं, और ये बेचैनी उसी का हिस्सा है। ${dashaHi} पुराने ढर्रे को छुड़वा रहा है... नया रास्ता डराता है, पर यही आगे बढ़ाएगा।`,
+                `नई शुरुआत का मन आपकी कुंडली में साफ़ दिखता है। ${moonHi} जोखिम से ज़्यादा सही समय पर भरोसा करवाती है... पहले छोटा कदम, फिर बड़ा फैसला।`
+            ],
+            lonely: [
+                `लोगों के बीच रहकर भी अकेलापन महसूस होना... ये ${moonHi} की गहरी संवेदनशीलता है। आप जितना ${v('देते', 'देती')} हैं, उतना समझा नहीं जाता... पर सही लोग धीरे-धीरे आपकी ज़िंदगी में आ रहे हैं।`,
+                `ये दूरी हमेशा की नहीं है। ${dashaHi} अभी आपको अपने भीतर झाँकने का समय दे रहा है... इसके बाद रिश्ते ज़्यादा सच्चे बनेंगे।`
+            ],
+            confused: [
+                `मन अभी पूरी तरह तय नहीं कर पा रहा, और ये स्वाभाविक है। ${dashaHi} इस समय चीज़ों को धीरे-धीरे साफ़ कर रहा है... जल्द ही सही जवाब खुद सामने आएगा।`,
+                `उलझन इसलिए है क्योंकि आपके सामने एक से ज़्यादा रास्ते हैं। ${moonHi} दिल और दिमाग में खींचतान करवाती है... जो रास्ता मन को शांति दे, वही सही है।`
+            ],
+            pattern: [
+                `ये एक दोहराने वाला चक्र है, और इसका पहचान में आना ही आधा इलाज है। ${dashaHi} बार-बार वही सबक इसलिए सामने ला रहा है ताकि इस बार आप उसे अलग तरीके से सँभालें।`,
+                `जो चीज़ बार-बार होती है, उसकी जड़ अक्सर भीतर होती है। ${moonHi} भरोसे और डर के बीच झूलती है... जब आप पहले से संकेत पहचानने ${v('लगेंगे', 'लगेंगी')}, ये चक्र टूटने लगेगा।`
+            ],
+            stable: [
+                `ऊपर से सब संतुलित है, और ये आपकी समझदारी का नतीजा है। ${dashaHi} इस स्थिरता को आगे की तरक्की की नींव बना रहा है... अब बढ़ने का सही समय पास है।`,
+                `आपने हालात को अच्छे से सँभाला है। ${moonHi} आपको भीतर से मज़बूत रखती है... आने वाले महीनों में इसी नींव पर कुछ नया बनेगा।`
+            ],
+            general: [
+                `आपने जो चुना, वो आपकी कुंडली के पैटर्न से मेल खाता है। ${dashaHi} इस वक़्त इसी हिस्से पर असर डाल रहा है... आगे मैं इसे और साफ़ ${me('करूँगा', 'करूँगी')}।`,
+                `यही वो बात है जिसकी तरफ़ आपकी कुंडली पहले से इशारा कर रही थी। ${moonHi} इसे गहराई से महसूस करवाती है... अब आगे का रास्ता इसी से खुलेगा।`
+            ]
+        };
+        const en = {
+            career: [
+                `Your effort at work is real, the reward is just arriving late. ${dashaEn} is testing your patience right now, but this phase is preparing you for a bigger responsibility.`,
+                `The pull you feel around your career comes from the restlessness of ${moonEn}... the mind runs ahead while circumstances move slowly. A clear opening is coming in the next few months, just do not decide in a hurry.`
+            ],
+            money: [
+                `Money is coming and going unevenly right now, and it is not only about spending. In ${dashaEn}, money stays when the plan is firm... a small saving habit will make the biggest difference.`,
+                `Your chart has real earning power, money is just taking time to settle. ${moonEn} pushes emotional spending... pause before money decisions and things steady faster.`
+            ],
+            relationship: [
+                `In relationships you give from the heart, so even a small distance hurts deeply. ${moonEn} makes you feel everything strongly... the coming phase is about healing things through honest talk.`,
+                `What your heart wants is clear, the timing is what you are waiting on. ${dashaEn} brings understanding first and closeness after... trust will work here, not hurry.`
+            ],
+            family: [
+                `You carry more family responsibility than people see, and you do it quietly. ${moonEn} shows that deep sense of care... just keep some time for yourself too.`,
+                `The mood at home affects your mind directly. ${dashaEn} is slowly bringing balance in the family... one open conversation will make a lot easier.`
+            ],
+            health: [
+                `Inner stress is reaching the body, and that signal should not be ignored. ${moonEn} feels mental tiredness quickly... good sleep and a small daily routine are the strongest remedy here.`,
+                `You look after everyone and leave yourself for last. ${dashaEn} is now saying: your health first, everything else after.`
+            ],
+            stuck: [
+                `This block is not your failure, it is a pause in timing. In ${dashaEn}, things stop first and then open together... the effort nobody sees now will count later.`,
+                `When results do not match the effort, the mind gets tired... and ${moonEn} feels that deeply. The road is not closed, only the direction needs a small change.`
+            ],
+            change: [
+                `You are standing in a phase of change, and the restlessness is part of it. ${dashaEn} is pulling you out of old patterns... the new road feels scary, but it is the one that moves you forward.`,
+                `A fresh start shows clearly in your chart. ${moonEn} trusts right timing more than risk... take a small step first, then the big decision.`
+            ],
+            lonely: [
+                `Feeling alone even among people... that is the deep sensitivity of ${moonEn}. You give more than people understand... but the right people are slowly coming into your life.`,
+                `This distance is not permanent. ${dashaEn} is giving you time to look inward... after this, your connections become more genuine.`
+            ],
+            confused: [
+                `Your mind has not fully decided yet, and that is natural. ${dashaEn} is slowly making things clear... the right answer will show itself soon.`,
+                `The confusion is there because you have more than one road in front of you. ${moonEn} creates a tug between heart and head... the road that brings peace is the right one.`
+            ],
+            pattern: [
+                `This is a repeating cycle, and seeing it clearly is half the cure. ${dashaEn} keeps bringing back the same lesson so that this time you handle it differently.`,
+                `What keeps repeating usually has its root inside. ${moonEn} swings between trust and fear... once you start spotting the early signs, this cycle begins to break.`
+            ],
+            stable: [
+                `Things are balanced on the surface, and that comes from your own good sense. ${dashaEn} is turning this stability into a base for growth... the time to expand is close.`,
+                `You have handled things well. ${moonEn} keeps you strong inside... in the coming months something new will be built on this base.`
+            ],
+            general: [
+                `What you chose matches the pattern in your chart. ${dashaEn} is acting on exactly this part of life right now... next I will make it clearer.`,
+                `This is what your chart was already pointing to. ${moonEn} makes you feel it deeply... the way ahead opens from here.`
+            ]
+        };
+        const pool = (isHindi ? hi : en)[theme] || (isHindi ? hi : en).general;
+        const pick = this._pickFromBag(`mcqack_${theme}_${isHindi ? 'hi' : 'en'}`, pool.length);
+        return pool[pick] || pool[0];
     },
 
     _rememberAcknowledgement(text) {
@@ -4740,7 +5165,7 @@ User's chart:
 ${chartContext}
 
 TASK -2-3 छोटे sentences में बोलो (spoken Hindi, 40-60 words max):
-1. पहले user के जवाब "${answerLabel}" को acknowledge करो -empathetically, warmly
+1. user ने जो option चुना है उसे शब्दशः मत दोहराओ। सीधे बताओ कि इस जवाब का उनकी ज़िंदगी में क्या मतलब है -warmly
 2. फिर बताओ ये क्यों हो रहा है -chart/dasha/graha से connect करो (specific planet या yoga का naam लो)
 3. आगे क्या होगा -positive direction दो। अगर जवाब negative है (struggle, tension, loss) तो बताओ कैसे tackle होगा, क्या बदलाव आएगा, hope दो。
 
@@ -4764,7 +5189,7 @@ User's chart:
 ${chartContext}
 
 TASK -Respond in 2-3 short sentences (40-60 words max):
-1. First warmly acknowledge their specific answer "${answerLabel}" -be empathetic
+1. Do NOT repeat or quote the option they picked. Start directly with what that choice means for their life -warmly
 2. Then explain WHY this is happening -connect to a specific planet, dasha, or yoga from their chart
 3. Give forward direction -where this leads in life. If the answer is negative (struggle, tension, loss), tell them how it gets better, what shift is coming, give hope.
 
@@ -4780,7 +5205,11 @@ ONLY return the spoken response. Nothing else.`;
                 if (window.MayaAI?.callFast || window.MayaAI?.callGemini) {
                     const result = await this._callNarrationFunnelAI(ackPrompt, { temperature: 0.76, topP: 0.92, timeoutMs: 6000 });
                     if (result && result.length > 10 && result.length < 600) {
-                        ack = this.sanitizeNarrationText(result);
+                        const cleanedAck = this.sanitizeNarrationText(result);
+                        const norm = (t) => String(t || '').toLowerCase().replace(/[^a-z\u0900-\u097F\s]/g, ' ').replace(/\s+/g, ' ').trim();
+                        const pickedLabel = norm(answerLabel);
+                        // If the AI just read the option back, use the explained local line instead.
+                        ack = (pickedLabel.length >= 6 && norm(cleanedAck).includes(pickedLabel)) ? '' : cleanedAck;
                     }
                 }
             } catch (error) {
@@ -6502,9 +6931,7 @@ Return ONLY JSON:
     async askSingleProfileQuestion(q) {
         const isHindi = this._isHindiMode();
         const spokenLead = String(q.spoken || '').trim();
-        const spokenQuestion = spokenLead && spokenLead !== q.question && !/[?؟]$/.test(spokenLead)
-            ? `${spokenLead} ${q.question}`
-            : (spokenLead || q.question);
+        const spokenQuestion = this._composeSpokenQuestion(spokenLead, q.question);
 
         // Pre-warm TTS so playback starts instantly when question appears
         if (window.MayaVoice && !MayaVoice.isMuted) {
@@ -7429,7 +7856,7 @@ Return ONLY JSON:
             <div class="calc-section kundli-formation-calc">
                 <h3><i class="bi bi-grid-3x3-gap-fill"></i> ${isHindi ? 'कुंडली विन्यास बन रहा है' : 'Forming Your Square Kundli'}</h3>
                 <p class="calc-explanation">${explanationText}</p>
-                ${metaItems ? `<div class="kundli-formation-meta">${metaItems}</div>` : ''}
+                ${metaItems ? `<div class="kundli-formation-meta">${metaItems}${this._nameRashiMetaHtml(isHindi)}</div>` : ''}
                 <div class="kundli-formation-chart-card">
                     <div class="kundli-formation-chart-shell" id="kundliFormationChartShell">
                         <div class="maya-kundli-chart kundli-formation-chart">

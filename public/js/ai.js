@@ -360,7 +360,7 @@ const MayaAI = {
             ? `\n## YOUR VOICE GENDER\nYou are Moksh, a man. Never call yourself MAYA. In Hindi always use masculine forms for yourself: \u092e\u0948\u0902 \u0926\u0947\u0916 \u0930\u0939\u093e \u0939\u0942\u0901, \u092e\u0948\u0902 \u092c\u0924\u093e\u0924\u093e \u0939\u0942\u0901, \u092c\u0924\u093e\u090a\u0901\u0917\u093e.`
             : `\n## YOUR VOICE GENDER\nYou are MAYA, a woman. In Hindi always use feminine forms for yourself: \u092e\u0948\u0902 \u0926\u0947\u0916 \u0930\u0939\u0940 \u0939\u0942\u0901, \u092e\u0948\u0902 \u092c\u0924\u093e\u0924\u0940 \u0939\u0942\u0901, \u092c\u0924\u093e\u090a\u0901\u0917\u0940.`);
 
-        L.push(`\n## READING FLOW\nIn a multi-part reading, each part continues the previous one. Greet only at the very start, never in the middle. Do not repeat a point you already made; add a new angle instead.`);
+        L.push(`\n## READING FLOW\nIn a multi-part reading, each part continues the previous one. Greet only at the very start, never in the middle. Do not repeat a point you already made; add a new angle instead.\n- Every visit is a fresh conversation: the astrological conclusions for this chart stay the same, but say them in new words, with a new opening line, a new real-life example and a new order. Never reuse a stock sentence from an earlier reading.`);
 
         if (ctx) {
             const now = new Date();
@@ -371,7 +371,7 @@ const MayaAI = {
             const userGender = String(ctx.gender || '').toLowerCase();
 
             L.push(`\n## TODAY\n${today}. Months before ${now.toLocaleDateString('en-US', { month: 'long' })} ${year} are in the past: speak of them only as past patterns.`);
-            L.push(`\n## THIS PERSON (calculated by the app; trust these, do not change them)\n- Name: ${ctx.name || ''} (call them ${ctx.firstName || 'friend'})\n- Gender: ${ctx.gender || 'not given'}\n- Birth: ${ctx.birthDate || 'not given'}, time ${ctx.birthTime && ctx.birthTime !== 'unknown' ? ctx.birthTime : 'not exact'}, place ${ctx.birthPlace || 'not given'}\n- Numerology: Life Path ${n.lifePath ?? '?'}, Destiny ${n.destiny ?? '?'}, Soul Urge ${n.soulUrge ?? '?'}, Personality ${n.personality ?? '?'}, Personal Year ${year}: ${n.personalYear ?? '?'}\n- Western Sun sign: ${ctx.zodiac?.name || 'unknown'}${facts ? `\n${facts}` : ''}`);
+            L.push(`\n## THIS PERSON (calculated by the app; trust these, do not change them)\n- Name: ${ctx.name || ''} (call them ${ctx.firstName || 'friend'})\n- Gender: ${ctx.gender || 'not given'}\n- Birth: ${ctx.birthDate || 'not given'}, time ${ctx.birthTime && ctx.birthTime !== 'unknown' ? ctx.birthTime : 'not exact'}, place ${ctx.birthPlace || 'not given'}\n- Numerology: Life Path ${n.lifePath ?? '?'}, Destiny ${n.destiny ?? '?'}, Soul Urge ${n.soulUrge ?? '?'}, Personality ${n.personality ?? '?'}, Personal Year ${year}: ${n.personalYear ?? '?'}\n- Western Sun sign: ${ctx.zodiac?.name || 'unknown'}${(() => { const r = window.MayaAstrology?.getNameRashi?.(ctx.firstName || ctx.name); return r ? `\n- Naam rashi (from the first sound of the name, the rashi most Indians call "meri rashi"): ${r.name}${r.hindi ? ` (${r.hindi})` : ''}\n- RASHI RULE: when the person asks "meri rashi kya hai" or you mention their rashi, say naam rashi ${r.name}${r.hindi ? ` (${r.hindi})` : ''} first, then their janma rashi (Moon sign from the chart) as a separate line. Never call the Sun sign their rashi.` : ''; })()}${facts ? `\n${facts}` : ''}`);
 
             if (isHindi && (userGender === 'male' || userGender === 'female')) {
                 L.push(userGender === 'male'
@@ -401,7 +401,7 @@ const MayaAI = {
             const planets = (chart.planets || []).map((p) => `${p.name} in ${p.sign?.name || '?'}`).join(', ');
             const d = s.currentDasha || {};
             const lines = [
-                s.moonSign ? `- Moon sign (Vedic rashi): ${s.moonSign}` : '',
+                s.moonSign ? `- Moon sign (janma rashi): ${s.moonSign}` : '',
                 exactTime && hasCoords && s.ascendant?.name ? `- Ascendant (lagna): ${s.ascendant.name}` : '- Ascendant: not reliable (birth time or place not exact), use the Moon sign as reference',
                 d.planet ? `- Current Mahadasha: ${d.planet}${d.startYear ? ` (${d.startYear} to ${d.endYear})` : ''}` : '',
                 planets ? `- Planets by sign (Vedic, sidereal): ${planets}` : '',

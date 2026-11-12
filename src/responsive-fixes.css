@@ -163,3 +163,53 @@ canvas {
         width: auto;
     }
 }
+
+/* 12. MCQ question card: scroll instead of cutting on short screens / landscape,
+       and keep the last option clear of the floating pause button. */
+.maya-validation-overlay {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    align-items: flex-start !important;
+    padding: 1rem 0 calc(88px + env(safe-area-inset-bottom, 0px)) !important;
+    box-sizing: border-box !important;
+}
+.maya-validation-container {
+    margin: auto !important;
+    flex-shrink: 0 !important;
+}
+@media (max-height: 520px) {
+    .maya-validation-question { font-size: clamp(1.05rem, 4.2vh, 1.5rem) !important; }
+}
+
+/* 13. Onboarding steps (login etc.) must never be squeezed and clipped. */
+.onboarding-content > * {
+    flex-shrink: 0;
+}
+
+/* 14. Settings rows on very narrow phones (Galaxy Fold ~280px). */
+@media (max-width: 340px) {
+    .maya-settings__item {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding: 0.85rem 1rem;
+    }
+    .maya-settings__item .maya-select { min-width: 0; }
+}
+
+/* 15. Chat header on very narrow phones: title must not slide under the
+       history / close buttons. */
+@media (max-width: 360px) {
+    body:not(.guest-mode) .maya-overlay--chat .maya-overlay-header__identity {
+        left: 60px;
+        transform: none;
+        max-width: calc(100% - 160px);
+        overflow: hidden;
+    }
+    body:not(.guest-mode) .maya-overlay--chat .maya-overlay-header__mark { display: none; }
+    body:not(.guest-mode) .maya-overlay--chat .maya-overlay-header__identity > span:last-child { min-width: 0; }
+    body:not(.guest-mode) .maya-overlay--chat .maya-overlay-header__identity strong,
+    body:not(.guest-mode) .maya-overlay--chat .maya-overlay-header__identity small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
