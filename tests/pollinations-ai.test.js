@@ -145,3 +145,24 @@ test('browser runtime contains no AI provider secret values', async () => {
   assert.match(config, /AI_VISION:\s*'\/api\/ai-vision'/);
   assert.match(config, /AI_IMAGE:\s*'\/api\/ai-image'/);
 });
+
+test('production Pollinations code requires a server environment key and contains no token literal', async () => {
+  const provider = await readFile(new URL('../server/pollinationsApi.js', import.meta.url), 'utf8');
+  assert.match(provider, /getEnv\(env, 'POLLINATIONS_API_KEY'\)/);
+  assert.match(provider, /Authorization: `Bearer \$\{key\}`/);
+  assert.doesNotMatch(provider, /\b(?:sk|pk)[_-][A-Za-z0-9_-]{16,}\b/);
+
+  const productionFiles = [
+    '../api/ai-text.js',
+    '../api/ai-vision.js',
+    '../api/ai-image.js',
+    '../api/tts.js',
+    '../api/remove-background.js',
+    '../server/geminiText.js',
+    '../server/elevenLabsTts.js',
+  ];
+  for (const relativePath of productionFiles) {
+    const source = await readFile(new URL(relativePath, import.meta.url), 'utf8');
+    assert.doesNotMatch(source, /\b(?:sk|pk)[_-][A-Za-z0-9_-]{16,}\b/, relativePath);
+  }
+});
