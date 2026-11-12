@@ -615,6 +615,7 @@ const MayaKundli = {
             signShortNames: this.signShortNames,
             planetInfo: this.planetInfo
         };
+        chartData.ascLabel = options.ascLabel || 'Asc';
 
         const chartId = 'kundli-canvas-north-' + Date.now();
         
@@ -777,7 +778,7 @@ const MayaKundli = {
             if (isAsc) {
                 ctx.fillStyle = ascColor;
                 ctx.font = 'bold 8px Arial';
-                ctx.fillText('Asc', point.x, point.y + 2);
+                ctx.fillText(data.ascLabel || 'Asc', point.x, point.y + 2);
             }
             ctx.restore();
 

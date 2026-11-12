@@ -1,10 +1,10 @@
 import {
   handleImageEditRequest,
   handleImageGenerationRequest,
-  handleTextGenerationRequest,
-  handleTextToSpeechRequest,
   handleVisionRequest,
 } from './pollinationsApi.js';
+import { handleTextRequest as handleTextGenerationRequest } from './geminiText.js';
+import { handleSpeechRequest as handleTextToSpeechRequest } from './elevenLabsTts.js';
 import firebasePhoneSessionHandler from '../api/firebase-phone-session.js';
 import reviewLoginHandler from '../api/review-login.js';
 import saveFcmTokenHandler from '../api/save-fcm-token.js';

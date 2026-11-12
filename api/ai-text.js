@@ -1,4 +1,4 @@
-import { handleTextGenerationRequest } from '../server/pollinationsApi.js';
+import { handleTextRequest as handleTextGenerationRequest } from '../server/geminiText.js';
 import { sendApiResult } from './_pollinationsResponse.js';
 
 export const config = { api: { bodyParser: { sizeLimit: '1mb' } } };
