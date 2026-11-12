@@ -534,12 +534,17 @@ const MayaVoice = {
      */
     async withFillers(asyncFn, options = {}) {
         const type = options.type || 'thinking';
-        const startDelay = options.startDelay ?? 800;
+        const startDelay = options.startDelay ?? 2500;
         const interval = options.interval ?? 3500;
-        const maxFillers = options.maxFillers ?? 4;
+        const maxFillers = options.maxFillers ?? 2;
 
         let done = false;
-        const resultPromise = asyncFn().finally(() => { done = true; });
+        let fillerStarted = false;
+        const resultPromise = asyncFn().finally(() => {
+            done = true;
+            // Answer is ready: drop a filler that is not audible yet, so the real answer is not stuck behind it.
+            if (fillerStarted && !this.isPlaying) { try { this.stop(); } catch (_e) { } }
+        });
 
         // Filler loop: speaks up to maxFillers with interval gaps, stops when AI finishes
         const fillerLoop = async () => {
@@ -552,6 +557,7 @@ const MayaVoice = {
                 const phrase = this.getRandomFiller(type);
                 if (!phrase) break;
                 try {
+                    fillerStarted = true;
                     await this.speak(phrase);
                 } catch (e) { /* non-critical */ }
                 count++;
@@ -895,9 +901,9 @@ const MayaVoice = {
 
     stripTtsControlTags(rawText) {
         return String(rawText || '')
-            .replace(/\[\[\s*pause\s*[-:]?\s*(\d{0,5})\s*(?:ms)?\s*\]\]/gi, (_, ms) => Number(ms || 0) >= 500 ? '. ' : ', ')
-            .replace(/\[\[\s*pause[^\]]*\]\]/gi, ', ')
-            .replace(/\[(?:long\s+)?pause\]/gi, ', ')
+            .replace(/\[\[\s*pause\s*[-:]?\s*(\d{0,5})\s*(?:ms)?\s*\]\]/gi, (_, ms) => Number(ms || 0) >= 500 ? '. ' : '... ')
+            .replace(/\[\[\s*pause[^\]]*\]\]/gi, '... ')
+            .replace(/\[(?:long\s+)?pause\]/gi, '... ')
             .replace(/\[(?:warm|curious|thoughtful|softly|gentle smile|smile|reassuring|whispers?|excited|empathetic|calm|sighs?|exhales?|laughs?|chuckles|intrigued|mysterious|dramatic|intimate|slowly|quickly|hesitant|confident|gasps?|breathes?|nervous|relieved|serious|kindly)\]\s*/gi, '')
             .replace(/<\/?(?:break|speak|prosody|emphasis|voice|amazon:[^>\s]+)(?:\s+[^>]*)?>/gi, ' ')
             .replace(/\[[a-z][a-z\s_-]{1,40}\]\s*/gi, '')
@@ -1455,19 +1461,27 @@ const MayaVoice = {
             prepared = this.forceHindiSpeechDevanagari(prepared);
         }
 
+        // Protect Hindi word pairs (e.g. dheere-dheere, baar-baar) from being merged or cut.
+        const keepPairs = [];
+        prepared = prepared.replace(/([\u0900-\u097F]+)-([\u0900-\u097F]+)/g, (m) => {
+            if (keepPairs.length >= 26) return m;
+            keepPairs.push(m);
+            return ` zzpair${String.fromCharCode(96 + keepPairs.length)}zz `;
+        });
         prepared = this.normalizeHyphenatedExpressions(prepared);
         prepared = this.removeAdjacentPhraseRepetition(prepared);
         prepared = this.limitDashaOverfocus(prepared);
+        prepared = prepared.replace(/\s*zzpair([a-z])zz\s*/g, (_, k) => ` ${keepPairs[k.charCodeAt(0) - 97] || ''} `);
         if (!isHindiPrep) {
             prepared = this.normalizeEnglishPronunciationTerms(prepared);
         }
 
         // Convert authored pause markers into spoken punctuation before number expansion,
         // otherwise markers like [[pause-250]] can leak the number into speech.
-        prepared = prepared.replace(/\[\[pause-?(\d+)\]\]/gi, (_, ms) => Number(ms) >= 500 ? '. ' : ', ');
-        prepared = prepared.replace(/\[\[\s*pause[^\]]*\]\]/gi, ', ');
+        prepared = prepared.replace(/\[\[pause-?(\d+)\]\]/gi, (_, ms) => Number(ms) >= 500 ? '. ' : '... ');
+        prepared = prepared.replace(/\[\[\s*pause[^\]]*\]\]/gi, '... ');
         prepared = prepared.replace(/\[\[pause\]\]/gi, ', ');
-        prepared = prepared.replace(/\[pause\]/gi, ', ');
+        prepared = prepared.replace(/\[pause\]/gi, '... ');
         prepared = prepared.replace(/\bpause\s*-?\s*\d+\b/gi, ' ');
         prepared = prepared.replace(/\bपॉज़\s*-?\s*\d+\b/gi, ' ');
         prepared = prepared.replace(/\bpause\b/gi, ' ');
@@ -1481,7 +1495,7 @@ const MayaVoice = {
         prepared = prepared.replace(/:/g, ', ');
         prepared = prepared.replace(/[()]/g, ', ');
         // Treat only punctuation dashes as pauses. In-word hyphens are normalized earlier.
-        prepared = prepared.replace(/\s[\-–—]\s/g, ', ');
+        prepared = prepared.replace(/\s[\-–—]\s/g, '... ');
         prepared = prepared.replace(/\.\.\./g, '... ');
 
         // Remove emoji and special characters that TTS struggles with
@@ -1496,7 +1510,7 @@ const MayaVoice = {
         // Remove excess punctuation
         prepared = this.stripTtsControlTags(prepared);
         prepared = prepared.replace(/[,]{2,}/g, ',');
-        prepared = prepared.replace(/[.]{2,}/g, '.');
+        prepared = prepared.replace(/\.{4,}/g, '...').replace(/([^.])\.\.(?!\.)/g, '$1.');
         prepared = prepared.replace(/\s+([,.!?])/g, '$1');
 
         // Clean up multiple spaces and trim
@@ -1564,7 +1578,21 @@ const MayaVoice = {
     /**
      * Resume audio context (needed for browsers that suspend it)
      */
+    // Real pause: freeze the audio clock so Play continues mid-sentence instead of restarting.
+    pausePlayback() {
+        this.isPausedByUser = true;
+        try { if (this.audioContext && this.audioContext.state === 'running') this.audioContext.suspend(); } catch (_e) { }
+        try { window.speechSynthesis?.pause(); } catch (_e) { }
+    },
+
+    resumePlayback() {
+        this.isPausedByUser = false;
+        try { if (this.audioContext && this.audioContext.state === 'suspended') this.audioContext.resume(); } catch (_e) { }
+        try { window.speechSynthesis?.resume(); } catch (_e) { }
+    },
+
     async resumeContext() {
+        if (this.isPausedByUser) return;
         if (this.audioContext && this.audioContext.state === 'suspended') {
             await this.audioContext.resume();
         }
@@ -1916,10 +1944,10 @@ const MayaVoice = {
      * Build complete-sentence TTS chunks only when ElevenLabs/proxy text length needs splitting.
      * This never cuts inside a sentence, so playback cannot stop mid-thought because of chunking.
      */
-    splitIntoCompleteTtsBlocks(text, maxChars = 1800) {
+    splitIntoCompleteTtsBlocks(text, maxChars = 900, firstChars = 240) {
         const source = String(text || '').replace(/\s+/g, ' ').trim();
         if (!source) return [];
-        if (source.length <= maxChars) return [source];
+        if (source.length <= firstChars) return [source];
 
         const sentences = source.match(/[^.!?।…]+[.!?।…]+|[^.!?।…]+$/g) || [source];
         const blocks = [];
@@ -1935,7 +1963,7 @@ const MayaVoice = {
                 continue;
             }
 
-            if ((current + ' ' + sentence).length <= maxChars) {
+            if ((current + ' ' + sentence).length <= (blocks.length === 0 ? firstChars : maxChars)) {
                 current += ' ' + sentence;
             } else {
                 blocks.push(current);
@@ -1976,6 +2004,7 @@ const MayaVoice = {
                 console.log(`⏱️ TTS wait before block ${index + 1}/${blocks.length}: ${ttsWaitMs}ms`);
             }
             if (!audioBlob) throw new Error('TTS returned empty audio');
+            if (this.aborted) throw new Error('Speech aborted before playback');
 
             await this.playAudio(audioBlob);
             if (this.aborted) throw new Error('Speech aborted during playback');
@@ -2030,6 +2059,7 @@ const MayaVoice = {
         return this.enqueueSpeechTurn(async (turnId) => {
             await this.waitForSpeechComplete();
 
+            if (turnId <= (this._cancelledUpToTurn || 0)) return;
             this.aborted = false;
             this.speakingLock = true;
 
@@ -2091,6 +2121,7 @@ const MayaVoice = {
      * Stop current audio playback and release lock
      */
     stop() {
+        this._cancelledUpToTurn = this._speechTurnId || 0;
         this.stopCurrentAudio({ releaseLock: true, markAborted: true });
     },
 
@@ -2119,6 +2150,8 @@ const MayaVoice = {
      * Fallback to browser's built-in TTS
      */
     speakFallback(text) {
+        // Never start the browser voice after the user paused or stopped MAYA.
+        if (this.aborted || window.MayaFunnel?.isPaused) return Promise.resolve();
         return new Promise((resolve, reject) => {
             if (!('speechSynthesis' in window)) {
                 reject(new Error('Speech synthesis not supported'));
@@ -2524,16 +2557,17 @@ window.MayaListener = MayaListener;
     };
 
     V._normalizeHinglishAcronyms = function (text) {
-        // Do not phoneticize full English words. Only space acronyms that TTS may read as a word.
+        // Spaced letters ("O T P") made the voice say "AOTP". In Hindi mode write how Indians say them.
         return String(text || '')
-            .replace(/\bOTP\b/g, 'O T P')
-            .replace(/\bAPI\b/g, 'A P I')
-            .replace(/\bTTS\b/g, 'T T S')
-            .replace(/\bMCQ\b/g, 'M C Q')
-            .replace(/\bKYC\b/g, 'K Y C')
-            .replace(/\bEMI\b/g, 'E M I')
-            .replace(/\bAI\b/g, 'A I')
-            .replace(/\bUI\b/g, 'U I');
+            .replace(/\bOTP\b/g, '\u0913\u091f\u0940\u092a\u0940')
+            .replace(/\bSMS\b/g, '\u090f\u0938\u090f\u092e\u090f\u0938')
+            .replace(/\bAPI\b/g, '\u090f\u092a\u0940\u0906\u0908')
+            .replace(/\bTTS\b/g, '\u091f\u0940\u091f\u0940\u090f\u0938')
+            .replace(/\bMCQ\b/g, '\u090f\u092e\u0938\u0940\u0915\u094d\u092f\u0942')
+            .replace(/\bKYC\b/g, '\u0915\u0947\u0935\u093e\u0908\u0938\u0940')
+            .replace(/\bEMI\b/g, '\u0908\u090f\u092e\u0906\u0908')
+            .replace(/\bAI\b/g, '\u090f\u0906\u0908')
+            .replace(/\bUI\b/g, '\u092f\u0942\u0906\u0908');
     };
 
     V.normalizeRomanHindiWordsHinglish = function (text) {
@@ -2578,6 +2612,15 @@ window.MayaListener = MayaListener;
         return this.stripTtsControlTags(String(text || '')).trim();
     };
 
+    // "Moon sign" is spoken as \u0930\u093e\u0936\u093f (feminine), so fix the possessive before it: \u0906\u092a\u0915\u093e \u0930\u093e\u0936\u093f -> \u0906\u092a\u0915\u0940 \u0930\u093e\u0936\u093f.
+    const originalMixedTerms = V.normalizeMixedScriptTerms;
+    V.normalizeMixedScriptTerms = function (text) {
+        const out = String(originalMixedTerms.call(this, text) || '');
+        const feminine = { '\u0906\u092a\u0915\u093e': '\u0906\u092a\u0915\u0940', '\u092e\u0947\u0930\u093e': '\u092e\u0947\u0930\u0940', '\u0909\u0938\u0915\u093e': '\u0909\u0938\u0915\u0940', '\u0907\u0938\u0915\u093e': '\u0907\u0938\u0915\u0940', '\u0915\u093e': '\u0915\u0940' };
+        return out.replace(/(^|[\s,(])(\u0906\u092a\u0915\u093e|\u092e\u0947\u0930\u093e|\u0909\u0938\u0915\u093e|\u0907\u0938\u0915\u093e|\u0915\u093e)(\s+)(?=(?:\u091a\u0902\u0926\u094d\u0930 |\u0938\u0942\u0930\u094d\u092f )?\u0930\u093e\u0936\u093f|\u092e\u0939\u093e\u0926\u0936\u093e|\u0905\u0902\u0924\u0930\u094d\u0926\u0936\u093e|\u0926\u0936\u093e)/g,
+            (_m, pre, word, space) => pre + (feminine[word] || word) + space);
+    };
+
     V.prepareForSpeech = function (text) {
         const isHindiPrep = this._isHindiMode();
         let prepared = this.stripTtsControlTags(this.normalizeMixedScriptTerms(this.normalizeNameReferences(text)));
@@ -2595,8 +2638,7 @@ window.MayaListener = MayaListener;
             }
 
             prepared = this.normalizeRomanHindiWordsHinglish(prepared);
-            prepared = this.replaceUrduWithHindi(prepared);
-            prepared = this.enforceConsistentAstroTerms(prepared);
+            // Keep natural Hinglish: no Urdu-to-Sanskrit swaps, no nukta removal, no forced astro-term swaps (they broke grammar).
             prepared = this.forceHindiSpeechDevanagari(prepared);
             prepared = this._restoreHinglishEnglishTerms(prepared, protectedPack.protectedValues);
             prepared = this._normalizeHinglishAcronyms(prepared);
@@ -2614,18 +2656,26 @@ window.MayaListener = MayaListener;
             prepared = this.forceHindiSpeechDevanagari(prepared);
         }
 
+        // Protect Hindi word pairs (e.g. dheere-dheere, baar-baar) from being merged or cut.
+        const keepPairs = [];
+        prepared = prepared.replace(/([\u0900-\u097F]+)-([\u0900-\u097F]+)/g, (m) => {
+            if (keepPairs.length >= 26) return m;
+            keepPairs.push(m);
+            return ` zzpair${String.fromCharCode(96 + keepPairs.length)}zz `;
+        });
         prepared = this.normalizeHyphenatedExpressions(prepared);
         prepared = this.removeAdjacentPhraseRepetition(prepared);
         prepared = this.limitDashaOverfocus(prepared);
+        prepared = prepared.replace(/\s*zzpair([a-z])zz\s*/g, (_, k) => ` ${keepPairs[k.charCodeAt(0) - 97] || ''} `);
 
         if (!isHindiPrep) {
             prepared = this.normalizeEnglishPronunciationTerms(prepared);
         }
 
         // Convert authored pause markers into spoken punctuation before number expansion.
-        prepared = prepared.replace(/\[\[pause-?(\d+)\]\]/gi, (_, ms) => Number(ms) >= 500 ? '. ' : ', ');
-        prepared = prepared.replace(/\[\[\s*pause[^\]]*\]\]/gi, ', ');
-        prepared = prepared.replace(/\[pause\]/gi, ', ');
+        prepared = prepared.replace(/\[\[pause-?(\d+)\]\]/gi, (_, ms) => Number(ms) >= 500 ? '. ' : '... ');
+        prepared = prepared.replace(/\[\[\s*pause[^\]]*\]\]/gi, '... ');
+        prepared = prepared.replace(/\[pause\]/gi, '... ');
         prepared = prepared.replace(/\bpause\s*-?\s*\d+\b/gi, ' ');
         prepared = prepared.replace(/\bपॉज़\s*-?\s*\d+\b/gi, ' ');
         prepared = prepared.replace(/\bpause\b/gi, ' ');
@@ -2637,7 +2687,7 @@ window.MayaListener = MayaListener;
         prepared = prepared.replace(/;/g, '. ');
         prepared = prepared.replace(/:/g, ', ');
         prepared = prepared.replace(/[()]/g, ', ');
-        prepared = prepared.replace(/\s[\-–—]\s/g, ', ');
+        prepared = prepared.replace(/\s[\-–—]\s/g, '... ');
         prepared = prepared.replace(/\.\.\./g, '... ');
 
         prepared = prepared.replace(/[\u{1F600}-\u{1F6FF}]/gu, '');
@@ -2648,7 +2698,7 @@ window.MayaListener = MayaListener;
 
         prepared = this.stripTtsControlTags(prepared);
         prepared = prepared.replace(/[,]{2,}/g, ',');
-        prepared = prepared.replace(/[.]{2,}/g, '.');
+        prepared = prepared.replace(/\.{4,}/g, '...').replace(/([^.])\.\.(?!\.)/g, '$1.');
         prepared = prepared.replace(/\s+([,.!?])/g, '$1');
         prepared = prepared.replace(/\s+/g, ' ').trim();
 

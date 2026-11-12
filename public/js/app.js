@@ -1073,6 +1073,7 @@ const MayaApp = {
 
             // Setup chat handlers
             this.setupMayaChatInterface();
+            this.greetOnChatOpen();
         } else {
             console.error('MAYA overlay element not found!');
         }
@@ -1273,6 +1274,51 @@ const MayaApp = {
                     MayaListener.start();
                 }
             });
+        }
+    },
+
+    /**
+     * Warm, rotating greeting when the MAYA chat opens (once per visit). Spoken and shown.
+     */
+    greetOnChatOpen() {
+        try {
+            if (sessionStorage.getItem('maya_chat_greeted') === '1') return;
+            sessionStorage.setItem('maya_chat_greeted', '1');
+
+            const profile = MayaUtils.storage.get('maya_profile') || {};
+            const name = String(profile.firstName || profile.name || profile.fullName || '').trim().split(/\s+/)[0] || '';
+            const lang = window.MayaVoice?.getNarrationLanguage?.() || profile.language || 'en';
+            const isHindi = String(lang).toLowerCase().startsWith('hi');
+            const userFemale = String(profile.gender || '').toLowerCase() === 'female';
+            const hour = new Date().getHours();
+            const morning = hour < 12;
+            const n = name ? ` ${name}` : '';
+
+            const hi = [
+                `\u0928\u092e\u0938\u094d\u0924\u0947${n}! ${morning ? '\u0906\u091c \u0915\u093e \u0926\u093f\u0928 \u0915\u0948\u0938\u093e \u0936\u0941\u0930\u0942 \u0939\u0941\u0906?' : '\u0906\u091c \u0906\u092a\u0915\u093e \u0926\u093f\u0928 \u0915\u0948\u0938\u093e \u0930\u0939\u093e?'} \u092c\u0924\u093e\u0907\u090f, \u0906\u091c \u0915\u093f\u0938 \u092c\u093e\u0924 \u092a\u0930 \u092c\u093e\u0924 \u0915\u0930\u0947\u0902?`,
+                `\u0905\u0930\u0947${n}, \u0928\u092e\u0938\u094d\u0924\u0947! \u0906\u092a\u0938\u0947 \u092b\u093f\u0930 \u092e\u093f\u0932\u0915\u0930 \u0905\u091a\u094d\u091b\u093e \u0932\u0917\u093e... \u0906\u091c \u092e\u0928 \u092e\u0947\u0902 \u0915\u094d\u092f\u093e \u091a\u0932 \u0930\u0939\u093e \u0939\u0948? career, \u0930\u093f\u0936\u094d\u0924\u0947, \u092f\u093e \u0915\u0941\u091b \u0914\u0930?`,
+                `\u0928\u092e\u0938\u094d\u0924\u0947${n}! ${userFemale ? '\u0915\u0948\u0938\u0940' : '\u0915\u0948\u0938\u0947'} \u0939\u0948\u0902 \u0906\u092a? \u0906\u092a\u0915\u0940 \u0915\u0941\u0902\u0921\u0932\u0940 \u092e\u0947\u0930\u0947 \u0938\u093e\u092e\u0928\u0947 \u0916\u0941\u0932\u0940 \u0939\u0948... \u091c\u094b \u092d\u0940 \u091c\u093e\u0928\u0928\u093e ${userFemale ? '\u091a\u093e\u0939\u0924\u0940' : '\u091a\u093e\u0939\u0924\u0947'} \u0939\u0948\u0902, \u092c\u0947\u091d\u093f\u091d\u0915 \u092a\u0942\u091b\u093f\u090f\u0964`
+            ];
+            const en = [
+                `Namaste${n}! ${morning ? 'How has your morning been?' : 'How has your day been?'} Tell me, what shall we talk about today?`,
+                `Hey${n}, namaste! So good to see you again... what's on your mind today? Career, relationships, or something else?`,
+                `Namaste${n}! How are you feeling? Your chart is open in front of me... ask me anything you'd like to know.`
+            ];
+            const lines = isHindi ? hi : en;
+            const index = (Number(localStorage.getItem('maya_greet_index')) || 0) % lines.length;
+            localStorage.setItem('maya_greet_index', String(index + 1));
+            const text = lines[index];
+
+            const container = document.getElementById('maya-chat-messages');
+            if (container) {
+                [...container.children].forEach((bubble) => {
+                    if (/^I am here\. Ask me/.test((bubble.textContent || '').trim())) bubble.remove();
+                });
+            }
+            this._addChatBubble('maya', text);
+            window.MayaVoice?.speak?.(text)?.catch?.(() => { });
+        } catch (error) {
+            console.warn('Chat greeting skipped:', error?.message || error);
         }
     },
 

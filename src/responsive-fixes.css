@@ -1,0 +1,165 @@
+
+html,
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+img,
+svg,
+video,
+canvas {
+    max-width: 100%;
+}
+
+:where(#main-content, #maya-overlay, .onboarding-content, .maya-validation-overlay) :where(div, section, article, span, p, a, button, label, li) {
+    min-width: 0;
+}
+
+:where(#main-content, #maya-overlay, .onboarding-content, .maya-validation-overlay) :where(h1, h2, h3, h4, h5, p, span, a, label, button, li) {
+    overflow-wrap: break-word;
+}
+
+/* 2. Card grids that can shrink */
+.maya-numerology__cycles-row,
+.maya-numerology__lucky-grid,
+.maya-panchang__grid,
+.maya-remedies__action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.maya-muhurat__activity-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.maya-muhurat__activity-name {
+    text-align: center;
+    line-height: 1.2;
+}
+
+/* 3. Numerology hero title */
+.maya-numerology__hero-right {
+    min-width: 0;
+}
+
+.maya-numerology__hero-title {
+    font-size: clamp(1.05rem, 4.6vw, 1.4rem);
+    overflow-wrap: break-word;
+}
+
+/* 4. Compatibility heart animation */
+.maya-compat-divider {
+    animation: none;
+}
+
+.maya-compat-divider i {
+    display: inline-block;
+    animation: heartPulse 1s ease-in-out infinite;
+}
+
+/* 5. Palm reading page must sit below the header, not on top of it */
+.maya-palm-reading--fullscreen {
+    position: relative;
+    inset: auto;
+    z-index: auto;
+    padding-top: 0 !important;
+    min-height: 100%;
+}
+
+.maya-palm__back-btn {
+    position: relative;
+    top: auto;
+    left: auto;
+    z-index: 2;
+    margin: 0.75rem 0 0 1rem;
+}
+
+/* 6. Onboarding: centre when it fits, scroll from top when it does not */
+.onboarding-main,
+.onboarding-content,
+.maya-landing-screen {
+    justify-content: flex-start !important;
+}
+
+.onboarding-main > :first-child,
+.onboarding-content > :first-child,
+.maya-landing-screen > :first-child {
+    margin-top: auto;
+}
+
+.onboarding-main > :last-child,
+.onboarding-content > :last-child,
+.maya-landing-screen > :last-child {
+    margin-bottom: auto;
+}
+
+/* 7. iOS/Android real visible height */
+@supports (height: 100dvh) {
+    .modal.show .modal-dialog.modal-fullscreen-onboarding {
+        height: 100dvh;
+        max-height: 100dvh;
+    }
+
+    .onboarding-main {
+        min-height: 100dvh;
+    }
+}
+
+/* 8. Guide cards side by side on tablet and laptop */
+@media (min-width: 600px) {
+    .gc-slider-viewport {
+        overflow: visible;
+    }
+
+    .gc-slider-track {
+        transform: none !important;
+    }
+
+    .gc-slide {
+        flex: 1 1 0;
+        width: auto;
+        min-width: 0;
+        max-width: 300px;
+    }
+
+    .gc-card {
+        width: 100%;
+    }
+}
+
+/* 9. Small phones */
+@media (max-width: 360px) {
+    .maya-muhurat__activity-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .maya-kundli-planet-row {
+        gap: 0.5rem;
+    }
+
+    .maya-kundli-planet-row__planet {
+        min-width: 92px;
+    }
+
+    .maya-push-prompt__actions button {
+        white-space: nowrap;
+    }
+}
+
+/* 10. Short screens: landing shows Start and Sign in */
+@media (max-height: 700px) {
+    .maya-landing-screen {
+        min-height: 0;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+
+    .landing-visual {
+        margin-bottom: 1rem;
+    }
+
+    .landing-logo-img {
+        max-height: 72px;
+        width: auto;
+    }
+}

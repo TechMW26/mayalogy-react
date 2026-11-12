@@ -759,7 +759,7 @@ ${askMaya ? `- USER QUESTION LOCK (HIGHEST PRIORITY): This entire reading is ONL
     },
 
     optionAckTuning: {
-        blockingGemini: false,
+        blockingGemini: true,
         backgroundGemini: true
     },
 
@@ -1462,9 +1462,20 @@ Current section: ${sectionKey}
                 pauseBtn.dataset.i18nTitleOriginal = 'Resume';
                 pauseBtn.title = window.MayaI18n?.t('Resume') || 'Resume';
             }
-            // Stop current voice
+            // While paused, tapping any other button (an option, Continue, Submit...) resumes MAYA,
+            // otherwise the flow waits for Play behind a screen that hides the Play button.
+            if (!this._autoResumeOnTap) {
+                this._autoResumeOnTap = (event) => {
+                    if (!this.isPaused) return;
+                    const btn = event.target && event.target.closest ? event.target.closest('button, [role="button"], input[type="submit"]') : null;
+                    if (!btn || btn.closest('#maya-pause-btn')) return;
+                    this.togglePause();
+                };
+                document.addEventListener('click', this._autoResumeOnTap, true);
+            }
+            // Freeze the voice exactly where it is; Play continues from the same word.
             if (window.MayaVoice) {
-                MayaVoice.stop();
+                if (MayaVoice.pausePlayback) MayaVoice.pausePlayback(); else MayaVoice.stop();
             }
             // Pause background music
             if (this.backgroundMusic) {
@@ -1480,6 +1491,7 @@ Current section: ${sectionKey}
                 pauseBtn.dataset.i18nTitleOriginal = 'Pause';
                 pauseBtn.title = window.MayaI18n?.t('Pause') || 'Pause';
             }
+            if (window.MayaVoice?.resumePlayback) MayaVoice.resumePlayback();
             // Resume background music
             if (this.backgroundMusic) {
                 this.backgroundMusic.play().catch(() => { });
@@ -2961,7 +2973,7 @@ ${this.getBaseRules(false)}`);
 
     async _callNarrationFunnelAI(prompt, options = {}) {
         if (!window.MayaAI || typeof MayaAI.callGemini !== 'function') return '';
-        const timeoutMs = Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : 2200;
+        const timeoutMs = Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : 5000;
         const maxKeyAttempts = Number(options.maxKeyAttempts) > 0 ? Number(options.maxKeyAttempts) : 2;
         const safeOptions = {
             ...options,
@@ -2977,7 +2989,7 @@ ${this.getBaseRules(false)}`);
 
     async _callQuestionFunnelAI(prompt, options = {}) {
         if (!window.MayaAI || typeof MayaAI.callGemini !== 'function') return '';
-        const timeoutMs = Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : 2600;
+        const timeoutMs = Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : 5000;
         const safeOptions = {
             ...options,
             provider: 'gemini',
@@ -3016,6 +3028,31 @@ ${this.getBaseRules(false)}`);
         }
 
         return fallback;
+    },
+
+    /**
+     * Short, warm, rotating greeting spoken before the first reading line.
+     */
+    _getOpeningGreeting(isHindi) {
+        try {
+            const morning = new Date().getHours() < 12;
+            const hi = [
+                `\u0928\u092e\u0938\u094d\u0924\u0947! ${morning ? '\u0906\u091c \u0915\u093e \u0926\u093f\u0928 \u0915\u0948\u0938\u093e \u0936\u0941\u0930\u0942 \u0939\u0941\u0906? \u0909\u092e\u094d\u092e\u0940\u0926 \u0939\u0948 \u0905\u091a\u094d\u091b\u093e \u0939\u0940 \u0939\u094b\u0917\u093e\u0964' : '\u0906\u091c \u0906\u092a\u0915\u093e \u0926\u093f\u0928 \u0915\u0948\u0938\u093e \u0930\u0939\u093e? \u0909\u092e\u094d\u092e\u0940\u0926 \u0939\u0948 \u0925\u094b\u0921\u093c\u093e \u0938\u0941\u0915\u0942\u0928 \u092d\u0930\u093e \u0930\u0939\u093e \u0939\u094b\u0917\u093e\u0964'}`,
+                '\u0928\u092e\u0938\u094d\u0924\u0947, \u0938\u094d\u0935\u093e\u0917\u0924 \u0939\u0948! \u0906\u092a\u0938\u0947 \u092e\u093f\u0932\u0915\u0930 \u0938\u091a \u092e\u0947\u0902 \u0905\u091a\u094d\u091b\u093e \u0932\u0917\u093e\u0964',
+                '\u0928\u092e\u0938\u094d\u0924\u0947! \u0906\u091c \u0906\u092a\u0938\u0947 \u092c\u093e\u0924 \u0915\u0930\u0915\u0947 \u092e\u0941\u091d\u0947 \u092c\u0939\u0941\u0924 \u0905\u091a\u094d\u091b\u093e \u0932\u0917 \u0930\u0939\u093e \u0939\u0948\u0964'
+            ];
+            const en = [
+                `Namaste! ${morning ? 'How has your morning started? I hope it has been gentle.' : 'How has your day been? I hope it has been a kind one.'}`,
+                'Namaste, and welcome! It is really lovely to meet you.',
+                'Namaste! I am so glad you are here today.'
+            ];
+            const lines = isHindi ? hi : en;
+            const index = (Number(localStorage.getItem('maya_funnel_greet_index')) || 0) % lines.length;
+            localStorage.setItem('maya_funnel_greet_index', String(index + 1));
+            return lines[index];
+        } catch (_error) {
+            return isHindi ? '\u0928\u092e\u0938\u094d\u0924\u0947!' : 'Namaste!';
+        }
     },
 
     _getLocalJourneyIntro({ isHindi, askMayaActive, guideName, isMale, topicLabel, subjectPhrase }) {
@@ -4469,6 +4506,7 @@ All three segments must connect as one flowing story. Include at least TWO decla
                     btn.classList.add('selected');
                     this.validationResponses.push({ question, answer: value, timestamp: Date.now() });
                     this.recordValidation(question, value);
+                    try { window.MayaVoice?.stop?.(); } catch (_e) { }
                     setTimeout(() => {
                         overlay.classList.add('closing');
                         setTimeout(() => overlay.remove(), 300);
@@ -4484,6 +4522,7 @@ All three segments must connect as one flowing story. Include at least TWO decla
                 const customValue = `custom: ${text}`;
                 this.validationResponses.push({ question, answer: customValue, timestamp: Date.now() });
                 this.recordValidation(question, customValue);
+                try { window.MayaVoice?.stop?.(); } catch (_e) { }
                 overlay.classList.add('closing');
                 setTimeout(() => overlay.remove(), 300);
                 resolve(customValue);
@@ -4712,6 +4751,7 @@ FORBIDDEN: English words (except planet names), bullet points, generic "picture 
 हर जवाब का conversational काम अलग हो: कभी contrast, कभी consequence, कभी hidden motive, कभी timing bridge।
 पिछले acknowledgements दोहराना मना है:
 - ${recentAcknowledgements || 'कोई नहीं'}
+Never repeat, quote or rephrase the question. Start directly with what their choice means for them.
 ONLY return the spoken Hindi response. Nothing else.`
 
                     : `You are ${guideName} -a warm, caring ${isMale ? 'male' : 'female'} personal guidance coach having a personal conversation with the user.
@@ -4734,11 +4774,12 @@ Never say "got it", "noted", "this makes the reading personal", or "the picture 
 Each response must do a different conversational job: contrast, consequence, hidden motive, or timing bridge.
 Do not repeat these recent acknowledgements:
 - ${recentAcknowledgements || 'None'}
+Never repeat, quote or rephrase the question. Start directly with what their choice means for them.
 ONLY return the spoken response. Nothing else.`;
 
                 if (window.MayaAI?.callFast || window.MayaAI?.callGemini) {
-                    const result = await this._callNarrationFunnelAI(ackPrompt, { temperature: 0.76, topP: 0.92 });
-                    if (result && result.length > 10 && result.length < 350) {
+                    const result = await this._callNarrationFunnelAI(ackPrompt, { temperature: 0.76, topP: 0.92, timeoutMs: 6000 });
+                    if (result && result.length > 10 && result.length < 600) {
                         ack = this.sanitizeNarrationText(result);
                     }
                 }
@@ -6568,7 +6609,8 @@ Return ONLY JSON:
                 };
             }
 
-            const introSpeechPromise = this.speak(fullIntro, { urgentStart: true });
+            const openingGreeting = this._getOpeningGreeting(isHindi);
+            const introSpeechPromise = this.speak(`${openingGreeting} ${fullIntro}`, { urgentStart: true });
             this._startPostIntroParallelPrefetch().catch((error) => {
                 console.warn('Post-intro parallel prefetch failed:', error?.message || error);
             });
@@ -7340,11 +7382,15 @@ Return ONLY JSON:
         const planetGroups = Array.isArray(profile.planetGroups) && profile.planetGroups.length
             ? profile.planetGroups
             : (window.MayaKundli?.groupPlanetsBySign?.(birthChart.planets) || []);
+        // No exact birth time = no reliable lagna. Draw a Chandra Kundli (Moon sign as house 1) instead of leaving the chart empty.
+        const moonPlanetSign = birthChart.planets.find((planet) => planet.name === 'Moon')?.sign?.name || '';
+        const chartLagnaSign = ascendant.name || moonPlanetSign || birthChart.ascendant?.name || '';
         const squareChartMarkup = window.MayaKundli?.generateChart
-            && ascendant.name
-            ? MayaKundli.generateChart(birthChart.planets, ascendant.name, 'north', {
+            && chartLagnaSign
+            ? MayaKundli.generateChart(birthChart.planets, chartLagnaSign, 'north', {
                 animateFormation: true,
-                durationMs: 5500
+                durationMs: 5500,
+                ascLabel: ascendant.name ? 'Asc' : 'Moon'
             })
             : '';
         const ascendantLabel = isHindi ? this.localizeHindiText(ascendant.name || '--') : (ascendant.name || '--');
@@ -8641,6 +8687,15 @@ Return ONLY JSON:
                 await MayaVoice.speak(normalizedText, () => { }, options);
             } catch (error) {
                 console.error('Voice error:', error);
+                // Paused or stopped on purpose: never switch to the browser robot voice.
+                if (this.isPaused || MayaVoice.aborted || /abort/i.test(String(error?.message || ''))) {
+                    if (this.backgroundMusic && savedVolume != null) this.backgroundMusic.volume = savedVolume;
+                    if (this.isPaused) {
+                        await this.waitIfPaused();
+                        return this.speak(text, options);
+                    }
+                    return;
+                }
                 // Do not jump to the next funnel step if ElevenLabs/chunk playback fails.
                 // Try browser TTS; if that is unavailable, wait for a natural full-read duration
                 // without a short hard cap.

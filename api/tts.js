@@ -1,4 +1,4 @@
-import { handleTextToSpeechRequest } from '../server/pollinationsApi.js';
+import { handleSpeechRequest as handleTextToSpeechRequest } from '../server/elevenLabsTts.js';
 
 export const config = {
   api: {
