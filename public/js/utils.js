@@ -981,3 +981,176 @@ window.MayaUtils = MayaUtils;
     };
     if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
 })();
+
+/**
+ * MAYA / Moksh guide cards: a slow-turning ring of graha dots around the avatar,
+ * a short line about each guide's style and three topic chips. Names show in Hindi
+ * in Hindi mode. Works on the cards onboarding.js renders; nothing else changes.
+ */
+(function installGuideCardExtras() {
+    if (typeof document === 'undefined' || window.__mayaGuideCardExtras) return;
+    window.__mayaGuideCardExtras = true;
+    const isHindi = () => {
+        try {
+            if (window.MayaOnboarding?.isHindiUI) return !!window.MayaOnboarding.isHindiUI();
+            if (window.MayaFunnel?._isHindiMode) return window.MayaFunnel._isHindiMode();
+            return String(window.MayaUtils?.storage?.get?.('maya_language') || '').toLowerCase().startsWith('hi');
+        } catch (_e) { return false; }
+    };
+    const COPY = {
+        female: {
+            hi: { name: '\u092e\u093e\u092f\u093e', line: '\u0926\u093f\u0932 \u0915\u0940 \u092c\u093e\u0924, \u0928\u0930\u092e\u0940 \u0938\u0947', chips: ['\u092d\u093e\u0935\u0928\u093e\u090f\u0901', '\u0930\u093f\u0936\u094d\u0924\u0947', '\u0905\u0902\u0924\u0930\u094d\u091c\u094d\u091e\u093e\u0928'] },
+            en: { name: 'Maya', line: 'Gentle, heart-first guidance', chips: ['Emotions', 'Relationships', 'Intuition'] }
+        },
+        male: {
+            hi: { name: '\u092e\u094b\u0915\u094d\u0937', line: '\u0938\u0940\u0927\u0940 \u092c\u093e\u0924, \u0938\u093e\u092b\u093c \u0930\u093e\u0938\u094d\u0924\u093e', chips: ['\u0915\u0930\u093f\u092f\u0930', '\u0915\u0930\u094d\u092e', '\u0909\u092a\u093e\u092f'] },
+            en: { name: 'Moksh', line: 'Straight talk, clear path', chips: ['Career', 'Karma', 'Remedies'] }
+        }
+    };
+    const enhance = (slide) => {
+        const kind = slide.getAttribute('data-value');
+        if (!COPY[kind] || slide.dataset.extras === '1') return;
+        slide.dataset.extras = '1';
+        const c = COPY[kind][isHindi() ? 'hi' : 'en'];
+        const name = slide.querySelector('.gc-name');
+        if (name) name.textContent = c.name;
+        const avatar = slide.querySelector('.gc-avatar');
+        if (avatar && !avatar.querySelector('.gc-orbit-ring')) {
+            const ring = document.createElement('span');
+            ring.className = 'gc-orbit-ring';
+            ring.setAttribute('aria-hidden', 'true');
+            ring.innerHTML = '<i></i><i></i><i></i><i></i><i></i>';
+            avatar.appendChild(ring);
+        }
+        const bottom = slide.querySelector('.gc-content-bottom');
+        if (bottom && !bottom.querySelector('.gc-chips')) {
+            const line = document.createElement('p');
+            line.className = 'gc-line';
+            line.textContent = c.line;
+            const chips = document.createElement('div');
+            chips.className = 'gc-chips';
+            chips.innerHTML = c.chips.map((t) => `<span class="gc-chip">${t}</span>`).join('');
+            bottom.appendChild(line);
+            bottom.appendChild(chips);
+        }
+    };
+    const scan = (root) => { (root.querySelectorAll ? root.querySelectorAll('.gc-slide[data-value]') : []).forEach(enhance); };
+    const start = () => {
+        scan(document);
+        new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => { if (n.nodeType === 1) scan(n.matches?.('.gc-slide') ? n.parentElement || n : n); })))
+            .observe(document.body, { childList: true, subtree: true });
+    };
+    if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();
+
+/**
+ * "Hear the voice" button on the MAYA / Moksh cards: plays a short sample in that
+ * guide's own voice, so people choose by hearing, not guessing. The saved guide
+ * choice is not changed by listening.
+ */
+(function installGuideVoiceSample() {
+    if (typeof document === 'undefined' || window.__mayaGuideVoiceSample) return;
+    window.__mayaGuideVoiceSample = true;
+    const isHindi = () => {
+        try {
+            if (window.MayaOnboarding?.isHindiUI) return !!window.MayaOnboarding.isHindiUI();
+            return String(window.MayaUtils?.storage?.get?.('maya_language') || '').toLowerCase().startsWith('hi');
+        } catch (_e) { return false; }
+    };
+    const SAMPLE = {
+        female: {
+            hi: '\u0928\u092e\u0938\u094d\u0924\u0947, \u092e\u0948\u0902 \u092e\u093e\u092f\u093e \u0939\u0942\u0901\u0964 \u0906\u092a\u0915\u0940 \u0915\u0941\u0902\u0921\u0932\u0940 \u0915\u094b \u0926\u093f\u0932 \u0938\u0947 \u0938\u092e\u091d\u0915\u0930, \u092a\u094d\u092f\u093e\u0930 \u0938\u0947 \u092c\u0924\u093e\u090a\u0901\u0917\u0940\u0964',
+            en: 'Hi, I am Maya. I will read your chart with care, and explain it gently.'
+        },
+        male: {
+            hi: '\u0928\u092e\u0938\u094d\u0924\u0947, \u092e\u0948\u0902 \u092e\u094b\u0915\u094d\u0937 \u0939\u0942\u0901\u0964 \u0906\u092a\u0915\u0940 \u0915\u0941\u0902\u0921\u0932\u0940 \u0915\u0940 \u0939\u0930 \u092c\u093e\u0924 \u0938\u0940\u0927\u0940 \u0914\u0930 \u0938\u093e\u092b\u093c \u092c\u0924\u093e\u090a\u0901\u0917\u093e\u0964',
+            en: 'Hi, I am Moksh. I will read your chart and tell you clearly, step by step.'
+        }
+    };
+    // One sample at a time. Saved state is restored only when the last sample ends.
+    let runId = 0;
+    let saved = null;
+    const stopAll = (voice) => {
+        try { voice?.stop?.(); } catch (_e) { /* ignore */ }
+        try { window.speechSynthesis?.cancel?.(); } catch (_e) { /* ignore */ }
+    };
+    const restore = (voice) => {
+        document.querySelectorAll('.gc-voice-btn.is-playing').forEach((b) => b.classList.remove('is-playing'));
+        if (!saved || !voice) return;
+        // If the user already picked a guide, keep that pick.
+        voice.agentGender = window.MayaOnboarding?.userData?.agentGender || saved.gender;
+        voice.isMuted = saved.muted;
+        voice.speakFallback = saved.fallback;
+        saved = null;
+    };
+    const play = async (kind, btn) => {
+        const voice = window.MayaVoice;
+        if (!voice?.speak) return;
+        // Tap again on the playing button = stop. Never two voices at once.
+        if (btn.classList.contains('is-playing')) {
+            runId += 1;
+            stopAll(voice);
+            restore(voice);
+            return;
+        }
+        const myRun = (runId += 1);
+        // Speak in the language the user picked for MAYA (narration), not the screen language.
+        let hi = false;
+        try {
+            hi = window.MayaOnboarding?.isHindiNarration
+                ? !!window.MayaOnboarding.isHindiNarration()
+                : String(window.MayaUtils?.storage?.get?.('maya_language') || '').toLowerCase().startsWith('hi');
+        } catch (_e) { hi = false; }
+        if (!saved) {
+            // New users start muted; a tap here is a clear ask to hear it.
+            saved = { gender: voice.agentGender, muted: !!voice.isMuted, fallback: voice.speakFallback };
+            // Only the guide's real voice: no robotic browser voice during the sample.
+            voice.speakFallback = () => Promise.resolve();
+        }
+        document.querySelectorAll('.gc-voice-btn.is-playing').forEach((b) => b.classList.remove('is-playing'));
+        btn.classList.add('is-playing');
+        try {
+            stopAll(voice);
+            voice.isMuted = false;
+            voice.agentGender = kind === 'male' ? 'male' : 'female';
+            voice.preferredVoiceId = null;
+            await voice.speak(SAMPLE[kind][hi ? 'hi' : 'en']);
+        } catch (_e) { /* sample is optional */ }
+        finally {
+            if (myRun === runId) restore(voice);
+        }
+    };
+    const enhance = (slide) => {
+        const kind = slide.getAttribute('data-value');
+        if (!SAMPLE[kind] || slide.querySelector('.gc-voice-btn')) return;
+        const bottom = slide.querySelector('.gc-content-bottom');
+        if (!bottom) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'gc-voice-btn';
+        btn.setAttribute('data-keep-voice', '');
+        btn.innerHTML = `<span class="gc-voice-icon" aria-hidden="true">&#9654;</span> ${isHindi() ? '\u0906\u0935\u093e\u091c\u093c \u0938\u0941\u0928\u0947\u0902' : 'Hear the voice'}`;
+        // Phones: the card listens to touchend (select guide) and the slider to touchstart
+        // (swipe), so the button must keep its touches to itself.
+        let touched = 0;
+        btn.addEventListener('touchstart', (e) => { e.stopPropagation(); }, { passive: true });
+        btn.addEventListener('touchend', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            touched = Date.now();
+            play(kind, btn);
+        }, { passive: false });
+        btn.addEventListener('click', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            if (Date.now() - touched < 600) return;
+            play(kind, btn);
+        });
+        bottom.insertBefore(btn, bottom.firstChild);
+    };
+    const scan = (root) => { (root.querySelectorAll ? root.querySelectorAll('.gc-slide[data-value]') : []).forEach(enhance); };
+    const start = () => {
+        scan(document);
+        new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => { if (n.nodeType === 1) scan(n.parentElement || n); })))
+            .observe(document.body, { childList: true, subtree: true });
+    };
+    if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();

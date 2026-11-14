@@ -604,3 +604,239 @@ canvas {
 
 /* 27. Calculation badge text follows the app language (set in funnel.js as data-badge). */
 .calculation-title[data-badge]::before { content: attr(data-badge); }
+
+/* 28. Navagraha orbit around MAYA's globe (drawn by kundli.js): two full-screen layers
+       like the globe's own canvas; the back layer sits behind the globe, the front over it. */
+#maya-blob-container canvas.maya-navagraha-layer {
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-width: none !important;
+    max-height: none !important;
+    transform: translate(-50%, -50%);
+    pointer-events: none !important;
+}
+#maya-blob-container #maya-navagraha-back { z-index: -1; }
+#maya-blob-container #maya-navagraha-front { z-index: 2; }
+.maya-blob-container.blob-small canvas.maya-navagraha-layer,
+.maya-blob-container.blob-chat-mini canvas.maya-navagraha-layer { display: none !important; }
+
+/* 29. Guide cards (MAYA / Moksh): name no longer oversized. */
+.gc-name,
+#onboardingContent[data-step] .gc-name {
+    font-size: clamp(1.5rem, 5.5vw, 2.1rem) !important;
+    line-height: 1.15 !important;
+    letter-spacing: .02em;
+}
+
+/* 30. Number cards: dark glass card, gold number, readable label (white-on-gold was hard to read). */
+.calculation-container .unified-num-card,
+.calculation-container .unified-num-card[data-state] {
+    background: linear-gradient(160deg, rgba(30, 26, 44, .92), rgba(12, 12, 22, .95)) !important;
+    border: 1px solid rgba(226, 178, 92, .55) !important;
+    border-radius: 18px !important;
+    box-shadow: inset 0 1px 0 rgba(255, 230, 170, .12), 0 8px 22px rgba(0, 0, 0, .35) !important;
+}
+.calculation-container .unified-num-card[data-state="done"] {
+    border-color: rgba(240, 196, 110, .9) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 230, 170, .18), 0 0 0 1px rgba(240, 196, 110, .25), 0 0 22px rgba(240, 190, 90, .22) !important;
+}
+.calculation-container .unified-num-card__label {
+    color: #f3dfb6 !important;
+    font-weight: 600 !important;
+    letter-spacing: .02em;
+    opacity: 1 !important;
+}
+.calculation-container .unified-num-card__number,
+.calculation-container .unified-num-card__value {
+    color: #f6c96a !important;
+    background: none !important;
+    -webkit-text-fill-color: #f6c96a !important;
+    text-shadow: 0 0 18px rgba(246, 201, 106, .35);
+}
+.calculation-container .unified-num-card__icon { color: #e8b75a !important; }
+.calculation-container .number-reveal {
+    background: linear-gradient(160deg, rgba(30, 26, 44, .92), rgba(12, 12, 22, .95)) !important;
+    border: 1px solid rgba(240, 196, 110, .75) !important;
+    border-radius: 18px !important;
+    box-shadow: inset 0 1px 0 rgba(255, 230, 170, .15), 0 0 20px rgba(240, 190, 90, .18) !important;
+}
+.calculation-container .number-reveal .number-label {
+    color: #f3dfb6 !important;
+    -webkit-text-fill-color: #f3dfb6 !important;
+    font-weight: 600 !important;
+    opacity: 1 !important;
+}
+.calculation-container .number-reveal .number-value {
+    color: #f6c96a !important;
+    -webkit-text-fill-color: #f6c96a !important;
+    background: none !important;
+    text-shadow: 0 0 18px rgba(246, 201, 106, .4) !important;
+}
+
+/* 31. Kundli screen: planet table beside the chart (wide screens) and a calmer type scale. */
+.kundli-planet-table-wrap { display: none; }
+@media (min-width: 900px) {
+    .kundli-formation-calc--split .kundli-planet-table-wrap.is-visible { display: block; margin-top: .9rem; animation: kptFadeIn .8s ease-out both; }
+}
+@keyframes kptFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.kundli-planet-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: .86rem;
+    color: #eadbc0;
+    border: 1px solid rgba(226, 178, 92, .45);
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(14, 14, 26, .55);
+}
+.kundli-planet-table th {
+    padding: .42rem .55rem;
+    text-align: left;
+    font-size: .74rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    color: #f0c46f;
+    background: rgba(226, 178, 92, .12);
+    border-bottom: 1px solid rgba(226, 178, 92, .35);
+}
+.kundli-planet-table td { padding: .3rem .55rem; border-bottom: 1px solid rgba(226, 178, 92, .12); text-align: left !important; }
+.kundli-planet-table tbody tr:last-child td { border-bottom: 0; }
+.kundli-planet-table tbody tr:nth-child(odd) td { background: rgba(255, 255, 255, .025); }
+.kundli-planet-table tbody tr { animation: kptRow .45s ease-out both; }
+.kundli-planet-table tbody tr:nth-child(2) { animation-delay: .08s; }
+.kundli-planet-table tbody tr:nth-child(3) { animation-delay: .16s; }
+.kundli-planet-table tbody tr:nth-child(4) { animation-delay: .24s; }
+.kundli-planet-table tbody tr:nth-child(5) { animation-delay: .32s; }
+.kundli-planet-table tbody tr:nth-child(6) { animation-delay: .40s; }
+.kundli-planet-table tbody tr:nth-child(7) { animation-delay: .48s; }
+.kundli-planet-table tbody tr:nth-child(8) { animation-delay: .56s; }
+.kundli-planet-table tbody tr:nth-child(9) { animation-delay: .64s; }
+@keyframes kptRow { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+.kundli-planet-table .kpt-planet { color: #f6d08a; font-weight: 700; }
+.kundli-planet-table .kpt-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kundli-planet-table .kpt-pada { opacity: .65; font-size: .72rem; }
+.kpt-note { margin: .45rem 0 0; font-size: .72rem; color: #b9aa91; }
+@media (min-width: 900px) {
+    .kundli-formation-calc--split .kundli-formation-info h3 { font-size: 1.35rem !important; margin-bottom: .45rem !important; }
+    .kundli-formation-calc--split .calc-explanation { font-size: .95rem !important; line-height: 1.55 !important; margin-bottom: .7rem !important; }
+    .kundli-formation-calc--split .kundli-formation-meta__label { font-size: .72rem !important; }
+    .kundli-formation-calc--split .kundli-formation-meta__value { font-size: 1rem !important; }
+}
+@media (min-width: 900px) and (max-height: 760px) {
+    .kundli-planet-table { font-size: .78rem; }
+    .kundli-planet-table td { padding: .2rem .5rem; }
+    .kundli-planet-table th { padding: .3rem .5rem; }
+}
+
+/* Chart card: richer gold frame. */
+.calculation-container .kundli-formation-chart-card {
+    padding: 10px !important;
+    border-radius: 20px !important;
+    background: linear-gradient(145deg, #f7dc9a, #c8913f 45%, #f3d48a 70%, #a8712c) !important;
+    box-shadow: 0 0 0 1px rgba(255, 236, 190, .6) inset, 0 0 0 5px rgba(20, 14, 6, .55), 0 0 0 6px rgba(240, 196, 110, .55), 0 18px 40px rgba(0, 0, 0, .5) !important;
+}
+.calculation-container .kundli-formation-chart-card .kundli-formation-chart-shell {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: inset 0 0 18px rgba(120, 72, 20, .35);
+}
+
+/* 32. Guide cards (MAYA / Moksh): orbit ring round the avatar, tagline and topic chips. */
+.gc-avatar { position: relative; overflow: visible !important; }
+.gc-orbit-ring {
+    position: absolute;
+    inset: -14px;
+    border-radius: 50%;
+    border: 1px dashed rgba(240, 196, 110, .55);
+    animation: gcOrbit 18s linear infinite;
+    pointer-events: none;
+}
+.gc-orbit-ring i {
+    position: absolute;
+    inset: 0;
+    color: #ffb347;
+}
+.gc-orbit-ring i::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    margin-left: -5px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 10px currentColor;
+}
+.gc-orbit-ring i:nth-child(2) { transform: rotate(72deg); color: #e8e8f0; }
+.gc-orbit-ring i:nth-child(3) { transform: rotate(144deg); color: #ff6b5b; }
+.gc-orbit-ring i:nth-child(4) { transform: rotate(216deg); color: #f5d06b; }
+.gc-orbit-ring i:nth-child(5) { transform: rotate(288deg); color: #b07cff; }
+.gc-orbit-ring i:nth-child(2)::before,
+.gc-orbit-ring i:nth-child(5)::before { width: 7px; height: 7px; margin-left: -3.5px; top: -3.5px; }
+@keyframes gcOrbit { to { transform: rotate(360deg); } }
+.gc-avatar img { animation: gcBreath 4.5s ease-in-out infinite; border-radius: 50%; }
+@keyframes gcBreath { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.12) drop-shadow(0 0 12px rgba(240, 190, 90, .45)); } }
+.gc-line { margin: .35rem 0 .55rem; font-size: .95rem; color: #f0dcb6; font-style: italic; text-align: center; }
+.gc-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: .4rem; }
+.gc-chip {
+    padding: .25rem .7rem;
+    border-radius: 999px;
+    font-size: .8rem;
+    font-weight: 600;
+    color: #f6d08a;
+    border: 1px solid rgba(240, 196, 110, .55);
+    background: rgba(240, 196, 110, .08);
+}
+.gc-slide[data-value="male"] .gc-chip { color: #b9cdf5; border-color: rgba(140, 170, 230, .55); background: rgba(120, 150, 220, .08); }
+.gc-slide[data-value="male"] .gc-orbit-ring { border-color: rgba(140, 170, 230, .5); animation-direction: reverse; }
+@media (min-width: 601px) and (max-height: 860px) {
+    .gc-chips { display: none; }
+    .gc-line { margin: .2rem 0 0; font-size: .82rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .gc-orbit-ring, .gc-avatar img { animation: none !important; }
+}
+
+/* 33. Guided kundli reading: the row MAYA is talking about lights up; rows are tappable. */
+.kundli-planet-table tbody tr[data-planet] { cursor: pointer; transition: background .25s ease; }
+.kundli-planet-table tbody tr[data-planet]:hover td { background: rgba(240, 196, 110, .08); }
+.kundli-planet-table tbody tr.is-active td {
+    background: rgba(240, 196, 110, .22) !important;
+    color: #fff3d6;
+}
+.kundli-planet-table tbody tr.is-active td:first-child { box-shadow: inset 3px 0 0 #f0c46f; }
+
+/* 34. "Hear the voice" button on the guide cards. */
+.gc-voice-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    margin: 0 auto .5rem;
+    padding: .42rem 1rem;
+    border-radius: 999px;
+    border: 1px solid rgba(240, 196, 110, .8);
+    background: linear-gradient(135deg, rgba(243, 207, 122, .18), rgba(201, 139, 53, .12));
+    color: #f6d08a;
+    font-weight: 700;
+    font-size: .9rem;
+    cursor: pointer;
+    position: relative;
+    z-index: 5;
+}
+.gc-content-bottom { display: flex; flex-direction: column; align-items: center; }
+.gc-voice-icon { font-size: .75rem; }
+.gc-voice-btn.is-playing { background: linear-gradient(135deg, #f3cf7a, #c98b35); color: #2a1606; }
+.gc-voice-btn.is-playing .gc-voice-icon { animation: gcVoicePulse .8s ease-in-out infinite; }
+@keyframes gcVoicePulse { 50% { transform: scale(1.35); } }
+.gc-slide[data-value="male"] .gc-voice-btn { border-color: rgba(140, 170, 230, .8); color: #c7d7f7; background: rgba(120, 150, 220, .12); }
+.gc-slide[data-value="male"] .gc-voice-btn.is-playing { background: linear-gradient(135deg, #b9cdf5, #6b8cce); color: #0d1428; }
+@media (min-width: 601px) and (max-height: 860px) {
+    .gc-line { display: none; }
+    .gc-voice-btn { margin-bottom: .3rem; padding: .32rem .85rem; font-size: .82rem; }
+}

@@ -724,6 +724,7 @@ const MayaKundli = {
         const pulse = Number(frameState.pulse || 0);
         const isHindi = data.lang === 'hi';
         this._renderHindi = isHindi;
+        data._hits = [];
 
         ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
@@ -777,19 +778,22 @@ const MayaKundli = {
             this.drawAnimatedLineSegment(ctx, segment, segmentCursor - index, lineColor);
         });
 
+        // Standard North Indian order (same as AstroTalk, AstroSage and every printed
+        // kundli): houses run anticlockwise from the top diamond - 2nd top-left,
+        // 4th left, 7th bottom, 10th right. (It was mirrored before.)
         const housePositions = {
             1: { x: 50, y: 28 },
-            2: { x: 78, y: 13 },
-            3: { x: 90, y: 29 },
-            4: { x: 78, y: 50 },
-            5: { x: 90, y: 71 },
-            6: { x: 78, y: 85 },
+            2: { x: 22, y: 13 },
+            3: { x: 10, y: 29 },
+            4: { x: 22, y: 50 },
+            5: { x: 10, y: 71 },
+            6: { x: 22, y: 85 },
             7: { x: 50, y: 72 },
-            8: { x: 22, y: 85 },
-            9: { x: 10, y: 71 },
-            10: { x: 22, y: 50 },
-            11: { x: 10, y: 29 },
-            12: { x: 22, y: 13 }
+            8: { x: 78, y: 85 },
+            9: { x: 90, y: 71 },
+            10: { x: 78, y: 50 },
+            11: { x: 90, y: 29 },
+            12: { x: 78, y: 13 }
         };
 
         const totalPlanetMarkers = Object.values(data.planetsByHouse || {}).reduce((count, planets = []) => {
@@ -810,7 +814,7 @@ const MayaKundli = {
             ctx.save();
             ctx.globalAlpha = labelOpacity;
             ctx.fillStyle = isAsc ? ascColor : mutedColor;
-            ctx.font = this._chartFont(isAsc ? 'bold 11px' : '10px', isHindi);
+            ctx.font = this._chartFont(isAsc ? 'bold 13px' : '600 12px', isHindi);
             ctx.textAlign = 'center';
             ctx.fillText(`${sign.symbol} ${shortName}`, point.x, point.y - 8);
 
@@ -837,6 +841,22 @@ const MayaKundli = {
                 const reveal = this.clamp01(planetProgress * Math.max(totalPlanetMarkers, 1) - (planetCursor - 1));
                 if (reveal <= 0) return;
                 const offset = layoutOffsets[localIndex] || { x: 0, y: 0 };
+                const hx = point.x + offset.x;
+                const hy = planetBaseY + offset.y;
+                (data._hits = data._hits || []).push({ name: planet.name, x: hx, y: hy });
+                if (data.highlight && data.highlight.has(planet.name)) {
+                    // Glowing ring around the planet MAYA is talking about.
+                    const glow = 0.55 + 0.45 * Math.sin((performance.now() / 1000) * 5);
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(hx, hy - 1, 15 + glow * 3, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 196, 80, ${0.18 + glow * 0.17})`;
+                    ctx.fill();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = `rgba(214, 120, 20, ${0.55 + glow * 0.4})`;
+                    ctx.stroke();
+                    ctx.restore();
+                }
                 this.drawPlanetGlyphBadge(
                     ctx,
                     planet,
@@ -844,7 +864,7 @@ const MayaKundli = {
                     planetBaseY + offset.y,
                     reveal,
                     pulse + localIndex * 0.75 + house * 0.13,
-                    { size: 18, labelSize: 6, labelColor: '#3a2408' }
+                    { size: 19, labelSize: 8, labelColor: '#3a2408' }
                 );
             });
 
@@ -869,7 +889,7 @@ const MayaKundli = {
         ctx.fillStyle = textColor;
         ctx.font = this._chartFont('bold 16px', isHindi);
         ctx.textAlign = 'center';
-        ctx.fillText(isHindi ? 'माया' : 'MAYA', innerX + innerW / 2, innerY + innerH / 2 + 5);
+        ctx.fillText(isHindi ? '\u092e\u093e\u092f\u093e' : 'MAYA', innerX + innerW / 2, innerY + innerH / 2 + 5);
         ctx.restore();
     },
 
@@ -910,6 +930,42 @@ const MayaKundli = {
         this._chartAnimationFrames[canvas.id] = requestAnimationFrame(renderFrame);
     },
 
+    // Tap a planet on the north chart: fires 'maya:chart-planet' with the planet name.
+    _enableChartTaps(canvas) {
+        if (canvas._mayaTaps) return;
+        canvas._mayaTaps = true;
+        canvas.style.cursor = 'pointer';
+        canvas.addEventListener('click', (event) => {
+            const data = canvas._mayaChartData;
+            if (!data?._hits?.length) return;
+            const rect = canvas.getBoundingClientRect();
+            const dpr = canvas._mayaDpr || window.devicePixelRatio || 1;
+            const x = ((event.clientX - rect.left) / rect.width) * (canvas.width / dpr);
+            const y = ((event.clientY - rect.top) / rect.height) * (canvas.height / dpr);
+            let best = null;
+            data._hits.forEach((h) => {
+                const d = Math.hypot(h.x - x, h.y - y);
+                if (d < 20 && (!best || d < best.d)) best = { name: h.name, d };
+            });
+            if (best) window.dispatchEvent(new CustomEvent('maya:chart-planet', { detail: { name: best.name } }));
+        });
+    },
+
+    // Make the named planets glow on every north chart on screen (empty list clears).
+    setChartHighlight(names = []) {
+        const set = new Set(names || []);
+        document.querySelectorAll('canvas.kundli-canvas').forEach((canvas) => {
+            const data = canvas._mayaChartData;
+            if (!data) return;
+            data.highlight = set;
+            const running = this._chartAnimationFrames && this._chartAnimationFrames[canvas.id];
+            if (!running) {
+                const ctx = canvas.getContext('2d');
+                if (ctx) this.renderNorthIndianCanvasFrame(ctx, data, { lineProgress: 1, labelOpacity: 1, planetProgress: 1 });
+            }
+        });
+    },
+
     /**
      * Draw North Indian chart on canvas (diamond style from template)
      */
@@ -934,6 +990,8 @@ const MayaKundli = {
         const ctx = canvas.getContext('2d');
         if (!ctx) return false;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        canvas._mayaChartData = data;
+        this._enableChartTaps(canvas);
 
         this._chartAnimationFrames = this._chartAnimationFrames || {};
         if (this._chartAnimationFrames[canvas.id]) {
@@ -1896,7 +1954,7 @@ const MayaKundli = {
                                         <span>${localize(p.sign.name)}</span>
                                     </div>
                                     <div class="maya-kundli-planet-row__degree">
-                                        ${p.degree}°
+                                        ${Math.floor(Number(p.degree) || 0)}&deg;${String(Math.floor(((Number(p.degree) || 0) % 1) * 60)).padStart(2, '0')}'
                                     </div>
                                 </div>
                             `;
@@ -1992,3 +2050,135 @@ const MayaKundli = {
 
 // Make globally available
 window.MayaKundli = MayaKundli;
+
+/**
+ * Navagraha orbit around MAYA's glowing globe: the nine grahas circle the globe
+ * on a tilted ring and each one spins on its own axis. Planets on the near side
+ * pass in front of the globe, planets on the far side pass behind it (two canvas
+ * layers), so it reads as 3D. The ring is sized from the globe's real on-screen
+ * size (same maths as blob.js). Hidden in chat mini mode and during calculations.
+ * Pauses when the tab is hidden; a still ring is shown for reduced-motion users.
+ */
+(function installNavagrahaOrbit() {
+    if (typeof document === 'undefined' || window.__mayaNavagrahaOrbit) return;
+    window.__mayaNavagrahaOrbit = true;
+    const ORDER = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
+    const SIZE = { Sun: 1.25, Jupiter: 1.15, Saturn: 1.1, Moon: 0.9, Venus: 0.95, Mars: 0.85, Mercury: 0.75, Rahu: 0.85, Ketu: 0.85 };
+    const SPIN = { Sun: 0.5, Moon: 0.7, Mars: 0.9, Mercury: 1.2, Jupiter: 0.45, Venus: 0.65, Saturn: 0.35, Rahu: -0.55, Ketu: -0.6 };
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    const layers = { back: null, front: null };
+    let images = {};
+    let raf = 0;
+    const start = performance.now();
+
+    const makeLayer = (host, id) => {
+        let el = document.getElementById(id);
+        if (!el || !host.contains(el)) {
+            el = document.createElement('canvas');
+            el.id = id;
+            el.className = 'maya-navagraha-layer';
+            el.setAttribute('aria-hidden', 'true');
+            host.appendChild(el);
+        }
+        return el;
+    };
+
+    // On-screen diameter of the globe, in CSS pixels.
+    const globeDiameter = () => {
+        const blob = window.MayaBlob;
+        const el = blob?.renderer?.domElement;
+        if (blob?.camera && el && typeof blob.getRenderSize === 'function') {
+            const { height } = blob.getRenderSize();
+            const fov = (blob.camera.fov * Math.PI) / 180;
+            const z = blob.camera.position.z || 1;
+            const renderPx = (3 * height) / (2 * Math.tan(fov / 2) * z);
+            const shown = el.getBoundingClientRect().height || height;
+            return renderPx * (shown / height);
+        }
+        const host = document.getElementById('maya-blob-container');
+        return (host?.getBoundingClientRect().width || 280) * 1.4;
+    };
+
+    const draw = (now) => {
+        raf = 0;
+        const host = document.getElementById('maya-blob-container');
+        if (!host || !window.MayaKundli?.createPlanetImage) { setTimeout(startLoop, 500); return; }
+        // Add our layers only after the globe's own canvas, so blob.js (which removes the
+        // first canvas it finds when it re-initialises) always finds its own canvas first.
+        const globeCanvas = window.MayaBlob?.renderer?.domElement;
+        if (!globeCanvas || !host.contains(globeCanvas)) { setTimeout(startLoop, 500); return; }
+        layers.back = makeLayer(host, 'maya-navagraha-back');
+        layers.front = makeLayer(host, 'maya-navagraha-front');
+        const hide = host.offsetParent === null || document.hidden
+            || host.classList.contains('blob-small') || host.classList.contains('blob-chat-mini')
+            || window.MayaBlob?.isChatMode?.();
+        if (hide) {
+            [layers.back, layers.front].forEach((c) => { c.getContext('2d').clearRect(0, 0, c.width, c.height); });
+            setTimeout(startLoop, 500);
+            return;
+        }
+        const rect = layers.front.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const w = Math.round(rect.width * dpr);
+        const h = Math.round(rect.height * dpr);
+        [layers.back, layers.front].forEach((c) => {
+            if (c.width !== w || c.height !== h) { c.width = w; c.height = h; images = {}; }
+            c.getContext('2d').clearRect(0, 0, w, h);
+        });
+        const D = globeDiameter() * dpr;
+        const cx = w / 2;
+        const cy = h / 2;
+        const rx = Math.min(D * 0.8, w * 0.47);
+        const ry = rx * 0.4;
+        const tilt = -0.18;
+        const base = Math.max(10 * dpr, D * 0.062);
+        const t = reduced ? 0 : (now - start) / 1000;
+        const orbit = t * (2 * Math.PI / 48); // one full circle every 48 seconds
+
+        // Faint golden ring: back half behind the globe, front half over it.
+        const ring = (ctx, from, to) => {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(240, 200, 120, 0.5)';
+            ctx.lineWidth = Math.max(1, dpr);
+            ctx.setLineDash([2 * dpr, 6 * dpr]);
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, rx, ry, tilt, from, to);
+            ctx.stroke();
+            ctx.restore();
+        };
+        ring(layers.back.getContext('2d'), Math.PI, Math.PI * 2);
+        ring(layers.front.getContext('2d'), 0, Math.PI);
+
+        const placed = ORDER.map((name, i) => {
+            const a = orbit + (i / ORDER.length) * Math.PI * 2;
+            const ex = Math.cos(a) * rx;
+            const ey = Math.sin(a) * ry;
+            const x = cx + ex * Math.cos(tilt) - ey * Math.sin(tilt);
+            const y = cy + ex * Math.sin(tilt) + ey * Math.cos(tilt);
+            const depth = (Math.sin(a) + 1) / 2; // 0 = far side, 1 = near side
+            return { name, x, y, depth, front: Math.sin(a) >= 0 };
+        }).sort((p, q) => p.depth - q.depth);
+
+        placed.forEach((p) => {
+            const ctx = (p.front ? layers.front : layers.back).getContext('2d');
+            const size = base * (SIZE[p.name] || 1) * (0.7 + p.depth * 0.5);
+            const px = Math.max(8, Math.round(size * 2));
+            const key = `${p.name}_${px}`;
+            if (!images[key]) images[key] = window.MayaKundli.createPlanetImage(p.name, px);
+            const img = images[key];
+            ctx.save();
+            ctx.globalAlpha = 0.6 + p.depth * 0.4;
+            ctx.translate(p.x, p.y);
+            if (!reduced) ctx.rotate(t * (SPIN[p.name] || 0.5));
+            if (img) ctx.drawImage(img, -size, -size, size * 2, size * 2);
+            ctx.restore();
+        });
+        if (!reduced) raf = requestAnimationFrame(draw);
+        else setTimeout(startLoop, 1000);
+    };
+
+    function startLoop() { if (!raf) raf = requestAnimationFrame(draw); }
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) startLoop(); });
+    window.addEventListener('resize', () => { images = {}; startLoop(); });
+    startLoop();
+})();
