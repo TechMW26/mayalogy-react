@@ -1718,8 +1718,10 @@ Current section: ${sectionKey}
     },
 
     hasBirthCoordinates() {
-        return Number.isFinite(Number(this.userData?.birthLat))
-            && Number.isFinite(Number(this.userData?.birthLon));
+        // Number(null) is 0, so a failed place lookup used to count as "lat 0, lon 0"
+        // and drew the lagna for the wrong side of the world.
+        const ok = (v) => v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v));
+        return ok(this.userData?.birthLat) && ok(this.userData?.birthLon);
     },
 
     hasReliableAscendant() {
@@ -2623,6 +2625,60 @@ Current section: ${sectionKey}
     // Speak the question only once. If the lead-in already asks (has "?", "बताइए",
     // "tell me", or repeats the question's words), the on-screen question is not
     // read again - that double read is what made the first question sound repeated.
+    // One short line MAYA says when options appear (the question itself is on screen).
+    // A different line each time, also across visits; the next one is made in advance
+    // so the voice starts the moment the options show.
+    _optionPromptLines(isHindi) {
+        const male = !!window.MayaVoice?.isMaleGuide?.();
+        if (!isHindi) {
+            return [
+                'Here are a few options, pick the one that fits you.',
+                'Your turn now, choose one option.',
+                'Tap the one that feels most true for you.',
+                'Do not overthink it, pick what comes first.',
+                'Which of these sounds like you? Choose one.',
+                "Pick one, and I'll take it from there."
+            ];
+        }
+        const deti = male ? '\u0926\u0947\u0924\u093e' : '\u0926\u0947\u0924\u0940';
+        const batati = male ? '\u092c\u0924\u093e\u0924\u093e' : '\u092c\u0924\u093e\u0924\u0940';
+        return [
+            `\u092e\u0948\u0902 \u0906\u092a\u0915\u094b \u0915\u0941\u091b \u0935\u093f\u0915\u0932\u094d\u092a ${deti} \u0939\u0942\u0901, \u0907\u0928\u092e\u0947\u0902 \u0938\u0947 \u090f\u0915 \u091a\u0941\u0928\u093f\u090f\u0964`,
+            '\u0928\u0940\u091a\u0947 \u0915\u0941\u091b \u0935\u093f\u0915\u0932\u094d\u092a \u0939\u0948\u0902, \u091c\u094b \u0906\u092a\u0915\u0947 \u0938\u092c\u0938\u0947 \u0915\u0930\u0940\u092c \u0932\u0917\u0947, \u0935\u094b \u091a\u0941\u0928\u093f\u090f\u0964',
+            '\u0905\u092c \u0906\u092a\u0915\u0940 \u092c\u093e\u0930\u0940 \u0939\u0948, \u090f\u0915 \u0935\u093f\u0915\u0932\u094d\u092a \u091a\u0941\u0928\u093f\u090f\u0964',
+            '\u091c\u094b \u092c\u093e\u0924 \u0906\u092a \u092a\u0930 \u0938\u092c\u0938\u0947 \u091c\u093c\u094d\u092f\u093e\u0926\u093e \u0932\u093e\u0917\u0942 \u0939\u094b\u0924\u0940 \u0939\u0948, \u0909\u0938\u0947 \u091a\u0941\u0928\u093f\u090f\u0964',
+            '\u091c\u093c\u094d\u092f\u093e\u0926\u093e \u092e\u0924 \u0938\u094b\u091a\u093f\u090f, \u091c\u094b \u092a\u0939\u0932\u0947 \u092e\u0928 \u092e\u0947\u0902 \u0906\u090f \u0935\u0939\u0940 \u091a\u0941\u0928\u093f\u090f\u0964',
+            '\u0907\u0928\u092e\u0947\u0902 \u0938\u0947 \u0915\u094c\u0928-\u0938\u093e \u0906\u092a\u0915\u0947 \u0932\u093f\u090f \u0938\u091a \u0939\u0948? \u090f\u0915 \u091a\u0941\u0928\u093f\u090f\u0964',
+            `\u092c\u0938 \u090f\u0915 \u0935\u093f\u0915\u0932\u094d\u092a \u091a\u0941\u0928\u093f\u090f, \u092b\u093f\u0930 \u092e\u0948\u0902 \u0906\u0917\u0947 ${batati} \u0939\u0942\u0901\u0964`
+        ];
+    },
+
+    _optionPromptAt(isHindi, advance) {
+        const lines = this._optionPromptLines(isHindi);
+        const store = window.MayaUtils?.storage;
+        const raw = store?.get?.('maya_opt_prompt_i');
+        let i = raw === null || raw === undefined || raw === '' ? Number.NaN : Number(raw);
+        if (!Number.isFinite(i)) i = Math.floor(Math.random() * lines.length);
+        if (advance) store?.set?.('maya_opt_prompt_i', i + 1);
+        else if (raw === null || raw === undefined || raw === '') store?.set?.('maya_opt_prompt_i', i);
+        const line = lines[((i % lines.length) + lines.length) % lines.length];
+        return isHindi ? this.localizeHindiText(line) : line;
+    },
+
+    // Make the voice for the next option line now, while something else is on screen.
+    _warmOptionPrompt(isHindi) {
+        try {
+            if (!window.MayaVoice || MayaVoice.isMuted) return;
+            MayaVoice.prefetchSpeech(this.sanitizeNarrationText(this._optionPromptAt(isHindi, false)));
+        } catch (_e) { /* optional */ }
+    },
+
+    _nextOptionPrompt(isHindi) {
+        const line = this._optionPromptAt(isHindi, true);
+        this._warmOptionPrompt(isHindi);
+        return line;
+    },
+
     _composeSpokenQuestion(lead, question) {
         const spokenLead = String(lead || '').trim();
         const shown = String(question || '').trim();
@@ -4520,6 +4576,36 @@ All three segments must connect as one flowing story. Include at least TWO decla
     /**
      * Start the funnel experience
      */
+    // Birth time is known but the place has no map position (the lookup failed during
+    // onboarding): try once more, max 5 s. Otherwise only a Chandra kundli can be drawn,
+    // which never matches AstroTalk / AstroSage for the same person.
+    async _ensureBirthCoordinates() {
+        try {
+            if (!this.userData?.birthPlace || !this.hasExactBirthTime() || this.hasBirthCoordinates()) return;
+            if (!window.MayaUtils?.location?.resolveBirthPlace) return;
+            const r = await Promise.race([
+                MayaUtils.location.resolveBirthPlace(this.userData.birthPlace, {}),
+                new Promise((resolve) => setTimeout(() => resolve(null), 5000))
+            ]);
+            if (!r || !Number.isFinite(r.birthLat) || !Number.isFinite(r.birthLon)) return;
+            const patch = {
+                birthPlace: r.birthPlace || this.userData.birthPlace,
+                birthLat: r.birthLat,
+                birthLon: r.birthLon,
+                birthTimezone: Number.isFinite(Number(r.birthTimezone)) ? Number(r.birthTimezone) : null
+            };
+            Object.assign(this.userData, patch);
+            ['maya_profile', 'funnel_data'].forEach((key) => {
+                const saved = MayaUtils.storage.get(key);
+                if (saved && typeof saved === 'object') MayaUtils.storage.set(key, { ...saved, ...patch });
+            });
+            this.personalization = this.buildPersonalizationProfile();
+            console.log('📍 Birth place found on second try:', patch.birthPlace);
+        } catch (error) {
+            console.warn('Second birth-place lookup failed:', error?.message || error);
+        }
+    },
+
     async start() {
         console.log('🎭 MayaFunnel.start() called');
 
@@ -4541,6 +4627,7 @@ All three segments must connect as one flowing story. Include at least TWO decla
 
         try {
             this._perfStartAt = performance.now();
+            await this._ensureBirthCoordinates();
             this._firstIntroResolvedAt = 0;
             this._firstSpeechRequestedAt = 0;
             this._firstSpeechPlaybackAt = 0;
@@ -7294,8 +7381,9 @@ Return ONLY JSON:
      */
     async askSingleProfileQuestion(q) {
         const isHindi = this._isHindiMode();
-        const spokenLead = String(q.spoken || '').trim();
-        const spokenQuestion = this._composeSpokenQuestion(spokenLead, q.question);
+        // Short, varied line instead of reading the whole question aloud (it is on
+        // screen). Its voice was made in advance, so it starts with the options.
+        const spokenQuestion = this._nextOptionPrompt(isHindi);
 
         // Pre-warm TTS so playback starts instantly when question appears
         if (window.MayaVoice && !MayaVoice.isMuted) {
@@ -7423,6 +7511,7 @@ Return ONLY JSON:
             this.showCalculationOverlay();
             // Prepare the first question while the kundli draws, so it appears without a wait.
             this._q1Prefetch = askMayaActive ? null : this.getAdaptiveQuestionForStage('q1_kundli', new Set());
+            this._warmOptionPrompt(isHindi);
             await this.sleepPaced(this.stageTiming.calculationLeadIn);
 
             console.log('🪐 Animating Kundli...');
@@ -7993,121 +8082,106 @@ Return ONLY JSON:
             return null;
         }), 'calculating');
 
-        // ── Build unified UI ──
-        display.innerHTML = `
-            <div class="unified-numbers">
-                <div class="unified-numbers__header">
-                    <h3>${isHindi ? '✦ आपके अंक ✦' : '✦ Your Cosmic Numbers ✦'}</h3>
-                </div>
-
-                <div class="unified-numbers__grid">
-                    <!-- LIFE PATH CARD -->
-                    <div class="unified-num-card" id="unum-lifepath" data-state="waiting">
-                        <div class="unified-num-card__icon"><i class="bi bi-star-fill"></i></div>
-                        <div class="unified-num-card__label">${isHindi ? 'जीवन पथ अंक' : 'Life Path'}</div>
-                        <div class="unified-num-card__value" id="unum-lp-value">
-                            <span class="unified-num-card__spinner"></span>
-                        </div>
-                        <div class="unified-num-card__steps" id="unum-lp-steps"></div>
-                    </div>
-
-                    <!-- DESTINY CARD -->
-                    <div class="unified-num-card" id="unum-destiny" data-state="waiting">
-                        <div class="unified-num-card__icon"><i class="bi bi-bullseye"></i></div>
-                        <div class="unified-num-card__label">${isHindi ? 'भाग्य अंक' : 'Destiny'}</div>
-                        <div class="unified-num-card__value" id="unum-dest-value">
-                            <span class="unified-num-card__spinner"></span>
-                        </div>
-                        <div class="unified-num-card__steps" id="unum-dest-steps"></div>
-                    </div>
-
-                    <!-- SOUL URGE CARD -->
-                    <div class="unified-num-card" id="unum-soulurge" data-state="waiting">
-                        <div class="unified-num-card__icon"><i class="bi bi-heart-pulse-fill"></i></div>
-                        <div class="unified-num-card__label">${isHindi ? 'अंतर्मन अंक' : 'Soul Urge'}</div>
-                        <div class="unified-num-card__value" id="unum-su-value">
-                            <span class="unified-num-card__spinner"></span>
-                        </div>
-                        <div class="unified-num-card__steps" id="unum-su-steps"></div>
-                    </div>
-                </div>
-
-                <div class="unified-numbers__breakdown" id="unum-breakdown"></div>
-            </div>
-        `;
-
+        // \u2500\u2500 Three secret cards \u2500\u2500
+        // Cards start face-down and flip one by one. Each shows the number, its ruling
+        // planet and one plain line. The lucky colour / day come from the moolank
+        // (birth day number) - the way Indian numerology does it. No letter table.
+        const NUM_INFO = {
+            1: { planet: ['\u0938\u0942\u0930\u094d\u092f', 'Sun'], line: ['\u0928\u0947\u0924\u0943\u0924\u094d\u0935 \u0906\u092a\u0915\u093e \u0938\u094d\u0935\u092d\u093e\u0935 \u0939\u0948, \u0906\u092a \u0905\u092a\u0928\u093e \u0930\u093e\u0938\u094d\u0924\u093e \u0916\u0941\u0926 \u092c\u0928\u093e\u0924\u0947 \u0939\u0948\u0902\u0964', 'A natural leader who makes their own way.'], color: ['\u0938\u0941\u0928\u0939\u0930\u093e', 'Gold'], hex: '#e8b13a', day: ['\u0930\u0935\u093f\u0935\u093e\u0930', 'Sunday'] },
+            2: { planet: ['\u091a\u0902\u0926\u094d\u0930', 'Moon'], line: ['\u0906\u092a \u0926\u093f\u0932 \u0938\u0947 \u0938\u094b\u091a\u0924\u0947 \u0939\u0948\u0902 \u0914\u0930 \u0930\u093f\u0936\u094d\u0924\u094b\u0902 \u0915\u094b \u091c\u094b\u0921\u093c\u0915\u0930 \u0930\u0916\u0924\u0947 \u0939\u0948\u0902\u0964', 'You think with your heart and hold people together.'], color: ['\u0938\u092b\u093c\u0947\u0926', 'White'], hex: '#f4f1e8', day: ['\u0938\u094b\u092e\u0935\u093e\u0930', 'Monday'] },
+            3: { planet: ['\u0917\u0941\u0930\u0941', 'Jupiter'], line: ['\u0938\u092e\u091d\u093e\u0928\u0947 \u092e\u0947\u0902 \u092e\u093e\u0939\u093f\u0930 \u0939\u0948\u0902, \u0932\u094b\u0917 \u0906\u092a\u0915\u0940 \u092c\u093e\u0924 \u0927\u094d\u092f\u093e\u0928 \u0938\u0947 \u0938\u0941\u0928\u0924\u0947 \u0939\u0948\u0902\u0964', 'A gifted explainer; people really listen to you.'], color: ['\u092a\u0940\u0932\u093e', 'Yellow'], hex: '#f2c230', day: ['\u0917\u0941\u0930\u0941\u0935\u093e\u0930', 'Thursday'] },
+            4: { planet: ['\u0930\u093e\u0939\u0941', 'Rahu'], line: ['\u092e\u0947\u0939\u0928\u0924\u0940 \u0914\u0930 \u0905\u0932\u0917 \u0938\u094b\u091a \u0935\u093e\u0932\u0947, \u0906\u092a \u0905\u092a\u0928\u0947 \u0928\u093f\u092f\u092e \u0916\u0941\u0926 \u092c\u0928\u093e\u0924\u0947 \u0939\u0948\u0902\u0964', 'Hard-working and different; you write your own rules.'], color: ['\u0928\u0940\u0932\u093e', 'Blue'], hex: '#3d6fd1', day: ['\u0936\u0928\u093f\u0935\u093e\u0930', 'Saturday'] },
+            5: { planet: ['\u092c\u0941\u0927', 'Mercury'], line: ['\u0924\u0947\u091c\u093c \u0926\u093f\u092e\u093e\u0917, \u092c\u0926\u0932\u093e\u0935 \u0914\u0930 \u0928\u090f \u0905\u0928\u0941\u092d\u0935 \u0906\u092a\u0915\u094b \u092a\u0938\u0902\u0926 \u0939\u0948\u0902\u0964', 'A quick mind that loves change and new things.'], color: ['\u0939\u0930\u093e', 'Green'], hex: '#2fa463', day: ['\u092c\u0941\u0927\u0935\u093e\u0930', 'Wednesday'] },
+            6: { planet: ['\u0936\u0941\u0915\u094d\u0930', 'Venus'], line: ['\u092a\u094d\u092f\u093e\u0930, \u0938\u0941\u0902\u0926\u0930\u0924\u093e \u0914\u0930 \u092a\u0930\u093f\u0935\u093e\u0930 \u0906\u092a\u0915\u0947 \u0932\u093f\u090f \u0938\u092c\u0938\u0947 \u091c\u093c\u0930\u0942\u0930\u0940 \u0939\u0948\u0902\u0964', 'Love, beauty and family matter most to you.'], color: ['\u0917\u0941\u0932\u093e\u092c\u0940', 'Pink'], hex: '#e88fb0', day: ['\u0936\u0941\u0915\u094d\u0930\u0935\u093e\u0930', 'Friday'] },
+            7: { planet: ['\u0915\u0947\u0924\u0941', 'Ketu'], line: ['\u0917\u0939\u0930\u093e\u0908 \u0938\u0947 \u0938\u094b\u091a\u0928\u0947 \u0935\u093e\u0932\u0947, \u0906\u092a\u0915\u093e \u0905\u0902\u0924\u0930\u094d\u092e\u0928 \u092c\u0939\u0941\u0924 \u0938\u091a\u094d\u091a\u093e \u0939\u0948\u0964', 'A deep thinker with a very true inner voice.'], color: ['\u0938\u094d\u0932\u0947\u091f\u0940', 'Grey'], hex: '#9aa0a6', day: ['\u0938\u094b\u092e\u0935\u093e\u0930', 'Monday'] },
+            8: { planet: ['\u0936\u0928\u093f', 'Saturn'], line: ['\u0926\u0947\u0930 \u0938\u0947 \u0938\u0939\u0940, \u092a\u0930 \u0906\u092a\u0915\u0940 \u092e\u0947\u0939\u0928\u0924 \u092a\u0915\u094d\u0915\u093e \u092b\u0932 \u0926\u0947\u0924\u0940 \u0939\u0948\u0964', 'Slow but sure; your effort always pays off.'], color: ['\u0917\u0939\u0930\u093e \u0928\u0940\u0932\u093e', 'Navy blue'], hex: '#26365e', day: ['\u0936\u0928\u093f\u0935\u093e\u0930', 'Saturday'] },
+            9: { planet: ['\u092e\u0902\u0917\u0932', 'Mars'], line: ['\u0938\u093e\u0939\u0938\u0940 \u0914\u0930 \u091c\u094b\u0936\u0940\u0932\u0947 \u0939\u0948\u0902, \u0906\u092a \u0906\u0938\u093e\u0928\u0940 \u0938\u0947 \u0939\u093e\u0930 \u0928\u0939\u0940\u0902 \u092e\u093e\u0928\u0924\u0947\u0964', 'Brave and fiery; you do not give up easily.'], color: ['\u0932\u093e\u0932', 'Red'], hex: '#d23c3c', day: ['\u092e\u0902\u0917\u0932\u0935\u093e\u0930', 'Tuesday'] }
+        };
+        // Destiny = what you are here to do; soul urge = what your heart wants.
+        const DEST = {
+            1: ['\u0906\u0917\u0947 \u092c\u0922\u093c\u0915\u0930 \u0928\u0908 \u0936\u0941\u0930\u0941\u0906\u0924 \u0915\u0930\u0928\u093e \u0914\u0930 \u0926\u0942\u0938\u0930\u094b\u0902 \u0915\u094b \u0930\u093e\u0939 \u0926\u093f\u0916\u093e\u0928\u093e\u0964', 'To start new things and show others the way.'],
+            2: ['\u0932\u094b\u0917\u094b\u0902 \u0915\u094b \u091c\u094b\u0921\u093c\u0928\u093e, \u0938\u093e\u0925 \u092e\u093f\u0932\u0915\u0930 \u0915\u093e\u092e \u0915\u0930\u0928\u093e \u0914\u0930 \u0936\u093e\u0902\u0924\u093f \u0932\u093e\u0928\u093e\u0964', 'To bring people together and make peace.'],
+            3: ['\u092c\u094b\u0932\u0915\u0930, \u0932\u093f\u0916\u0915\u0930 \u092f\u093e \u0915\u0932\u093e \u0938\u0947 \u0932\u094b\u0917\u094b\u0902 \u0924\u0915 \u092c\u093e\u0924 \u092a\u0939\u0941\u0901\u091a\u093e\u0928\u093e\u0964', 'To reach people through words, writing or art.'],
+            4: ['\u092e\u091c\u093c\u092c\u0942\u0924 \u0928\u0940\u0902\u0935 \u092c\u0928\u093e\u0928\u093e, \u0910\u0938\u093e \u0915\u093e\u092e \u091c\u094b \u0938\u093e\u0932\u094b\u0902 \u091f\u093f\u0915\u0947\u0964', 'To build strong foundations that last for years.'],
+            5: ['\u0928\u0908 \u091c\u0917\u0939\u0947\u0902, \u0928\u090f \u0932\u094b\u0917, \u0928\u090f \u0905\u0928\u0941\u092d\u0935; \u092c\u0926\u0932\u093e\u0935 \u0938\u0947 \u0906\u0917\u0947 \u092c\u0922\u093c\u0928\u093e\u0964', 'To grow through travel, new people and change.'],
+            6: ['\u092a\u0930\u093f\u0935\u093e\u0930 \u0914\u0930 \u0932\u094b\u0917\u094b\u0902 \u0915\u0940 \u0926\u0947\u0916\u092d\u093e\u0932, \u0918\u0930 \u092e\u0947\u0902 \u0938\u0941\u0902\u0926\u0930\u0924\u093e \u0932\u093e\u0928\u093e\u0964', 'To care for family and people, and make home beautiful.'],
+            7: ['\u091c\u094d\u091e\u093e\u0928 \u0915\u0940 \u0917\u0939\u0930\u093e\u0908 \u092e\u0947\u0902 \u091c\u093e\u0928\u093e, \u0938\u091a \u0915\u094b \u0916\u094b\u091c\u0928\u093e\u0964', 'To go deep into knowledge and look for truth.'],
+            8: ['\u092c\u0921\u093c\u0940 \u091c\u093c\u093f\u092e\u094d\u092e\u0947\u0926\u093e\u0930\u0940, \u092a\u0948\u0938\u093e \u0914\u0930 \u092a\u0926 \u0938\u0901\u092d\u093e\u0932\u0928\u093e\u0964', 'To handle big responsibility, money and position.'],
+            9: ['\u0926\u0942\u0938\u0930\u094b\u0902 \u0915\u0940 \u092e\u0926\u0926 \u0915\u0930\u0928\u093e, \u092c\u0921\u093c\u0947 \u092e\u0915\u0938\u0926 \u0915\u0947 \u0932\u093f\u090f \u091c\u0940\u0928\u093e\u0964', 'To help others and live for a bigger purpose.']
+        };
+        const SOUL = {
+            1: ['\u092e\u0928 \u091a\u093e\u0939\u0924\u093e \u0939\u0948 \u0915\u093f \u0906\u092a \u0905\u092a\u0928\u0947 \u092b\u093c\u0948\u0938\u0932\u0947 \u0916\u0941\u0926 \u0932\u0947\u0902\u0964', 'Your heart wants to make its own choices.'],
+            2: ['\u092e\u0928 \u0915\u094b \u0938\u092c\u0938\u0947 \u091c\u093c\u094d\u092f\u093e\u0926\u093e \u0938\u091a\u094d\u091a\u093e \u0938\u093e\u0925 \u0914\u0930 \u0905\u092a\u0928\u093e\u092a\u0928 \u091a\u093e\u0939\u093f\u090f\u0964', 'Your heart most wants true closeness.'],
+            3: ['\u092e\u0928 \u0916\u0941\u0932\u0915\u0930 \u0939\u0901\u0938\u0928\u093e, \u092c\u094b\u0932\u0928\u093e \u0914\u0930 \u0916\u0941\u0926 \u0915\u094b \u0926\u093f\u0916\u093e\u0928\u093e \u091a\u093e\u0939\u0924\u093e \u0939\u0948\u0964', 'Your heart wants to laugh, talk and express itself.'],
+            4: ['\u092e\u0928 \u0915\u094b \u0938\u0941\u0930\u0915\u094d\u0937\u093e, \u092d\u0930\u094b\u0938\u093e \u0914\u0930 \u0920\u0939\u0930\u093e\u0935 \u091a\u093e\u0939\u093f\u090f\u0964', 'Your heart wants safety, trust and stability.'],
+            5: ['\u092e\u0928 \u0906\u091c\u093c\u093e\u0926\u0940 \u091a\u093e\u0939\u0924\u093e \u0939\u0948, \u092c\u0902\u0927\u0928 \u0907\u0938\u0947 \u092a\u0938\u0902\u0926 \u0928\u0939\u0940\u0902\u0964', 'Your heart wants freedom and dislikes being tied down.'],
+            6: ['\u092e\u0928 \u092a\u094d\u092f\u093e\u0930 \u0926\u0947\u0928\u093e \u0914\u0930 \u092a\u094d\u092f\u093e\u0930 \u092a\u093e\u0928\u093e \u091a\u093e\u0939\u0924\u093e \u0939\u0948\u0964', 'Your heart wants to give and receive love.'],
+            7: ['\u092e\u0928 \u0915\u094b \u0936\u093e\u0902\u0924\u093f, \u0905\u0915\u0947\u0932\u0947 \u0915\u093e \u0938\u092e\u092f \u0914\u0930 \u0917\u0939\u0930\u0940 \u0938\u092e\u091d \u091a\u093e\u0939\u093f\u090f\u0964', 'Your heart wants quiet, time alone and deep understanding.'],
+            8: ['\u092e\u0928 \u092a\u0939\u091a\u093e\u0928, \u0938\u092e\u094d\u092e\u093e\u0928 \u0914\u0930 \u0905\u092a\u0928\u0940 \u092e\u0947\u0939\u0928\u0924 \u0915\u093e \u092b\u0932 \u091a\u093e\u0939\u0924\u093e \u0939\u0948\u0964', 'Your heart wants respect and the reward of its effort.'],
+            9: ['\u092e\u0928 \u091a\u093e\u0939\u0924\u093e \u0939\u0948 \u0915\u093f \u0906\u092a\u0915\u0940 \u091c\u093c\u093f\u0902\u0926\u0917\u0940 \u0915\u093f\u0938\u0940 \u0915\u0947 \u0915\u093e\u092e \u0906\u090f\u0964', 'Your heart wants your life to make a difference.']
+        };
+        const coreOf = (n) => {
+            let x = Math.abs(Number(n) || 0);
+            while (x > 9) x = String(x).split('').reduce((sum, digit) => sum + Number(digit), 0);
+            return x || 9;
+        };
+        const li = isHindi ? 0 : 1;
+        const info = (n) => NUM_INFO[coreOf(n)];
+        const moolank = coreOf(day);
+        const lucky = NUM_INFO[moolank];
         const fastCalcDelay = Math.max(120, Math.min(this.stageTiming.calcStepDelay, 260));
         const fastInsightDelay = Math.max(140, Math.min(this.stageTiming.kundliInsightDelay, 320));
-
-        await this.sleepPaced(fastCalcDelay);
-
-        // ── Animate LIFE PATH (stagger 1) ──
-        const lpCard = document.getElementById('unum-lifepath');
-        const lpSteps = document.getElementById('unum-lp-steps');
-        const lpValue = document.getElementById('unum-lp-value');
-        if (lpCard) lpCard.dataset.state = 'calculating';
-
-        await this.sleepPaced(fastCalcDelay);
-        this.addCalculationStep(lpSteps, `${isHindi ? 'जन्म तिथि' : 'Birth date'} → ${lifePath}`, '', true);
-
-        if (lpValue) lpValue.innerHTML = `<span class="unified-num-card__number unified-num-pop">${lifePath}</span>`;
-        if (lpCard) lpCard.dataset.state = 'done';
-
-        // ── Animate DESTINY (stagger 2) ──
-        const destCard = document.getElementById('unum-destiny');
-        const destSteps = document.getElementById('unum-dest-steps');
-        const destValue = document.getElementById('unum-dest-value');
-        if (destCard) destCard.dataset.state = 'calculating';
-
-        await this.sleepPaced(fastInsightDelay);
-        // Show compact name breakdown
-        const breakdown = document.getElementById('unum-breakdown');
-        if (breakdown) {
-            const letterHTML = nameLetters.split('').map(l => {
-                const v = MayaNumerology.getLetterValue(l);
-                return `<span class="unum-letter-chip animate-in"><span class="unum-letter">${l}</span><span class="unum-letter-val">${v}</span></span>`;
-            }).join('');
-            breakdown.innerHTML = `
-                <div class="unum-name-breakdown">
-                    <span class="unum-breakdown-label">${isHindi ? 'नाम विश्लेषण' : 'Name Analysis'}: ${this.userData.name}</span>
-                    <div class="unum-letter-grid">${letterHTML}</div>
+        const cardHtml = (id, icon, title, n, how, lines = null) => `
+            <div class="nx-card" id="${id}" role="button" tabindex="0" aria-label="${title}">
+                <div class="nx-card__inner">
+                    <div class="nx-card__face nx-card__front">
+                        <i class="bi ${icon}"></i>
+                        <span class="nx-card__q">?</span>
+                        <span class="nx-card__title">${title}</span>
+                    </div>
+                    <div class="nx-card__face nx-card__back">
+                        <span class="nx-card__title">${title}</span>
+                        <span class="nx-card__num">${n}</span>
+                        <span class="nx-card__planet">${isHindi ? '\u0938\u094d\u0935\u093e\u092e\u0940' : 'Ruler'}: ${info(n).planet[li]}</span>
+                        <span class="nx-card__line">${(lines ? lines[coreOf(n)] : info(n).line)[li]}</span>
+                        <span class="nx-card__how">${how}</span>
+                    </div>
                 </div>
-            `;
-        }
-
-        await this.sleepPaced(fastCalcDelay);
-        this.addCalculationStep(destSteps, `${isHindi ? 'अक्षर योग' : 'Letter sum'} = ${destSum} → ${destiny}`, '', true);
-
-        if (destValue) destValue.innerHTML = `<span class="unified-num-card__number unified-num-pop">${destiny}</span>`;
-        if (destCard) destCard.dataset.state = 'done';
-
-        // ── Animate SOUL URGE (stagger 3) ──
-        const suCard = document.getElementById('unum-soulurge');
-        const suSteps = document.getElementById('unum-su-steps');
-        const suValue = document.getElementById('unum-su-value');
-        if (suCard) suCard.dataset.state = 'calculating';
-
-        await this.sleepPaced(fastInsightDelay);
-        // Highlight vowels in the letter grid
-        if (breakdown) {
-            breakdown.querySelectorAll('.unum-letter-chip').forEach(chip => {
-                const letter = chip.querySelector('.unum-letter')?.textContent;
-                if (letter && vowels.includes(letter)) {
-                    chip.classList.add('unum-letter-chip--vowel');
-                }
-            });
-        }
-
-        await this.sleepPaced(fastInsightDelay);
-        this.addCalculationStep(suSteps, `${isHindi ? 'स्वर योग' : 'Vowels'} = ${vowelSum} → ${soulUrge}`, '', true);
-
-        if (suValue) suValue.innerHTML = `<span class="unified-num-card__number unified-num-pop">${soulUrge}</span>`;
-        if (suCard) suCard.dataset.state = 'done';
-
-        // ── Append result cards to the result strip ──
-        this.appendResultCard('life-path', this._isHindiMode() ? 'जीवन पथ अंक' : 'Life Path', lifePath, 'life-path');
-        this.appendResultCard('destiny', this._isHindiMode() ? 'भाग्य अंक' : 'Destiny', destiny, 'destiny');
-        this.appendResultCard('soul-urge', this._isHindiMode() ? 'अंतर्मन अंक' : 'Soul Urge', soulUrge, 'soul-urge');
+            </div>`;
+        display.innerHTML = `
+            <div class="unified-numbers nx-wrap">
+                <div class="unified-numbers__header">
+                    <h3>${isHindi ? '\u2726 \u0906\u092a\u0915\u0947 \u0924\u0940\u0928 \u0905\u0902\u0915 \u2726' : '\u2726 Your three numbers \u2726'}</h3>
+                    <p class="nx-sub">${isHindi ? '\u0939\u0930 \u0915\u093e\u0930\u094d\u0921 \u0906\u092a\u0915\u0940 \u091c\u0928\u094d\u092e \u0924\u093f\u0925\u093f \u0914\u0930 \u0928\u093e\u092e \u0938\u0947 \u0916\u0941\u0932\u0924\u093e \u0939\u0948' : 'Each card opens from your birth date and name'}</p>
+                </div>
+                <div class="nx-grid">
+                    ${cardHtml('nx-lp', 'bi-star-fill', isHindi ? '\u091c\u0940\u0935\u0928 \u092a\u0925' : 'Life Path', lifePath, `${isHindi ? '\u091c\u0928\u094d\u092e \u0924\u093f\u0925\u093f' : 'Birth date'} ${day}.${month}.${year}`)}
+                    ${cardHtml('nx-de', 'bi-bullseye', isHindi ? '\u092d\u093e\u0917\u094d\u092f' : 'Destiny', destiny, `${isHindi ? '\u0928\u093e\u092e \u0915\u0947 \u0905\u0915\u094d\u0937\u0930' : 'Name letters'} = ${destSum}`, DEST)}
+                    ${cardHtml('nx-su', 'bi-heart-fill', isHindi ? '\u0905\u0902\u0924\u0930\u094d\u092e\u0928' : 'Soul Urge', soulUrge, `${isHindi ? '\u0928\u093e\u092e \u0915\u0947 \u0938\u094d\u0935\u0930' : 'Name vowels'} = ${vowelSum}`, SOUL)}
+                </div>
+                <div class="nx-lucky" id="nx-lucky">
+                    <span class="nx-lucky__title">${isHindi ? `\u092e\u0942\u0932\u093e\u0902\u0915 ${moolank} \u00b7 \u0906\u092a\u0915\u0947 \u0932\u093f\u090f \u0936\u0941\u092d` : `Moolank ${moolank} \u00b7 lucky for you`}</span>
+                    <span class="nx-chip"><i class="nx-swatch" style="background:${lucky.hex}"></i>${lucky.color[li]}</span>
+                    <span class="nx-chip"><i class="bi bi-calendar-heart"></i>${lucky.day[li]}</span>
+                    <span class="nx-chip"><i class="bi bi-stars"></i>${isHindi ? '\u0917\u094d\u0930\u0939' : 'Planet'} ${lucky.planet[li]}</span>
+                </div>
+            </div>
+        `;
+        // A tap also flips a card (and back), so people can play with it.
+        display.querySelectorAll('.nx-card').forEach((card) => {
+            card.addEventListener('click', () => card.classList.toggle('is-open'));
+        });
+        const flip = async (id) => {
+            const card = document.getElementById(id);
+            if (card) card.classList.add('is-open');
+            try { window.MayaFunnel?._playSoftTick?.(); } catch (_e) { /* optional */ }
+            await this.sleepPaced(fastInsightDelay + 420);
+        };
+        await this.sleepPaced(fastCalcDelay + 300);
+        await flip('nx-lp');
+        await flip('nx-de');
+        await flip('nx-su');
+        document.getElementById('nx-lucky')?.classList.add('is-in');
 
         // ── Wait for AI narration and speak it ──
         const narrative = await Promise.race([
@@ -10071,4 +10145,182 @@ window.checkFunnelStatus = function () {
         }).observe(document.body, { childList: true, subtree: true, characterData: true });
     };
     if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();
+
+/**
+ * "Did you know?" - when the user goes quiet during the reading (no tap / key for a
+ * while), a small card pops up with a real, surprising fact from THEIR own birth
+ * moment: nakshatra deity and symbol, the tithi (moon phase) they were born on, the
+ * weekday and its planet, their moolank. Max 4 per reading, never over a question,
+ * gone after 9 s or on tap. Every fact is calculated, nothing is generic.
+ */
+(function installIdleFacts() {
+    if (typeof window === 'undefined' || typeof document === 'undefined' || window.__mayaIdleFacts) return;
+    window.__mayaIdleFacts = true;
+    const IDLE_MS = 13000;
+    const GAP_MS = 22000;
+    const MAX = 4;
+    let lastActive = Date.now();
+    let lastShown = 0;
+    let shown = 0;
+    let order = null;
+    let bubble = null;
+    ['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach((ev) => {
+        window.addEventListener(ev, () => { lastActive = Date.now(); }, { passive: true, capture: true });
+    });
+
+    window.MayaFunnel && (window.MayaFunnel._playSoftTick = function playSoftTick() {
+        try {
+            if (window.MayaVoice?.isMuted) return;
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) return;
+            const ctx = window.MayaVoice?.audioContext || (this._chimeCtx = this._chimeCtx || new Ctx());
+            if (ctx.state === 'suspended') return;
+            const now = ctx.currentTime;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(1046.5, now);
+            osc.frequency.exponentialRampToValueAtTime(1568, now + 0.08);
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(0.05, now + 0.015);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.4);
+        } catch (_e) { /* optional */ }
+    });
+
+    const NAK = [
+        ['\u0905\u0936\u094d\u0935\u093f\u0928\u0940', '\u0905\u0936\u094d\u0935\u093f\u0928\u0940 \u0915\u0941\u092e\u093e\u0930', '\u0918\u094b\u0921\u093c\u0947 \u0915\u093e \u0938\u093f\u0930', 'Ashwini', 'the Ashwini twins', 'a horse head'],
+        ['\u092d\u0930\u0923\u0940', '\u092f\u092e', '', 'Bharani', 'Yama', ''],
+        ['\u0915\u0943\u0924\u094d\u0924\u093f\u0915\u093e', '\u0905\u0917\u094d\u0928\u093f', '\u0905\u0917\u094d\u0928\u093f \u0915\u0940 \u0932\u094c', 'Krittika', 'Agni', 'a flame'],
+        ['\u0930\u094b\u0939\u093f\u0923\u0940', '\u092c\u094d\u0930\u0939\u094d\u092e\u093e', '\u0930\u0925', 'Rohini', 'Brahma', 'a chariot'],
+        ['\u092e\u0943\u0917\u0936\u093f\u0930\u093e', '\u0938\u094b\u092e (\u091a\u0902\u0926\u094d\u0930)', '\u0939\u093f\u0930\u0923 \u0915\u093e \u0938\u093f\u0930', 'Mrigashira', 'Soma', 'a deer head'],
+        ['\u0906\u0930\u094d\u0926\u094d\u0930\u093e', '\u0930\u0941\u0926\u094d\u0930', '\u0906\u0901\u0938\u0942 \u0915\u0940 \u092c\u0942\u0901\u0926', 'Ardra', 'Rudra', 'a teardrop'],
+        ['\u092a\u0941\u0928\u0930\u094d\u0935\u0938\u0941', '\u0905\u0926\u093f\u0924\u093f', '\u0924\u0930\u0915\u0936', 'Punarvasu', 'Aditi', 'a quiver of arrows'],
+        ['\u092a\u0941\u0937\u094d\u092f', '\u092c\u0943\u0939\u0938\u094d\u092a\u0924\u093f', '\u092b\u0942\u0932', 'Pushya', 'Brihaspati', 'a flower'],
+        ['\u0906\u0936\u094d\u0932\u0947\u0937\u093e', '\u0928\u093e\u0917', '\u0915\u0941\u0902\u0921\u0932\u0940 \u092e\u093e\u0930\u0947 \u0938\u0930\u094d\u092a', 'Ashlesha', 'the Nagas', 'a coiled serpent'],
+        ['\u092e\u0918\u093e', '\u092a\u093f\u0924\u0943', '\u0930\u093e\u091c\u0938\u093f\u0902\u0939\u093e\u0938\u0928', 'Magha', 'the Pitris (ancestors)', 'a royal throne'],
+        ['\u092a\u0942\u0930\u094d\u0935 \u092b\u093e\u0932\u094d\u0917\u0941\u0928\u0940', '\u092d\u0917', '\u091d\u0942\u0932\u093e', 'Purva Phalguni', 'Bhaga', 'a swing'],
+        ['\u0909\u0924\u094d\u0924\u0930 \u092b\u093e\u0932\u094d\u0917\u0941\u0928\u0940', '\u0905\u0930\u094d\u092f\u092e\u093e', '\u092a\u0932\u0902\u0917', 'Uttara Phalguni', 'Aryaman', 'a bed'],
+        ['\u0939\u0938\u094d\u0924', '\u0938\u0935\u093f\u0924\u093e (\u0938\u0942\u0930\u094d\u092f)', '\u0939\u093e\u0925', 'Hasta', 'Savitar', 'a hand'],
+        ['\u091a\u093f\u0924\u094d\u0930\u093e', '\u0935\u093f\u0936\u094d\u0935\u0915\u0930\u094d\u092e\u093e', '\u091a\u092e\u0915\u0924\u093e \u092e\u094b\u0924\u0940', 'Chitra', 'Vishwakarma', 'a bright pearl'],
+        ['\u0938\u094d\u0935\u093e\u0924\u093f', '\u0935\u093e\u092f\u0941', '\u0939\u0935\u093e \u092e\u0947\u0902 \u091d\u0942\u092e\u0924\u093e \u0905\u0902\u0915\u0941\u0930', 'Swati', 'Vayu', 'a sprout in the wind'],
+        ['\u0935\u093f\u0936\u093e\u0916\u093e', '\u0907\u0902\u0926\u094d\u0930 \u0914\u0930 \u0905\u0917\u094d\u0928\u093f', '\u0924\u094b\u0930\u0923 \u0926\u094d\u0935\u093e\u0930', 'Vishakha', 'Indra and Agni', 'a decorated archway'],
+        ['\u0905\u0928\u0941\u0930\u093e\u0927\u093e', '\u092e\u093f\u0924\u094d\u0930', '\u0915\u092e\u0932', 'Anuradha', 'Mitra', 'a lotus'],
+        ['\u091c\u094d\u092f\u0947\u0937\u094d\u0920\u093e', '\u0907\u0902\u0926\u094d\u0930', '\u0915\u0941\u0902\u0921\u0932', 'Jyeshtha', 'Indra', 'an earring'],
+        ['\u092e\u0942\u0932', '\u0928\u093f\u090b\u0924\u093f', '\u091c\u0921\u093c\u094b\u0902 \u0915\u093e \u0917\u0941\u091a\u094d\u091b\u093e', 'Mula', 'Nirriti', 'a bunch of roots'],
+        ['\u092a\u0942\u0930\u094d\u0935\u093e\u0937\u093e\u0922\u093c\u093e', '\u091c\u0932 \u0926\u0947\u0935\u0924\u093e', '\u0939\u093e\u0925 \u0915\u093e \u092a\u0902\u0916\u093e', 'Purva Ashadha', 'the water deity', 'a hand fan'],
+        ['\u0909\u0924\u094d\u0924\u0930\u093e\u0937\u093e\u0922\u093c\u093e', '\u0935\u093f\u0936\u094d\u0935\u0947\u0926\u0947\u0935', '\u0939\u093e\u0925\u0940 \u0915\u093e \u0926\u093e\u0901\u0924', 'Uttara Ashadha', 'the Vishvadevas', 'an elephant tusk'],
+        ['\u0936\u094d\u0930\u0935\u0923', '\u0935\u093f\u0937\u094d\u0923\u0941', '\u0915\u093e\u0928', 'Shravana', 'Vishnu', 'an ear'],
+        ['\u0927\u0928\u093f\u0937\u094d\u0920\u093e', '\u0905\u0937\u094d\u091f \u0935\u0938\u0941', '\u0922\u094b\u0932', 'Dhanishta', 'the eight Vasus', 'a drum'],
+        ['\u0936\u0924\u092d\u093f\u0937\u093e', '\u0935\u0930\u0941\u0923', '\u0916\u093e\u0932\u0940 \u0917\u094b\u0932\u093e', 'Shatabhisha', 'Varuna', 'an empty circle'],
+        ['\u092a\u0942\u0930\u094d\u0935 \u092d\u093e\u0926\u094d\u0930\u092a\u0926', '\u0905\u091c \u090f\u0915\u092a\u093e\u0926', '\u0924\u0932\u0935\u093e\u0930', 'Purva Bhadrapada', 'Aja Ekapada', 'a sword'],
+        ['\u0909\u0924\u094d\u0924\u0930 \u092d\u093e\u0926\u094d\u0930\u092a\u0926', '\u0905\u0939\u093f\u0930\u094d\u092c\u0941\u0927\u094d\u0928\u094d\u092f', '\u091c\u0941\u0921\u093c\u0935\u093e\u0901', 'Uttara Bhadrapada', 'Ahirbudhnya', 'twins'],
+        ['\u0930\u0947\u0935\u0924\u0940', '\u092a\u0942\u0937\u093e', '\u092e\u091b\u0932\u0940', 'Revati', 'Pushan', 'a fish']
+    ];
+    const TITHI_HI = ['\u092a\u094d\u0930\u0924\u093f\u092a\u0926\u093e', '\u0926\u094d\u0935\u093f\u0924\u0940\u092f\u093e', '\u0924\u0943\u0924\u0940\u092f\u093e', '\u091a\u0924\u0941\u0930\u094d\u0925\u0940', '\u092a\u0902\u091a\u092e\u0940', '\u0937\u0937\u094d\u0920\u0940', '\u0938\u092a\u094d\u0924\u092e\u0940', '\u0905\u0937\u094d\u091f\u092e\u0940', '\u0928\u0935\u092e\u0940', '\u0926\u0936\u092e\u0940', '\u090f\u0915\u093e\u0926\u0936\u0940', '\u0926\u094d\u0935\u093e\u0926\u0936\u0940', '\u0924\u094d\u0930\u092f\u094b\u0926\u0936\u0940', '\u091a\u0924\u0941\u0930\u094d\u0926\u0936\u0940'];
+    const TITHI_EN = ['Pratipada', 'Dwitiya', 'Tritiya', 'Chaturthi', 'Panchami', 'Shashthi', 'Saptami', 'Ashtami', 'Navami', 'Dashami', 'Ekadashi', 'Dwadashi', 'Trayodashi', 'Chaturdashi'];
+    const DAY = [
+        ['\u0930\u0935\u093f\u0935\u093e\u0930', '\u0938\u0942\u0930\u094d\u092f', 'Sunday', 'the Sun'], ['\u0938\u094b\u092e\u0935\u093e\u0930', '\u091a\u0902\u0926\u094d\u0930\u092e\u093e', 'Monday', 'the Moon'],
+        ['\u092e\u0902\u0917\u0932\u0935\u093e\u0930', '\u092e\u0902\u0917\u0932', 'Tuesday', 'Mars'], ['\u092c\u0941\u0927\u0935\u093e\u0930', '\u092c\u0941\u0927', 'Wednesday', 'Mercury'],
+        ['\u0917\u0941\u0930\u0941\u0935\u093e\u0930', '\u0917\u0941\u0930\u0941', 'Thursday', 'Jupiter'], ['\u0936\u0941\u0915\u094d\u0930\u0935\u093e\u0930', '\u0936\u0941\u0915\u094d\u0930', 'Friday', 'Venus'],
+        ['\u0936\u0928\u093f\u0935\u093e\u0930', '\u0936\u0928\u093f', 'Saturday', 'Saturn']
+    ];
+    const PLANET_HI = { Sun: '\u0938\u0942\u0930\u094d\u092f', Moon: '\u091a\u0902\u0926\u094d\u0930', Mars: '\u092e\u0902\u0917\u0932', Mercury: '\u092c\u0941\u0927', Jupiter: '\u0917\u0941\u0930\u0941', Venus: '\u0936\u0941\u0915\u094d\u0930', Saturn: '\u0936\u0928\u093f', Rahu: '\u0930\u093e\u0939\u0941', Ketu: '\u0915\u0947\u0924\u0941' };
+    const NUM_PLANET = ['', 'Sun', 'Moon', 'Jupiter', 'Rahu', 'Mercury', 'Venus', 'Ketu', 'Saturn', 'Mars'];
+
+    const buildFacts = () => {
+        const F = window.MayaFunnel;
+        const chart = F?.kundliChart;
+        if (!F || !chart?.planets?.length) return [];
+        const hi = F._isHindiMode?.() ?? false;
+        const facts = [];
+        const moon = chart.planets.find((p) => p.name === 'Moon');
+        const sun = chart.planets.find((p) => p.name === 'Sun');
+        const ml = Number(moon?.absoluteDegree);
+        const sl = Number(sun?.absoluteDegree);
+        if (Number.isFinite(ml)) {
+            const n = NAK[Math.min(26, Math.floor(ml / (360 / 27)))];
+            facts.push(hi
+                ? `\u0906\u092a\u0915\u0947 \u091c\u0928\u094d\u092e \u0915\u0947 \u092a\u0932 \u091a\u0902\u0926\u094d\u0930\u092e\u093e ${n[0]} \u0928\u0915\u094d\u0937\u0924\u094d\u0930 \u092e\u0947\u0902 \u0925\u093e\u0964 \u0907\u0938\u0915\u0947 \u0926\u0947\u0935\u0924\u093e ${n[1]} \u0939\u0948\u0902${n[2] ? ` \u0914\u0930 \u092a\u094d\u0930\u0924\u0940\u0915 \u0939\u0948 ${n[2]}` : ''}\u0964`
+                : `At your birth the Moon was in ${n[3]} nakshatra. Its deity is ${n[4]}${n[5] ? ` and its symbol is ${n[5]}` : ''}.`);
+        }
+        if (Number.isFinite(ml) && Number.isFinite(sl)) {
+            const angle = ((ml - sl) % 360 + 360) % 360;
+            const t = Math.floor(angle / 12); // 0..29
+            const shukla = t < 15;
+            const k = t % 15;
+            let line;
+            if (hi) {
+                const name = k === 14 ? (shukla ? '\u092a\u0942\u0930\u094d\u0923\u093f\u092e\u093e' : '\u0905\u092e\u093e\u0935\u0938\u094d\u092f\u093e') : TITHI_HI[k];
+                line = k === 14
+                    ? `\u0906\u092a ${name} \u0915\u094b \u091c\u0928\u094d\u092e\u0947\u0964 ${shukla ? '\u0909\u0938 \u0930\u093e\u0924 \u092a\u0942\u0930\u093e \u091a\u093e\u0901\u0926 \u0925\u093e\u0964' : '\u0909\u0938 \u0930\u093e\u0924 \u0906\u0938\u092e\u093e\u0928 \u092e\u0947\u0902 \u091a\u093e\u0901\u0926 \u0928\u0939\u0940\u0902 \u0925\u093e\u0964'}`
+                    : `\u0906\u092a ${shukla ? '\u0936\u0941\u0915\u094d\u0932' : '\u0915\u0943\u0937\u094d\u0923'} \u092a\u0915\u094d\u0937 \u0915\u0940 ${name} \u0915\u094b \u091c\u0928\u094d\u092e\u0947\u0964 ${shukla ? '\u0909\u0938 \u0938\u092e\u092f \u091a\u093e\u0901\u0926 \u092c\u0922\u093c \u0930\u0939\u093e \u0925\u093e\u0964' : '\u0909\u0938 \u0938\u092e\u092f \u091a\u093e\u0901\u0926 \u0918\u091f \u0930\u0939\u093e \u0925\u093e\u0964'}`;
+            } else {
+                const name = k === 14 ? (shukla ? 'Purnima (full moon)' : 'Amavasya (new moon)') : TITHI_EN[k];
+                line = k === 14
+                    ? `You were born on ${name}.`
+                    : `You were born on ${name} of the ${shukla ? 'waxing (Shukla)' : 'waning (Krishna)'} fortnight - the Moon was ${shukla ? 'growing' : 'shrinking'}.`;
+            }
+            facts.push(line);
+        }
+        const date = window.MayaAstrology?.parseDate?.(F.userData?.birthDate);
+        if (date) {
+            const d = DAY[date.getDay()];
+            facts.push(hi
+                ? `\u0906\u092a\u0915\u093e \u091c\u0928\u094d\u092e ${d[0]} \u0915\u094b \u0939\u0941\u0906\u0964 \u0907\u0938 \u0926\u093f\u0928 \u0915\u0947 \u0938\u094d\u0935\u093e\u092e\u0940 ${d[1]} \u0939\u0948\u0902\u0964`
+                : `You were born on a ${d[2]}, the day ruled by ${d[3]}.`);
+            let m = date.getDate();
+            while (m > 9) m = String(m).split('').reduce((sum, x) => sum + Number(x), 0);
+            const pl = NUM_PLANET[m];
+            facts.push(hi
+                ? `\u0906\u092a\u0915\u093e \u092e\u0942\u0932\u093e\u0902\u0915 ${m} \u0939\u0948, \u091c\u093f\u0938\u0915\u093e \u0938\u094d\u0935\u093e\u092e\u0940 \u0917\u094d\u0930\u0939 ${PLANET_HI[pl]} \u0939\u0948\u0964`
+                : `Your moolank (birth-day number) is ${m}, ruled by ${pl}.`);
+        }
+        return facts;
+    };
+
+    const hide = () => {
+        if (!bubble) return;
+        const b = bubble;
+        bubble = null;
+        b.classList.remove('is-in');
+        setTimeout(() => b.remove(), 400);
+    };
+
+    const show = () => {
+        const facts = buildFacts();
+        if (!facts.length) return;
+        if (!order) order = facts.map((_, i) => i);
+        const idx = order[shown % order.length];
+        const text = facts[idx] || facts[0];
+        const hi = window.MayaFunnel?._isHindiMode?.() ?? false;
+        bubble = document.createElement('div');
+        bubble.className = 'maya-idle-fact';
+        bubble.setAttribute('role', 'status');
+        bubble.setAttribute('data-keep-voice', '');
+        bubble.innerHTML = `<span class="maya-idle-fact__tag">\u2728 ${hi ? '\u0915\u094d\u092f\u093e \u0906\u092a \u091c\u093e\u0928\u0924\u0947 \u0939\u0948\u0902?' : 'Did you know?'}</span><span class="maya-idle-fact__text"></span>`;
+        bubble.querySelector('.maya-idle-fact__text').textContent = text;
+        bubble.addEventListener('click', hide);
+        document.body.appendChild(bubble);
+        requestAnimationFrame(() => bubble && bubble.classList.add('is-in'));
+        shown += 1;
+        lastShown = Date.now();
+        try { window.MayaFunnel?._playSoftTick?.(); } catch (_e) { /* optional */ }
+        setTimeout(hide, 9000);
+    };
+
+    setInterval(() => {
+        const overlay = document.getElementById('maya-overlay');
+        const inReading = overlay?.classList.contains('show') && document.getElementById('calculation-overlay');
+        if (!inReading || bubble || shown >= MAX) return;
+        if (window.MayaFunnel?.isPaused) return;
+        if (document.querySelector('.maya-validation-btn, .maya-validation-overlay')) return;
+        const now = Date.now();
+        if (now - lastActive < IDLE_MS || now - lastShown < GAP_MS) return;
+        show();
+    }, 1000);
 })();

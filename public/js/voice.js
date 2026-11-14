@@ -546,7 +546,13 @@ const MayaVoice = {
             if (fillerStarted && !this.isPlaying) { try { this.stop(); } catch (_e) { } }
         });
 
-        // Filler loop: speaks up to maxFillers with interval gaps, stops when AI finishes
+        // Filler loop: speaks up to maxFillers with interval gaps, stops when AI finishes.
+        // It also stops for good as soon as anything else happens with the voice
+        // (real content spoken, a question shown, the user tapping a choice). Before,
+        // a late filler could start talking over a question or after an answer.
+        const startCancel = this._cancelledUpToTurn || 0;
+        let ownTurn = this._speechTurnId || 0;
+        const stale = () => (this._cancelledUpToTurn || 0) !== startCancel || (this._speechTurnId || 0) !== ownTurn;
         const fillerLoop = async () => {
             // Initial delay before first filler
             if (startDelay > 0) {
@@ -554,11 +560,14 @@ const MayaVoice = {
             }
             let count = 0;
             while (!done && count < maxFillers) {
+                if (stale() || document.querySelector('.maya-validation-btn')) break;
                 const phrase = this.getRandomFiller(type);
                 if (!phrase) break;
                 try {
                     fillerStarted = true;
-                    await this.speak(phrase);
+                    const turn = this.speak(phrase);
+                    ownTurn = this._speechTurnId || 0;
+                    await turn;
                 } catch (e) { /* non-critical */ }
                 count++;
                 if (done || count >= maxFillers) break;
@@ -1238,6 +1247,9 @@ const MayaVoice = {
         if (!text || this.isMuted || this.isElevenLabsUnavailable()) return;
         try {
             const prepared = this.prepareForSpeech(text);
+            // Warm the exact first block speak() will ask for, so it starts instantly.
+            const firstBlock = this.splitIntoCompleteTtsBlocks(prepared)[0];
+            if (firstBlock) this.textToSpeech(firstBlock, { singlePass: true }).catch(() => { });
             const chunks = this.splitIntoSpeechChunks(prepared);
             if (chunks.length > 0) {
                 const firstChunk = chunks[0];
@@ -1658,7 +1670,18 @@ const MayaVoice = {
             throw this.buildTtsUnavailableError();
         }
 
-        return await this.textToSpeechElevenLabs(text, options);
+        // Same line in the same voice: reuse the audio already made (prefetched while
+        // the screen was loading, or spoken before). Before, prefetched audio was never
+        // used by speak(), so every question waited for a fresh voice render.
+        const key = `${this.preferredVoiceId || ''}|${this.isMaleGuide?.() ? 'm' : 'f'}|${window.MayaUtils?.storage?.get?.('maya_language') || ''}|${String(text || '').trim()}`;
+        this._ttsMemo = this._ttsMemo || new Map();
+        const hit = this._ttsMemo.get(key);
+        if (hit) return hit;
+        const job = this.textToSpeechElevenLabs(text, options);
+        this._ttsMemo.set(key, job);
+        job.catch(() => this._ttsMemo.delete(key));
+        if (this._ttsMemo.size > 60) this._ttsMemo.delete(this._ttsMemo.keys().next().value);
+        return job;
     },
 
     /**
@@ -1897,6 +1920,9 @@ const MayaVoice = {
 
                 const arrayBuffer = await audioBlob.arrayBuffer();
                 const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                // The user tapped an option (or pause) while this sentence was being
+                // decoded: do not start it. Before, the next sentence still played.
+                if (this.aborted) { resolve(); return; }
 
                 const source = this.audioContext.createBufferSource();
                 const gainNode = this.audioContext.createGain();
@@ -2158,6 +2184,8 @@ const MayaVoice = {
     stop() {
         this._cancelledUpToTurn = this._speechTurnId || 0;
         this.stopCurrentAudio({ releaseLock: true, markAborted: true });
+        // Also silence the browser's backup voice, if it was the one speaking.
+        try { window.speechSynthesis?.cancel?.(); } catch (_e) { /* ignore */ }
     },
 
     /**

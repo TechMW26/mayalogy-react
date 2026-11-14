@@ -187,13 +187,17 @@ const MayaUtils = {
                 };
             }
 
+            // Each map service gets at most 2 s, so a slow one never blocks the next.
+            const timed = (url) => {
+                const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+                const timer = ctrl ? setTimeout(() => ctrl.abort(), 2000) : null;
+                return fetch(url, { cache: 'no-store', headers: { Accept: 'application/json' }, signal: ctrl?.signal })
+                    .finally(() => timer && clearTimeout(timer));
+            };
+
             try {
-                const response = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(birthPlace)}&limit=1`,
-                    {
-                        cache: 'no-store',
-                        headers: { Accept: 'application/json' }
-                    }
+                const response = await timed(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(birthPlace)}&limit=1`
                 );
 
                 if (!response.ok) {
@@ -215,6 +219,38 @@ const MayaUtils = {
                 }
             } catch (error) {
                 console.warn('Birth place resolution failed:', error.message);
+            }
+
+            // Second map service (Open-Meteo, free, no key). Without coordinates the app
+            // can only draw a Chandra kundli, which never matches other kundli apps.
+            try {
+                const city = birthPlace.split(',')[0].trim();
+                const response = await timed(
+                    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=10&language=en&format=json`
+                );
+                if (response.ok) {
+                    const data = await response.json();
+                    const list = Array.isArray(data?.results) ? data.results : [];
+                    const want = birthPlace.toLowerCase();
+                    const hit = list.find((x) => x.admin1 && want.includes(String(x.admin1).toLowerCase()))
+                        || list.find((x) => x.country && want.includes(String(x.country).toLowerCase()))
+                        || list.find((x) => x.country_code === 'IN')
+                        || list[0];
+                    const lat = Number(hit?.latitude);
+                    const lon = Number(hit?.longitude);
+                    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+                        return {
+                            birthPlace: [hit.name, hit.admin1, hit.country].filter(Boolean).join(', ') || birthPlace,
+                            birthLat: lat,
+                            birthLon: lon,
+                            birthTimezone: Math.max(-720, Math.min(840, Math.round(lon / 15) * 60)),
+                            resolved: true,
+                            source: 'open-meteo'
+                        };
+                    }
+                }
+            } catch (error) {
+                console.warn('Second place lookup failed:', error.message);
             }
 
             return {
