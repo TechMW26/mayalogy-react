@@ -93,16 +93,18 @@ export async function handleSpeechRequest(payload, source = process.env) {
   const text = sanitizeSpeechInput(payload?.text || payload?.input);
   if (!text) return json(400, { error: 'text is required' });
 
-  if (env(source, 'ELEVENLABS_API_KEY')) {
-    try {
-      return await callElevenLabs(payload, source);
-    } catch (error) {
-      console.error('[tts] ElevenLabs failed:', error.message);
-      if (!env(source, 'POLLINATIONS_API_KEY')) {
-        return json(error.status === 401 ? 503 : (error.status || 502), { code: 'ELEVENLABS_FAILED', error: 'Voice is temporarily unavailable' });
-      }
-    }
+  // ElevenLabs only. The old Pollinations fallback uses a chat-style voice model that rewrites
+  // the text and replaced names with the word "name" ("NAME, main NAME hoon"). If ElevenLabs is
+  // unavailable we return 503 and the app speaks with the device's Hindi voice instead, which
+  // always reads the exact text.
+  if (!env(source, 'ELEVENLABS_API_KEY')) {
+    console.error('[tts] ELEVENLABS_API_KEY is not set');
+    return json(503, { code: 'ELEVENLABS_NOT_CONFIGURED', error: 'Voice is temporarily unavailable' });
   }
-
-  return handlePollinationsSpeech(payload, source);
+  try {
+    return await callElevenLabs(payload, source);
+  } catch (error) {
+    console.error('[tts] ElevenLabs failed:', error.message);
+    return json(error.status === 401 ? 503 : (error.status || 502), { code: 'ELEVENLABS_FAILED', error: 'Voice is temporarily unavailable' });
+  }
 }
