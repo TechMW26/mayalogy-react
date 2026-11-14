@@ -173,6 +173,39 @@ const MayaKundli = {
         return c;
     },
 
+    // Hindi chart labels (shown when the app is in Hindi).
+    signShortNamesHi: {
+        'Aries': 'मेष', 'Taurus': 'वृष', 'Gemini': 'मिथुन', 'Cancer': 'कर्क',
+        'Leo': 'सिंह', 'Virgo': 'कन्या', 'Libra': 'तुला', 'Scorpio': 'वृश्चिक',
+        'Sagittarius': 'धनु', 'Capricorn': 'मकर', 'Aquarius': 'कुंभ', 'Pisces': 'मीन'
+    },
+    planetShortCodesHi: {
+        'Sun': 'सू', 'Moon': 'चं', 'Mars': 'मं', 'Mercury': 'बु', 'Jupiter': 'गु',
+        'Venus': 'शु', 'Saturn': 'श', 'Rahu': 'रा', 'Ketu': 'के'
+    },
+    _hindiFont: '"Noto Sans Devanagari", "Nirmala UI", Mangal, "Kohinoor Devanagari", Arial, sans-serif',
+
+    _detectChartLang(options = {}) {
+        if (options.lang === 'hi' || options.lang === 'en') return options.lang;
+        try {
+            if (window.MayaFunnel?._isHindiMode) return window.MayaFunnel._isHindiMode() ? 'hi' : 'en';
+            const stored = window.MayaUtils?.storage?.get?.('maya_language');
+            return String(stored || '').toLowerCase().startsWith('hi') ? 'hi' : 'en';
+        } catch (_e) {
+            return 'en';
+        }
+    },
+
+    // Font string for chart text: Devanagari-capable fonts in Hindi.
+    _chartFont(weightAndSize, isHindi) {
+        return `${weightAndSize} ${isHindi ? this._hindiFont : 'Arial'}`;
+    },
+
+    _chartAscText(label, isHindi) {
+        if (!isHindi) return label || 'Asc';
+        return label === 'Moon' ? 'चंद्र' : 'लग्न';
+    },
+
     planetShortCodes: {
         'Sun': 'Su',
         'Moon': 'Mo',
@@ -289,7 +322,7 @@ const MayaKundli = {
         if (amount <= 0) return;
 
         const info = this.planetInfo[planet.name] || {};
-        const label = this.planetShortCodes[planet.name] || planet.name.substring(0, 2);
+        const label = (this._renderHindi ? this.planetShortCodesHi[planet.name] : null) || this.planetShortCodes[planet.name] || planet.name.substring(0, 2);
         const pulseScale = 1 + Math.sin(pulse + centerX * 0.01 + centerY * 0.01) * 0.04;
         const scale = (0.3 + amount * 0.7) * pulseScale;
         const imgSize = options.size || 20;
@@ -332,7 +365,7 @@ const MayaKundli = {
         if (showLabel) {
             ctx.shadowBlur = 0;
             ctx.fillStyle = options.labelColor || '#fffaf0';
-            ctx.font = `bold ${labelSize}px Arial`;
+            ctx.font = this._chartFont(`bold ${labelSize + (this._renderHindi ? 1 : 0)}px`, this._renderHindi);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
             ctx.fillText(label, 0, imgSize / 2 + 1);
@@ -356,6 +389,8 @@ const MayaKundli = {
         const labelOpacity = this.clamp01(frameState.labelOpacity ?? 1);
         const planetProgress = this.clamp01(frameState.planetProgress ?? 1);
         const pulse = Number(frameState.pulse || 0);
+        const isHindi = data.lang === 'hi';
+        this._renderHindi = isHindi;
 
         ctx.clearRect(0, 0, w, h);
 
@@ -368,9 +403,9 @@ const MayaKundli = {
         ctx.save();
         ctx.globalAlpha = 0.28 + labelOpacity * 0.72;
         ctx.fillStyle = textColor;
-        ctx.font = 'bold 16px Arial';
+        ctx.font = this._chartFont('bold 16px', isHindi);
         ctx.textAlign = 'center';
-        ctx.fillText('MAYA', w / 2, h / 2 + 5);
+        ctx.fillText(isHindi ? 'माया' : 'MAYA', w / 2, h / 2 + 5);
         ctx.restore();
 
         const signPositions = data.southIndianLayout || this.southIndianLayout;
@@ -385,7 +420,7 @@ const MayaKundli = {
             const sign = data.signs[pos.sign];
             const isAsc = pos.sign === data.ascIndex;
             const signPlanets = data.planetsBySign[pos.sign] || [];
-            const shortName = data.signShortNames[sign.name] || sign.name.substring(0, 3);
+            const shortName = (isHindi ? this.signShortNamesHi[sign.name] : null) || data.signShortNames[sign.name] || sign.name.substring(0, 3);
 
             if (isAsc && labelOpacity > 0) {
                 ctx.save();
@@ -397,12 +432,12 @@ const MayaKundli = {
             ctx.save();
             ctx.globalAlpha = labelOpacity;
             ctx.fillStyle = isAsc ? ascColor : mutedColor;
-            ctx.font = '600 11px Arial';
+            ctx.font = this._chartFont('600 11px', isHindi);
             ctx.textAlign = 'left';
             ctx.fillText(`${sign.symbol} ${shortName}`, x + 6, y + 15);
             if (isAsc) {
-                ctx.font = 'bold 9px Arial';
-                ctx.fillText('Asc', x + cellW - 26, y + 15);
+                ctx.font = this._chartFont('bold 9px', isHindi);
+                ctx.fillText(this._chartAscText('Asc', isHindi), x + cellW - 26, y + 15);
             }
             ctx.restore();
 
@@ -501,7 +536,8 @@ const MayaKundli = {
             signs,
             signShortNames: this.signShortNames,
             planetInfo: this.planetInfo,
-            southIndianLayout: this.southIndianLayout
+            southIndianLayout: this.southIndianLayout,
+            lang: this._detectChartLang(options)
         };
 
         const chartId = 'kundli-canvas-south-' + Date.now();
@@ -616,6 +652,7 @@ const MayaKundli = {
             planetInfo: this.planetInfo
         };
         chartData.ascLabel = options.ascLabel || 'Asc';
+        chartData.lang = this._detectChartLang(options);
 
         const chartId = 'kundli-canvas-north-' + Date.now();
         
@@ -685,6 +722,8 @@ const MayaKundli = {
         const labelOpacity = this.clamp01(frameState.labelOpacity ?? 1);
         const planetProgress = this.clamp01(frameState.planetProgress ?? 1);
         const pulse = Number(frameState.pulse || 0);
+        const isHindi = data.lang === 'hi';
+        this._renderHindi = isHindi;
 
         ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
@@ -764,21 +803,21 @@ const MayaKundli = {
             if (!pos || !sign) continue;
 
             const housePlanets = data.planetsByHouse[house] || [];
-            const shortName = data.signShortNames[sign.name] || sign.name.substring(0, 3);
+            const shortName = (isHindi ? this.signShortNamesHi[sign.name] : null) || data.signShortNames[sign.name] || sign.name.substring(0, 3);
             const isAsc = house === 1;
             const point = mapPoint(pos.x, pos.y);
 
             ctx.save();
             ctx.globalAlpha = labelOpacity;
             ctx.fillStyle = isAsc ? ascColor : mutedColor;
-            ctx.font = isAsc ? 'bold 11px Arial' : '10px Arial';
+            ctx.font = this._chartFont(isAsc ? 'bold 11px' : '10px', isHindi);
             ctx.textAlign = 'center';
             ctx.fillText(`${sign.symbol} ${shortName}`, point.x, point.y - 8);
 
             if (isAsc) {
                 ctx.fillStyle = ascColor;
-                ctx.font = 'bold 8px Arial';
-                ctx.fillText(data.ascLabel || 'Asc', point.x, point.y + 2);
+                ctx.font = this._chartFont(isHindi ? 'bold 9px' : 'bold 8px', isHindi);
+                ctx.fillText(this._chartAscText(data.ascLabel, isHindi), point.x, point.y + 2);
             }
             ctx.restore();
 
@@ -828,9 +867,9 @@ const MayaKundli = {
         ctx.save();
         ctx.globalAlpha = 0.25 + labelOpacity * 0.75;
         ctx.fillStyle = textColor;
-        ctx.font = 'bold 16px Arial';
+        ctx.font = this._chartFont('bold 16px', isHindi);
         ctx.textAlign = 'center';
-        ctx.fillText('MAYA', innerX + innerW / 2, innerY + innerH / 2 + 5);
+        ctx.fillText(isHindi ? 'माया' : 'MAYA', innerX + innerW / 2, innerY + innerH / 2 + 5);
         ctx.restore();
     },
 

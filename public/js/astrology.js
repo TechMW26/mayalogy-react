@@ -1109,7 +1109,8 @@ const MayaAstrology = {
         const theta = localSiderealDegrees * Math.PI / 180;
         const phi = normalizedLatitude * Math.PI / 180;
         const ascTropical = this.normalizeDegree(
-            Math.atan2(-Math.cos(theta), Math.sin(theta) * Math.cos(obliquity) + Math.tan(phi) * Math.sin(obliquity)) * 180 / Math.PI
+            // Standard ascendant formula. The old form (-cos, +x) returned the descendant (180 degrees off).
+            Math.atan2(Math.cos(theta), -(Math.sin(theta) * Math.cos(obliquity) + Math.tan(phi) * Math.sin(obliquity))) * 180 / Math.PI
         );
         const ascSidereal = this.normalizeDegree(ascTropical - ayanamsa);
         const signIndex = Math.floor(ascSidereal / 30) % 12;

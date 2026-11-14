@@ -213,3 +213,394 @@ canvas {
         text-overflow: ellipsis;
     }
 }
+
+/* 16. Phones: kundli formation screen fits in one screen (no up/down swipe).
+       Info pills go 2 x 2, headings get tighter, and the chart shrinks to the
+       height that is left instead of pushing content below the fold. */
+@media (max-width: 600px) {
+    .calculation-overlay {
+        padding: max(0.6rem, env(safe-area-inset-top)) 0.6rem calc(4.5rem + env(safe-area-inset-bottom, 0px)) !important;
+    }
+    .calculation-container {
+        width: 100% !important;
+        padding: 0.9rem 0.85rem !important;
+    }
+    .calculation-container .calculation-title { margin-bottom: 0.35rem !important; }
+    .calculation-container .calculation-title h2 {
+        font-size: clamp(1.1rem, 5.2vw, 1.35rem) !important;
+        line-height: 1.25 !important;
+        margin-bottom: 0.25rem !important;
+    }
+    .calculation-container .calc-rotating-status {
+        font-size: 0.8rem !important;
+        margin-bottom: 0.35rem !important;
+    }
+    .calculation-container .calc-section h3 {
+        font-size: 0.92rem !important;
+        margin-bottom: 0.4rem !important;
+    }
+    .calculation-container .calc-explanation {
+        font-size: 0.8rem !important;
+        line-height: 1.45 !important;
+        margin-bottom: 0.6rem !important;
+    }
+    .calculation-container .kundli-formation-meta {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.4rem !important;
+        margin-bottom: 0.6rem !important;
+    }
+    .calculation-container .kundli-formation-meta__item {
+        min-width: 0 !important;
+        flex: none !important;
+        padding: 0.3rem 0.5rem !important;
+    }
+    .calculation-container .kundli-formation-chart-card {
+        max-width: max(200px, min(100%, calc(100vh - 460px))) !important;
+        max-width: max(200px, min(100%, calc(100dvh - 460px))) !important;
+        margin-bottom: 0.4rem !important;
+    }
+    /* When the Continue button is showing, leave room for it too. */
+    .calculation-container:has(.calc-overlay-continue) .kundli-formation-chart-card {
+        max-width: max(170px, min(100%, calc(100vh - 600px))) !important;
+        max-width: max(170px, min(100%, calc(100dvh - 600px))) !important;
+    }
+    .calculation-container .calculation-display { margin-bottom: 0.4rem !important; }
+    .calculation-container .calculation-result { margin-top: 0 !important; }
+    .calc-overlay-continue { margin-top: 0.6rem !important; }
+}
+
+/* 16b. Short phones (SE, small Android): one row of info pills, tighter text. */
+@media (max-width: 600px) and (max-height: 760px) {
+    .calculation-container { padding: 0.75rem 0.7rem !important; }
+    .calculation-container .calculation-title h2 { font-size: clamp(1rem, 4.8vw, 1.2rem) !important; }
+    .calculation-container .calc-rotating-status { font-size: 0.74rem !important; margin-bottom: 0.2rem !important; }
+    .calculation-container .calc-explanation { font-size: 0.74rem !important; line-height: 1.4 !important; margin-bottom: 0.45rem !important; }
+    .calculation-container .kundli-formation-meta { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.3rem !important; margin-bottom: 0.45rem !important; }
+    .calculation-container .kundli-formation-meta__item { padding: 0.22rem 0.25rem !important; border-radius: 0.8rem !important; }
+    .calculation-container .kundli-formation-meta__label { font-size: 0.6rem !important; }
+    .calculation-container .kundli-formation-meta__value { font-size: 0.74rem !important; }
+    .calculation-container .kundli-formation-chart-card {
+        max-width: max(190px, min(100%, calc(100vh - 380px))) !important;
+        max-width: max(190px, min(100%, calc(100dvh - 380px))) !important;
+    }
+    .calculation-container:has(.calc-overlay-continue) .kundli-formation-chart-card {
+        max-width: max(170px, min(100%, calc(100vh - 460px))) !important;
+        max-width: max(170px, min(100%, calc(100dvh - 460px))) !important;
+    }
+}
+
+/* 17. Phones: "choose your guide" (MAYA / Moksh) fits in one screen.
+       The card keeps its shape but is sized from the screen height. */
+@media (max-width: 600px) {
+    #onboardingContent[data-step="agentGender"] .onboarding-question { margin-bottom: 0.4rem !important; }
+    #onboardingContent[data-step="agentGender"] .onboarding-question .lead {
+        font-size: clamp(1.05rem, 3.2vh, 1.4rem) !important;
+        line-height: 1.3 !important;
+    }
+    #onboardingContent[data-step="agentGender"] .maya-ritual-divider { margin-top: 0.3rem !important; }
+    #onboardingContent[data-step="agentGender"] .gc-slide { padding: 6px 4px !important; }
+    #onboardingContent[data-step="agentGender"] .gc-card {
+        max-width: min(100%, calc((100vh - 360px) * 0.714)) !important;
+        max-width: min(100%, calc((100dvh - 360px) * 0.714)) !important;
+        min-width: 210px;
+        margin: 0 auto !important;
+    }
+    #onboardingContent[data-step="agentGender"] .gc-content-top { padding: 14px 12px 6px !important; gap: 6px !important; }
+    #onboardingContent[data-step="agentGender"] .gc-avatar {
+        width: min(140px, 17vh, 38vw) !important;
+        height: min(140px, 17vh, 38vw) !important;
+    }
+    #onboardingContent[data-step="agentGender"] .gc-name { font-size: min(3rem, 6.5vh) !important; line-height: 1.1 !important; }
+    #onboardingContent[data-step="agentGender"] .gc-desc { font-size: min(1.05rem, 2.4vh) !important; }
+    #onboardingContent[data-step="agentGender"] .gc-glass-badge { font-size: 0.7rem !important; }
+    #onboardingContent[data-step="agentGender"] .gc-slider-dots { margin-top: 8px !important; }
+    #onboardingContent[data-step="agentGender"] .gc-choose-btn { margin-top: 10px !important; }
+    #onboardingContent[data-step="agentGender"] ~ .onboarding-actions,
+    #onboardingContent[data-step="agentGender"] .onboarding-actions { margin-top: 0.4rem !important; }
+}
+
+/* 18. Phones: the round pause button moves to the bottom-right corner so it never
+       sits on top of centred buttons like Continue or "None of these". */
+@media (max-width: 600px) {
+    .maya-funnel-controls {
+        left: auto !important;
+        right: max(10px, env(safe-area-inset-right, 0px)) !important;
+        transform: none !important;
+    }
+}
+
+/* 19. Very short phones (iPhone SE 1st gen, 568px tall): MCQ and landing still fit. */
+@media (max-width: 600px) and (max-height: 620px) {
+    .maya-validation-question { font-size: 1.05rem !important; line-height: 1.35 !important; margin-bottom: 0.6rem !important; }
+    .maya-validation-options { gap: 0.4rem !important; }
+    .maya-validation-options button { padding: 0.45rem 0.7rem !important; font-size: 0.82rem !important; min-height: 0 !important; }
+    .maya-validation-container { padding-top: 0.8rem !important; padding-bottom: 0.8rem !important; }
+    .landing-actions { gap: 0.4rem !important; margin-top: 0.6rem !important; }
+}
+
+/* 20. Laptops and tablets (wider than 600px): kundli screen fits in one screen.
+       Title on one line, the four info pills in one row, and the chart sized from
+       the height that is left (so a 1366x768 laptop does not need scrolling). */
+@media (min-width: 601px) {
+    .calculation-overlay {
+        padding-top: max(0.75rem, env(safe-area-inset-top)) !important;
+        padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px)) !important;
+    }
+    .calculation-container { padding: 1.1rem 1.6rem !important; }
+    .calculation-container .calculation-title { margin-bottom: 0.4rem !important; }
+    .calculation-container .calculation-title h2 {
+        font-size: clamp(1.35rem, 3.6vh, 2.1rem) !important;
+        line-height: 1.2 !important;
+        margin-bottom: 0.25rem !important;
+    }
+    .calculation-container .calc-rotating-status { margin-bottom: 0.3rem !important; }
+    .calculation-container .calc-section h3 { margin-bottom: 0.45rem !important; }
+    .calculation-container .calc-explanation { margin-bottom: 0.7rem !important; line-height: 1.5 !important; }
+    .calculation-container .kundli-formation-meta {
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.5rem !important;
+        margin-bottom: 0.7rem !important;
+    }
+    .calculation-container .kundli-formation-meta__item { min-width: 0 !important; flex: none !important; padding: 0.3rem 0.5rem !important; }
+    .calculation-container .kundli-formation-chart-card {
+        max-width: max(220px, min(100%, calc(100vh - 440px))) !important;
+        max-width: max(220px, min(100%, calc(100dvh - 440px))) !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        margin-bottom: 0.4rem !important;
+    }
+    .calculation-container:has(.calc-overlay-continue) .kundli-formation-chart-card {
+        max-width: max(200px, min(100%, calc(100vh - 520px))) !important;
+        max-width: max(200px, min(100%, calc(100dvh - 520px))) !important;
+    }
+    .calculation-container .calculation-display { margin-bottom: 0.4rem !important; }
+    .calculation-container .calculation-result { margin-top: 0 !important; }
+    .calc-overlay-continue { margin-top: 0.6rem !important; }
+}
+
+/* 21. Laptops with short screens (720-800px tall): MCQ question card fits. */
+@media (min-width: 601px) and (max-height: 820px) {
+    .maya-validation-question { font-size: clamp(1.25rem, 3.6vh, 1.9rem) !important; margin-bottom: 0.8rem !important; }
+    .maya-validation-options { gap: 0.55rem !important; }
+    .maya-validation-container { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+}
+
+/* 22. Laptops and tablets too: pause button in the bottom-right corner, so it never
+       covers the Continue button or the chart. */
+@media (min-width: 601px) {
+    .maya-funnel-controls {
+        left: auto !important;
+        right: max(18px, env(safe-area-inset-right, 0px)) !important;
+        transform: none !important;
+    }
+}
+
+/* 23. Kundli chart always stays square. The chart is drawn at a fixed pixel size; when the
+       card shrinks later (e.g. Continue button appears) only its width shrank and the chart
+       looked stretched. Width follows the card, height follows the width. */
+.kundli-formation-chart .kundli-canvas {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100% !important;
+    aspect-ratio: 1 / 1;
+}
+
+/* 24. Laptops: guide cards leave room for "Your divine guide" under the name. */
+@media (min-width: 601px) and (max-height: 900px) {
+    #onboardingContent[data-step="agentGender"] .gc-name { font-size: min(3.6rem, 6.5vh) !important; line-height: 1.1 !important; }
+}
+
+/* 25. Kundli formation: chart beside the text, paper-unfold opening, "kundli ready" seal.
+       Wide screens (900px+): text on the left, chart on the right.
+       Phones and tablets in portrait: stacked, same animations. */
+.kundli-formation-calc--split .kundli-formation-visual { display: flex; justify-content: center; }
+.kundli-formation-calc--split .kundli-formation-chart-card { position: relative; transform-origin: 50% 0%; }
+
+@media (min-width: 900px) {
+    .calculation-container:has(.kundli-formation-calc--split) {
+        width: min(1080px, 94vw) !important;
+        max-width: none !important;
+    }
+    .kundli-formation-calc--split {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: clamp(1.2rem, 2.5vw, 2.2rem);
+        align-items: center;
+        text-align: left;
+    }
+    .kundli-formation-calc--split .kundli-formation-info h3 { justify-content: flex-start; text-align: left; }
+    .kundli-formation-calc--split .kundli-formation-meta { justify-content: flex-start; }
+    .calculation-container .kundli-formation-calc--split .kundli-formation-chart-card {
+        width: max(260px, min(44vw, calc(100vh - 300px), 520px)) !important;
+        width: max(260px, min(44vw, calc(100dvh - 300px), 520px)) !important;
+        max-width: none !important;
+        margin: 0 !important;
+    }
+    .calculation-container:has(.calc-overlay-continue) .kundli-formation-calc--split .kundli-formation-chart-card {
+        width: max(240px, min(44vw, calc(100vh - 370px), 520px)) !important;
+        width: max(240px, min(44vw, calc(100dvh - 370px), 520px)) !important;
+    }
+    .kundli-formation-calc--split .kundli-formation-chart { max-width: none !important; }
+}
+
+/* Paper unfold: the card swings open from a fold at the top, like a letter. */
+.kundli-formation-chart-card.is-open { animation: kundliPaperUnfold 1.5s cubic-bezier(.2, .8, .25, 1) both; }
+@keyframes kundliPaperUnfold {
+    0%   { transform: perspective(1100px) rotateX(-92deg) scaleY(.18); opacity: 0; filter: brightness(.55); }
+    35%  { transform: perspective(1100px) rotateX(-38deg) scaleY(.72); opacity: 1; }
+    65%  { transform: perspective(1100px) rotateX(9deg) scaleY(1.02); filter: brightness(1.08); }
+    82%  { transform: perspective(1100px) rotateX(-3deg) scaleY(1); }
+    100% { transform: none; opacity: 1; filter: none; }
+}
+
+/* Fold lines (creases) that fade as the paper flattens. */
+.kundli-fold-creases {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    border-radius: inherit;
+    opacity: 0;
+    background:
+        linear-gradient(to bottom, transparent calc(50% - 1px), rgba(90, 55, 15, .45) 50%, transparent calc(50% + 1px)),
+        linear-gradient(to right, transparent calc(50% - 1px), rgba(90, 55, 15, .45) 50%, transparent calc(50% + 1px)),
+        linear-gradient(135deg, rgba(255, 255, 255, .18), transparent 40%, rgba(0, 0, 0, .12) 60%, transparent);
+}
+.kundli-formation-chart-card.is-open .kundli-fold-creases { animation: kundliCreasesFade 2.2s ease-out both; }
+@keyframes kundliCreasesFade {
+    0%, 45% { opacity: 1; }
+    100%    { opacity: 0; }
+}
+
+/* The chart itself opens in a circle from the centre with a small turn. */
+.kundli-formation-chart-card.is-open .kundli-formation-chart { animation: kundliRoundReveal 1.7s ease-out .55s both; }
+@keyframes kundliRoundReveal {
+    0%   { clip-path: circle(0% at 50% 50%); transform: rotate(-10deg) scale(.94); }
+    70%  { clip-path: circle(60% at 50% 50%); transform: rotate(1.5deg) scale(1.01); }
+    100% { clip-path: circle(75% at 50% 50%); transform: none; }
+}
+
+/* Ready: gold glow pulses twice, a light sweeps across, the seal stamps in. */
+.kundli-formation-chart-card.is-ready { animation: kundliReadyGlow 1.6s ease-out 2; }
+@keyframes kundliReadyGlow {
+    0%   { box-shadow: 0 0 0 0 rgba(240, 190, 90, .55), 0 12px 28px rgba(0, 0, 0, .35); }
+    60%  { box-shadow: 0 0 0 16px rgba(240, 190, 90, 0), 0 12px 28px rgba(0, 0, 0, .35); }
+    100% { box-shadow: 0 0 0 0 rgba(240, 190, 90, 0), 0 12px 28px rgba(0, 0, 0, .35); }
+}
+.kundli-ready-shimmer {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    border-radius: inherit;
+    overflow: hidden;
+    opacity: 0;
+    background: linear-gradient(105deg, transparent 30%, rgba(255, 244, 205, .75) 48%, transparent 66%);
+    background-size: 250% 100%;
+    background-position: 130% 0;
+}
+.kundli-formation-chart-card.is-ready .kundli-ready-shimmer { animation: kundliShimmer 1.3s ease-in-out .15s 1 both; }
+@keyframes kundliShimmer {
+    0%   { opacity: 1; background-position: 130% 0; }
+    100% { opacity: 0; background-position: -60% 0; }
+}
+.kundli-ready-seal {
+    position: absolute;
+    top: -14px;
+    right: -14px;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: clamp(64px, 9vw, 82px);
+    height: clamp(64px, 9vw, 82px);
+    border-radius: 50%;
+    pointer-events: none;
+    color: #2a1606;
+    text-align: center;
+    background: radial-gradient(circle at 35% 30%, #fff1c2, #e8b75a 55%, #b9772e 100%);
+    border: 2px solid #fbe2a2;
+    box-shadow: 0 0 0 4px rgba(120, 70, 20, .35), 0 8px 20px rgba(0, 0, 0, .45), 0 0 24px rgba(240, 190, 90, .55);
+    opacity: 0;
+    transform: scale(2.2) rotate(-25deg);
+}
+.kundli-ready-seal__icon { font-size: clamp(1.15rem, 2vw, 1.5rem); font-weight: 800; line-height: 1; }
+.kundli-ready-seal__text { margin-top: 2px; padding: 0 6px; font-size: clamp(.56rem, .9vw, .68rem); font-weight: 700; line-height: 1.1; }
+.kundli-formation-chart-card.is-ready .kundli-ready-seal { animation: kundliSealStamp .7s cubic-bezier(.2, 1.4, .4, 1) .35s both; }
+@keyframes kundliSealStamp {
+    0%   { opacity: 0; transform: scale(2.2) rotate(-25deg); }
+    60%  { opacity: 1; transform: scale(.88) rotate(-8deg); }
+    100% { opacity: 1; transform: scale(1) rotate(-12deg); }
+}
+@media (max-width: 600px) {
+    .kundli-ready-seal { top: -10px; right: -6px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .kundli-formation-chart-card.is-open,
+    .kundli-formation-chart-card.is-open .kundli-formation-chart,
+    .kundli-formation-chart-card.is-open .kundli-fold-creases,
+    .kundli-formation-chart-card.is-ready,
+    .kundli-formation-chart-card.is-ready .kundli-ready-shimmer { animation: none !important; }
+    .kundli-formation-chart-card.is-ready .kundli-ready-seal { animation: none !important; opacity: 1; transform: rotate(-12deg); }
+}
+
+/* 26. Birth time picker with AM/PM (built in utils.js for every <input type="time">). */
+.maya-ampm-time {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: .5rem .4rem;
+    align-items: center;
+    width: 100%;
+    text-align: left;
+}
+.maya-ampm-time select {
+    width: 100% !important;
+    min-width: 0;
+    cursor: pointer;
+}
+.maya-ampm-time__colon { font-weight: 700; opacity: .8; }
+.maya-ampm-time__period {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .5rem;
+}
+.maya-ampm-time__btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    padding: .5rem .4rem;
+    border-radius: 12px;
+    border: 1px solid rgba(232, 183, 90, .45);
+    background: rgba(255, 255, 255, .04);
+    color: inherit;
+    font-weight: 700;
+    font-size: 1rem;
+    line-height: 1.1;
+    cursor: pointer;
+    transition: background .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.maya-ampm-time__btn small { font-size: .68rem; font-weight: 500; opacity: .75; }
+.maya-ampm-time__btn.is-active {
+    background: linear-gradient(135deg, #f3cf7a, #c98b35);
+    border-color: #fbe2a2;
+    color: #2a1606;
+    box-shadow: 0 0 0 3px rgba(240, 190, 90, .25);
+}
+.maya-ampm-time__hint { grid-column: 1 / -1; min-height: 0; font-size: .82rem; color: #ffb4a2; }
+.maya-ampm-time.is-invalid .maya-ampm-time__period,
+.maya-ampm-time.is-invalid select { animation: mayaAmPmShake .35s ease; }
+.maya-ampm-time.is-invalid .maya-ampm-time__btn:not(.is-active) { border-color: #ff8f70; }
+@keyframes mayaAmPmShake {
+    0%, 100% { transform: none; }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+}
+
+/* 27. Calculation badge text follows the app language (set in funnel.js as data-badge). */
+.calculation-title[data-badge]::before { content: attr(data-badge); }

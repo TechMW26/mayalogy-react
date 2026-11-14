@@ -789,3 +789,195 @@ const MayaUtils = {
 
 // Make globally available
 window.MayaUtils = MayaUtils;
+
+/**
+ * Birth time with a clear AM/PM choice, everywhere in the app.
+ * Every <input type="time"> is kept (same id, same 24-hour "HH:MM" value that the rest of
+ * the code reads) but hidden behind Hour / Minute / AM-PM controls, so the user never has
+ * to guess whether the box is in 12- or 24-hour format. If the time is half-filled
+ * (for example hour picked but no AM/PM), the Next/Save button asks to finish it instead
+ * of silently saving "unknown".
+ */
+(function installAmPmTimeInputs() {
+    if (typeof document === 'undefined' || window.__mayaAmPmTime) return;
+    window.__mayaAmPmTime = true;
+
+    const isHindi = () => {
+        try {
+            const raw = localStorage.getItem('maya_maya_language');
+            const lang = raw ? JSON.parse(raw) : '';
+            if (lang === 'hi') return true;
+            if (lang === 'en') return false;
+        } catch (_e) { /* ignore */ }
+        return (document.documentElement.lang || '').toLowerCase().startsWith('hi');
+    };
+    const pad = (n) => String(n).padStart(2, '0');
+
+    function enhance(input) {
+        if (!input || input.dataset.ampmEnhanced === '1' || input.type !== 'time') return;
+        input.dataset.ampmEnhanced = '1';
+        const hi = isHindi();
+        const selectClass = (input.className || '').replace(/\bonboarding-input\b/g, '').trim();
+        const wrap = document.createElement('div');
+        wrap.className = 'maya-ampm-time';
+        wrap.setAttribute('role', 'group');
+        wrap.setAttribute('aria-label', hi ? 'जन्म समय' : 'Birth time');
+        const hourOptions = ['<option value="">' + (hi ? 'घंटा' : 'Hour') + '</option>']
+            .concat(Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`)).join('');
+        const minuteOptions = ['<option value="">' + (hi ? 'मिनट' : 'Min') + '</option>']
+            .concat(Array.from({ length: 60 }, (_, i) => `<option value="${pad(i)}">${pad(i)}</option>`)).join('');
+        wrap.innerHTML = `
+            <select class="maya-ampm-time__hour ${selectClass}" aria-label="${hi ? 'घंटा' : 'Hour'}">${hourOptions}</select>
+            <span class="maya-ampm-time__colon" aria-hidden="true">:</span>
+            <select class="maya-ampm-time__minute ${selectClass}" aria-label="${hi ? 'मिनट' : 'Minute'}">${minuteOptions}</select>
+            <div class="maya-ampm-time__period" role="radiogroup" aria-label="AM / PM">
+                <button type="button" class="maya-ampm-time__btn" data-period="AM" role="radio" aria-checked="false">AM<small>${hi ? 'रात 12 – दोपहर 12' : 'midnight – noon'}</small></button>
+                <button type="button" class="maya-ampm-time__btn" data-period="PM" role="radio" aria-checked="false">PM<small>${hi ? 'दोपहर 12 – रात 12' : 'noon – midnight'}</small></button>
+            </div>
+            <div class="maya-ampm-time__hint" aria-live="polite"></div>`;
+        input.insertAdjacentElement('afterend', wrap);
+        input.style.display = 'none';
+        input.setAttribute('aria-hidden', 'true');
+        input.tabIndex = -1;
+
+        const hourSel = wrap.querySelector('.maya-ampm-time__hour');
+        const minSel = wrap.querySelector('.maya-ampm-time__minute');
+        const hint = wrap.querySelector('.maya-ampm-time__hint');
+        let period = '';
+
+        const setPeriod = (p) => {
+            period = p;
+            wrap.querySelectorAll('.maya-ampm-time__btn').forEach((b) => {
+                const on = b.dataset.period === p;
+                b.classList.toggle('is-active', on);
+                b.setAttribute('aria-checked', on ? 'true' : 'false');
+            });
+        };
+        const sync = () => {
+            const h = Number(hourSel.value);
+            const m = minSel.value;
+            let next = '';
+            if (h && m !== '' && period) {
+                const h24 = period === 'AM' ? (h % 12) : ((h % 12) + 12);
+                next = `${pad(h24)}:${m}`;
+            }
+            wrap.classList.toggle('is-partial', !next && !!(hourSel.value || m !== '' || period));
+            if (next || !wrap.classList.contains('is-partial')) { wrap.classList.remove('is-invalid'); hint.textContent = ''; }
+            if (input.value !== next) {
+                input.value = next;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        };
+        const load = () => {
+            const match = /^(\d{1,2}):(\d{2})/.exec(input.value || '');
+            if (!match) return;
+            const h24 = Math.min(23, Number(match[1]));
+            hourSel.value = String(h24 % 12 === 0 ? 12 : h24 % 12);
+            minSel.value = match[2];
+            setPeriod(h24 < 12 ? 'AM' : 'PM');
+        };
+
+        hourSel.addEventListener('change', () => { if (hourSel.value && minSel.value === '') minSel.value = '00'; sync(); });
+        minSel.addEventListener('change', sync);
+        wrap.querySelectorAll('.maya-ampm-time__btn').forEach((b) => b.addEventListener('click', () => { setPeriod(b.dataset.period); sync(); }));
+        wrap._mayaHint = (msg) => { wrap.classList.add('is-invalid'); hint.textContent = msg; };
+        load();
+    }
+
+    function scan(root) {
+        if (!root || !root.querySelectorAll) return;
+        if (root.matches && root.matches('input[type="time"]')) enhance(root);
+        root.querySelectorAll('input[type="time"]').forEach(enhance);
+    }
+
+    // Half-filled time: stop Next/Save and ask for the missing part (Back/"I don't know" still work).
+    const SKIP = /(back|prev|close|cancel|unknown|skip|dismiss|mute|pause)/i;
+    document.addEventListener('click', (event) => {
+        const trigger = event.target?.closest?.('button, [type="submit"], .maya-btn, a.btn');
+        if (!trigger || trigger.closest('.maya-ampm-time')) return;
+        if (SKIP.test(`${trigger.id || ''} ${trigger.className || ''}`)) return;
+        const partial = Array.from(document.querySelectorAll('.maya-ampm-time.is-partial'))
+            .find((w) => w.offsetParent !== null);
+        if (!partial) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const hi = isHindi();
+        const needPeriod = !partial.querySelector('.maya-ampm-time__btn.is-active');
+        partial._mayaHint(needPeriod
+            ? (hi ? 'कृपया AM या PM चुनें' : 'Please choose AM or PM')
+            : (hi ? 'कृपया घंटा और मिनट चुनें' : 'Please choose the hour and minute'));
+        (partial.querySelector(needPeriod ? '.maya-ampm-time__btn' : '.maya-ampm-time__hour') || partial).focus?.();
+    }, true);
+
+    const start = () => {
+        scan(document.body);
+        new MutationObserver((mutations) => {
+            mutations.forEach((m) => m.addedNodes.forEach((n) => { if (n.nodeType === 1) scan(n); }));
+        }).observe(document.body, { childList: true, subtree: true });
+    };
+    if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();
+
+/**
+ * Small fixed UI labels (overlay header, music player) follow the app language.
+ * Only exact, known strings inside these areas are swapped, and the English
+ * original is restored when the language goes back to English.
+ */
+(function installUiLanguageLabels() {
+    if (typeof document === 'undefined' || window.__mayaUiLangLabels) return;
+    window.__mayaUiLangLabels = true;
+
+    const HI = {
+        'Talk to MAYA': 'माया से बात करें',
+        'Talk to Moksh': 'मोक्ष से बात करें',
+        'Your personal guide': 'आपका निजी मार्गदर्शन',
+        'Bhakti Music': 'भक्ति संगीत',
+        'Now Playing': 'अभी चल रहा है',
+        'Playing': 'चल रहा है',
+        'Paused': 'रुका हुआ',
+        'Ended': 'ख़त्म',
+        'Buffering...': 'लोड हो रहा है...',
+        'Error': 'चल नहीं पाया'
+    };
+    const EN = Object.fromEntries(Object.entries(HI).map(([en, hi]) => [hi, en]));
+    const SCOPE = '.maya-overlay-header, .maya-global-player';
+
+    const isHindi = () => {
+        try {
+            if (window.MayaFunnel?._isHindiMode) return window.MayaFunnel._isHindiMode();
+            return String(window.MayaUtils?.storage?.get?.('maya_language') || '').toLowerCase().startsWith('hi');
+        } catch (_e) { return false; }
+    };
+
+    let current = null;
+    const apply = (root) => {
+        const hi = isHindi();
+        const map = hi ? HI : EN;
+        const scopes = root?.closest?.(SCOPE) ? [root] : Array.from((root || document).querySelectorAll?.(SCOPE) || []);
+        scopes.forEach((scope) => {
+            const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+            let node;
+            while ((node = walker.nextNode())) {
+                const raw = node.textContent;
+                const key = raw.trim();
+                if (key && map[key]) node.textContent = raw.replace(key, map[key]);
+            }
+        });
+        current = hi;
+    };
+
+    const start = () => {
+        apply(document);
+        new MutationObserver((mutations) => {
+            for (const m of mutations) {
+                const target = m.target?.nodeType === 1 ? m.target : m.target?.parentElement;
+                if (target?.closest?.(SCOPE)) { apply(target.closest(SCOPE)); continue; }
+                m.addedNodes.forEach((n) => { if (n.nodeType === 1 && (n.matches?.(SCOPE) || n.querySelector?.(SCOPE))) apply(n.parentElement || document); });
+            }
+        }).observe(document.body, { childList: true, subtree: true, characterData: true });
+        // The language can change during onboarding; re-check once a second (cheap).
+        setInterval(() => { if (isHindi() !== current) apply(document); }, 1000);
+    };
+    if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();
