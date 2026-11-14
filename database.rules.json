@@ -9,6 +9,10 @@
     "maya_fcm_registrations": {
       ".read": false,
       ".write": false
+    },
+    "maya_guests": {
+      ".read": false,
+      ".write": false
     }
   }
 }

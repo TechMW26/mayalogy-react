@@ -1190,3 +1190,128 @@ window.MayaUtils = MayaUtils;
     };
     if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
 })();
+
+/**
+ * Guest data: people who use MAYA without logging in are saved too.
+ * A random guest id is kept on the device; their birth details, numbers, answers
+ * and how far they got are sent (a few seconds after anything changes, and when the
+ * page is closed) to /api/guest-session -> database maya_guests/<guestId>.
+ * Once they log in, the guest record is linked to the account and syncing stops.
+ */
+(function installGuestSync() {
+    if (typeof window === 'undefined' || typeof document === 'undefined' || window.__mayaGuestSync) return;
+    window.__mayaGuestSync = true;
+    const ENDPOINT = '/api/guest-session';
+    const ID_KEY = 'maya_guest_id';
+    const WATCH = ['maya_profile', 'funnel_data', 'maya_calculations', 'maya_language'];
+    let lastSent = '';
+    let linkedSent = false;
+    let timer = null;
+
+    const guestId = () => {
+        try {
+            let id = localStorage.getItem(ID_KEY);
+            if (!id || !/^[A-Za-z0-9_-]{16,64}$/.test(id)) {
+                id = (window.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`)
+                    .replace(/[^A-Za-z0-9_-]/g, '');
+                localStorage.setItem(ID_KEY, id);
+            }
+            return id;
+        } catch (_e) { return null; }
+    };
+    const store = () => window.MayaUtils?.storage;
+    const get = (k) => { try { return store()?.get?.(k) ?? null; } catch (_e) { return null; } };
+    const account = () => {
+        const auth = window.MayaAuth;
+        const user = auth?.isAuthenticated ? auth.currentUser : null;
+        const email = user?.email || window.MayaDBSync?.currentUserEmail || null;
+        if (email) return { email };
+        if (user?.id || user?.phone) return { userId: user.id || null, phone: user.phone || null };
+        return null;
+    };
+    const snapshot = () => {
+        const ob = window.MayaOnboarding;
+        const f = window.MayaFunnel;
+        const obData = ob?.userData ? { ...ob.userData } : null;
+        return {
+            profile: get('maya_profile'),
+            funnel: get('funnel_data'),
+            calculations: get('maya_calculations'),
+            language: get('maya_language'),
+            onboarding: ob ? { step: ob.currentStep ?? null, stepId: ob.steps?.[ob.currentStep]?.id || null, data: obData } : null,
+            answers: f?.sessionMemory?.profileAnswers || null,
+            validations: Array.isArray(f?.validationResponses) ? f.validationResponses.slice(-20) : null,
+            journey: {
+                path: `${location.pathname}${location.hash}`.slice(0, 200),
+                inReading: !!document.getElementById('maya-overlay')?.classList.contains('show'),
+                reachedNumbers: !!document.querySelector('.nx-wrap, .unified-numbers'),
+                at: Date.now()
+            },
+            device: {
+                lang: navigator.language || null,
+                tz: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (_e) { return null; } })(),
+                w: window.screen?.width || null,
+                h: window.screen?.height || null,
+                app: /wv|MayaApp/i.test(navigator.userAgent) ? 'android-webview' : 'web'
+            }
+        };
+    };
+    // Only worth saving once the visitor has told us something about themselves.
+    const filled = (o) => !!(o && typeof o === 'object' && (o.name || o.firstName || o.birthDate));
+    const hasContent = (d) => filled(d.profile) || filled(d.funnel) || filled(d.onboarding?.data);
+
+    const send = (final = false) => {
+        const id = guestId();
+        if (!id) return;
+        const acct = account();
+        if (acct) {
+            // Link the guest record to the account once (only if it ever held data).
+            let flags = {};
+            try { flags = { sent: localStorage.getItem('maya_guest_sent'), linked: localStorage.getItem('maya_guest_linked') }; } catch (_e) { /* ignore */ }
+            if (linkedSent || !flags.sent || flags.linked) return;
+            linkedSent = true;
+            fetch(ENDPOINT, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ guestId: id, data: { linkedTo: { ...acct, at: Date.now() } } }) })
+                .then((r) => { if (r.ok) { try { localStorage.setItem('maya_guest_linked', '1'); } catch (_e) { /* ignore */ } } })
+                .catch(() => { linkedSent = false; });
+            return;
+        }
+        const data = snapshot();
+        if (!hasContent(data)) return;
+        const { journey, ...rest } = data;
+        const sig = JSON.stringify(rest);
+        if (sig === lastSent && !final) return;
+        lastSent = sig;
+        const body = JSON.stringify({ guestId: id, data });
+        if (body.length > 90000) return;
+        fetch(ENDPOINT, { method: 'POST', keepalive: final, headers: { 'Content-Type': 'application/json' }, body })
+            .then((r) => { if (r.ok) { try { localStorage.setItem('maya_guest_sent', '1'); } catch (_e) { /* ignore */ } } else if (r.status !== 202) lastSent = ''; })
+            .catch(() => { lastSent = ''; });
+    };
+    const schedule = () => { clearTimeout(timer); timer = setTimeout(() => send(false), 3000); };
+
+    const hookStorage = () => {
+        const s = store();
+        if (!s?.set || s.set.__guestHooked) return;
+        const original = s.set;
+        const wrapped = function wrappedSet(key, ...rest) {
+            const result = original.call(this, key, ...rest);
+            try { if (WATCH.includes(key)) schedule(); } catch (_e) { /* ignore */ }
+            return result;
+        };
+        wrapped.__guestHooked = true;
+        s.set = wrapped;
+    };
+
+    const start = () => {
+        hookStorage();
+        // Answers and onboarding steps change without storage writes: check now and then.
+        setInterval(() => { hookStorage(); send(false); }, 20000);
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') send(true); });
+        window.addEventListener('pagehide', () => send(true));
+        document.addEventListener('click', (e) => {
+            if (e.target?.closest?.('.maya-validation-btn, .onboarding-next, .onboarding-confirm, [data-field], .gc-slide')) schedule();
+        }, true);
+        setTimeout(() => send(false), 5000);
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
