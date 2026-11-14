@@ -286,7 +286,7 @@ const MayaVoice = {
                 "Hold on, I'm seeing something about the near future."
             ],
             kundli: [
-                "Your birth chart is taking shape now.",
+                "Let us read your birth chart now.",
                 "The ascendant sets the foundation for everything.",
                 "Each house tells a different chapter of your life.",
                 "Your kundli has a very distinctive pattern.",
@@ -379,10 +379,10 @@ const MayaVoice = {
                 "निकट भविष्य में कुछ ख़ास दिख रहा है।"
             ],
             kundli: [
-                "आपकी जन्म कुंडली अब आकार ले रही है।",
+                "अब आपकी जन्म कुंडली को पढ़ते हैं।",
                 "लग्न सब कुछ की नींव है, देखिए।",
                 "हर भाव आपके जीवन का अलग अध्याय खोलता है।",
-                "ग्रह कहाँ बैठे हैं, यह नक्शा बन रहा है।",
+                "ग्रह कहाँ बैठे हैं, यह नक्शा सामने है।",
                 "आपकी कुंडली का ढंग काफ़ी विशिष्ट है।",
                 "लग्न कुंडली बहुत कुछ उजागर कर रही है।",
                 "पहले पूरा चित्र संरेखित होने दीजिए।",
@@ -2800,4 +2800,66 @@ window.MayaListener = MayaListener;
     };
 
     console.log('✅ MayaVoice Hinglish patch active: mixed Hindi-English uses one stable voice/accent.');
+})();
+
+/* Stop MAYA / Moksh the moment the user picks something.
+ * Anywhere in the app: language choice, guide choice, MCQ options, Continue, Next,
+ * nav buttons, chat send. A tap on a choice means "I have answered", so the guide
+ * must not keep talking over it. The next line (if any) starts fresh after this.
+ * Also any custom element with a hand (pointer) cursor, e.g. cards and pills.
+ * Not stopped by: the pause button, the music player, typing in a text box. */
+(function installStopVoiceOnUserChoice() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    if (window.__mayaStopOnChoiceInstalled) return;
+    window.__mayaStopOnChoiceInstalled = true;
+
+    const CHOICE = 'button, [role="button"], [role="option"], [role="radio"], [role="tab"], a[href], label, '
+        + 'input[type="radio"], input[type="checkbox"], input[type="submit"], input[type="button"], select, '
+        + '[data-value], [data-option], [data-lang], [data-language], .gc-card, .gc-slide';
+    const IGNORE = '#maya-pause-btn, .maya-funnel-controls, .maya-funnel-btn, .maya-global-player, '
+        + '[data-keep-voice], .maya-mute-btn, #maya-mute-btn, .volume-control';
+
+    const isSpeaking = () => {
+        const v = window.MayaVoice;
+        const synth = window.speechSynthesis;
+        const lang = window.MayaOnboarding?._languageChoiceAudio;
+        return Boolean(
+            (v && (v.isPlaying || v.currentAudio || v.speakingLock))
+            || (synth && (synth.speaking || synth.pending))
+            || (lang && !lang.paused && !lang.ended)
+        );
+    };
+
+    const stopVoiceNow = () => {
+        try { window.MayaVoice?.stop?.(); } catch (_e) { /* ignore */ }
+        try { window.speechSynthesis?.cancel?.(); } catch (_e) { /* ignore */ }
+        try {
+            const lang = window.MayaOnboarding?._languageChoiceAudio;
+            if (lang && !lang.paused) { lang.pause(); lang.currentTime = 0; }
+        } catch (_e) { /* ignore */ }
+    };
+    window.MayaVoice && (window.MayaVoice.stopForUserChoice = stopVoiceNow);
+
+    // Custom tappable cards/pills (sidebar profile, notification items, guide dots,
+    // country picker...) are plain divs; the hand cursor tells us they are clickable.
+    const looksTappable = (el) => {
+        for (let e = el, i = 0; e && e !== document.body && i < 5; e = e.parentElement, i += 1) {
+            if (getComputedStyle(e).cursor === 'pointer') return true;
+        }
+        return false;
+    };
+
+    const onChoice = (event) => {
+        if (!event.isTrusted) return;
+        const target = event.target instanceof Element ? event.target : null;
+        if (!target || target.closest(IGNORE)) return;
+        if (!target.closest(CHOICE) && !looksTappable(target)) return;
+        if (!isSpeaking()) return;
+        stopVoiceNow();
+    };
+
+    // Capture phase: runs before the app's own click handler, so any new line the
+    // handler starts (e.g. the answer explanation) plays cleanly after the stop.
+    document.addEventListener('click', onChoice, true);
+    document.addEventListener('change', onChoice, true);
 })();

@@ -461,7 +461,7 @@ ${askMaya ? `- USER QUESTION LOCK (HIGHEST PRIORITY): This entire reading is ONL
         if (isHindi) {
             return [
                 `"opening" — 4-5 short spoken sentences. Greeting बिल्कुल नहीं। पहली line सीधे reading context से शुरू हो। "मैं ${this._guideName?.() || 'माया'} हूँ" second या third sentence में naturally आए, greeting style में नहीं। ${askMaya ? `पहले या दूसरे वाक्य में साफ कहिए कि आप ${subjectPhrase} पर locked रहेंगी।` : 'Chart, numbers, या timing से ONE standout factual clue दीजिए (जन्मतिथि literal मत पढ़िए)।'} आखिरी वाक्य: personal reading कुंडली + numbers + timing से तैयार हो रही है। Pause token के बाद ${'[[pause-500]]'} introduction के तुरंत बाद। No filler, no cosmic platitudes।`,
-                `"kundli" — 2-3 छोटे वाक्य। साफ बताइए कि उपलब्ध जन्म जानकारी से गणना चल रही है। ${askMaya ? `पहली line ${subjectPhrase} की तरफ सहज pivot करे।` : 'अगर समय-आधारित कुंडली विश्वसनीय है तो सिर्फ ONE computed marker बताइए; वरना date-based scope बताइए।'} कोई suspense या चमत्कार का दावा नहीं। ज्यादा से ज्यादा एक [[pause-250]]।`,
+                `"kundli" — 2-3 छोटे वाक्य। यह तब बोला जाएगा जब कुंडली screen पर पूरी बन चुकी होगी, इसलिए "बन रही है"/"आकार ले रही है" मत कहिए। ${askMaya ? `पहली line ${subjectPhrase} की तरफ सहज pivot करे।` : 'Chart facts में दिए ONE असली तथ्य (जैसे चंद्र नक्षत्र या ग्रहों का जमावड़ा) को सही-सही बताइए; अगर जन्म समय नहीं है तो साफ कहिए कि यह चंद्र कुंडली है।'} कोई suspense या चमत्कार का दावा नहीं। ज्यादा से ज्यादा एक [[pause-250]]।`,
                 `"preQuestionBridge" — 2-3 short sentences। पहले question से पहले की bridge। Greeting नहीं, "कुंडली बन गई" repeat नहीं। ONE concrete chart/number pattern + क्यों अगला सवाल important है। ${askMaya ? `${topicLabel} पर ही रहिए।` : ''} No pause।`,
                 `"numbersReveal" — 5-7 छोटे वाक्य। Numbers: Life Path ${lp}, Destiny ${dest}, Soul Urge ${su}. पहले एक वाक्य में derivation समझाइए। फिर हर number का एक grounded अर्थ बताइए और साफ रखें कि यह interpretation है। केवल उपलब्ध computed evidence जोड़ें; कोई घटना invent न करें। तीनों के बीच [[pause-250]] डाल सकते हैं। अंत में एक practical reflection दें।`,
                 `"combinedTeaser" — अधिकतम 5 जुड़े हुए वाक्य। एक strength, एक friction, और user के अपने जवाब से ONE relevant reflection दें। हर बात को calculated fact, user-stated fact, या interpretation के रूप में ईमानदारी से रखें। कोई pressure या अधूरा रहस्य नहीं।`,
@@ -487,7 +487,7 @@ ${askMaya ? `- USER QUESTION LOCK (HIGHEST PRIORITY): This entire reading is ONL
 
         return [
             `"opening" — 4-5 short spoken sentences. Greeting is forbidden. Start line 1 directly from the reading context. "I am ${this._guideName?.() || 'MAYA'}" can appear naturally in sentence 2 or 3, not as a greeting opener. ${askMaya ? `Sentence 1 or 2 makes it explicit that you are staying locked on ${subjectPhrase}.` : 'Name ONE standout factual clue from chart, numbers, or timing (do not recite the literal birth date).'} The final sentence makes it clear the personal reading is being assembled from kundli + numbers + timing. Place [[pause-500]] immediately after the introduction sentence. No filler, no cosmic platitudes.`,
-            `"kundli" — 2-3 short sentences. Explain that calculations are running from the birth details available. ${askMaya ? `Pivot naturally toward ${subjectPhrase}.` : 'Use only ONE computed chart marker when timed chart data is reliable; otherwise state the date-based scope.'} No suspense or extraordinary claims. At most one [[pause-250]].`,
+            `"kundli" — 2-3 short sentences. This is spoken after the chart has fully drawn on screen, so never say it is forming or taking shape. ${askMaya ? `Pivot naturally toward ${subjectPhrase}.` : 'State ONE real fact from the chart facts exactly (for example the Moon nakshatra or a planet cluster); if there is no birth time, say plainly that this is a Chandra kundli.'} No suspense or extraordinary claims. At most one [[pause-250]].`,
             `"preQuestionBridge" — 2-3 short sentences. Bridge into the first MCQ. No greeting, no "your kundli is ready" repeat. Give ONE concrete chart/number pattern + why the next question matters. ${askMaya ? `Stay on ${topicLabel}.` : ''} No pause.`,
             `"numbersReveal" — 5-7 short sentences. Numbers: Life Path ${lp}, Destiny ${dest}, Soul Urge ${su}. Start with one sentence on how they were derived. Give one grounded interpretation for each, clearly framed as interpretation. Use only computed evidence; invent no incident. You may place [[pause-250]] between the numbers. End with one practical reflection.`,
             `"combinedTeaser" — no more than 5 connected sentences. Give one strength, one friction, and ONE relevant reflection from the user's own answers. Honestly distinguish calculated facts, user-stated facts, and interpretation. No pressure or manufactured mystery.`,
@@ -1933,6 +1933,69 @@ Current section: ${sectionKey}
         return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     },
 
+    // Hindi mode is pure Hindi: English words (and English words written in
+    // Devanagari) become everyday Hindi. Only whole English words are touched, so
+    // names like a user's or a city's stay as typed. Whitespace is kept as is.
+    HINDI_PLAIN_WORDS: {"answer": "जवाब", "answers": "जवाब", "timing": "समय", "current": "अभी का", "situation": "हालात", "situations": "हालात", "chart": "कुंडली", "charts": "कुंडली", "kundli": "कुंडली", "detail": "बात", "details": "बातें", "exact": "सटीक", "exactly": "ठीक-ठीक", "reading": "रीडिंग", "readings": "रीडिंग", "pattern": "पैटर्न", "patterns": "पैटर्न", "subject": "विषय", "clue": "सुराग", "choice": "चुनाव", "numbers": "अंक", "number": "अंक", "rhythm": "लय", "trust": "भरोसा", "direction": "दिशा", "deeply": "गहराई से", "commit": "पक्का फ़ैसला", "generic": "आम", "base": "आधार", "practical": "व्यावहारिक", "private": "निजी", "intensity": "गहराई", "confirm": "पक्का", "direct": "सीधा", "personal": "निजी", "clear": "साफ़", "observation": "बात", "notice": "ध्यान", "image": "तस्वीर", "grounded": "ठोस", "line": "बात", "calculated": "निकाले गए", "interpretation": "अर्थ", "life": "ज़िंदगी", "event": "घटना", "events": "घटनाएँ", "preview": "झलक", "save": "सुरक्षित", "continue": "आगे", "trigger": "वजह", "unresolved": "अधूरा", "shift": "बदलाव", "shifts": "बदलाव", "month": "महीना", "months": "महीने", "beat": "पल", "file": "फ़ाइल", "recovery": "सुधार", "momentum": "रफ़्तार", "alignment": "मेल", "random": "अचानक", "clearly": "साफ़-साफ़", "specific": "ख़ास", "signal": "संकेत", "signals": "संकेत", "layer": "परत", "layers": "परतें", "accurate": "सटीक", "surface": "ऊपर", "relationship": "रिश्ता", "relationships": "रिश्ते", "health": "सेहत", "inner": "अंदर की", "restlessness": "बेचैनी", "angle": "पहलू", "important": "ज़रूरी", "precisely": "सटीक", "career": "करियर", "factor": "कारण", "partner": "साथी", "delay": "देरी", "doubt": "शक", "future": "भविष्य", "confusion": "उलझन", "income": "कमाई", "saving": "बचत", "savings": "बचत", "precise": "सटीक", "pressure": "दबाव", "energy": "ऊर्जा", "focus": "ध्यान", "sensitive": "नाज़ुक", "issue": "मसला", "issues": "मसले", "abroad": "विदेश", "travel": "यात्रा", "budget": "बजट", "safe": "सुरक्षित", "main": "मुख्य", "deep": "गहरी", "chapter": "अध्याय", "growth": "बढ़त", "protective": "सुरक्षा के", "remedy": "उपाय", "remedies": "उपाय", "dispute": "विवाद", "contract": "अनुबंध", "legal": "क़ानूनी", "matter": "मामला", "matters": "मामले", "active": "सक्रिय", "public": "सार्वजनिक", "role": "भूमिका", "leadership": "नेतृत्व", "position": "स्थिति", "moment": "पल", "decision": "फ़ैसला", "decisions": "फ़ैसले", "feelings": "भावनाएँ", "importance": "अहमियत", "circumstances": "हालात", "depend": "निर्भर", "family": "परिवार", "tension": "तनाव", "sure": "पक्का", "unexpected": "अचानक", "expense": "ख़र्च", "expenses": "ख़र्च", "recently": "हाल में", "rational": "तार्किक", "slow": "धीमा", "doctor": "डॉक्टर", "doctors": "डॉक्टर", "levels": "स्तर", "plan": "योजना", "recent": "हाल का", "coincidence": "संयोग", "confirmation": "पुष्टि", "crossroad": "दोराहा", "phase": "दौर", "result": "नतीजा", "mature": "परिपक्व", "period": "दौर", "obsession": "जुनून", "change": "बदलाव", "job": "नौकरी", "jobs": "नौकरी", "city": "शहर", "setup": "व्यवस्था", "teaching": "पढ़ाना", "mentoring": "मार्गदर्शन", "spiritual": "आध्यात्मिक", "interest": "रुचि", "wise": "समझदार", "recognize": "पहचानना", "attachment": "लगाव", "belief": "मान्यता", "naturally": "अपने-आप", "detach": "अलग", "communication": "बातचीत", "learning": "सीखना", "overthinking": "ज़्यादा सोचना", "thoughts": "विचार", "comfort": "आराम", "luxury": "शौक़", "beauty": "सुंदरता", "pull": "खिंचाव", "impatience": "बेसब्री", "react": "प्रतिक्रिया", "conflicts": "टकराव", "home": "घर", "authority": "अधिकार", "major": "बड़ा", "promotion": "तरक़्क़ी", "recognition": "पहचान", "pace": "रफ़्तार", "expressive": "खुलकर", "part": "हिस्सा", "structure": "ढाँचा", "stability": "स्थिरता", "comfortable": "सहज", "uncertainty": "अनिश्चितता", "repeat": "बार-बार", "cosmic": "ब्रह्मांडीय", "theme": "विषय", "themes": "विषय", "hidden": "छुपी", "strength": "ताकत", "repeating": "बार-बार होने वाली", "mistake": "ग़लती", "combinations": "योग", "sharpen": "तेज़", "locked": "तय", "approval": "मंज़ूरी", "thread": "धागा", "move": "कदम", "window": "समय", "windows": "समय", "next": "अगला", "step": "कदम", "time": "समय", "topic": "विषय", "close": "क़रीब", "prediction": "भविष्यवाणी", "predictions": "भविष्यवाणियाँ", "core": "मूल", "natural": "स्वाभाविक", "full": "पूरा", "feel": "महसूस", "divorced": "तलाक़शुदा", "logic": "तर्क", "responsibility": "ज़िम्मेदारी", "real": "असली", "verification": "पुष्टि", "emotional": "भावनात्मक", "clarity": "स्पष्टता", "secure": "सुरक्षित", "phone": "फ़ोन", "missing": "कमी", "year": "साल", "guide": "मार्गदर्शक", "stress": "तनाव", "business": "कारोबार", "money": "पैसा", "stable": "स्थिर", "transit": "गोचर", "transits": "गोचर", "house": "भाव", "houses": "भाव", "planet": "ग्रह", "planets": "ग्रह", "space": "अपनी जगह", "visible": "दिखने वाले", "email": "ईमेल", "password": "पासवर्ड", "login": "लॉगिन", "mobile": "मोबाइल", "situationship": "रिश्ता", "tough": "मुश्किल", "easy": "आसान", "strong": "मज़बूत", "weak": "कमज़ोर", "support": "साथ", "help": "मदद", "success": "सफलता", "opportunity": "मौका", "opportunities": "मौके", "balance": "संतुलन", "peace": "शांति", "love": "प्यार", "marriage": "शादी", "work": "काम", "office": "दफ़्तर", "boss": "बॉस", "team": "टीम", "goal": "लक्ष्य", "goals": "लक्ष्य", "dream": "सपना", "dreams": "सपने", "fear": "डर", "hope": "उम्मीद", "luck": "किस्मत", "blessing": "आशीर्वाद"},
+
+    _toPlainHindi(text) {
+        let out = String(text || '');
+        if (!out) return out;
+        const multi = [
+            [/लाइफ\s*पाथ(\s*नंबर)?|\bLife\s*Path(\s*Number)?\b/gi, "जीवन पथ अंक"],
+            [/डेस्टिनी(\s*नंबर)?|\bDestiny(\s*Number)?\b/gi, "भाग्य अंक"],
+            [/सोल\s*अर्ज(\s*नंबर)?|\bSoul\s*Urge(\s*Number)?\b/gi, "अंतर्मन अंक"],
+            [/पर्सनल\s*ईयर(\s*नंबर)?|\bPersonal\s*Year(\s*Number)?\b/gi, "व्यक्तिगत वर्ष अंक"],
+            [/\bCosmic\s*Numbers?\b/gi, "अंक"],
+            [/वेस्टर्न\s*जोडिएक|\bWestern\s*Zodiac\b/gi, "पश्चिमी राशि"],
+            [/मून\s*साइन/gi, "चंद्र राशि"],
+            [/करंट\s*दशा|\bCurrent\s*Dasha\b/gi, "वर्तमान दशा"],
+            [/\breal-life\b/gi, "असल ज़िंदगी"],
+            [/\bfollow-up\b/gi, "अगला सवाल"],
+            [/\bsign\s*in\b/gi, "लॉगिन"],
+            [/\bnext\s*step\b/gi, "अगला कदम"],
+            [/असेंडेंट/gi, "लग्न"],
+            [/सेटर्न/gi, "शनि"],
+            [/ज्यूपिटर/gi, "गुरु"],
+            [/मार्स/gi, "मंगल"],
+            [/वीनस/gi, "शुक्र"],
+            [/मरकरी/gi, "बुध"],
+            [/टॉरस/gi, "वृषभ"],
+            [/एरीज/gi, "मेष"],
+            [/जेमिनी/gi, "मिथुन"],
+            [/कैंसर/gi, "कर्क"],
+            [/लियो/gi, "सिंह"],
+            [/वर्गो/gi, "कन्या"],
+            [/लिब्रा/gi, "तुला"],
+            [/स्कॉर्पियो/gi, "वृश्चिक"],
+            [/सैजिटेरियस/gi, "धनु"],
+            [/कैप्रिकॉर्न/gi, "मकर"],
+            [/एक्वेरियस/gi, "कुंभ"],
+            [/पाइसीज/gi, "मीन"],
+            [/चार्ट/gi, "कुंडली"],
+            [/टाइमिंग/gi, "समय"],
+            [/रिलेशनशिप्स/gi, "रिश्ते"],
+            [/रिलेशनशिप/gi, "रिश्ता"],
+            [/मनी/gi, "पैसा"],
+            [/एनर्जी/gi, "ऊर्जा"],
+            [/प्रेशर/gi, "दबाव"],
+            [/\bOTP\b/gi, "ओटीपी"],
+            [/\bSMS\b/gi, "एसएमएस"],
+            [/\bMAYA\b/gi, "माया"],
+            [/\bMoksh\b/gi, "मोक्ष"]
+        ];
+        multi.forEach(([re, hi]) => { out = out.replace(re, hi); });
+        const map = this.HINDI_PLAIN_WORDS;
+        if (!this._plainHindiRe) {
+            const keys = Object.keys(map).sort((a, b) => b.length - a.length).map((k) => k.replace(/[-]/g, '\\-'));
+            this._plainHindiRe = new RegExp(`\\b(${keys.join('|')})\\b`, 'gi');
+        }
+        return out.replace(this._plainHindiRe, (w) => map[w.toLowerCase()] || w)
+            // कुंडली is feminine: fix "आपका कुंडली" style agreement after swaps.
+            .replace(/(आपका|उनका|इसका|उसका|का)(\s+)कुंडली/g, (m, p, sp) => `${p.slice(0, -1)}ी${sp}कुंडली`)
+            .replace(/असल ज़िंदगी बातें/g, 'असल ज़िंदगी की बातें');
+    },
+
     localizeHindiText(text) {
         const astroRules = MAYA_CONFIG?.LANGUAGE?.HINDI_ASTRO_TERM_RULES || [];
 
@@ -1944,43 +2007,7 @@ Current section: ${sectionKey}
             }
         }, String(text || ''))
             .replace(/\bjson\b/gi, '')
-            .replace(/लाइफ\s*पाथ/gi, 'Life Path')
-            .replace(/डेस्टिनी/gi, 'Destiny')
-            .replace(/सोल\s*अर्ज/gi, 'Soul Urge')
-            .replace(/पर्सनल\s*ईयर/gi, 'Personal Year')
-            .replace(/ईमेल/gi, 'email')
-            .replace(/पासवर्ड/gi, 'password')
-            .replace(/लॉगिन/gi, 'login')
-            .replace(/चार्ट/gi, 'chart')
-            .replace(/टाइमिंग/gi, 'timing')
-            .replace(/पैटर्न/gi, 'pattern')
-            .replace(/प्रेशर/gi, 'pressure')
-            .replace(/करियर|कैरियर/gi, 'career')
-            .replace(/रिलेशनशिप्स/gi, 'relationships')
-            .replace(/रिलेशनशिप/gi, 'relationship')
-            .replace(/मनी/gi, 'money')
-            .replace(/एनर्जी/gi, 'energy')
-            .replace(/वेस्टर्न\s*जोडिएक/gi, 'Western Zodiac')
-            .replace(/मून\s*साइन/gi, 'Moon Sign')
-            .replace(/करंट\s*दशा/gi, 'Current Dasha')
-            .replace(/असेंडेंट/gi, 'Ascendant')
-            .replace(/सेटर्न/gi, 'Saturn')
-            .replace(/ज्यूपिटर/gi, 'Jupiter')
-            .replace(/मार्स/gi, 'Mars')
-            .replace(/वीनस/gi, 'Venus')
-            .replace(/मरकरी/gi, 'Mercury')
-            .replace(/टॉरस/gi, 'Taurus')
-            .replace(/एरीज/gi, 'Aries')
-            .replace(/जेमिनी/gi, 'Gemini')
-            .replace(/कैंसर/gi, 'Cancer')
-            .replace(/लियो/gi, 'Leo')
-            .replace(/वर्गो/gi, 'Virgo')
-            .replace(/लिब्रा/gi, 'Libra')
-            .replace(/स्कॉर्पियो/gi, 'Scorpio')
-            .replace(/सैजिटेरियस/gi, 'Sagittarius')
-            .replace(/कैप्रिकॉर्न/gi, 'Capricorn')
-            .replace(/एक्वेरियस/gi, 'Aquarius')
-            .replace(/पाइसीज/gi, 'Pisces')
+            .replace(/[\s\S]+/, (all) => this._toPlainHindi(all))
             .replace(/\s+/g, ' ')
             .trim();
     },
@@ -2804,13 +2831,25 @@ Current section: ${sectionKey}
         const moonEn = moon ? `your ${moon} Moon` : 'your Moon sign';
         const dashaHi = dasha ? `${dasha} की दशा` : 'अभी का समय-चक्र';
         const dashaEn = dasha ? `the ${dasha} dasha` : 'your current time cycle';
+        // Real chart facts for this person (lagna/Chandra kundli, Moon nakshatra, clusters, dignities).
+        const kFact = (lang, key) => {
+            const data = this._kundliChartFacts(lang === 'hi');
+            if (!data) return '';
+            if (key === 'extra') {
+                const extras = data.facts.filter((f) => !['lagna', 'moon'].includes(f.key));
+                return extras.length ? extras[Math.floor(Math.random() * extras.length)].text : '';
+            }
+            return data.facts.find((f) => f.key === key)?.text || '';
+        };
+        const kHi = { lagna: kFact('hi', 'lagna'), moon: kFact('hi', 'moon'), extra: kFact('hi', 'extra') };
+        const kEn = { lagna: kFact('en', 'lagna'), moon: kFact('en', 'moon'), extra: kFact('en', 'extra') };
 
         const hi = {
             kundliStageNarrative: [
-                `${name}, आपकी कुंडली अब आकार ले रही है। ${moonHi} मन की बनावट दिखा रही है, और ${dashaHi} बता रहा है कि इस वक़्त ज़िंदगी किस तरफ़ मुड़ रही है। चलिए, एक-एक करके खोलते हैं।`,
-                `ग्रह अपनी जगह ले रहे हैं, ${name}... सबसे पहले मेरी नज़र ${moonHi} पर जाती है। यहीं से समझ आता है कि आप फैसले दिल से ${v('लेते', 'लेती')} हैं या दिमाग से।`,
-                `अब तस्वीर बनने लगी है। ${dashaHi} इस समय सबसे ज़्यादा असर डाल रहा है, और ${moonHi} उसके साथ मिलकर एक खास pattern बना रही है।`,
-                `${name}, कुंडली के खाने भर रहे हैं। मैं ${see} कि ${moonHi} और ${dashaHi} साथ-साथ एक ही कहानी कह रहे हैं... आगे उसी को खोलते हैं।`
+                `${name}, आपकी कुंडली सामने है। ${kHi.lagna || `${moonHi} मन की बनावट दिखा रही है।`} ${dashaHi} बता रहा है कि इस वक़्त ज़िंदगी किस तरफ़ मुड़ रही है।`,
+                `सबसे पहले मेरी नज़र चंद्रमा पर जाती है, ${name}। ${kHi.moon || `${moonHi} यहाँ सबसे अहम है।`} यहीं से समझ आता है कि आप फैसले दिल से ${v('लेते', 'लेती')} हैं या दिमाग से।`,
+                `${kHi.extra || `${moonHi} आपकी कुंडली की धुरी है।`} ${dashaHi} के साथ मिलकर यही आपकी कुंडली का सबसे खास pattern बनाता है।`,
+                `${name}, ${kHi.moon || `${moonHi} पर ध्यान जाता है।`} ${kHi.extra ? `और ${kHi.extra}` : `मैं ${see} कि ${dashaHi} भी इसी ओर इशारा कर रहा है।`} आगे इसी को एक-एक करके खोलते हैं।`
             ],
             teaserRevealNarration: [
                 `${name}, पिछले कुछ समय से एक बदलाव धीरे-धीरे चल रहा है। ${dashaHi} उसकी वजह दिखा रहा है, और आगे उसका असर साफ़ होगा।`,
@@ -2842,10 +2881,10 @@ Current section: ${sectionKey}
         };
         const en = {
             kundliStageNarrative: [
-                `${name}, your chart is taking shape now. ${moonEn} shows how your mind works, and ${dashaEn} shows where life is turning right now. Let us open it one step at a time.`,
-                `The planets are settling into place, ${name}... my eyes go first to ${moonEn}. That is where I see whether you decide with the heart or the head.`,
-                `The picture is forming. ${dashaEn} carries the most weight right now, and together with ${moonEn} it creates a very specific pattern.`,
-                `${name}, the houses are filling in. ${moonEn} and ${dashaEn} are telling the same story... let us open that next.`
+                `${name}, your kundli is in front of us. ${kEn.lagna || `${moonEn} shows how your mind works.`} ${dashaEn} shows where life is turning right now.`,
+                `My eyes go first to the Moon, ${name}. ${kEn.moon || `${moonEn} matters most here.`} That is where I see whether you decide with the heart or the head.`,
+                `${kEn.extra || `${moonEn} is the axis of your chart.`} Together with ${dashaEn}, that is the most distinctive pattern in your chart.`,
+                `${name}, ${(kEn.moon || '').replace(/^The /, 'the ') || `${moonEn} stands out first.`} ${kEn.extra ? `And ${kEn.extra.replace(/^(The|One|Two|Three|Four|Five|Six|Seven) /, (w) => w.toLowerCase())}` : `${dashaEn} points the same way.`} Let us open it one step at a time.`
             ],
             teaserRevealNarration: [
                 `${name}, a quiet shift has been building for a while. ${dashaEn} shows why, and its effect becomes clearer ahead.`,
@@ -2905,14 +2944,14 @@ Current section: ${sectionKey}
                 ? (isHindi ? 'ढूँढ रहा हूँ' : 'finding')
                 : (isHindi ? 'ढूँढ रही हूँ' : 'finding');
             const askLines = isHindi ? {
-                kundliStageNarrative: `ठीक है ${name}, कुंडली का विन्यास अभी बन रहा है। अब मैं ${subjectPhrase} को कुंडली, numbers और timing से ${finding}।`,
+                kundliStageNarrative: `ठीक है ${name}, आपकी कुंडली सामने है। अब मैं ${subjectPhrase} को कुंडली, numbers और timing से ${finding}।`,
                 teaserRevealNarration: `${name}, ${subjectPhrase} में एक साफ signal दिख रहा है। पूरा जवाब file save होने के बाद खुलेगा, लेकिन अभी direction इसी विषय पर locked रहेगी।`,
                 allNumbersNarrative: `numbers भी ${subjectPhrase} को sharpen कर रहे हैं। अब मैं इन्हें कुंडली के साथ जोड़कर answer precise करूँगी।`,
                 lifePathCalculationNarrative: `Life Path यहाँ ${subjectPhrase} की natural direction दिखाता है।`,
                 destinyCalculationNarrative: `Destiny number बताता है कि ${subjectPhrase} में बाहर से कौनसी भूमिका बन रही है।`,
                 soulUrgeCalculationNarrative: `Soul Urge number ${subjectPhrase} के पीछे आपकी असली चाहत दिखाता है।`
             } : {
-                kundliStageNarrative: `Alright ${name}, I am forming your chart now. I am ${finding} your ${subjectPhrase} through kundli, numbers, and timing.`,
+                kundliStageNarrative: `Alright ${name}, your chart is in front of me. I am ${finding} your ${subjectPhrase} through kundli, numbers, and timing.`,
                 teaserRevealNarration: `${name}, one clear signal is showing around your ${subjectPhrase}. I will open the full answer after the file is saved, but the direction stays locked here.`,
                 allNumbersNarrative: `The numbers are sharpening your ${subjectPhrase}. Now I will line them up with the chart to make the answer precise.`,
                 lifePathCalculationNarrative: `Life Path shows the natural direction behind your ${subjectPhrase}.`,
@@ -2923,14 +2962,14 @@ Current section: ${sectionKey}
         }
 
         const lines = isHindi ? {
-            kundliStageNarrative: `ठीक है ${name}, आपकी कुंडली का विन्यास अभी बन रहा है। ${sign} का प्रभाव साफ दिख रहा है, और कुछ खास combinations सामने आ रहे हैं -एक-एक करके खोलते हैं।`,
+            kundliStageNarrative: `ठीक है ${name}, आपकी कुंडली सामने है। ${sign} का प्रभाव साफ दिख रहा है, और कुछ खास combinations सामने आ रहे हैं -एक-एक करके खोलते हैं।`,
             teaserRevealNarration: `${name}, एक pattern दिख रहा है पिछले कुछ समय का। ज़िंदगी में एक shift चल रहा है -वो हम आगे detail में देखेंगे।`,
             allNumbersNarrative: `numbers ने भी अपनी कहानी कह दी है ${name}। आपके life path और destiny में एक clear theme है -चलिए उसे कुंडली के साथ जोड़ते हैं।`,
             lifePathCalculationNarrative: `आपका life path number आपके होने का core दिखाता है -यही वो रास्ता है जिस पर आप सबसे natural feel करते हैं।`,
             destinyCalculationNarrative: `destiny number बताता है आप क्या बनने वाले हैं -आपका full नाम इसका कारण है।`,
             soulUrgeCalculationNarrative: `soul urge number आपकी अंदर की चाह है -जो आप सच में चाहते हैं, वो यहाँ छुपा है।`
         } : {
-            kundliStageNarrative: `Alright ${name}, I am forming your chart now. ${sign} energy is showing up clearly, and a few interesting combinations are surfacing -let's open them one by one.`,
+            kundliStageNarrative: `Alright ${name}, your chart is in front of me. ${sign} energy is showing up clearly, and a few interesting combinations are surfacing -let's open them one by one.`,
             teaserRevealNarration: `${name}, there's a pattern visible from the recent past. A real shift is in motion -we'll get into the detail of it next.`,
             allNumbersNarrative: `The numbers have spoken too, ${name}. Your life path and destiny share a clear theme -let's line them up against the chart.`,
             lifePathCalculationNarrative: `Your life path number reveals the core of who you are -the path that feels most natural for you to walk.`,
@@ -3308,7 +3347,7 @@ ${this.getBaseRules(false)}`);
         if (!fallback) return null;
         if (!window.MayaAI || typeof MayaAI.callGemini !== 'function') return fallback;
 
-        const attempts = [
+        const attempts = options.singleAttempt ? [options] : [
             options,
             {
                 ...options,
@@ -4114,8 +4153,8 @@ All three segments must connect as one flowing story. Include at least TWO decla
 
         const activeSectionPrompt = isKundliFormationInProgress
             ? (isHindi
-                ? `Current user के Kundli formation animation के DURING ONE in-progress narration। EXACTLY 2-3 short sentences। CRITICAL: कुंडली अभी बन रही है, इसलिए "कुंडली बन गई है", "कुंडली तैयार है", "बहुत अच्छा", या completion/praise opener मत कहिए। Present progressive language use करें: "विन्यास बन रहा है", "ग्रह अपनी जगह ले रहे हैं", "संकेत उभर रहे हैं"। अगर Ask-Maya question है तो उसी subject की तरफ pivot करें, पर chart complete होने की घोषणा न करें।`
-                : `Write ONE in-progress narration during the Kundli formation animation. EXACTLY 2-3 short sentences. CRITICAL: the chart is still forming, so do NOT say "your kundli is ready", "your chart is ready", "wonderful", or any completion/praise opener. Use present-progressive language: "the chart is forming", "the planets are settling", "markers are emerging". If this is an Ask-Maya question flow, pivot toward that subject, but do not announce completion.`)
+                ? `User की कुंडली अभी-अभी screen पर पूरी बनकर दिखी है ("कुंडली तैयार" की मुहर पहले से दिख रही है)। ONE narration, EXACTLY 2-3 short sentences। "कुंडली बन रही है", "आकार ले रही है", "ग्रह अपनी जगह ले रहे हैं" जैसी बातें FORBIDDEN हैं, और "कुंडली तैयार है"/"बहुत अच्छा" opener भी नहीं। Chart facts में दिए गए असली तथ्यों (लग्न या चंद्र कुंडली, चंद्र नक्षत्र, ग्रहों का जमावड़ा, उच्च/नीच/स्वराशि ग्रह) में से ONE या TWO को बिल्कुल सही-सही बोलिए और उनका सीधा अर्थ बताइए; कोई ग्रह-स्थिति अपनी तरफ से मत गढ़िए। अगर Ask-Maya question है तो उसी subject की तरफ pivot करें।`
+                : `The user's kundli has just finished drawing on screen (a "Kundli ready" seal is already visible). Write ONE narration, EXACTLY 2-3 short sentences. Do NOT say the chart is forming, taking shape, or that planets are settling, and do not open with "your kundli is ready" or praise. State ONE or TWO of the real facts given in the chart facts (ascendant or Chandra kundli, Moon nakshatra, planet clusters, exalted/debilitated/own-sign planets) exactly as given and say what each means; never invent a placement. If this is an Ask-Maya question flow, pivot toward that subject.`)
             : (userQuestionRaw && sectionKey === 'kundli')
                 ? (isHindi
                     ? `Current user के Ask-Maya question funnel के लिए ONE kundli-stage narration। EXACTLY 2-3 short sentences। FIRST sentence में साफ कहिए कि आप spoken subject phrase का जवाब कुंडली, numbers और timing से ढूँढ रही हैं; exact original question quote मत कीजिए। "कुंडली की गहराइयों में उतरते हैं", generic chart exploration, और unrelated topics forbidden। सिर्फ ONE chart marker quote करें, फिर immediately उसी विषय पर pivot करें।`
@@ -4321,7 +4360,7 @@ All three segments must connect as one flowing story. Include at least TWO decla
     _showThinkingIndicator(type = 'thinking') {
         this._hideThinkingIndicator();
 
-        // UI copy is ALWAYS in English regardless of voice/narration language.
+        // English copy; Hindi copy is below (copyHi) and used in Hindi mode.
         const copy = {
             thinking: {
                 badge: 'AI ANALYSIS',
@@ -4359,7 +4398,19 @@ All three segments must connect as one flowing story. Include at least TWO decla
                 subtitle: 'Locking your lagna, houses, and graha placements.'
             }
         };
-        const content = copy[type] || copy.thinking;
+        // Hindi mode: the same panel in Hindi.
+        const copyHi = {
+            thinking: { badge: 'गहरी पढ़ाई', title: 'आपकी कुंडली की गहरी परतें पढ़ी जा रही हैं', subtitle: 'ग्रह, भाव और अभी का समय मिलाकर देखा जा रहा है।' },
+            calculating: { badge: 'सटीक गणना', title: 'आपकी कुंडली की सटीक गणना हो रही है', subtitle: 'जन्म समय, अंश और अंकों की जाँच हो रही है।' },
+            revealing: { badge: 'गहरी बात', title: 'छुपा हुआ पैटर्न निकाला जा रहा है', subtitle: 'आपके सवाल से सबसे ज़्यादा जुड़ी बात ढूँढी जा रही है।' },
+            love: { badge: 'प्रेम और रिश्ते', title: 'आपके रिश्तों का पैटर्न पढ़ा जा रहा है', subtitle: 'शुक्र, सातवाँ भाव और भावनाओं का समय देखा जा रहा है।' },
+            career: { badge: 'करियर', title: 'आपके काम की दिशा समझी जा रही है', subtitle: 'दसवाँ भाव, शनि और धन के संकेत मिलाए जा रहे हैं।' },
+            year: { badge: 'आने वाला साल', title: 'आने वाले महीनों का विषय पढ़ा जा रहा है', subtitle: 'गोचर, समय और बड़े बदलाव देखे जा रहे हैं।' },
+            kundli: { badge: 'कुंडली मिलान', title: 'आपकी पूरी जन्म कुंडली जमाई जा रही है', subtitle: 'लग्न, भाव और ग्रहों की जगह तय की जा रही है।' }
+        };
+        const content = this._isHindiMode()
+            ? (copyHi[type] || copyHi.thinking)
+            : (copy[type] || copy.thinking);
 
         const indicator = document.createElement('div');
         indicator.id = 'maya-thinking-indicator';
@@ -4618,7 +4669,7 @@ All three segments must connect as one flowing story. Include at least TWO decla
         this.calculationOverlay.className = 'calculation-overlay';
         this.calculationOverlay.innerHTML = `
             <div class="calculation-container">
-                <div class="calculation-title">
+                <div class="calculation-title" data-badge="${isHindi ? '✦  सटीक गणना  ✦' : '✦  PRECISION CALCULATION  ✦'}">
                     <h2>${isHindi ? 'आपकी कुंडली और अंक तैयार हो रहे हैं' : 'Forming Your Kundli and Numbers'}</h2>
                     <p class="calc-rotating-status" id="calc-rotating-status">${isHindi ? 'ग्रहों की स्थिति ट्रेस हो रही है…' : 'Tracing planetary positions…'}</p>
                 </div>
@@ -4716,6 +4767,12 @@ All three segments must connect as one flowing story. Include at least TWO decla
      * @returns {Promise<string>} selected value
      */
     async showValidationQuestion(question, options, spokenQuestion) {
+        if (this._isHindiMode()) {
+            // Hindi mode shows pure Hindi on screen too (AI-made questions included).
+            question = this.localizeHindiText(question);
+            options = (options || []).map((o) => ({ ...o, label: this.localizeHindiText(o.label) }));
+            if (spokenQuestion) spokenQuestion = this.localizeHindiText(spokenQuestion);
+        }
         // Stop any ongoing speech immediately when options appear
         if (typeof window !== 'undefined' && window.MayaVoice && typeof window.MayaVoice.stop === 'function') {
             window.MayaVoice.stop();
@@ -5118,6 +5175,51 @@ All three segments must connect as one flowing story. Include at least TWO decla
         if (this._acknowledgementHistory.length > 6) this._acknowledgementHistory.shift();
     },
 
+    // One AI call, made while the question is on screen, that writes the reply for
+    // EVERY option. When the user taps, the reply is usually ready, so MAYA answers
+    // right away instead of waiting for a fresh AI call after the tap.
+    _prefetchMcqAcks(q, isHindi) {
+        if (!q?.options?.length || this._isAskMayaFlow() || !(window.MayaAI?.callFast || window.MayaAI?.callGemini)) return null;
+        const lang = isHindi ? 'hi' : 'en';
+        const keyFor = (opt) => `${lang}|${String(q.question || '').trim().toLowerCase()}|${String(opt.value || opt.label || '').trim().toLowerCase()}`;
+        if (q.options.every((opt) => this._mcqAckCache?.has?.(keyFor(opt)))) return null;
+        const facts = ((this._kundliChartFacts(false)?.englishFacts) || []).join('\n');
+        const isMale = this._isGuiderMale();
+        const userGender = this.userData?.gender === 'female' ? 'female' : 'male';
+        const recent = this._acknowledgementHistory.slice(-3).join(' | ') || 'none';
+        const list = q.options.map((opt) => `- value "${opt.value}": "${opt.label}" (${opt.insight || ''})`).join('\n');
+        const prompt = `You are ${this._guideName()}, a warm ${isMale ? 'male' : 'female'} astrology guide talking to a ${userGender} user.
+Question shown: ${q.question}
+${q.spoken ? `Chart point behind it: ${q.spoken}` : ''}
+Real chart facts:
+${facts || '- none'}
+Options:
+${list}
+
+For EACH option write what MAYA says if the user picks it: 2 short spoken sentences, max 40 words, ${isHindi ? 'natural spoken Hindi in Devanagari (English only for planet names), ' + (isMale ? 'masculine' : 'feminine') + ' verbs for MAYA ("मैं देख ' + (isMale ? 'रहा' : 'रही') + ' हूँ")' : 'natural spoken English'}.
+Sentence 1: what this choice says about them, without repeating the option's words. Sentence 2: link it to ONE real chart fact above and give a hopeful direction.
+Never open with "ठीक है", "बहुत अच्छा", "got it" or praise. Avoid these recent lines: ${recent}
+Return ONLY JSON: {"<value>": "<reply>", ...} using the exact option values.`;
+        const run = (async () => {
+            try {
+                const raw = await this._callNarrationFunnelAI(prompt, { temperature: 0.8, topP: 0.92, timeoutMs: 9000 });
+                const parsed = this._extractFirstJsonObject(raw);
+                if (!parsed || typeof parsed !== 'object') return;
+                const norm = (t) => String(t || '').toLowerCase().replace(/[^a-zऀ-ॿ\s]/g, ' ').replace(/\s+/g, ' ').trim();
+                q.options.forEach((opt) => {
+                    const text = this.sanitizeNarrationText(String(parsed[opt.value] || ''));
+                    if (text.length < 12 || text.length > 500) return;
+                    const label = norm(opt.label);
+                    if (label.length >= 6 && norm(text).includes(label)) return; // never read the option back
+                    this._mcqAckCache.set(keyFor(opt), text);
+                });
+            } catch (error) {
+                console.warn('Batch MCQ ack prefetch failed:', error?.message || error);
+            }
+        })();
+        return run;
+    },
+
     async _generateMcqAck(question, answerLabel, answerValue, isHindi, options = {}) {
         const profile = this.personalization || {};
         const dasha = profile.currentDasha?.vedic || profile.currentDasha?.planet || '';
@@ -5136,7 +5238,7 @@ All three segments must connect as one flowing story. Include at least TWO decla
         const cacheKey = `${isHindi ? 'hi' : 'en'}|${String(question || '').trim().toLowerCase()}|${String(answerValue || answerLabel || '').trim().toLowerCase()}`;
         const cachedAck = this._mcqAckCache?.get?.(cacheKey) || '';
         const tuning = this.optionAckTuning || {};
-        const shouldBlockForGemini = options.blockingGemini === true || tuning.blockingGemini === true;
+        const shouldBlockForGemini = options.blockingGemini === true || (options.blockingGemini !== false && tuning.blockingGemini === true);
         const shouldBackgroundPrefetch = options.backgroundGemini !== false && tuning.backgroundGemini !== false;
 
         const fetchGeminiAck = async () => {
@@ -5203,7 +5305,7 @@ Never repeat, quote or rephrase the question. Start directly with what their cho
 ONLY return the spoken response. Nothing else.`;
 
                 if (window.MayaAI?.callFast || window.MayaAI?.callGemini) {
-                    const result = await this._callNarrationFunnelAI(ackPrompt, { temperature: 0.76, topP: 0.92, timeoutMs: 6000 });
+                    const result = await this._callNarrationFunnelAI(ackPrompt, { temperature: 0.76, topP: 0.92, timeoutMs: Number(options.timeoutMs) || 3000 });
                     if (result && result.length > 10 && result.length < 600) {
                         const cleanedAck = this.sanitizeNarrationText(result);
                         const norm = (t) => String(t || '').toLowerCase().replace(/[^a-z\u0900-\u097F\s]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -5353,6 +5455,232 @@ ONLY return the spoken response. Nothing else.`;
      * Questions reference dasha periods, planetary signals, and timing
      * so they feel like MAYA is confirming what the kundli shows.
      */
+    // ── Chart-based question bank ─────────────────────────────────────────
+    // Questions are built from where this person's planets actually sit (house from
+    // the lagna, or from the Moon when there is no birth time), so two people with
+    // different charts get different questions. Seen questions are remembered per
+    // person, so a returning user is not asked the same thing again.
+    _chartPlanetHouses() {
+        const chart = this.kundliChart;
+        const signs = MAYA_CONFIG?.ZODIAC?.SIGNS || [];
+        if (!chart?.planets?.length || signs.length !== 12) return null;
+        const idxOf = (name) => signs.findIndex((s) => s.name === name);
+        const moonIdx = idxOf(chart.planets.find((p) => p.name === 'Moon')?.sign?.name);
+        const timed = !!(this.personalization?.hasReliableAscendant && chart.ascendant?.name);
+        const lagnaIdx = timed ? idxOf(chart.ascendant.name) : moonIdx;
+        if (lagnaIdx < 0) return null;
+        const houses = {};
+        const signOf = {};
+        chart.planets.forEach((p) => {
+            const i = idxOf(p.sign?.name);
+            if (i < 0) return;
+            houses[p.name] = ((i - lagnaIdx + 12) % 12) + 1;
+            signOf[p.name] = i;
+        });
+        return { timed, houses, signOf, moonIdx };
+    },
+
+    _chartQuestionBank(isHindi) {
+        const data = this._chartPlanetHouses();
+        if (!data) return [];
+        const { timed, houses, signOf, moonIdx } = data;
+        const uf = String(this.userData?.gender || '').toLowerCase() === 'female';
+        const v = (male, female) => (uf ? female : male);
+        // Oblique forms (used before का / में / पर) and short option labels.
+        const AREA_HI = ['आपकी पहचान', 'पैसे और परिवार', 'हिम्मत और भाई-बहनों', 'घर और मन की शांति', 'पढ़ाई और प्यार', 'रोज़ के काम और सेहत', 'रिश्ते और शादी', 'अचानक बदलावों', 'भाग्य और पिता', 'करियर', 'कमाई और दोस्तों', 'खर्च और नींद'];
+        const LABEL_HI = ['अपनी पहचान', 'पैसा और परिवार', 'भाई-बहन', 'घर की शांति', 'पढ़ाई या प्यार', 'नौकरी और सेहत', 'रिश्ता या शादी', 'अचानक बदलाव', 'किस्मत का साथ', 'करियर', 'कमाई', 'खर्च और नींद'];
+        const LABEL_EN = ['Self-confidence', 'Money and family', 'Siblings', 'Peace at home', 'Studies or love', 'Job and health', 'Relationship or marriage', 'Sudden changes', 'Luck', 'Career', 'Income', 'Expenses and sleep'];
+        const label = (h) => (isHindi ? LABEL_HI[h - 1] : LABEL_EN[h - 1]);
+        // Two common life areas as the other choices (never the chart's own area).
+        const others = (h) => [10, 7, 2, 6, 4].filter((x) => x !== h).slice(0, 2);
+        const AREA_EN = ['your sense of self', 'money and family', 'courage and siblings', 'home and peace of mind', 'studies and romance', 'daily work and health', 'partnership and marriage', 'sudden changes', 'luck and your father', 'career', 'income and friends', 'expenses and sleep'];
+        const OBL_HI = ['पहले', 'दूसरे', 'तीसरे', 'चौथे', 'पाँचवें', 'छठे', 'सातवें', 'आठवें', 'नौवें', 'दसवें', 'ग्यारहवें', 'बारहवें'];
+        const ORD_EN = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th'];
+        const SIGN_HI = ['मेष', 'वृषभ', 'मिथुन', 'कर्क', 'सिंह', 'कन्या', 'तुला', 'वृश्चिक', 'धनु', 'मकर', 'कुंभ', 'मीन'];
+        const SIGN_EN = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+        const area = (h) => (isHindi ? AREA_HI[h - 1] : AREA_EN[h - 1]);
+        const where = (h) => (isHindi
+            ? `${timed ? '' : 'चंद्रमा से '}${OBL_HI[h - 1]} भाव में`
+            : `in the ${ORD_EN[h - 1]} house${timed ? '' : ' from your Moon'}`);
+        const opt = (label, value, insight) => ({ label, value, insight });
+        const bank = [];
+
+        if (houses.Saturn) {
+            const h = houses.Saturn;
+            bank.push({
+                key: 'cq_saturn', topic: 'pattern',
+                spoken: isHindi
+                    ? `आपकी कुंडली में शनि ${where(h)} है, यानी ${area(h)} का भाव। शनि यहाँ चीज़ें धीरे देता है, पर पक्की देता है।`
+                    : `In your chart Saturn sits ${where(h)}, the area of ${area(h)}. Saturn gives slowly here, but what it gives lasts.`,
+                question: isHindi ? 'ज़िंदगी में सबसे ज़्यादा देरी कहाँ महसूस हुई?' : 'Where in life have you felt the most delay?',
+                options: [
+                    opt(label(h), 'saturn_area', `Saturn in house ${h} (${AREA_EN[h - 1]}): delay confirmed exactly where Saturn sits`),
+                    ...others(h).map((x) => opt(label(x), `area_${x}`, `Delay felt in ${AREA_EN[x - 1]} rather than Saturn's house ${h}`))
+                ]
+            });
+        }
+        if (houses.Jupiter) {
+            const h = houses.Jupiter;
+            bank.push({
+                key: 'cq_jupiter', topic: 'pattern',
+                spoken: isHindi
+                    ? `गुरु आपकी कुंडली में ${where(h)} है, यानी ${area(h)} का भाव। जहाँ गुरु बैठता है, वहाँ अक्सर कोई सहारा मिलता है।`
+                    : `Jupiter sits ${where(h)} in your chart, the area of ${area(h)}. Where Jupiter sits, help usually arrives.`,
+                question: isHindi ? 'ज़िंदगी में मदद ज़्यादातर कहाँ से मिली?' : 'Where has help in life usually come from?',
+                options: isHindi
+                    ? [opt('बड़ों या गुरु से', 'elders', `Jupiter in house ${h}: support through elders or mentors`),
+                        opt('अपनी मेहनत से', 'own_effort', `Jupiter in house ${h}: self-made, mentor support not felt`),
+                        opt('अचानक, किस्मत से', 'sudden_luck', `Jupiter in house ${h}: grace arrives unexpectedly`)]
+                    : [opt('Elders or a mentor', 'elders', `Jupiter in house ${h}: support through elders or mentors`),
+                        opt('My own hard work', 'own_effort', `Jupiter in house ${h}: self-made, mentor support not felt`),
+                        opt('Suddenly, by luck', 'sudden_luck', `Jupiter in house ${h}: grace arrives unexpectedly`)]
+            });
+        }
+        if (houses.Rahu) {
+            const h = houses.Rahu;
+            bank.push({
+                key: 'cq_rahu', topic: 'emotional_state',
+                spoken: isHindi
+                    ? `राहु ${where(h)} है, यानी ${area(h)} का भाव। राहु जहाँ होता है, वहाँ मन को हमेशा कुछ और चाहिए होता है।`
+                    : `Rahu sits ${where(h)}, the area of ${area(h)}. Wherever Rahu sits, the mind keeps wanting more.`,
+                question: isHindi ? 'किस बात को लेकर मन सबसे ज़्यादा बेचैन रहता है?' : 'What keeps your mind most restless?',
+                options: [
+                    opt(label(h), 'rahu_area', `Rahu in house ${h} (${AREA_EN[h - 1]}): restlessness confirmed exactly where Rahu sits`),
+                    ...others(h).map((x) => opt(label(x), `area_${x}`, `Restlessness felt in ${AREA_EN[x - 1]} rather than Rahu's house ${h}`))
+                ]
+            });
+        }
+        if (houses.Mars) {
+            const h = houses.Mars;
+            bank.push({
+                key: 'cq_mars', topic: 'emotional_state',
+                spoken: isHindi
+                    ? `मंगल ${where(h)} है, यानी ${area(h)} का भाव। यहाँ मंगल जोश भी देता है और जल्दबाज़ी भी।`
+                    : `Mars sits ${where(h)}, the area of ${area(h)}. Here Mars brings drive, and sometimes haste.`,
+                question: isHindi ? `गुस्सा आए तो आप क्या ${v('करते', 'करती')} हैं?` : 'When you get angry, what do you do?',
+                options: isHindi
+                    ? [opt(`जल्दी भड़क ${v('जाता', 'जाती')} हूँ`, 'quick_temper', `Mars in house ${h}: fiery, quick reactions confirmed`),
+                        opt(`अंदर ही दबा ${v('लेता', 'लेती')} हूँ`, 'suppressed', `Mars in house ${h}: anger turned inward`),
+                        opt(`शांत ${v('रहता', 'रहती')} हूँ`, 'calm', `Mars in house ${h}: energy well channelled`)]
+                    : [opt('I flare up quickly', 'quick_temper', `Mars in house ${h}: fiery, quick reactions confirmed`),
+                        opt('I hold it inside', 'suppressed', `Mars in house ${h}: anger turned inward`),
+                        opt('I stay calm', 'calm', `Mars in house ${h}: energy well channelled`)]
+            });
+        }
+        if (Number.isInteger(signOf.Venus)) {
+            const s = signOf.Venus;
+            bank.push({
+                key: 'cq_venus', topic: 'relationship',
+                spoken: isHindi
+                    ? `शुक्र आपकी कुंडली में ${SIGN_HI[s]} राशि में है। शुक्र बताता है कि रिश्तों में दिल असल में क्या माँगता है।`
+                    : `Venus is in ${SIGN_EN[s]} in your chart. Venus shows what the heart really asks for in a relationship.`,
+                question: isHindi ? 'रिश्ते में आपको सबसे ज़्यादा क्या चाहिए?' : 'What do you need most in a relationship?',
+                options: isHindi
+                    ? [opt('भरोसा और वफ़ादारी', 'trust', `Venus in ${SIGN_EN[s]}: security and loyalty first`),
+                        opt('अपनी आज़ादी और अपनी जगह', 'freedom', `Venus in ${SIGN_EN[s]}: needs space and independence`),
+                        opt('प्यार जताना, ध्यान देना', 'affection', `Venus in ${SIGN_EN[s]}: needs visible affection`)]
+                    : [opt('Trust and loyalty', 'trust', `Venus in ${SIGN_EN[s]}: security and loyalty first`),
+                        opt('Freedom and space', 'freedom', `Venus in ${SIGN_EN[s]}: needs space and independence`),
+                        opt('Affection and attention', 'affection', `Venus in ${SIGN_EN[s]}: needs visible affection`)]
+            });
+        }
+        if (moonIdx >= 0) {
+            const ELEMENT_HI = ['अग्नि', 'पृथ्वी', 'वायु', 'जल'];
+            const ELEMENT_EN = ['fire', 'earth', 'air', 'water'];
+            const el = moonIdx % 4;
+            bank.push({
+                key: 'cq_moon', topic: 'emotional_state',
+                spoken: isHindi
+                    ? `आपका चंद्रमा ${SIGN_HI[moonIdx]} में है, जो ${ELEMENT_HI[el]} तत्व की राशि है। चंद्रमा से समझ आता है कि मन मुश्किल वक़्त में कैसे सँभलता है।`
+                    : `Your Moon is in ${SIGN_EN[moonIdx]}, a ${ELEMENT_EN[el]} sign. The Moon shows how your mind steadies itself in hard moments.`,
+                question: isHindi ? 'जब मन भारी हो, तो आप क्या करते हैं?'.replace('करते', v('करते', 'करती')) : 'When your mind feels heavy, what do you do?',
+                options: isHindi
+                    ? [opt(`किसी से बात ${v('करता', 'करती')} हूँ`, 'talk', `Moon in ${SIGN_EN[moonIdx]} (${ELEMENT_EN[el]}): releases by sharing`),
+                        opt(`अकेले में ${v('सोचता', 'सोचती')} हूँ`, 'alone', `Moon in ${SIGN_EN[moonIdx]} (${ELEMENT_EN[el]}): processes privately`),
+                        opt(`काम में खो ${v('जाता', 'जाती')} हूँ`, 'work', `Moon in ${SIGN_EN[moonIdx]} (${ELEMENT_EN[el]}): copes through work`)]
+                    : [opt('I talk to someone', 'talk', `Moon in ${SIGN_EN[moonIdx]} (${ELEMENT_EN[el]}): releases by sharing`),
+                        opt('I think it over alone', 'alone', `Moon in ${SIGN_EN[moonIdx]} (${ELEMENT_EN[el]}): processes privately`),
+                        opt('I lose myself in work', 'work', `Moon in ${SIGN_EN[moonIdx]} (${ELEMENT_EN[el]}): copes through work`)]
+            });
+        }
+        if (houses.Sun) {
+            const h = houses.Sun;
+            bank.push({
+                key: 'cq_sun', topic: 'pattern',
+                spoken: isHindi
+                    ? `सूर्य ${where(h)} है, यानी ${area(h)} का भाव। सूर्य जहाँ होता है, वहीं इंसान अपनी पहचान ढूँढता है।`
+                    : `The Sun sits ${where(h)}, the area of ${area(h)}. Where the Sun sits is where a person looks for recognition.`,
+                question: isHindi ? 'क्या आपकी मेहनत को लोग पहचानते हैं?' : 'Do people recognise your effort?',
+                options: isHindi
+                    ? [opt('मेहनत दिखती ही नहीं', 'unseen', `Sun in house ${h}: effort feels invisible`),
+                        opt('धीरे-धीरे मिल रही है', 'growing', `Sun in house ${h}: recognition building slowly`),
+                        opt('हाँ, अच्छी पहचान मिली', 'recognised', `Sun in house ${h}: recognition already received`)]
+                    : [opt('It goes unseen', 'unseen', `Sun in house ${h}: effort feels invisible`),
+                        opt('Slowly, yes', 'growing', `Sun in house ${h}: recognition building slowly`),
+                        opt('Yes, clearly', 'recognised', `Sun in house ${h}: recognition already received`)]
+            });
+        }
+        if (houses.Mercury) {
+            const h = houses.Mercury;
+            bank.push({
+                key: 'cq_mercury', topic: 'pattern',
+                spoken: isHindi
+                    ? `बुध ${where(h)} है, यानी ${area(h)} का भाव। बुध से पता चलता है कि आप फैसले कैसे ${v('लेते', 'लेती')} हैं।`
+                    : `Mercury sits ${where(h)}, the area of ${area(h)}. Mercury shows how you make decisions.`,
+                question: isHindi ? `बड़े फैसले आप कैसे ${v('लेते', 'लेती')} हैं?` : 'How do you make big decisions?',
+                options: isHindi
+                    ? [opt('सोच-समझकर, धीरे', 'slow_logic', `Mercury in house ${h}: careful, analytical decisions`),
+                        opt('दिल की सुनकर, जल्दी', 'quick_heart', `Mercury in house ${h}: intuitive, fast decisions`),
+                        opt('दूसरों से पूछकर', 'ask_others', `Mercury in house ${h}: decides through consultation`)]
+                    : [opt('Slowly, after thinking', 'slow_logic', `Mercury in house ${h}: careful, analytical decisions`),
+                        opt('Quickly, from the heart', 'quick_heart', `Mercury in house ${h}: intuitive, fast decisions`),
+                        opt('After asking others', 'ask_others', `Mercury in house ${h}: decides through consultation`)]
+            });
+        }
+        // Planet cluster: where most of the chart's energy collects.
+        const counts = {};
+        Object.entries(houses).forEach(([, h]) => { counts[h] = (counts[h] || 0) + 1; });
+        const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+        if (top && top[1] >= 3) {
+            const h = Number(top[0]);
+            bank.push({
+                key: 'cq_cluster', topic: 'pattern',
+                spoken: isHindi
+                    ? `आपकी कुंडली में ${top[1]} ग्रह ${where(h)} साथ बैठे हैं, यानी ${area(h)} का भाव। ज़िंदगी की बहुत ऊर्जा इसी तरफ़ जाती है।`
+                    : `${top[1]} planets sit together ${where(h)} in your chart, the area of ${area(h)}. A lot of life's energy flows there.`,
+                question: isHindi ? `क्या आपका ज़्यादा ध्यान ${area(h)} पर ही रहता है?` : `Does most of your attention go to ${area(h)}?`,
+                options: isHindi
+                    ? [opt('हाँ, बिल्कुल', 'yes_focus', `${top[1]} planets in house ${h}: life focus confirmed`),
+                        opt('पहले था, अब कम', 'used_to', `${top[1]} planets in house ${h}: focus shifting`),
+                        opt('नहीं, ऐसा नहीं लगता', 'not_felt', `${top[1]} planets in house ${h}: energy not consciously felt`)]
+                    : [opt('Yes, completely', 'yes_focus', `${top[1]} planets in house ${h}: life focus confirmed`),
+                        opt('It used to, less now', 'used_to', `${top[1]} planets in house ${h}: focus shifting`),
+                        opt('No, not really', 'not_felt', `${top[1]} planets in house ${h}: energy not consciously felt`)]
+            });
+        }
+        return bank;
+    },
+
+    _mcqSeenStoreKey() {
+        const u = this.userData || {};
+        return `maya_mcq_seen_${String(u.name || u.firstName || 'guest').toLowerCase().replace(/\s+/g, '_')}_${u.birthDate || ''}`;
+    },
+
+    _getSeenMcq() {
+        try { return JSON.parse(localStorage.getItem(this._mcqSeenStoreKey()) || '{}') || {}; } catch (_e) { return {}; }
+    },
+
+    _rememberSeenMcq(q) {
+        try {
+            const seen = this._getSeenMcq();
+            const keys = (seen.keys || []).filter((k) => k !== q.key);
+            keys.push(q.key);
+            const texts = (seen.texts || []).filter((t) => t !== q.question);
+            texts.push(q.question);
+            localStorage.setItem(this._mcqSeenStoreKey(), JSON.stringify({ keys: keys.slice(-8), texts: texts.slice(-8) }));
+        } catch (_e) { /* storage is optional */ }
+    },
+
     getProfileQuestions() {
         const isHindi = this._isHindiMode();
         const profile = this.personalization || {};
@@ -5361,24 +5689,24 @@ ONLY return the spoken response. Nothing else.`;
         const ascendant = profile.ascendant?.name || '';
         const lp = this.calculations?.lifePath || '';
         const dominantElement = profile.dominantElement || '';
-        const dashaRef = dasha ? (isHindi ? `${dasha} दशा` : `${dasha} dasha`) : (isHindi ? 'आपकी chart' : 'your chart');
+        const dashaRef = dasha ? (isHindi ? `${dasha} दशा` : `${dasha} dasha`) : (isHindi ? 'आपकी कुंडली' : 'your chart');
         const moonRef = moonSign ? (isHindi ? `${moonSign} चन्द्र` : `${moonSign} Moon`) : '';
 
         const questions = [
             {
                 key: 'recent_upheaval',
                 spoken: isHindi
-                    ? `${dashaRef} में एक signal दिख रहा है - पिछले 2-3 सालों में कोई बड़ा बदलाव आया था? कुछ ऐसा जिसने ज़िंदगी की direction ही बदल दी?`
+                    ? `${dashaRef} में एक संकेत दिख रहा है - पिछले 2-3 सालों में कोई बड़ा बदलाव आया था? कुछ ऐसा जिसने ज़िंदगी की दिशा ही बदल दी?`
                     : `I see a signal in ${dashaRef} - in the last 2-3 years, did something happen that changed the entire direction of your life?`,
                 question: isHindi
                     ? `पिछले 2-3 सालों में कोई बड़ा बदलाव आया?`
                     : `In the last 2-3 years - any major life shift?`,
                 options: isHindi
                     ? [
-                        { label: 'हाँ - relationship में', value: 'relationship_shift', insight: 'Major relationship event confirmed during current dasha - 7th house activation likely' },
-                        { label: 'हाँ - career/money में', value: 'career_shift', insight: 'Career or financial upheaval during current dasha - 10th/2nd house transit active' },
-                        { label: 'हाँ - health या family में', value: 'health_family', insight: 'Health or family crisis during dasha - 6th/4th house pressure confirmed' },
-                        { label: 'नहीं, सब stable रहा', value: 'stable', insight: 'Current dasha running smoothly - upcoming transit may be the trigger instead' }
+                        { label: 'हाँ - रिश्ते में', value: 'relationship_shift', insight: 'Major relationship event confirmed during current dasha - 7th house activation likely' },
+                        { label: 'हाँ - काम या पैसे में', value: 'career_shift', insight: 'Career or financial upheaval during current dasha - 10th/2nd house transit active' },
+                        { label: 'हाँ - सेहत या परिवार में', value: 'health_family', insight: 'Health or family crisis during dasha - 6th/4th house pressure confirmed' },
+                        { label: 'नहीं, सब ठीक रहा', value: 'stable', insight: 'Current dasha running smoothly - upcoming transit may be the trigger instead' }
                     ]
                     : [
                         { label: 'Yes - in relationships', value: 'relationship_shift', insight: 'Major relationship event confirmed during current dasha - 7th house activation likely' },
@@ -5390,7 +5718,7 @@ ONLY return the spoken response. Nothing else.`;
             {
                 key: 'current_phase',
                 spoken: isHindi
-                    ? `अभी इस वक्त - आपको लगता है ज़िंदगी किस direction में जा रही है? ${moonRef ? moonRef + ' ये बता रहा है कि' : 'Chart में दिख रहा है कि'} एक phase चल रहा है, बताइए कैसा feel हो रहा है।`
+                    ? `अभी इस वक्त - आपको लगता है ज़िंदगी किस दिशा में जा रही है? ${moonRef ? moonRef + ' ये बता रहा है कि' : 'कुंडली में दिख रहा है कि'} एक ख़ास दौर चल रहा है, बताइए कैसा महसूस हो रहा है।`
                     : `Right now - where do you feel life is heading? ${moonRef ? moonRef + ' is showing me' : 'Your chart shows'} a specific phase - tell me what it feels like.`,
                 question: isHindi
                     ? `अभी ज़िंदगी कैसी चल रही है?`
@@ -5399,8 +5727,8 @@ ONLY return the spoken response. Nothing else.`;
                     ? [
                         { label: 'अटका हुआ - कुछ आगे नहीं बढ़ रहा', value: 'stuck', insight: 'Saturn or Rahu pressure active - stagnation phase, waiting for transit break' },
                         { label: 'तेज़ बदलाव - सब बदल रहा है', value: 'rapid_change', insight: 'Jupiter or Ketu transit active - transformation phase, multiple life areas shifting' },
-                        { label: 'अकेलापन या disconnect', value: 'isolated', insight: 'Moon or Venus under stress - emotional isolation, inner world disconnected from outer' },
-                        { label: 'ठीक है, पर कुछ missing है', value: 'missing', insight: 'Surface stable but deeper purpose unfulfilled - dasha transition approaching' }
+                        { label: 'अकेलापन या दूरी', value: 'isolated', insight: 'Moon or Venus under stress - emotional isolation, inner world disconnected from outer' },
+                        { label: 'ठीक है, पर कुछ कमी है', value: 'missing', insight: 'Surface stable but deeper purpose unfulfilled - dasha transition approaching' }
                     ]
                     : [
                         { label: 'Stuck - nothing is moving forward', value: 'stuck', insight: 'Saturn or Rahu pressure active - stagnation phase, waiting for transit break' },
@@ -5412,7 +5740,7 @@ ONLY return the spoken response. Nothing else.`;
             {
                 key: 'money_pattern',
                 spoken: isHindi
-                    ? `पैसों के बारे में - chart में एक pattern दिख रहा है। बताइए, पैसा आता तो है, पर रुकता है या हाथ से निकल जाता है?`
+                    ? `पैसों के बारे में - कुंडली में एक पैटर्न दिख रहा है। बताइए, पैसा आता तो है, पर रुकता है या हाथ से निकल जाता है?`
                     : `About money - I see a pattern in your chart. Tell me, does money come to you but struggle to stay?`,
                 question: isHindi
                     ? `पैसों का हाल कैसा रहता है?`
@@ -5420,9 +5748,9 @@ ONLY return the spoken response. Nothing else.`;
                 options: isHindi
                     ? [
                         { label: 'आता है पर टिकता नहीं', value: 'flows_out', insight: '2nd/11th house leak - money comes but exits through unexpected expenses or lending' },
-                        { label: 'मेहनत ज्यादा, return कम', value: 'underpaid', insight: '10th house effort not converting to 2nd house reward - blocked wealth yoga' },
+                        { label: 'मेहनत ज़्यादा, कमाई कम', value: 'underpaid', insight: '10th house effort not converting to 2nd house reward - blocked wealth yoga' },
                         { label: 'अचानक आता है, अचानक जाता है', value: 'volatile', insight: 'Rahu influence on wealth houses - sudden gains and sudden losses pattern' },
-                        { label: 'Stable है, grow नहीं हो रहा', value: 'plateau', insight: 'Saturn stabilizing but Jupiter not activating growth - expansion window approaching' }
+                        { label: 'टिका है, पर बढ़ नहीं रहा', value: 'plateau', insight: 'Saturn stabilizing but Jupiter not activating growth - expansion window approaching' }
                     ]
                     : [
                         { label: 'Comes but never stays', value: 'flows_out', insight: '2nd/11th house leak - money comes but exits through unexpected expenses or lending' },
@@ -5434,17 +5762,17 @@ ONLY return the spoken response. Nothing else.`;
             {
                 key: 'relationship_status',
                 spoken: isHindi
-                    ? `relationships की बात करें तो - अभी इस वक्त, सबसे बड़ी tension कहाँ है? Chart में 7th house active दिख रहा है।`
+                    ? `रिश्तों की बात करें तो - अभी इस वक्त सबसे बड़ा तनाव कहाँ है? कुंडली में सातवाँ भाव सक्रिय दिख रहा है।`
                     : `When it comes to relationships - where is the biggest tension right now? Your 7th house is showing activity.`,
                 question: isHindi
-                    ? `Relationships में अभी सबसे बड़ी tension?`
+                    ? `रिश्तों में अभी सबसे बड़ा तनाव?`
                     : `Biggest tension in relationships right now?`,
                 options: isHindi
                     ? [
                         { label: 'सही इंसान मिल नहीं रहा', value: 'searching', insight: 'Venus or 7th lord not settled - partner karma still unfolding, timing not yet aligned' },
                         { label: 'है कोई, पर समझ नहीं आ रहा', value: 'confused', insight: 'Rahu/Ketu axis touching relationship houses - confusion between desire and destiny' },
                         { label: 'रिश्ता है, पर दूरी बढ़ रही है', value: 'distance', insight: 'Saturn or 12th house influence on 7th - emotional walls building, needs conscious effort' },
-                        { label: 'अभी focus relationships पर नहीं है', value: 'not_priority', insight: '10th house dominating - career phase active, relationships on hold' }
+                        { label: 'अभी ध्यान रिश्तों पर नहीं है', value: 'not_priority', insight: '10th house dominating - career phase active, relationships on hold' }
                     ]
                     : [
                         { label: 'Can\'t find the right person', value: 'searching', insight: 'Venus or 7th lord not settled - partner karma still unfolding, timing not yet aligned' },
@@ -5456,15 +5784,15 @@ ONLY return the spoken response. Nothing else.`;
             {
                 key: 'repeating_pattern',
                 spoken: isHindi
-                    ? `आख़िरी सवाल - और ये सबसे ज़रूरी है। क्या ज़िंदगी में कोई एक चीज़ है जो बार-बार repeat होती है? जैसे एक ही तरह की situation बार-बार आ जाती है?`
+                    ? `आख़िरी सवाल - और ये सबसे ज़रूरी है। क्या ज़िंदगी में कोई एक चीज़ बार-बार होती है? जैसे एक ही तरह के हालात बार-बार आ जाते हैं?`
                     : `Last question - and this is the most important one. Is there one thing in your life that keeps repeating? The same kind of situation coming back again and again?`,
                 question: isHindi
-                    ? `कौनसी चीज़ बार-बार repeat होती है?`
+                    ? `कौनसी चीज़ बार-बार होती है?`
                     : `What keeps repeating in your life?`,
                 options: isHindi
                     ? [
                         { label: 'लोग छोड़ कर चले जाते हैं', value: 'abandonment', insight: 'Ketu or 12th house karmic pattern - loss cycle, detachment wound from past life or childhood' },
-                        { label: 'शुरुआत अच्छी, ending बुरी', value: 'bad_endings', insight: 'Mars or 8th house pattern - strong starts but self-sabotage or external disruption near completion' },
+                        { label: 'शुरुआत अच्छी, अंत बुरा', value: 'bad_endings', insight: 'Mars or 8th house pattern - strong starts but self-sabotage or external disruption near completion' },
                         { label: 'मौके आते हैं पर हाथ से निकल जाते हैं', value: 'missed_chances', insight: 'Rahu pattern - opportunities appear but timing or hesitation causes them to slip away' },
                         { label: 'एक ही गलती बार-बार', value: 'same_mistake', insight: 'Saturn return pattern - lesson not yet learned, chart will keep forcing the same test until resolved' }
                     ]
@@ -5788,7 +6116,16 @@ ONLY return the spoken response. Nothing else.`;
             current_phase: 'emotional_state',
             money_pattern: 'money',
             relationship_status: 'relationship',
-            repeating_pattern: 'pattern'
+            repeating_pattern: 'pattern',
+            cq_saturn: 'pattern',
+            cq_jupiter: 'pattern',
+            cq_rahu: 'emotional_state',
+            cq_mars: 'emotional_state',
+            cq_venus: 'relationship',
+            cq_moon: 'emotional_state',
+            cq_sun: 'pattern',
+            cq_mercury: 'pattern',
+            cq_cluster: 'pattern'
         };
         return map[questionKey] || 'general';
     },
@@ -5942,11 +6279,23 @@ ONLY return the spoken response. Nothing else.`;
     },
 
     getFallbackProfileQuestionForStage(stageKey, askedKeys = new Set()) {
-        const pool = this.filterProfileQuestions(this.getProfileQuestions(), askedKeys);
+        const isHindi = this._isHindiMode();
+        const asked = askedKeys instanceof Set ? askedKeys : new Set(askedKeys || []);
+        const seen = new Set(this._getSeenMcq().keys || []);
+        const askedTopics = new Set(Array.from(asked).map((k) => this.getQuestionTopic(k)));
+        const chartPool = this.filterProfileQuestions(this._chartQuestionBank(isHindi), asked);
+        const fixedPool = this.filterProfileQuestions(this.getProfileQuestions(), asked);
+        // Prefer chart-based questions this person has not seen before, in a new topic.
+        const tiers = [
+            chartPool.filter((q) => !seen.has(q.key) && !askedTopics.has(this.getQuestionTopic(q.key))),
+            chartPool.filter((q) => !seen.has(q.key)),
+            fixedPool.filter((q) => !seen.has(q.key)),
+            chartPool,
+            fixedPool
+        ];
+        const pool = tiers.find((t) => t.length) || [];
         if (!pool.length) return this.getEmergencyProfileQuestionForStage(stageKey, askedKeys);
-
-        const ranked = this.rankStageQuestionCandidates(stageKey, pool);
-        return ranked[0]?.question || pool[0] || this.getEmergencyProfileQuestionForStage(stageKey, askedKeys);
+        return pool[Math.floor(Math.random() * pool.length)];
     },
 
     getEmergencyProfileQuestionForStage(stageKey, askedKeys = new Set()) {
@@ -5958,12 +6307,12 @@ ONLY return the spoken response. Nothing else.`;
         return isHindi
             ? {
                 key,
-                spoken: 'इसे और personal बनाने के लिए एक छोटा detail बताइए।',
-                question: 'अभी आपकी ज़िंदगी में सबसे strong signal क्या है?',
+                spoken: 'इसे और निजी बनाने के लिए एक छोटी बात बताइए।',
+                question: 'अभी आपकी ज़िंदगी में सबसे बड़ी चिंता क्या है?',
                 options: [
-                    { label: 'Career pressure', value: 'career_pressure', insight: 'User is carrying work pressure right now.' },
-                    { label: 'Relationship confusion', value: 'relationship_confusion', insight: 'User needs emotional clarity right now.' },
-                    { label: 'Money चिंता', value: 'money_pressure', insight: 'User needs financial timing clarity right now.' }
+                    { label: 'काम का दबाव', value: 'career_pressure', insight: 'User is carrying work pressure right now.' },
+                    { label: 'रिश्ते की उलझन', value: 'relationship_confusion', insight: 'User needs emotional clarity right now.' },
+                    { label: 'पैसे की चिंता', value: 'money_pressure', insight: 'User needs financial timing clarity right now.' }
                 ],
                 source: 'local_emergency'
             }
@@ -6162,7 +6511,7 @@ RULES (STRICT):
 - ऐसा सवाल जो user की actual situation reveal करे ताकि उनके सवाल का जवाब और precise मिले।
 - Exactly 3 options, हर option MAX 5 शब्द, simple, अलग-अलग, real-life।
 - हर option में label, value, और 1-line insight जो chart से connect हो।
-- LANGUAGE INTEGRITY: केवल dictionary-correct हिंदी शब्द। कोई coined / half / broken word नहीं। English loanword Latin script में।
+- LANGUAGE INTEGRITY: केवल dictionary-correct हिंदी शब्द। कोई coined / half / broken word नहीं। कोई English शब्द या Roman अक्षर नहीं; सब कुछ देवनागरी हिंदी में (जैसे काम, पैसा, रिश्ता, करियर)।
 - BAD: "थोड़ा भुअन", "बहुत खुश-खुश"
 - GOOD: "बिल्कुल नहीं", "थोड़ा-बहुत", "हाँ अक्सर"
 
@@ -6198,6 +6547,9 @@ Return ONLY JSON:
             }
         }
 
+        const realChartFacts = ((this._kundliChartFacts(false)?.englishFacts) || []).map((f) => `- ${f}`).join('\n') || '- (no chart facts)';
+        const seenBefore = (this._getSeenMcq().texts || []).map((t) => `- ${t}`).join('\n') || '- none';
+        const freshAngle = `Suggested angle (from a real placement): ${fallback.spoken || ''} ${fallback.question || ''}`.trim();
         const rankedTopics = this.getRankedTopicPoolForStage(stageKey)
             .map(item => `- ${item.topic}: confidence ${item.score} (from ${item.key})`)
             .join('\n') || '- emotional_state: confidence 1';
@@ -6217,8 +6569,14 @@ Stage: ${stageKey} | Marital: ${maritalStatus} | Dasha: ${dasha} | Moon: ${moonS
 Previous answers:
 ${priorAnswers}
 Top topics: ${rankedTopics}
+REAL CHART FACTS (इनमें से ONE fact "spoken" में सही-सही बोलिए, फिर उसी से जुड़ा सवाल पूछिए):
+${realChartFacts}
+${freshAngle}
+इस user से पिछली visits में ये सवाल पूछे जा चुके हैं (इन्हें या इनके जैसे सवाल दोबारा मत पूछिए):
+${seenBefore}
 
 RULES (STRICT):
+- "spoken" 1-2 छोटे वाक्य: ऊपर का एक असली chart fact (ग्रह + भाव/राशि) और उसका मतलब। कोई ग्रह-स्थिति अपनी तरफ से मत गढ़िए।
 - सवाल MAX 12 शब्दों में। सीधा, रोज़मर्रा की Hindi में। कोई jyotish jargon नहीं (दशा/भाव/ग्रह जैसे शब्द बाहर में मत बोलिए -internally use करके सिर्फ feeling/situation पूछिए)।
 - ऐसा सवाल जो user अपनी ज़िंदगी में तुरंत relate कर सके -एक छोटी, real situation।
 - अगर married है, तो dating-style सवाल नहीं।
@@ -6226,7 +6584,7 @@ RULES (STRICT):
 - Top 2 ranked topics में से ही choose करें।
 - Exactly 3 options. हर option MAX 5 शब्द, simple, personal, अलग-अलग।
 - हर option में label, value, insight (insight 1 छोटी line)।
-- LANGUAGE INTEGRITY (CRITICAL): केवल standard, dictionary-correct हिंदी शब्द use कीजिए। कोई भी coined, poetic, regional, या invented शब्द बिल्कुल मत लिखिए। अगर सही हिंदी शब्द याद नहीं तो English loanword (Devanagari में नहीं, Latin script में) use कीजिए -जैसे "job", "relationship", "stress"। हर option grammatically valid और naturally बोला जाने वाला होना चाहिए। Half-words, broken syllables, या आधे-अधूरे tokens जैसे "भुअन", "भअ" बिल्कुल forbidden।
+- LANGUAGE INTEGRITY (CRITICAL): केवल standard, dictionary-correct हिंदी शब्द use कीजिए। कोई भी coined, poetic, regional, या invented शब्द बिल्कुल मत लिखिए। कोई English शब्द या Roman अक्षर बिल्कुल नहीं: सब कुछ आसान देवनागरी हिंदी में लिखिए (जैसे "नौकरी", "रिश्ता", "तनाव", "करियर")। हर option grammatically valid और naturally बोला जाने वाला होना चाहिए। Half-words, broken syllables, या आधे-अधूरे tokens जैसे "भुअन", "भअ" बिल्कुल forbidden।
 - BAD examples (कभी मत लिखिए): "थोड़ा भुअन", "बहुत खुश-खुश", "मध्यम तरह"
 - GOOD examples: "बहुत भरोसा है", "थोड़ा-बहुत", "बिल्कुल नहीं", "कभी-कभी"
 
@@ -6239,8 +6597,14 @@ Already asked: ${askedList}
 Previous answers:
 ${priorAnswers}
 Top topics: ${rankedTopics}
+REAL CHART FACTS (state ONE of these exactly in "spoken", then ask about the life area it points to):
+${realChartFacts}
+${freshAngle}
+Questions this user already saw on earlier visits (never repeat these or close variants):
+${seenBefore}
 
 RULES (STRICT):
+- "spoken" is 1-2 short sentences: one real chart fact from above (planet + house/sign) and what it means. Never invent a placement.
 - Question MUST be MAX 12 words, plain everyday English, easy for anyone to understand. No astrology jargon (no "dasha / house / planet" wording -use those internally, ask only about a feeling or real situation).
 - Frame it so the user instantly recognises themselves -a small, real-life moment, not theory.
 - If married, no dating-style questions.
@@ -6253,7 +6617,7 @@ Return ONLY JSON:
 {"key":"...","spoken":"...","question":"...","options":[{"label":"...","value":"...","insight":"..."}]}`;
 
         try {
-            return await this._generateAdaptiveQuestionFromGemini(prompt, fallback, askedKeys, { temperature: 0.65, timeoutMs: 2600, requireComplete: true });
+            return await this._generateAdaptiveQuestionFromGemini(prompt, fallback, askedKeys, { temperature: 0.9, timeoutMs: 3500, requireComplete: true, singleAttempt: true });
         } catch (error) {
             console.warn('Dynamic profile question generation failed:', error?.message || error);
             return fallback;
@@ -6937,6 +7301,9 @@ Return ONLY JSON:
         if (window.MayaVoice && !MayaVoice.isMuted) {
             MayaVoice.prefetchSpeech(spokenQuestion);
         }
+        if (q.key) this._rememberSeenMcq(q);
+        // Write the replies for all options now, while the user reads and listens.
+        const ackBatch = this._prefetchMcqAcks(q, isHindi);
 
         const answer = await this.showValidationQuestion(
             q.question,
@@ -6952,7 +7319,10 @@ Return ONLY JSON:
 
         // Show reading animation + AI ack (shared across all MCQs)
         const hideAnim = this._showAnswerReadingAnim(isHindi);
-        const ack = await this._generateMcqAck(q.question, chosen?.label || answer, answer, isHindi);
+        // Give the prefetched AI reply a short moment if it is still arriving, then
+        // fall back to the local chart-aware line; never make the user wait long.
+        if (ackBatch) await Promise.race([ackBatch, new Promise((resolve) => setTimeout(resolve, 1200))]);
+        const ack = await this._generateMcqAck(q.question, chosen?.label || answer, answer, isHindi, { blockingGemini: false, backgroundGemini: false });
         // Pre-warm ack TTS while we set up the callback
         if (ack && window.MayaVoice && !MayaVoice.isMuted) MayaVoice.prefetchSpeech(ack);
         if (window.MayaVoice && !MayaVoice.isMuted) MayaVoice.onPlaybackStart = () => hideAnim();
@@ -7051,6 +7421,8 @@ Return ONLY JSON:
             // ═══ STEP 2: Kundli formation ═══
             console.log('📊 Showing calculation overlay...');
             this.showCalculationOverlay();
+            // Prepare the first question while the kundli draws, so it appears without a wait.
+            this._q1Prefetch = askMayaActive ? null : this.getAdaptiveQuestionForStage('q1_kundli', new Set());
             await this.sleepPaced(this.stageTiming.calculationLeadIn);
 
             console.log('🪐 Animating Kundli...');
@@ -7105,7 +7477,8 @@ Return ONLY JSON:
             this._emailNarrationPregen = emailPregen;
 
             if (!askMayaActive) {
-                const q1 = await this.getAdaptiveQuestionForStage('q1_kundli', askedProfileKeys);
+                const q1 = await (this._q1Prefetch || this.getAdaptiveQuestionForStage('q1_kundli', askedProfileKeys));
+                this._q1Prefetch = null;
                 if (q1) {
                     console.log('🎯 Q1 after kundli: adaptive...');
                     await this.askSingleProfileQuestion(q1);
@@ -7269,7 +7642,7 @@ Return ONLY JSON:
         const resultArea = document.getElementById('calc-result');
 
         const isHindiLoading = this._isHindiMode();
-        this.showCalcLoading(isHindiLoading ? 'Life Path की गणना हो रही है...' : 'Calculating Life Path...');
+        this.showCalcLoading(isHindiLoading ? 'जीवन पथ अंक की गणना हो रही है...' : 'Calculating Life Path...');
 
         // Use consistent date parsing across the app
         const date = window.MayaAstrology ? MayaAstrology.parseDate(this.userData.birthDate) : new Date(this.userData.birthDate);
@@ -7292,7 +7665,7 @@ Return ONLY JSON:
         // Show visual breakdown with explanation
         const isHindi = this._isHindiMode();
         const explanationText = isHindi
-            ? 'हर birth date में एक cosmic code छिपा होता है। हम Day, Month, और Year को single digits में reduce करके आपका Life Path निकालते हैं।'
+            ? 'हर जन्मतिथि में एक छुपा हुआ अंक होता है। हम दिन, महीना और साल को जोड़कर एक अंक तक लाते हैं, यही आपका जीवन पथ अंक है।'
             : 'Every birth date contains a cosmic code. We reduce the Day, Month, and Year to single digits using Pythagorean numerology to reveal your Life Path.';
 
         display.innerHTML = `
@@ -7361,7 +7734,7 @@ Return ONLY JSON:
         this.addCalculationStep(stepsContainer, `${year} → ${yearSum} → ${yearReduced}`, 'Year');
 
         await this.sleepPaced(this.stageTiming.calcStepDelay);
-        this.addCalculationStep(stepsContainer, `${dayReduced} + ${monthReduced} + ${yearReduced} = ${total} → ${lifePath}`, 'Life Path', true);
+        this.addCalculationStep(stepsContainer, `${dayReduced} + ${monthReduced} + ${yearReduced} = ${total} → ${lifePath}`, this._isHindiMode() ? 'जीवन पथ अंक' : 'Life Path', true);
 
         // Keep prior visual reveals visible and append the Life Path card instead of replacing them.
         this.appendResultCard('life-path', 'Your Life Path', lifePath, 'life-path');
@@ -7379,7 +7752,7 @@ Return ONLY JSON:
         const resultArea = document.getElementById('calc-result');
 
         const isHindiLoadDest = this._isHindiMode();
-        this.showCalcLoading(isHindiLoadDest ? 'Destiny Number निकाल रहे हैं...' : 'Calculating Destiny Number...');
+        this.showCalcLoading(isHindiLoadDest ? 'भाग्य अंक निकाल रहे हैं...' : 'Calculating Destiny Number...');
 
         const destiny = this.calculations.destiny;
         const name = this.userData.name.toUpperCase();
@@ -7443,7 +7816,7 @@ Return ONLY JSON:
 
         // Show sum
         const stepsContainer = document.getElementById('destiny-steps');
-        this.addCalculationStep(stepsContainer, `Sum = ${sum} → ${destiny}`, 'Destiny', true);
+        this.addCalculationStep(stepsContainer, `${this._isHindiMode() ? 'योग' : 'Sum'} = ${sum} → ${destiny}`, this._isHindiMode() ? 'भाग्य अंक' : 'Destiny', true);
 
         this.appendResultCard('destiny', 'Your Destiny', destiny, 'destiny');
 
@@ -7459,7 +7832,7 @@ Return ONLY JSON:
         const resultArea = document.getElementById('calc-result');
 
         const isHindiLoadSU = this._isHindiMode();
-        this.showCalcLoading(isHindiLoadSU ? 'Soul Urge Number निकाल रहे हैं...' : 'Calculating Soul Urge...');
+        this.showCalcLoading(isHindiLoadSU ? 'अंतर्मन अंक निकाल रहे हैं...' : 'Calculating Soul Urge...');
 
         const soulUrge = this.calculations.soulUrge;
         const name = this.userData.name.toUpperCase();
@@ -7527,7 +7900,7 @@ Return ONLY JSON:
 
         // Show sum
         const stepsContainer = document.getElementById('soul-steps');
-        this.addCalculationStep(stepsContainer, `Vowels = ${vowelSum} → ${soulUrge}`, 'Soul Urge', true);
+        this.addCalculationStep(stepsContainer, `${this._isHindiMode() ? 'स्वर योग' : 'Vowels'} = ${vowelSum} → ${soulUrge}`, this._isHindiMode() ? 'अंतर्मन अंक' : 'Soul Urge', true);
 
         this.appendResultCard('soul-urge', 'Your Soul Urge', soulUrge, 'soul-urge');
 
@@ -7624,14 +7997,14 @@ Return ONLY JSON:
         display.innerHTML = `
             <div class="unified-numbers">
                 <div class="unified-numbers__header">
-                    <h3>${isHindi ? '✦ आपके Cosmic Numbers ✦' : '✦ Your Cosmic Numbers ✦'}</h3>
+                    <h3>${isHindi ? '✦ आपके अंक ✦' : '✦ Your Cosmic Numbers ✦'}</h3>
                 </div>
 
                 <div class="unified-numbers__grid">
                     <!-- LIFE PATH CARD -->
                     <div class="unified-num-card" id="unum-lifepath" data-state="waiting">
                         <div class="unified-num-card__icon"><i class="bi bi-star-fill"></i></div>
-                        <div class="unified-num-card__label">${isHindi ? 'Life Path' : 'Life Path'}</div>
+                        <div class="unified-num-card__label">${isHindi ? 'जीवन पथ अंक' : 'Life Path'}</div>
                         <div class="unified-num-card__value" id="unum-lp-value">
                             <span class="unified-num-card__spinner"></span>
                         </div>
@@ -7641,7 +8014,7 @@ Return ONLY JSON:
                     <!-- DESTINY CARD -->
                     <div class="unified-num-card" id="unum-destiny" data-state="waiting">
                         <div class="unified-num-card__icon"><i class="bi bi-bullseye"></i></div>
-                        <div class="unified-num-card__label">${isHindi ? 'Destiny' : 'Destiny'}</div>
+                        <div class="unified-num-card__label">${isHindi ? 'भाग्य अंक' : 'Destiny'}</div>
                         <div class="unified-num-card__value" id="unum-dest-value">
                             <span class="unified-num-card__spinner"></span>
                         </div>
@@ -7651,7 +8024,7 @@ Return ONLY JSON:
                     <!-- SOUL URGE CARD -->
                     <div class="unified-num-card" id="unum-soulurge" data-state="waiting">
                         <div class="unified-num-card__icon"><i class="bi bi-heart-pulse-fill"></i></div>
-                        <div class="unified-num-card__label">${isHindi ? 'Soul Urge' : 'Soul Urge'}</div>
+                        <div class="unified-num-card__label">${isHindi ? 'अंतर्मन अंक' : 'Soul Urge'}</div>
                         <div class="unified-num-card__value" id="unum-su-value">
                             <span class="unified-num-card__spinner"></span>
                         </div>
@@ -7732,9 +8105,9 @@ Return ONLY JSON:
         if (suCard) suCard.dataset.state = 'done';
 
         // ── Append result cards to the result strip ──
-        this.appendResultCard('life-path', 'Life Path', lifePath, 'life-path');
-        this.appendResultCard('destiny', 'Destiny', destiny, 'destiny');
-        this.appendResultCard('soul-urge', 'Soul Urge', soulUrge, 'soul-urge');
+        this.appendResultCard('life-path', this._isHindiMode() ? 'जीवन पथ अंक' : 'Life Path', lifePath, 'life-path');
+        this.appendResultCard('destiny', this._isHindiMode() ? 'भाग्य अंक' : 'Destiny', destiny, 'destiny');
+        this.appendResultCard('soul-urge', this._isHindiMode() ? 'अंतर्मन अंक' : 'Soul Urge', soulUrge, 'soul-urge');
 
         // ── Wait for AI narration and speak it ──
         const narrative = await Promise.race([
@@ -7786,6 +8159,197 @@ Return ONLY JSON:
     /**
      * Animate the user's kundli taking shape from their birth data.
      */
+    // Real, chart-specific facts for the kundli screen and its narration.
+    // Everything here is computed from this person's own planets (Astronomy Engine + Lahiri),
+    // so two people never get the same lines unless their charts really match.
+    _kundliChartFacts(isHindi) {
+        const chart = this.kundliChart;
+        const signs = MAYA_CONFIG?.ZODIAC?.SIGNS || [];
+        if (!chart?.planets?.length || signs.length !== 12) return null;
+        const SIGN_HI = ['मेष', 'वृषभ', 'मिथुन', 'कर्क', 'सिंह', 'कन्या', 'तुला', 'वृश्चिक', 'धनु', 'मकर', 'कुंभ', 'मीन'];
+        const PLANET_HI = { Sun: 'सूर्य', Moon: 'चंद्रमा', Mars: 'मंगल', Mercury: 'बुध', Jupiter: 'गुरु', Venus: 'शुक्र', Saturn: 'शनि', Rahu: 'राहु', Ketu: 'केतु' };
+        const NAK_EN = ['Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra', 'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni', 'Uttara Phalguni', 'Hasta', 'Chitra', 'Swati', 'Vishakha', 'Anuradha', 'Jyeshtha', 'Mula', 'Purva Ashadha', 'Uttara Ashadha', 'Shravana', 'Dhanishta', 'Shatabhisha', 'Purva Bhadrapada', 'Uttara Bhadrapada', 'Revati'];
+        const NAK_HI = ['अश्विनी', 'भरणी', 'कृत्तिका', 'रोहिणी', 'मृगशिरा', 'आर्द्रा', 'पुनर्वसु', 'पुष्य', 'आश्लेषा', 'मघा', 'पूर्व फाल्गुनी', 'उत्तर फाल्गुनी', 'हस्त', 'चित्रा', 'स्वाति', 'विशाखा', 'अनुराधा', 'ज्येष्ठा', 'मूल', 'पूर्वाषाढ़ा', 'उत्तराषाढ़ा', 'श्रवण', 'धनिष्ठा', 'शतभिषा', 'पूर्व भाद्रपद', 'उत्तर भाद्रपद', 'रेवती'];
+        // Classical dignities (sign index 0 = Aries).
+        const EXALT = { Sun: 0, Moon: 1, Mars: 9, Mercury: 5, Jupiter: 3, Venus: 11, Saturn: 6 };
+        const OWN = { Sun: [4], Moon: [3], Mars: [0, 7], Mercury: [2, 5], Jupiter: [8, 11], Venus: [1, 6], Saturn: [9, 10] };
+        const idxOf = (name) => signs.findIndex((s) => s.name === name);
+        const signName = (i) => (isHindi ? SIGN_HI[i] : signs[i].name);
+        const planetName = (p) => (isHindi ? (PLANET_HI[p] || p) : p);
+        const planets = chart.planets
+            .map((p) => ({ name: p.name, signIdx: idxOf(p.sign?.name), deg: Number(p.absoluteDegree) }))
+            .filter((p) => p.signIdx >= 0);
+        const moon = planets.find((p) => p.name === 'Moon');
+        if (!moon) return null;
+
+        const timed = !!(this.personalization?.hasReliableAscendant && chart.ascendant?.name);
+        const lagnaIdx = timed ? idxOf(chart.ascendant.name) : moon.signIdx;
+        const houseOf = (signIdx) => ((signIdx - lagnaIdx + 12) % 12) + 1;
+        const ORD_HI = ['पहला', 'दूसरा', 'तीसरा', 'चौथा', 'पाँचवाँ', 'छठा', 'सातवाँ', 'आठवाँ', 'नौवाँ', 'दसवाँ', 'ग्यारहवाँ', 'बारहवाँ'];
+        const ORD_HI_OBL = ['पहले', 'दूसरे', 'तीसरे', 'चौथे', 'पाँचवें', 'छठे', 'सातवें', 'आठवें', 'नौवें', 'दसवें', 'ग्यारहवें', 'बारहवें'];
+        const ord = (n) => `${n}${n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'}`;
+        // Hindi: "का पाँचवाँ भाव है" (direct) vs "पाँचवें भाव में" (oblique).
+        const houseWord = (n, oblique = false) => (isHindi
+            ? `${timed ? '' : 'चंद्रमा से '}${(oblique ? ORD_HI_OBL : ORD_HI)[n - 1]} भाव`
+            : (timed ? `${ord(n)} house` : `${ord(n)} house from the Moon`));
+        const countWord = (n) => (isHindi ? (['', 'एक', 'दो', 'तीन', 'चार', 'पाँच', 'छह', 'सात'][n] || String(n)) : (['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'][n] || String(n)));
+        const nakIdx = Number.isFinite(moon.deg) ? Math.min(26, Math.floor(moon.deg / (360 / 27))) : -1;
+        const nakName = nakIdx >= 0 ? (isHindi ? NAK_HI[nakIdx] : NAK_EN[nakIdx]) : '';
+        const facts = [];
+
+        facts.push({
+            key: 'lagna',
+            text: timed
+                ? (isHindi ? `आपका लग्न ${signName(lagnaIdx)} है, यानी पहले भाव में ${signName(lagnaIdx)} राशि उदय हो रही थी।` : `Your ascendant is ${signName(lagnaIdx)}; ${signName(lagnaIdx)} was rising at your birth.`)
+                : (isHindi ? `जन्म समय नहीं दिया गया, इसलिए यह चंद्र कुंडली है: पहले भाव में आपकी चंद्र राशि ${signName(lagnaIdx)} है।` : `No birth time was given, so this is a Chandra kundli: your Moon sign ${signName(lagnaIdx)} sits in the first house.`)
+        });
+        facts.push({
+            key: 'moon',
+            text: nakName
+                ? (isHindi ? `चंद्रमा ${signName(moon.signIdx)} राशि में, ${nakName} नक्षत्र में है।` : `The Moon is in ${signName(moon.signIdx)}, in ${nakName} nakshatra.`)
+                : (isHindi ? `चंद्रमा ${signName(moon.signIdx)} राशि में है।` : `The Moon is in ${signName(moon.signIdx)}.`)
+        });
+
+        const bySign = {};
+        planets.forEach((p) => { (bySign[p.signIdx] = bySign[p.signIdx] || []).push(p); });
+        const cluster = Object.entries(bySign).sort((a, b) => b[1].length - a[1].length)[0];
+        if (cluster && cluster[1].length >= 2) {
+            const sIdx = Number(cluster[0]);
+            const list = cluster[1].map((p) => planetName(p.name)).join(isHindi ? ', ' : ', ');
+            facts.push({
+                key: 'cluster',
+                text: isHindi
+                    ? `${signName(sIdx)} में ${countWord(cluster[1].length)} ग्रह साथ बैठे हैं (${list}), जो ${timed ? 'आपकी कुंडली का ' : ''}${houseWord(houseOf(sIdx))} है।`
+                    : `${countWord(cluster[1].length)[0].toUpperCase()}${countWord(cluster[1].length).slice(1)} planets sit together in ${signName(sIdx)} (${list}), your ${houseWord(houseOf(sIdx))}.`
+            });
+        }
+
+        planets.forEach((p) => {
+            if (!(p.name in EXALT)) return;
+            const ex = EXALT[p.name];
+            if (p.signIdx === ex) {
+                facts.push({ key: `dig_${p.name}`, text: isHindi ? `${planetName(p.name)} ${signName(p.signIdx)} में उच्च का है।` : `${p.name} is exalted in ${signName(p.signIdx)}.` });
+            } else if (p.signIdx === (ex + 6) % 12) {
+                facts.push({ key: `dig_${p.name}`, text: isHindi ? `${planetName(p.name)} ${signName(p.signIdx)} में नीच का है।` : `${p.name} is debilitated in ${signName(p.signIdx)}.` });
+            } else if (OWN[p.name].includes(p.signIdx)) {
+                facts.push({ key: `dig_${p.name}`, text: isHindi ? `${planetName(p.name)} अपनी ही राशि ${signName(p.signIdx)} में है।` : `${p.name} is in its own sign, ${signName(p.signIdx)}.` });
+            }
+        });
+
+        const sun = planets.find((p) => p.name === 'Sun');
+        if (sun) {
+            facts.push({
+                key: 'sun',
+                text: isHindi
+                    ? `सूर्य ${signName(sun.signIdx)} में, ${houseWord(houseOf(sun.signIdx), true)} में है।`
+                    : `The Sun is in ${signName(sun.signIdx)}, in your ${houseWord(houseOf(sun.signIdx))}.`
+            });
+        }
+
+        return {
+            timed,
+            facts,
+            lagnaSign: signName(lagnaIdx),
+            moonSign: signName(moon.signIdx),
+            nakshatra: nakName,
+            englishFacts: isHindi ? (this._kundliChartFacts(false)?.facts || []).map((f) => f.text) : facts.map((f) => f.text)
+        };
+    },
+
+    // Pick 2 facts: always lagna/moon context first, then one varied fact, so the
+    // wording changes between visits but stays true to the chart.
+    _kundliReadySummary(isHindi) {
+        const data = this._kundliChartFacts(isHindi);
+        if (!data) return '';
+        const extras = data.facts.filter((f) => !['lagna', 'moon'].includes(f.key));
+        const first = data.facts.find((f) => f.key === (data.timed ? 'lagna' : 'moon')) || data.facts[0];
+        const pick = extras.length ? extras[this._pickFromBag(`kundli_fact_${isHindi ? 'hi' : 'en'}`, extras.length) % extras.length] : null;
+        return [first?.text, pick?.text].filter(Boolean).join(' ');
+    },
+
+    // Remove "chart is still forming" lines once the chart is actually on screen.
+    _stripKundliFormingPhrases(text = '') {
+        const forming = /(आकार ले रही|आकार ले रहा|विन्यास (?:अभी )?बन रहा|बन रही है|बन रहा है|अपनी जगह ले रहे|खाने भर रहे|तस्वीर बनने लगी|taking shape|still forming|is forming|are settling|filling in|picture is forming|forming your chart|forming now)/i;
+        const parts = String(text || '').split(/(?<=[।.!?])\s+/);
+        const kept = parts.filter((s) => !forming.test(s));
+        return kept.join(' ').replace(/\s+/g, ' ').trim();
+    },
+
+    _waitForKundliReady(maxMs = 7000) {
+        const card = document.getElementById('kundliFormationChartCard');
+        if (!card || card.classList.contains('is-ready')) return Promise.resolve();
+        return new Promise((resolve) => {
+            const done = () => { clearTimeout(timer); this._kundliReadyResolvers = (this._kundliReadyResolvers || []).filter((r) => r !== done); resolve(); };
+            const timer = setTimeout(done, maxMs);
+            (this._kundliReadyResolvers = this._kundliReadyResolvers || []).push(done);
+        });
+    },
+
+    // Swap the "forming" text for the finished state once the chart has drawn.
+    _showKundliReadyText() {
+        const isHindi = this._isHindiMode();
+        const data = this._kundliChartFacts(isHindi);
+        const heading = document.getElementById('kundliFormationHeading');
+        if (heading) {
+            const label = data && !data.timed
+                ? (isHindi ? 'आपकी चंद्र कुंडली बन गई' : 'Your Chandra Kundli is ready')
+                : (isHindi ? 'आपकी कुंडली बन गई' : 'Your Kundli is ready');
+            heading.innerHTML = `<i class="bi bi-check2-circle"></i> ${label}`;
+        }
+        const explain = document.getElementById('kundliFormationExplain');
+        const summary = this._kundliReadySummary(isHindi);
+        if (explain && summary) explain.textContent = summary;
+        if (this._rotatingStatusTimer) { clearInterval(this._rotatingStatusTimer); this._rotatingStatusTimer = null; }
+        const title = document.querySelector('#calculation-overlay .calculation-title h2');
+        if (title) title.textContent = isHindi ? 'आपकी कुंडली तैयार है' : 'Your Kundli is ready';
+        const status = document.getElementById('calc-rotating-status');
+        if (status && data) {
+            status.style.opacity = '1';
+            status.textContent = isHindi
+                ? `${data.timed ? `लग्न ${data.lagnaSign}` : 'चंद्र कुंडली'} · चंद्र ${data.moonSign}${data.nakshatra ? ` (${data.nakshatra})` : ''}`
+                : `${data.timed ? `${data.lagnaSign} ascendant` : 'Chandra kundli'} · Moon in ${data.moonSign}${data.nakshatra ? ` (${data.nakshatra})` : ''}`;
+        }
+    },
+
+    // Called once the kundli has finished drawing: gold pulse, shimmer, "Kundli ready" seal,
+    // a soft chime (skipped when muted) and a tiny vibration on phones.
+    _markKundliReady(delayMs = 5800) {
+        clearTimeout(this._kundliReadyTimer);
+        this._kundliReadyTimer = setTimeout(() => {
+            const card = document.getElementById('kundliFormationChartCard');
+            if (!card || card.classList.contains('is-ready')) return;
+            card.classList.add('is-ready');
+            try { this._showKundliReadyText(); } catch (_e) { /* text swap must never break the reading */ }
+            (this._kundliReadyResolvers || []).slice().forEach((resolve) => resolve());
+            try { if (navigator.vibrate) navigator.vibrate(35); } catch (_e) { /* ignore */ }
+            this._playKundliReadyChime();
+        }, Math.max(0, Number(delayMs) || 0));
+    },
+
+    _playKundliReadyChime() {
+        try {
+            if (window.MayaVoice?.isMuted) return;
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) return;
+            const ctx = window.MayaVoice?.audioContext || (this._chimeCtx = this._chimeCtx || new Ctx());
+            if (ctx.state === 'suspended') return;
+            const now = ctx.currentTime;
+            [[880, 0], [1318.5, 0.12], [1760, 0.24]].forEach(([freq, at]) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.0001, now + at);
+                gain.gain.exponentialRampToValueAtTime(0.06, now + at + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + at + 1.1);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now + at);
+                osc.stop(now + at + 1.2);
+            });
+        } catch (_error) { /* a missing chime must never break the reading */ }
+    },
+
     async animateKundliFormation() {
         const display = document.getElementById('calc-display');
         const resultArea = document.getElementById('calc-result');
@@ -7798,7 +8362,8 @@ Return ONLY JSON:
 
         const isHindi = this._isHindiMode();
         const ascendant = profile.hasReliableAscendant ? (profile.ascendant || birthChart.ascendant || {}) : {};
-        const westernSign = profile.western?.name || '';
+        // Vedic (sidereal) Sun sign from this chart, so the pill matches where the Sun sits in the kundli.
+        const westernSign = birthChart.planets.find((planet) => planet.name === 'Sun')?.sign?.name || profile.western?.name || '';
         const moonSign = profile.moonSign || '';
         const placeLabel = profile.birthPlaceShort || this.userData.birthPlace || (isHindi ? 'जन्म स्थान' : 'birth place');
         const timeLabel = this.hasExactBirthTime()
@@ -7828,7 +8393,8 @@ Return ONLY JSON:
             westernSign ? `Sun sign: ${westernSign}` : '',
             ascendant.name ? `Ascendant: ${ascendant.name}` : '',
             moonSign ? `Moon sign: ${moonSign}` : '',
-            dashaLabel ? `Current dasha: ${dashaLabel}` : ''
+            dashaLabel ? `Current dasha: ${dashaLabel}` : '',
+            ...((this._kundliChartFacts(false)?.englishFacts) || [])
         ].filter(Boolean);
         const metaItems = [
             westernSign
@@ -7847,30 +8413,45 @@ Return ONLY JSON:
         const explanationText = isHindi
             ? ascendant.name
                 ? `सबसे पहले मैं ${this.localizeHindiText(placeLabel)} और ${timeLabel} के आधार पर आपकी कुंडली का विन्यास देख ${this._isGuiderMale() ? 'रहा' : 'रही'} हूँ। लग्न, चंद्र राशि, दशा और ग्रहों की सघनता मिलकर यह दिखा रही हैं कि आपके जीवन का ढाँचा कैसे बनता है और आने वाले महीनों में कौन-सा मोड़ उभर सकता है।`
-                : `सबसे पहले मैं ${this.localizeHindiText(placeLabel)} और ${timeLabel} के आधार पर आपकी कुंडली के visible संकेत देख ${this._isGuiderMale() ? 'रहा' : 'रही'} हूँ। अभी मैं चंद्र राशि, दशा और ग्रहों की सघनता पर grounded reading ${this._isGuiderMale() ? 'रखूँगा' : 'रखूँगी'}।`
+                : `सबसे पहले मैं ${this.localizeHindiText(placeLabel)} और ${timeLabel} के आधार पर आपकी कुंडली के मुख्य संकेत देख ${this._isGuiderMale() ? 'रहा' : 'रही'} हूँ। अभी मैं चंद्र राशि, दशा और ग्रहों की स्थिति पर ही बात ${this._isGuiderMale() ? 'करूँगा' : 'करूँगी'}।`
             : ascendant.name
                 ? `First I’m forming your square kundli from ${placeLabel} and ${timeLabel}. Your ascendant, moon sign, dasha, and planetary clustering show the structure of your life patterns and the chapters ahead.`
                 : `First I’m looking at the visible kundli markers from ${placeLabel} and ${timeLabel}. For now I’m keeping the reading grounded in your moon sign, dasha, and planetary clustering.`;
 
+        // Text on one side, chart on the other (side by side on wide screens, stacked on phones).
+        // The chart card unfolds like folded paper, the chart opens in a circle, and a seal
+        // appears when the chart has finished drawing (see _markKundliReady).
         display.innerHTML = `
-            <div class="calc-section kundli-formation-calc">
-                <h3><i class="bi bi-grid-3x3-gap-fill"></i> ${isHindi ? 'कुंडली विन्यास बन रहा है' : 'Forming Your Square Kundli'}</h3>
-                <p class="calc-explanation">${explanationText}</p>
-                ${metaItems ? `<div class="kundli-formation-meta">${metaItems}${this._nameRashiMetaHtml(isHindi)}</div>` : ''}
-                <div class="kundli-formation-chart-card">
-                    <div class="kundli-formation-chart-shell" id="kundliFormationChartShell">
-                        <div class="maya-kundli-chart kundli-formation-chart">
-                            ${squareChartMarkup || `<div class="kundli-formation-chart-fallback">${isHindi ? 'कुंडली का चित्र तैयार हो रहा है...' : 'Kundli chart is forming...'}</div>`}
+            <div class="calc-section kundli-formation-calc kundli-formation-calc--split">
+                <div class="kundli-formation-info">
+                    <h3 id="kundliFormationHeading"><i class="bi bi-grid-3x3-gap-fill"></i> ${isHindi ? (ascendant.name ? 'कुंडली बन रही है' : 'चंद्र कुंडली बन रही है') : (ascendant.name ? 'Forming Your Kundli' : 'Forming Your Chandra Kundli')}</h3>
+                    <p class="calc-explanation" id="kundliFormationExplain">${explanationText}</p>
+                    ${metaItems ? `<div class="kundli-formation-meta">${metaItems}${this._nameRashiMetaHtml(isHindi)}</div>` : ''}
+                    <div class="kundli-formation-signals" id="kundliFormationSignals"></div>
+                </div>
+                <div class="kundli-formation-visual">
+                    <div class="kundli-formation-chart-card" id="kundliFormationChartCard">
+                        <span class="kundli-fold-creases" aria-hidden="true"></span>
+                        <div class="kundli-formation-chart-shell" id="kundliFormationChartShell">
+                            <div class="maya-kundli-chart kundli-formation-chart">
+                                ${squareChartMarkup || `<div class="kundli-formation-chart-fallback">${isHindi ? 'कुंडली का चित्र तैयार हो रहा है...' : 'Kundli chart is forming...'}</div>`}
+                            </div>
+                        </div>
+                        <span class="kundli-ready-shimmer" aria-hidden="true"></span>
+                        <div class="kundli-ready-seal" role="status" aria-live="polite">
+                            <span class="kundli-ready-seal__icon" aria-hidden="true">&#10003;</span>
+                            <span class="kundli-ready-seal__text">${isHindi ? 'कुंडली तैयार' : 'Kundli ready'}</span>
                         </div>
                     </div>
                 </div>
-                <div class="kundli-formation-signals" id="kundliFormationSignals"></div>
             </div>
         `;
 
         await this.sleepPaced(this.stageTiming.kundliInsightDelay);
         window.MayaKundli?.renderAllPendingCharts?.();
         document.getElementById('kundliFormationChartShell')?.classList.add('is-visible');
+        document.getElementById('kundliFormationChartCard')?.classList.add('is-open');
+        this._markKundliReady(squareChartMarkup ? 5800 : 1600);
 
         let narrative = await this.withFiller(() => this.getContent('kundliStageNarrative', () => this.getAIScript('kundliFormation', {
             ascendant: ascendant.name,
@@ -7883,6 +8464,7 @@ Return ONLY JSON:
             predictionItems: this.buildPredictionItems(),
             kundliFormationInProgress: true
         })), 'kundli');
+        narrative = this._stripKundliFormingPhrases(narrative);
 
         if (!narrative) {
             narrative = await this.withFiller(() => this.generateDirectReadingSection('kundli', {
@@ -7891,15 +8473,18 @@ Return ONLY JSON:
                 predictionItems: this.buildPredictionItems(),
                 kundliFormationInProgress: true
             }), 'kundli');
+            narrative = this._stripKundliFormingPhrases(narrative);
         }
 
         narrative = this._stripKundliReadyAnnouncement(narrative);
-        if (!narrative) {
-            narrative = isHindi
-                ? `अभी आपकी कुंडली का विन्यास बन रहा है। ग्रहों की स्थिति और दशा साथ-साथ उभर रही हैं, इसलिए मैं पहला संकेत पूरा बनने से पहले ही पकड़ ${this._isGuiderMale() ? 'रहा' : 'रही'} हूँ।`
-                : `Your kundli is still taking shape. The planetary positions and dasha are emerging together, so I am watching the first signal before the full reading opens.`;
+        if (!narrative || narrative.length < 20) {
+            narrative = this._kundliReadySummary(isHindi)
+                || (isHindi ? 'आपकी कुंडली सामने है। अब इसे एक-एक करके पढ़ते हैं।' : 'Your kundli is in front of us. Let us read it one step at a time.');
         }
 
+        // Speak only once the chart has finished drawing, so the voice never says
+        // "forming" while the "Kundli ready" seal is already on screen.
+        await this._waitForKundliReady();
         if (narrative) this.spokenNarrations.push({ stage: 'kundli', text: narrative });
         const speakPromise = this.speak(narrative);
         const signals = document.getElementById('kundliFormationSignals');
@@ -8219,7 +8804,7 @@ Return ONLY JSON:
             <div class="email-gate-container phone-gate-container">
                 <div class="gate-header">
                     <h3>${isHindi ? 'अपनी रीडिंग सेव करें और आगे बढ़ें' : 'Save your reading and continue'}</h3>
-                    <p class="gate-subtitle">${isHindi ? `${this.firstName}, अपना मोबाइल नंबर डालिए। SMS ओटीपी आने में कुछ सेकंड लग सकते हैं।` : `${this.firstName}, enter your mobile number. The SMS OTP can take a few seconds to arrive.`}</p>
+                    <p class="gate-subtitle">${isHindi ? `${this.firstName}, अपना मोबाइल नंबर डालिए। ओटीपी संदेश आने में कुछ सेकंड लग सकते हैं।` : `${this.firstName}, enter your mobile number. The SMS OTP can take a few seconds to arrive.`}</p>
                 </div>
                 <div class="gate-benefits">
                     <div class="benefit-item"><i class="bi bi-heart-fill"></i><span>${isHindi ? 'साइन इन के बाद: रिश्तों की रीडिंग' : 'After sign-in: relationship reading'}</span></div>
@@ -8241,7 +8826,7 @@ Return ONLY JSON:
                         </select>
                     </div>
                     <button type="submit" id="phone-gate-submit" class="btn btn-primary btn-lg w-100 mt-3">
-                        <i class="bi bi-chat-dots me-2"></i>${isHindi ? 'OTP भेजें SMS से' : 'Send OTP by SMS'}
+                        <i class="bi bi-chat-dots me-2"></i>${isHindi ? 'संदेश से ओटीपी भेजें' : 'Send OTP by SMS'}
                     </button>
                     <p class="gate-note mt-3">
                         <i class="bi bi-shield-check"></i> ${isHindi ? 'आपका नंबर निजी और सुरक्षित रहेगा' : 'Your number stays private and secure'}
@@ -8446,7 +9031,7 @@ Return ONLY JSON:
             this.emailSubmissionInProgress = false;
             if (submitBtn) {
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = `<i class="bi bi-chat-dots me-2"></i>${isHindi ? 'SMS से OTP भेजें' : 'Send OTP by SMS'}`;
+                submitBtn.innerHTML = `<i class="bi bi-chat-dots me-2"></i>${isHindi ? 'संदेश से ओटीपी भेजें' : 'Send OTP by SMS'}`;
             }
             return;
         }
@@ -9270,3 +9855,45 @@ window.checkFunnelStatus = function () {
     console.log('================================');
     return 'Use MayaFunnel.retryStart() to manually retry if stuck';
 };
+
+/**
+ * Hindi mode: visible text inside MAYA's screens is shown in plain Hindi too
+ * (same word map as the voice). Only whole English words from the map change,
+ * so names typed by the user stay as they are. English mode is never touched.
+ */
+(function installHindiScreenText() {
+    if (typeof document === 'undefined' || window.__mayaHindiScreenText) return;
+    window.__mayaHindiScreenText = true;
+    const SCOPE = '#maya-overlay, #calculation-overlay, #maya-thinking-indicator';
+    const isHindi = () => { try { return !!window.MayaFunnel?._isHindiMode?.(); } catch (_e) { return false; } };
+    const fixNode = (node) => {
+        const text = node.nodeValue;
+        if (!text || !/[A-Za-z]{2,}/.test(text)) return;
+        const next = window.MayaFunnel._toPlainHindi(text);
+        if (next !== text) node.nodeValue = next;
+    };
+    const fixTree = (root) => {
+        if (!root || !isHindi() || !window.MayaFunnel?._toPlainHindi) return;
+        if (root.nodeType === 3) { if (root.parentElement?.closest(SCOPE) && !root.parentElement.closest('input, textarea, [contenteditable]')) fixNode(root); return; }
+        if (root.nodeType !== 1) return;
+        const scopes = root.closest?.(SCOPE) ? [root] : Array.from(root.querySelectorAll?.(SCOPE) || []);
+        scopes.forEach((scope) => {
+            const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+            let n;
+            while ((n = walker.nextNode())) {
+                if (n.parentElement?.closest('input, textarea, script, style, [contenteditable]')) continue;
+                fixNode(n);
+            }
+        });
+    };
+    const start = () => {
+        new MutationObserver((mutations) => {
+            if (!isHindi()) return;
+            mutations.forEach((m) => {
+                if (m.type === 'characterData') fixTree(m.target);
+                m.addedNodes?.forEach((n) => fixTree(n));
+            });
+        }).observe(document.body, { childList: true, subtree: true, characterData: true });
+    };
+    if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();

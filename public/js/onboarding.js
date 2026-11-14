@@ -1160,7 +1160,7 @@ const MayaOnboarding = {
                     <div id="loginError" class="alert alert-danger d-none mb-3"></div>
 
                     <button type="button" class="btn btn-primary btn-lg w-100 mb-3" id="loginSubmitBtn">
-                        <i class="bi bi-chat-dots me-2"></i>${isHindi ? 'OTP भेजें' : 'Send OTP'}
+                        <i class="bi bi-chat-dots me-2"></i>${isHindi ? 'ओटीपी भेजें' : 'Send OTP'}
                     </button>
 
                     ${showReviewerAccess ? `
@@ -1248,7 +1248,7 @@ const MayaOnboarding = {
 
             if (loginBtn) {
                 loginBtn.disabled = false;
-                loginBtn.innerHTML = `<i class="bi bi-chat-dots me-2"></i>${isHindi ? 'OTP भेजें' : 'Send OTP'}`;
+                loginBtn.innerHTML = `<i class="bi bi-chat-dots me-2"></i>${isHindi ? 'ओटीपी भेजें' : 'Send OTP'}`;
             }
         }
     },
