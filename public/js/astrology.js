@@ -177,10 +177,12 @@ const MayaAstrology = {
             ...normalized
         };
 
-        const explicitLat = Number(normalized.birthLat);
-        const explicitLon = Number(normalized.birthLon);
-        const fallbackLat = canReuseStoredCoords ? Number(merged.birthLat) : Number.NaN;
-        const fallbackLon = canReuseStoredCoords ? Number(merged.birthLon) : Number.NaN;
+        // null / '' mean "unknown", not 0 (Number(null) is 0).
+        const num = (v) => (v === null || v === undefined || v === '' ? Number.NaN : Number(v));
+        const explicitLat = num(normalized.birthLat);
+        const explicitLon = num(normalized.birthLon);
+        const fallbackLat = canReuseStoredCoords ? num(merged.birthLat) : Number.NaN;
+        const fallbackLon = canReuseStoredCoords ? num(merged.birthLon) : Number.NaN;
         const explicitTimezone = this.normalizeUtcOffsetMinutes(
             normalized.birthTimezone ?? normalized.utcOffsetMinutes ?? normalized.timezone
         );
@@ -202,8 +204,117 @@ const MayaAstrology = {
             birthPlace: merged.birthPlace || '',
             birthLat,
             birthLon,
-            birthTimezone
+            // Real time zone of the birth place on the birth date (IST is +5:30, not the
+            // +5:00 that longitude/15 gives). Falls back to the old value if unknown.
+            birthTimezone: (() => {
+                const real = this.getBirthPlaceTimezone(
+                    merged.birthPlace || '', birthLat, birthLon, birthDate,
+                    merged.birthTime || '12:00', hasExplicitCoords || hasFallbackCoords
+                );
+                return Number.isFinite(real) ? real : birthTimezone;
+            })()
         };
+    },
+
+    // Country (last part of the place name, as map search returns it) -> IANA zone.
+    _ZONE_BY_COUNTRY: {
+        'india': 'Asia/Kolkata', '\u092d\u093e\u0930\u0924': 'Asia/Kolkata', 'bharat': 'Asia/Kolkata',
+        'nepal': 'Asia/Kathmandu', 'pakistan': 'Asia/Karachi', 'bangladesh': 'Asia/Dhaka',
+        'sri lanka': 'Asia/Colombo', 'bhutan': 'Asia/Thimphu', 'myanmar': 'Asia/Yangon',
+        'afghanistan': 'Asia/Kabul', 'iran': 'Asia/Tehran', 'maldives': 'Indian/Maldives',
+        'united arab emirates': 'Asia/Dubai', 'uae': 'Asia/Dubai', 'saudi arabia': 'Asia/Riyadh',
+        'qatar': 'Asia/Qatar', 'kuwait': 'Asia/Kuwait', 'oman': 'Asia/Muscat', 'bahrain': 'Asia/Bahrain',
+        'singapore': 'Asia/Singapore', 'malaysia': 'Asia/Kuala_Lumpur', 'thailand': 'Asia/Bangkok',
+        'china': 'Asia/Shanghai', 'hong kong': 'Asia/Hong_Kong', 'japan': 'Asia/Tokyo',
+        'south korea': 'Asia/Seoul', 'philippines': 'Asia/Manila', 'vietnam': 'Asia/Ho_Chi_Minh',
+        'united kingdom': 'Europe/London', 'uk': 'Europe/London', 'ireland': 'Europe/Dublin',
+        'germany': 'Europe/Berlin', 'france': 'Europe/Paris', 'italy': 'Europe/Rome', 'spain': 'Europe/Madrid',
+        'netherlands': 'Europe/Amsterdam', 'belgium': 'Europe/Brussels', 'switzerland': 'Europe/Zurich',
+        'austria': 'Europe/Vienna', 'sweden': 'Europe/Stockholm', 'norway': 'Europe/Oslo',
+        'denmark': 'Europe/Copenhagen', 'finland': 'Europe/Helsinki', 'poland': 'Europe/Warsaw',
+        'portugal': 'Europe/Lisbon', 'greece': 'Europe/Athens', 'turkey': 'Europe/Istanbul', 'turkiye': 'Europe/Istanbul',
+        'new zealand': 'Pacific/Auckland', 'south africa': 'Africa/Johannesburg', 'kenya': 'Africa/Nairobi',
+        'nigeria': 'Africa/Lagos', 'egypt': 'Africa/Cairo', 'mauritius': 'Indian/Mauritius', 'fiji': 'Pacific/Fiji',
+        'trinidad and tobago': 'America/Port_of_Spain', 'guyana': 'America/Guyana', 'suriname': 'America/Paramaribo'
+    },
+
+    _zoneForPlace(place, lat, lon, hasCoords) {
+        const parts = String(place || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+        const country = parts.length ? parts[parts.length - 1] : '';
+        const la = Number(lat);
+        const lo = Number(lon);
+        const ok = hasCoords && Number.isFinite(la) && Number.isFinite(lo);
+        if (this._ZONE_BY_COUNTRY[country]) return this._ZONE_BY_COUNTRY[country];
+        if (ok && /united states|^usa$|^us$/.test(country)) {
+            if (lo < -150 && la < 25) return 'Pacific/Honolulu';
+            if (lo < -141) return 'America/Anchorage';
+            if (lo > -114.8 && lo < -109 && la > 31 && la < 37) return 'America/Phoenix';
+            if (lo < -114.5) return 'America/Los_Angeles';
+            if (lo < -102) return 'America/Denver';
+            if (lo < -86.5) return 'America/Chicago';
+            return 'America/New_York';
+        }
+        if (ok && country === 'canada') {
+            if (lo < -120) return 'America/Vancouver';
+            if (lo < -110) return 'America/Edmonton';
+            if (lo < -102) return 'America/Regina';
+            if (lo < -90) return 'America/Winnipeg';
+            if (lo < -64) return 'America/Toronto';
+            if (lo < -59) return 'America/Halifax';
+            return 'America/St_Johns';
+        }
+        if (ok && country === 'australia') {
+            if (lo < 129) return 'Australia/Perth';
+            if (lo < 138 && la > -26) return 'Australia/Darwin';
+            if (lo < 141) return 'Australia/Adelaide';
+            if (la > -29) return 'Australia/Brisbane';
+            return 'Australia/Sydney';
+        }
+        if (ok && country === 'indonesia') return lo < 114.5 ? 'Asia/Jakarta' : (lo < 125 ? 'Asia/Makassar' : 'Asia/Jayapura');
+        if (ok && country === 'brazil') return lo < -60 ? 'America/Manaus' : 'America/Sao_Paulo';
+        if (ok && country === 'mexico') return lo < -106 ? 'America/Mazatlan' : 'America/Mexico_City';
+        if (ok && country === 'russia') return lo < 50 ? 'Europe/Moscow' : (lo < 70 ? 'Asia/Yekaterinburg' : (lo < 100 ? 'Asia/Novosibirsk' : 'Asia/Vladivostok'));
+        // Country not known: only where the coordinates are clearly inside India
+        // (border areas shared with Pakistan, Nepal, Bangladesh, Bhutan are left out).
+        if (ok) {
+            const india = (la >= 6 && la < 23.6 && lo >= 68.1 && lo < 88.6)
+                || (la >= 23.6 && la < 32.5 && lo >= 74.6 && lo < 80.0)
+                || (la >= 23.6 && la < 26.3 && lo >= 80.0 && lo < 88.0);
+            if (india) return 'Asia/Kolkata';
+        }
+        return null;
+    },
+
+    // UTC offset (minutes) of a zone for a local wall-clock time, using the browser's
+    // time-zone database (handles DST abroad and India's 1942-45 war time).
+    _zoneOffsetMinutes(zone, y, mo, d, h, mi) {
+        try {
+            const fmt = new Intl.DateTimeFormat('en-US', {
+                timeZone: zone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric',
+                hour: 'numeric', minute: 'numeric', second: 'numeric'
+            });
+            const offsetAt = (ts) => {
+                const p = {};
+                fmt.formatToParts(new Date(ts)).forEach((x) => { p[x.type] = x.value; });
+                const asUtc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second);
+                return Math.round((asUtc - ts) / 60000);
+            };
+            const wall = Date.UTC(y, mo - 1, d, h, mi, 0);
+            const first = offsetAt(wall);
+            const second = offsetAt(wall - first * 60000);
+            return Number.isFinite(second) ? second : null;
+        } catch (_e) {
+            return null;
+        }
+    },
+
+    getBirthPlaceTimezone(place, lat, lon, birthDate, birthTime, hasCoords) {
+        const zone = this._zoneForPlace(place, lat, lon, hasCoords);
+        if (!zone) return null;
+        const date = this.parseDate(birthDate);
+        if (!date) return null;
+        const { hours, minutes } = this.parseTimeParts(birthTime || '12:00');
+        return this._zoneOffsetMinutes(zone, date.getFullYear(), date.getMonth() + 1, date.getDate(), hours, minutes);
     },
 
     getSignByName(signName) {

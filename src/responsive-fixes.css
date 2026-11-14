@@ -840,3 +840,71 @@ canvas {
     .gc-line { display: none; }
     .gc-voice-btn { margin-bottom: .3rem; padding: .32rem .85rem; font-size: .82rem; }
 }
+
+/* 35. Numbers: three secret cards that flip open, plus moolank lucky chips. */
+.nx-wrap { display: flex; flex-direction: column; align-items: center; gap: .9rem; width: 100%; }
+.nx-wrap .unified-numbers__header { text-align: center; }
+.nx-sub { margin: .2rem 0 0; color: rgba(246, 226, 186, .7); font-size: .9rem; }
+.nx-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .9rem; width: min(760px, 100%); }
+.nx-card { perspective: 900px; cursor: pointer; min-height: 230px; outline: none; }
+.nx-card__inner {
+    position: relative; width: 100%; height: 100%; min-height: 230px;
+    transform-style: preserve-3d; transition: transform .8s cubic-bezier(.2, .8, .2, 1.15);
+}
+.nx-card.is-open .nx-card__inner { transform: rotateY(180deg); }
+.nx-card__face {
+    position: absolute; inset: 0; border-radius: 18px; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .35rem;
+    padding: .9rem .7rem; text-align: center; border: 1px solid rgba(240, 196, 110, .55);
+}
+.nx-card__front {
+    background: radial-gradient(circle at 50% 35%, rgba(240, 196, 110, .22), rgba(20, 14, 28, .95) 70%);
+    box-shadow: 0 0 0 1px rgba(240, 196, 110, .12) inset, 0 10px 30px rgba(0, 0, 0, .35);
+}
+.nx-card__front i { font-size: 1.5rem; color: #f0c46f; }
+.nx-card__q { font-size: 3rem; font-weight: 800; color: #f6d08a; line-height: 1; animation: nxPulse 1.6s ease-in-out infinite; }
+@keyframes nxPulse { 50% { transform: scale(1.12); text-shadow: 0 0 18px rgba(246, 208, 138, .8); } }
+.nx-card__back {
+    transform: rotateY(180deg);
+    background: linear-gradient(160deg, rgba(58, 38, 12, .95), rgba(20, 14, 28, .97));
+    box-shadow: 0 0 24px rgba(240, 196, 110, .25), 0 10px 30px rgba(0, 0, 0, .35);
+}
+.nx-card__title { font-weight: 700; font-size: 1rem; color: #f3e3c3; }
+.nx-card__num { font-size: 3.2rem; font-weight: 800; line-height: 1; color: #f6c75c; text-shadow: 0 0 22px rgba(246, 199, 92, .55); }
+.nx-card__planet { font-size: .8rem; font-weight: 700; color: #1d1206; background: linear-gradient(135deg, #f3cf7a, #c98b35); border-radius: 999px; padding: .12rem .6rem; }
+.nx-card__line { font-size: .88rem; line-height: 1.35; color: #f3e6cc; }
+.nx-card__how { font-size: .72rem; color: rgba(246, 226, 186, .55); }
+.nx-lucky {
+    display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .5rem;
+    opacity: 0; transform: translateY(10px); transition: opacity .6s ease, transform .6s ease;
+}
+.nx-lucky.is-in { opacity: 1; transform: none; }
+.nx-lucky__title { width: 100%; text-align: center; font-weight: 700; color: #f6d08a; font-size: .95rem; }
+.nx-chip {
+    display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .8rem; border-radius: 999px;
+    border: 1px solid rgba(240, 196, 110, .55); background: rgba(240, 196, 110, .08); color: #f3e6cc; font-weight: 600; font-size: .88rem;
+}
+.nx-swatch { width: .9rem; height: .9rem; border-radius: 50%; display: inline-block; border: 1px solid rgba(255, 255, 255, .5); }
+@media (max-width: 600px) {
+    .nx-grid { grid-template-columns: 1fr; gap: .6rem; }
+    .nx-card, .nx-card__inner { min-height: 128px; }
+    .nx-card__face { flex-direction: row; flex-wrap: wrap; gap: .25rem .6rem; padding: .6rem .8rem; }
+    .nx-card__back .nx-card__num { font-size: 2.4rem; }
+    .nx-card__back .nx-card__line { width: 100%; font-size: .85rem; }
+    .nx-card__back .nx-card__how { width: 100%; }
+    .nx-card__q { font-size: 2.2rem; }
+}
+
+/* 36. "Did you know?" fact card that shows up when the user goes quiet. */
+.maya-idle-fact {
+    position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 10050;
+    width: min(440px, calc(100vw - 32px)); transform: translate(-50%, 24px) scale(.96); opacity: 0;
+    transition: opacity .45s ease, transform .45s cubic-bezier(.2, .8, .2, 1.2);
+    display: flex; flex-direction: column; gap: .3rem; padding: .8rem 1rem; border-radius: 16px; cursor: pointer;
+    background: linear-gradient(150deg, rgba(62, 40, 12, .97), rgba(22, 15, 30, .97));
+    border: 1px solid rgba(240, 196, 110, .7); box-shadow: 0 12px 34px rgba(0, 0, 0, .45), 0 0 26px rgba(240, 196, 110, .25);
+}
+.maya-idle-fact.is-in { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.maya-idle-fact__tag { font-weight: 800; color: #f6d08a; font-size: .85rem; letter-spacing: .02em; }
+.maya-idle-fact__text { color: #f6ead2; font-size: .98rem; line-height: 1.45; }
+@media (max-width: 600px) { .maya-idle-fact { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); } }

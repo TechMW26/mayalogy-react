@@ -1795,7 +1795,8 @@ const MayaKundli = {
         }
 
         const hasExactBirthTime = !!(profile.birthTime && profile.birthTime !== 'unknown');
-        const hasBirthCoordinates = Number.isFinite(Number(profile.birthLat)) && Number.isFinite(Number(profile.birthLon));
+        const coordOk = (v) => v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v));
+        const hasBirthCoordinates = coordOk(profile.birthLat) && coordOk(profile.birthLon);
         const hasReliableAscendant = hasExactBirthTime && hasBirthCoordinates;
         const birthTimeInput = hasExactBirthTime ? profile.birthTime : 'unknown';
 
