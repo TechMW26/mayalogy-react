@@ -450,6 +450,58 @@ const MayaAstrology = {
         );
     },
 
+    // True (osculating) lunar node, Meeus ch. 47: mean node plus the five main
+    // periodic terms. Indian apps such as AstroTalk show "True Rahu" by default;
+    // mean and true can differ by up to ~1.9 degrees.
+    // Nutation in longitude (degrees), IAU short series (Meeus ch. 22, ~0.5 arcsec).
+    // Swiss Ephemeris (used by most kundli apps) gives sidereal positions without
+    // nutation, so it is removed here to match them to the arc-second.
+    getNutationLongitude(julianDay) {
+        const T = (julianDay - 2451545.0) / 36525;
+        const rad = Math.PI / 180;
+        const omega = (125.04452 - 1934.136261 * T) * rad;
+        const L = (280.4665 + 36000.7698 * T) * rad;
+        const Lp = (218.3165 + 481267.8813 * T) * rad;
+        const arcsec = -17.20 * Math.sin(omega) - 1.32 * Math.sin(2 * L) - 0.23 * Math.sin(2 * Lp) + 0.21 * Math.sin(2 * omega);
+        return arcsec / 3600;
+    },
+
+    // True (osculating) Rahu, same method as Swiss Ephemeris TRUE_NODE used by most
+    // kundli apps: the node of the Moon's actual orbit at birth, from its position and
+    // velocity. Falls back to the short series if the engine is missing.
+    calculateTrueRahuLongitude(julianDay, moment = null) {
+        try {
+            const A = this.getAstronomyEngine();
+            if (moment && A?.GeoMoonState && A?.Rotation_EQJ_ECT && A?.RotateVector && A?.MakeTime && A?.Vector) {
+                const t = A.MakeTime(moment);
+                const st = A.GeoMoonState(t);
+                const rot = A.Rotation_EQJ_ECT(t);
+                const r = A.RotateVector(rot, new A.Vector(st.x, st.y, st.z, t));
+                const v = A.RotateVector(rot, new A.Vector(st.vx, st.vy, st.vz, t));
+                const hx = r.y * v.z - r.z * v.y;
+                const hy = r.z * v.x - r.x * v.z;
+                const node = Math.atan2(hx, -hy) * 180 / Math.PI;
+                const ayan = this.getLahiriAyanamsa(julianDay);
+                if (Number.isFinite(node) && Number.isFinite(ayan)) return this.normalizeDegree(node - this.getNutationLongitude(julianDay) - ayan);
+            }
+        } catch (_e) { /* fall back to the series below */ }
+        const T = (julianDay - 2451545.0) / 36525;
+        const rad = Math.PI / 180;
+        const D = (297.8501921 + 445267.1114034 * T - 0.0018819 * T * T) * rad;
+        const M = (357.5291092 + 35999.0502909 * T - 0.0001536 * T * T) * rad;
+        const Mp = (134.9633964 + 477198.8675055 * T + 0.0087414 * T * T) * rad;
+        const F = (93.2720950 + 483202.0175233 * T - 0.0036539 * T * T) * rad;
+        const ayanamsa = this.getLahiriAyanamsa(julianDay);
+        const meanNode = 125.04455501 - 1934.1361849 * T + 0.0020762 * T * T + (T * T * T) / 467410 - (T * T * T * T) / 60616000;
+        const trueNode = meanNode
+            - 1.4979 * Math.sin(2 * (D - F))
+            - 0.1500 * Math.sin(M)
+            - 0.1226 * Math.sin(2 * D)
+            + 0.1176 * Math.sin(2 * F)
+            - 0.0801 * Math.sin(2 * (F - Mp));
+        return this.normalizeDegree(trueNode - ayanamsa);
+    },
+
     calculateMeanRahuLongitude(julianDay) {
         const T = (julianDay - 2451545.0) / 36525;
         const ayanamsa = this.getLahiriAyanamsa(julianDay);
@@ -467,8 +519,8 @@ const MayaAstrology = {
         const ayanamsa = this.getLahiriAyanamsa(julianDay);
         if (!astronomy || !Number.isFinite(julianDay) || !Number.isFinite(ayanamsa)) return null;
 
-        if (bodyName === 'Rahu') return this.calculateMeanRahuLongitude(julianDay);
-        if (bodyName === 'Ketu') return this.normalizeDegree(this.calculateMeanRahuLongitude(julianDay) + 180);
+        if (bodyName === 'Rahu') return this.calculateTrueRahuLongitude(julianDay, moment);
+        if (bodyName === 'Ketu') return this.normalizeDegree(this.calculateTrueRahuLongitude(julianDay, moment) + 180);
 
         try {
             let tropicalLongitude = null;
@@ -483,7 +535,7 @@ const MayaAstrology = {
             }
 
             return Number.isFinite(tropicalLongitude)
-                ? this.normalizeDegree(tropicalLongitude - ayanamsa)
+                ? this.normalizeDegree(tropicalLongitude - this.getNutationLongitude(julianDay) - ayanamsa)
                 : null;
         } catch (error) {
             console.warn(`Astronomy Engine longitude failed for ${bodyName}:`, error.message);
@@ -1130,8 +1182,9 @@ const MayaAstrology = {
             return {
                 ...planet,
                 sign: MAYA_CONFIG.ZODIAC.SIGNS[signIndex],
-                degree: Number((absoluteDegree % 30).toFixed(1)),
-                absoluteDegree: Number(absoluteDegree.toFixed(1)),
+                // Full precision (to ~1 arc-second); round only when showing it.
+                degree: Number((absoluteDegree % 30).toFixed(4)),
+                absoluteDegree: Number(absoluteDegree.toFixed(4)),
                 isApproximate,
                 calculationSource: 'astronomy-engine-lahiri'
             };
@@ -1230,8 +1283,9 @@ const MayaAstrology = {
             return {
                 ...planet,
                 sign: MAYA_CONFIG.ZODIAC.SIGNS[signIndex],
-                degree: Number((absoluteDegree % 30).toFixed(1)),
-                absoluteDegree: Number(absoluteDegree.toFixed(1)),
+                // Full precision (to ~1 arc-second); round only when showing it.
+                degree: Number((absoluteDegree % 30).toFixed(4)),
+                absoluteDegree: Number(absoluteDegree.toFixed(4)),
                 isApproximate
             };
         });

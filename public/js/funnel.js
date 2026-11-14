@@ -8205,6 +8205,7 @@ Return ONLY JSON:
         });
         facts.push({
             key: 'moon',
+            planets: ['Moon'],
             text: nakName
                 ? (isHindi ? `चंद्रमा ${signName(moon.signIdx)} राशि में, ${nakName} नक्षत्र में है।` : `The Moon is in ${signName(moon.signIdx)}, in ${nakName} nakshatra.`)
                 : (isHindi ? `चंद्रमा ${signName(moon.signIdx)} राशि में है।` : `The Moon is in ${signName(moon.signIdx)}.`)
@@ -8218,6 +8219,7 @@ Return ONLY JSON:
             const list = cluster[1].map((p) => planetName(p.name)).join(isHindi ? ', ' : ', ');
             facts.push({
                 key: 'cluster',
+                planets: cluster[1].map((p) => p.name),
                 text: isHindi
                     ? `${signName(sIdx)} में ${countWord(cluster[1].length)} ग्रह साथ बैठे हैं (${list}), जो ${timed ? 'आपकी कुंडली का ' : ''}${houseWord(houseOf(sIdx))} है।`
                     : `${countWord(cluster[1].length)[0].toUpperCase()}${countWord(cluster[1].length).slice(1)} planets sit together in ${signName(sIdx)} (${list}), your ${houseWord(houseOf(sIdx))}.`
@@ -8228,11 +8230,11 @@ Return ONLY JSON:
             if (!(p.name in EXALT)) return;
             const ex = EXALT[p.name];
             if (p.signIdx === ex) {
-                facts.push({ key: `dig_${p.name}`, text: isHindi ? `${planetName(p.name)} ${signName(p.signIdx)} में उच्च का है।` : `${p.name} is exalted in ${signName(p.signIdx)}.` });
+                facts.push({ key: `dig_${p.name}`, planets: [p.name], text: isHindi ? `${planetName(p.name)} ${signName(p.signIdx)} में उच्च का है।` : `${p.name} is exalted in ${signName(p.signIdx)}.` });
             } else if (p.signIdx === (ex + 6) % 12) {
-                facts.push({ key: `dig_${p.name}`, text: isHindi ? `${planetName(p.name)} ${signName(p.signIdx)} में नीच का है।` : `${p.name} is debilitated in ${signName(p.signIdx)}.` });
+                facts.push({ key: `dig_${p.name}`, planets: [p.name], text: isHindi ? `${planetName(p.name)} ${signName(p.signIdx)} में नीच का है।` : `${p.name} is debilitated in ${signName(p.signIdx)}.` });
             } else if (OWN[p.name].includes(p.signIdx)) {
-                facts.push({ key: `dig_${p.name}`, text: isHindi ? `${planetName(p.name)} अपनी ही राशि ${signName(p.signIdx)} में है।` : `${p.name} is in its own sign, ${signName(p.signIdx)}.` });
+                facts.push({ key: `dig_${p.name}`, planets: [p.name], text: isHindi ? `${planetName(p.name)} अपनी ही राशि ${signName(p.signIdx)} में है।` : `${p.name} is in its own sign, ${signName(p.signIdx)}.` });
             }
         });
 
@@ -8240,6 +8242,7 @@ Return ONLY JSON:
         if (sun) {
             facts.push({
                 key: 'sun',
+                planets: ['Sun'],
                 text: isHindi
                     ? `सूर्य ${signName(sun.signIdx)} में, ${houseWord(houseOf(sun.signIdx), true)} में है।`
                     : `The Sun is in ${signName(sun.signIdx)}, in your ${houseWord(houseOf(sun.signIdx))}.`
@@ -8313,6 +8316,169 @@ Return ONLY JSON:
 
     // Called once the kundli has finished drawing: gold pulse, shimmer, "Kundli ready" seal,
     // a soft chime (skipped when muted) and a tiny vibration on phones.
+    // Planet table beside the kundli: graha, rashi, exact degree, house and nakshatra.
+    // Same numbers people compare with AstroTalk / AstroSage, so the chart can be checked.
+    _renderPlanetTable() {
+        const box = document.getElementById('kundliPlanetTable');
+        const chart = this.kundliChart;
+        const signs = MAYA_CONFIG?.ZODIAC?.SIGNS || [];
+        if (!box || !chart?.planets?.length || signs.length !== 12) return;
+        const isHindi = this._isHindiMode();
+        const SIGN_HI = ['\u092e\u0947\u0937', '\u0935\u0943\u0937\u092d', '\u092e\u093f\u0925\u0941\u0928', '\u0915\u0930\u094d\u0915', '\u0938\u093f\u0902\u0939', '\u0915\u0928\u094d\u092f\u093e', '\u0924\u0941\u0932\u093e', '\u0935\u0943\u0936\u094d\u091a\u093f\u0915', '\u0927\u0928\u0941', '\u092e\u0915\u0930', '\u0915\u0941\u0902\u092d', '\u092e\u0940\u0928'];
+        const PLANET_HI = { Sun: '\u0938\u0942\u0930\u094d\u092f', Moon: '\u091a\u0902\u0926\u094d\u0930', Mars: '\u092e\u0902\u0917\u0932', Mercury: '\u092c\u0941\u0927', Jupiter: '\u0917\u0941\u0930\u0941', Venus: '\u0936\u0941\u0915\u094d\u0930', Saturn: '\u0936\u0928\u093f', Rahu: '\u0930\u093e\u0939\u0941', Ketu: '\u0915\u0947\u0924\u0941' };
+        const NAK_EN = ['Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra', 'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'P. Phalguni', 'U. Phalguni', 'Hasta', 'Chitra', 'Swati', 'Vishakha', 'Anuradha', 'Jyeshtha', 'Mula', 'P. Ashadha', 'U. Ashadha', 'Shravana', 'Dhanishta', 'Shatabhisha', 'P. Bhadrapada', 'U. Bhadrapada', 'Revati'];
+        const NAK_HI = ['\u0905\u0936\u094d\u0935\u093f\u0928\u0940', '\u092d\u0930\u0923\u0940', '\u0915\u0943\u0924\u094d\u0924\u093f\u0915\u093e', '\u0930\u094b\u0939\u093f\u0923\u0940', '\u092e\u0943\u0917\u0936\u093f\u0930\u093e', '\u0906\u0930\u094d\u0926\u094d\u0930\u093e', '\u092a\u0941\u0928\u0930\u094d\u0935\u0938\u0941', '\u092a\u0941\u0937\u094d\u092f', '\u0906\u0936\u094d\u0932\u0947\u0937\u093e', '\u092e\u0918\u093e', '\u092a\u0942. \u092b\u093e\u0932\u094d\u0917\u0941\u0928\u0940', '\u0909. \u092b\u093e\u0932\u094d\u0917\u0941\u0928\u0940', '\u0939\u0938\u094d\u0924', '\u091a\u093f\u0924\u094d\u0930\u093e', '\u0938\u094d\u0935\u093e\u0924\u093f', '\u0935\u093f\u0936\u093e\u0916\u093e', '\u0905\u0928\u0941\u0930\u093e\u0927\u093e', '\u091c\u094d\u092f\u0947\u0937\u094d\u0920\u093e', '\u092e\u0942\u0932', '\u092a\u0942\u0930\u094d\u0935\u093e\u0937\u093e\u0922\u093c\u093e', '\u0909\u0924\u094d\u0924\u0930\u093e\u0937\u093e\u0922\u093c\u093e', '\u0936\u094d\u0930\u0935\u0923', '\u0927\u0928\u093f\u0937\u094d\u0920\u093e', '\u0936\u0924\u092d\u093f\u0937\u093e', '\u092a\u0942. \u092d\u093e\u0926\u094d\u0930\u092a\u0926', '\u0909. \u092d\u093e\u0926\u094d\u0930\u092a\u0926', '\u0930\u0947\u0935\u0924\u0940'];
+        const ORDER = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
+        const idxOf = (name) => signs.findIndex((s) => s.name === name);
+        const timed = !!(this.personalization?.hasReliableAscendant && chart.ascendant?.name);
+        const moonIdx = idxOf(chart.planets.find((p) => p.name === 'Moon')?.sign?.name);
+        const lagnaIdx = timed ? idxOf(chart.ascendant.name) : moonIdx;
+        const dms = (deg) => {
+            const d = Math.floor(deg);
+            const m = Math.floor((deg - d) * 60);
+            return `${d}\u00b0${String(m).padStart(2, '0')}'`;
+        };
+        const rows = ORDER.map((name) => {
+            const p = chart.planets.find((x) => x.name === name);
+            if (!p) return '';
+            const abs = Number(p.absoluteDegree);
+            const sIdx = idxOf(p.sign?.name);
+            if (!Number.isFinite(abs) || sIdx < 0) return '';
+            const house = lagnaIdx >= 0 ? ((sIdx - lagnaIdx + 12) % 12) + 1 : '';
+            const nakIdx = Math.min(26, Math.floor(abs / (360 / 27)));
+            const pada = Math.min(4, Math.floor((abs % (360 / 27)) / (360 / 108)) + 1);
+            return `<tr data-planet="${name}" title="${isHindi ? '\u091f\u0948\u092a \u0915\u0930\u0947\u0902' : 'Tap to hear'}">
+                <td class="kpt-planet">${isHindi ? PLANET_HI[name] : name}</td>
+                <td>${isHindi ? SIGN_HI[sIdx] : signs[sIdx].name}</td>
+                <td class="kpt-num">${dms(abs % 30)}</td>
+                <td class="kpt-num">${house}</td>
+                <td>${isHindi ? NAK_HI[nakIdx] : NAK_EN[nakIdx]} <span class="kpt-pada">${pada}</span></td>
+            </tr>`;
+        }).join('');
+        box.innerHTML = `
+            <table class="kundli-planet-table" aria-label="${isHindi ? '\u0917\u094d\u0930\u0939 \u0938\u094d\u0925\u093f\u0924\u093f' : 'Planet positions'}">
+                <thead><tr>
+                    <th>${isHindi ? '\u0917\u094d\u0930\u0939' : 'Graha'}</th>
+                    <th>${isHindi ? '\u0930\u093e\u0936\u093f' : 'Sign'}</th>
+                    <th>${isHindi ? '\u0905\u0902\u0936' : 'Degree'}</th>
+                    <th>${timed ? (isHindi ? '\u092d\u093e\u0935' : 'House') : (isHindi ? '\u092d\u093e\u0935*' : 'House*')}</th>
+                    <th>${isHindi ? '\u0928\u0915\u094d\u0937\u0924\u094d\u0930' : 'Nakshatra'}</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+            <p class="kpt-note">${timed
+                ? (isHindi ? '\u0932\u093e\u0939\u093f\u0921\u093c\u0940 \u0905\u092f\u0928\u093e\u0902\u0936 \u00b7 \u091f\u094d\u0930\u0942 \u0930\u093e\u0939\u0941 \u00b7 \u0938\u091f\u0940\u0915 \u091c\u0928\u094d\u092e \u0938\u092e\u092f \u0938\u0947' : 'Lahiri ayanamsa \u00b7 True Rahu \u00b7 from exact birth time')
+                : (isHindi ? '*\u091c\u0928\u094d\u092e \u0938\u092e\u092f \u0928\u0939\u0940\u0902 \u0926\u093f\u092f\u093e, \u0907\u0938\u0932\u093f\u090f \u092d\u093e\u0935 \u091a\u0902\u0926\u094d\u0930\u092e\u093e \u0938\u0947 \u0917\u093f\u0928\u0947 \u0917\u090f \u0939\u0948\u0902 (\u091a\u0902\u0926\u094d\u0930 \u0915\u0941\u0902\u0921\u0932\u0940)' : '*No birth time given, so houses are counted from the Moon (Chandra kundli)')}</p>`;
+        box.classList.add('is-visible');
+    },
+
+    // MAYA reads the kundli: up to 3 real facts, each spoken while the matching planet
+    // glows on the chart and its row lights up in the table. Returns false if there is
+    // nothing to read (the caller then speaks the normal narration).
+    async _runKundliWalkthrough(isHindi) {
+        const data = this._kundliChartFacts(isHindi);
+        if (!data?.facts?.length) return false;
+        const MEANING = isHindi ? {
+            lagna: '\u0932\u0917\u094d\u0928 \u092c\u0924\u093e\u0924\u093e \u0939\u0948 \u0915\u093f \u0926\u0941\u0928\u093f\u092f\u093e \u0906\u092a\u0915\u094b \u0915\u0948\u0938\u0947 \u0926\u0947\u0916\u0924\u0940 \u0939\u0948\u0964',
+            moon: '\u091a\u0902\u0926\u094d\u0930\u092e\u093e \u0906\u092a\u0915\u093e \u092e\u0928 \u0939\u0948, \u092f\u0939\u0940\u0902 \u0938\u0947 \u0906\u092a\u0915\u0940 \u092d\u093e\u0935\u0928\u093e\u090f\u0901 \u091a\u0932\u0924\u0940 \u0939\u0948\u0902\u0964',
+            cluster: '\u091c\u0939\u093e\u0901 \u0907\u0924\u0928\u0947 \u0917\u094d\u0930\u0939 \u0938\u093e\u0925 \u0939\u094b\u0902, \u091c\u093c\u093f\u0902\u0926\u0917\u0940 \u0915\u093e \u092c\u0921\u093c\u093e \u0927\u094d\u092f\u093e\u0928 \u0935\u0939\u0940\u0902 \u091c\u093e\u0924\u093e \u0939\u0948\u0964',
+            sun: '\u0938\u0942\u0930\u094d\u092f \u0906\u092a\u0915\u0940 \u092a\u0939\u091a\u093e\u0928 \u0914\u0930 \u0906\u0924\u094d\u092e\u0935\u093f\u0936\u094d\u0935\u093e\u0938 \u0926\u093f\u0916\u093e\u0924\u093e \u0939\u0948\u0964',
+            exalted: '\u0909\u091a\u094d\u091a \u0915\u093e \u0917\u094d\u0930\u0939 \u0905\u092a\u0928\u0940 \u092a\u0942\u0930\u0940 \u0924\u093e\u0915\u0924 \u0938\u0947 \u092b\u0932 \u0926\u0947\u0924\u093e \u0939\u0948\u0964',
+            debilitated: '\u0928\u0940\u091a \u0915\u093e \u0917\u094d\u0930\u0939 \u092e\u0947\u0939\u0928\u0924 \u092e\u093e\u0901\u0917\u0924\u093e \u0939\u0948, \u092a\u0930 \u0938\u0940\u0916 \u0917\u0939\u0930\u0940 \u0926\u0947\u0924\u093e \u0939\u0948\u0964',
+            own: '\u0905\u092a\u0928\u0940 \u0930\u093e\u0936\u093f \u092e\u0947\u0902 \u0917\u094d\u0930\u0939 \u0938\u0939\u091c \u0914\u0930 \u092e\u091c\u093c\u092c\u0942\u0924 \u0930\u0939\u0924\u093e \u0939\u0948\u0964'
+        } : {
+            lagna: 'The ascendant shows how the world sees you.',
+            moon: 'The Moon is your mind; your feelings flow from here.',
+            cluster: 'Where this many planets gather, a big part of life\'s attention goes.',
+            sun: 'The Sun shows your identity and confidence.',
+            exalted: 'An exalted planet gives its results with full strength.',
+            debilitated: 'A debilitated planet asks for effort, but teaches deeply.',
+            own: 'In its own sign a planet is at ease and strong.'
+        };
+        const meaningFor = (f) => {
+            if (f.key.startsWith('dig_')) {
+                const t = f.text;
+                if (/\u0909\u091a\u094d\u091a|exalted/i.test(t)) return MEANING.exalted;
+                if (/\u0928\u0940\u091a|debilitated/i.test(t)) return MEANING.debilitated;
+                return MEANING.own;
+            }
+            return MEANING[f.key] || '';
+        };
+        const first = data.facts.find((f) => f.key === (data.timed ? 'lagna' : 'moon'));
+        const second = data.timed ? data.facts.find((f) => f.key === 'moon') : null;
+        const extras = data.facts.filter((f) => f.key === 'cluster' || f.key.startsWith('dig_') || f.key === 'sun');
+        const third = extras.length ? extras[this._pickFromBag(`walk_${isHindi ? 'hi' : 'en'}`, extras.length) % extras.length] : null;
+        const steps = [first, second, third].filter(Boolean);
+        if (!steps.length) return false;
+
+        const token = (this._walkToken = (this._walkToken || 0) + 1);
+        const light = (planets) => {
+            window.MayaKundli?.setChartHighlight?.(planets || []);
+            document.querySelectorAll('.kundli-planet-table tr[data-planet]').forEach((tr) => {
+                tr.classList.toggle('is-active', (planets || []).includes(tr.getAttribute('data-planet')));
+            });
+        };
+        for (const step of steps) {
+            if (token !== this._walkToken) return true;
+            const planets = step.planets?.length ? step.planets : (step.key === 'lagna' ? [] : ['Moon']);
+            light(planets);
+            const text = `${step.text} ${meaningFor(step)}`.trim();
+            this.spokenNarrations.push({ stage: 'kundli', text });
+            await this.speak(text);
+        }
+        if (token === this._walkToken) light([]);
+        return true;
+    },
+
+    // Tap on a planet (chart or table row): MAYA says where it sits and what it means.
+    async _speakPlanetTap(name) {
+        const chart = this.kundliChart;
+        const signs = MAYA_CONFIG?.ZODIAC?.SIGNS || [];
+        const p = chart?.planets?.find((x) => x.name === name);
+        if (!p || signs.length !== 12) return;
+        const isHindi = this._isHindiMode();
+        this._walkToken = (this._walkToken || 0) + 1; // stop the guided reading
+        const SIGN_HI = ['\u092e\u0947\u0937', '\u0935\u0943\u0937\u092d', '\u092e\u093f\u0925\u0941\u0928', '\u0915\u0930\u094d\u0915', '\u0938\u093f\u0902\u0939', '\u0915\u0928\u094d\u092f\u093e', '\u0924\u0941\u0932\u093e', '\u0935\u0943\u0936\u094d\u091a\u093f\u0915', '\u0927\u0928\u0941', '\u092e\u0915\u0930', '\u0915\u0941\u0902\u092d', '\u092e\u0940\u0928'];
+        const PLANET_HI = { Sun: '\u0938\u0942\u0930\u094d\u092f', Moon: '\u091a\u0902\u0926\u094d\u0930\u092e\u093e', Mars: '\u092e\u0902\u0917\u0932', Mercury: '\u092c\u0941\u0927', Jupiter: '\u0917\u0941\u0930\u0941', Venus: '\u0936\u0941\u0915\u094d\u0930', Saturn: '\u0936\u0928\u093f', Rahu: '\u0930\u093e\u0939\u0941', Ketu: '\u0915\u0947\u0924\u0941' };
+        const OBL_HI = ['\u092a\u0939\u0932\u0947', '\u0926\u0942\u0938\u0930\u0947', '\u0924\u0940\u0938\u0930\u0947', '\u091a\u094c\u0925\u0947', '\u092a\u093e\u0901\u091a\u0935\u0947\u0902', '\u091b\u0920\u0947', '\u0938\u093e\u0924\u0935\u0947\u0902', '\u0906\u0920\u0935\u0947\u0902', '\u0928\u094c\u0935\u0947\u0902', '\u0926\u0938\u0935\u0947\u0902', '\u0917\u094d\u092f\u093e\u0930\u0939\u0935\u0947\u0902', '\u092c\u093e\u0930\u0939\u0935\u0947\u0902'];
+        const ORD_EN = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th'];
+        const MEAN_HI = {
+            Sun: '\u0938\u0942\u0930\u094d\u092f \u0906\u0924\u094d\u092e\u0935\u093f\u0936\u094d\u0935\u093e\u0938, \u092a\u093f\u0924\u093e \u0914\u0930 \u092a\u0939\u091a\u093e\u0928 \u0915\u093e \u0917\u094d\u0930\u0939 \u0939\u0948\u0964', Moon: '\u091a\u0902\u0926\u094d\u0930\u092e\u093e \u092e\u0928 \u0914\u0930 \u092d\u093e\u0935\u0928\u093e\u0913\u0902 \u0915\u093e \u0917\u094d\u0930\u0939 \u0939\u0948\u0964',
+            Mars: '\u092e\u0902\u0917\u0932 \u0939\u093f\u092e\u094d\u092e\u0924, \u090a\u0930\u094d\u091c\u093e \u0914\u0930 \u091c\u093c\u092e\u0940\u0928-\u091c\u093e\u092f\u0926\u093e\u0926 \u0915\u093e \u0917\u094d\u0930\u0939 \u0939\u0948\u0964', Mercury: '\u092c\u0941\u0927 \u092c\u0941\u0926\u094d\u0927\u093f, \u092c\u094b\u0932\u091a\u093e\u0932 \u0914\u0930 \u0935\u094d\u092f\u093e\u092a\u093e\u0930 \u0915\u093e \u0917\u094d\u0930\u0939 \u0939\u0948\u0964',
+            Jupiter: '\u0917\u0941\u0930\u0941 \u091c\u094d\u091e\u093e\u0928, \u092d\u093e\u0917\u094d\u092f \u0914\u0930 \u0906\u0936\u0940\u0930\u094d\u0935\u093e\u0926 \u0915\u093e \u0917\u094d\u0930\u0939 \u0939\u0948\u0964', Venus: '\u0936\u0941\u0915\u094d\u0930 \u092a\u094d\u0930\u0947\u092e, \u0938\u0941\u0902\u0926\u0930\u0924\u093e \u0914\u0930 \u0938\u0941\u0916 \u0915\u093e \u0917\u094d\u0930\u0939 \u0939\u0948\u0964',
+            Saturn: '\u0936\u0928\u093f \u092e\u0947\u0939\u0928\u0924, \u0927\u0948\u0930\u094d\u092f \u0914\u0930 \u0915\u0930\u094d\u092e \u0915\u093e \u0917\u094d\u0930\u0939 \u0939\u0948; \u092f\u0939 \u0927\u0940\u0930\u0947 \u0926\u0947\u0924\u093e \u0939\u0948, \u092a\u0930 \u092a\u0915\u094d\u0915\u093e \u0926\u0947\u0924\u093e \u0939\u0948\u0964',
+            Rahu: '\u0930\u093e\u0939\u0941 \u0907\u091a\u094d\u091b\u093e\u0913\u0902 \u0914\u0930 \u0905\u091a\u093e\u0928\u0915 \u092c\u0926\u0932\u093e\u0935\u094b\u0902 \u0915\u093e \u0917\u094d\u0930\u0939 \u0939\u0948\u0964', Ketu: '\u0915\u0947\u0924\u0941 \u0935\u0948\u0930\u093e\u0917\u094d\u092f \u0914\u0930 \u0905\u0902\u0926\u0930 \u0915\u0940 \u0938\u092e\u091d \u0915\u093e \u0917\u094d\u0930\u0939 \u0939\u0948\u0964'
+        };
+        const MEAN_EN = {
+            Sun: 'The Sun rules confidence, father and identity.', Moon: 'The Moon rules the mind and emotions.',
+            Mars: 'Mars rules courage, energy and property.', Mercury: 'Mercury rules intellect, speech and trade.',
+            Jupiter: 'Jupiter rules wisdom, fortune and blessings.', Venus: 'Venus rules love, beauty and comfort.',
+            Saturn: 'Saturn rules effort, patience and karma; it gives slowly, but surely.',
+            Rahu: 'Rahu rules desire and sudden change.', Ketu: 'Ketu rules detachment and inner insight.'
+        };
+        const idxOf = (n) => signs.findIndex((s) => s.name === n);
+        const sIdx = idxOf(p.sign?.name);
+        const timed = !!(this.personalization?.hasReliableAscendant && chart.ascendant?.name);
+        const lagnaIdx = timed ? idxOf(chart.ascendant.name) : idxOf(chart.planets.find((x) => x.name === 'Moon')?.sign?.name);
+        const house = lagnaIdx >= 0 && sIdx >= 0 ? ((sIdx - lagnaIdx + 12) % 12) + 1 : 0;
+        const text = isHindi
+            ? `${PLANET_HI[name]} ${SIGN_HI[sIdx]} \u0930\u093e\u0936\u093f \u092e\u0947\u0902${house ? `, ${timed ? '' : '\u091a\u0902\u0926\u094d\u0930\u092e\u093e \u0938\u0947 '}${OBL_HI[house - 1]} \u092d\u093e\u0935 \u092e\u0947\u0902` : ''} \u0939\u0948\u0964 ${MEAN_HI[name] || ''}`
+            : `${name} is in ${signs[sIdx].name}${house ? `, in the ${ORD_EN[house - 1]} house${timed ? '' : ' from the Moon'}` : ''}. ${MEAN_EN[name] || ''}`;
+        window.MayaKundli?.setChartHighlight?.([name]);
+        document.querySelectorAll('.kundli-planet-table tr[data-planet]').forEach((tr) => tr.classList.toggle('is-active', tr.getAttribute('data-planet') === name));
+        try { await this.speak(text); } catch (_e) { /* ignore */ }
+    },
+
+    _installPlanetTaps() {
+        if (this._planetTapsInstalled) return;
+        this._planetTapsInstalled = true;
+        window.addEventListener('maya:chart-planet', (e) => { if (e.detail?.name) this._speakPlanetTap(e.detail.name); });
+        document.addEventListener('click', (e) => {
+            const row = e.target?.closest?.('.kundli-planet-table tr[data-planet]');
+            if (row) this._speakPlanetTap(row.getAttribute('data-planet'));
+        });
+    },
+
     _markKundliReady(delayMs = 5800) {
         clearTimeout(this._kundliReadyTimer);
         this._kundliReadyTimer = setTimeout(() => {
@@ -8428,6 +8594,7 @@ Return ONLY JSON:
                     <p class="calc-explanation" id="kundliFormationExplain">${explanationText}</p>
                     ${metaItems ? `<div class="kundli-formation-meta">${metaItems}${this._nameRashiMetaHtml(isHindi)}</div>` : ''}
                     <div class="kundli-formation-signals" id="kundliFormationSignals"></div>
+                    <div class="kundli-planet-table-wrap" id="kundliPlanetTable"></div>
                 </div>
                 <div class="kundli-formation-visual">
                     <div class="kundli-formation-chart-card" id="kundliFormationChartCard">
@@ -8451,6 +8618,7 @@ Return ONLY JSON:
         window.MayaKundli?.renderAllPendingCharts?.();
         document.getElementById('kundliFormationChartShell')?.classList.add('is-visible');
         document.getElementById('kundliFormationChartCard')?.classList.add('is-open');
+        try { this._renderPlanetTable(); } catch (_e) { /* the table is extra; never block the reading */ }
         this._markKundliReady(squareChartMarkup ? 5800 : 1600);
 
         let narrative = await this.withFiller(() => this.getContent('kundliStageNarrative', () => this.getAIScript('kundliFormation', {
@@ -8485,8 +8653,15 @@ Return ONLY JSON:
         // Speak only once the chart has finished drawing, so the voice never says
         // "forming" while the "Kundli ready" seal is already on screen.
         await this._waitForKundliReady();
-        if (narrative) this.spokenNarrations.push({ stage: 'kundli', text: narrative });
-        const speakPromise = this.speak(narrative);
+        this._installPlanetTaps();
+        // Guided reading: real chart facts, each with its planet glowing on the chart.
+        const speakPromise = this._runKundliWalkthrough(isHindi)
+            .catch(() => false)
+            .then((walked) => {
+                if (walked || !narrative) return null;
+                this.spokenNarrations.push({ stage: 'kundli', text: narrative });
+                return this.speak(narrative);
+            });
         const signals = document.getElementById('kundliFormationSignals');
         const insights = document.getElementById('kundliFormationInsights');
         const headlineSignals = [
