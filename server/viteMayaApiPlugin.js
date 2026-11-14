@@ -10,6 +10,7 @@ import reviewLoginHandler from '../api/review-login.js';
 import saveFcmTokenHandler from '../api/save-fcm-token.js';
 import sendNotificationHandler from '../api/send-notification.js';
 import webPushSubscriptionHandler from '../api/web-push-subscription.js';
+import guestSessionHandler from '../api/guest-session.js';
 
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {
@@ -155,6 +156,11 @@ export function mayaApiDevPlugin() {
 
         if (req.method === 'POST' && pathname === '/api/send-notification') {
           await handleVercelRequest(req, res, sendNotificationHandler, 'send-notification');
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/guest-session') {
+          await handleVercelRequest(req, res, guestSessionHandler, 'guest-session');
           return;
         }
 
