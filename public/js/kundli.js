@@ -2061,125 +2061,154 @@ window.MayaKundli = MayaKundli;
  * Pauses when the tab is hidden; a still ring is shown for reduced-motion users.
  */
 (function installNavagrahaOrbit() {
+    // Navagraha in real 3D: textured spheres (NASA-based maps from Solar System Scope,
+    // CC BY 4.0, files in /textures/planets/) added to the globe's own Three.js scene,
+    // so they really pass behind and in front of the globe, lit by it, each turning on
+    // its own axis. Rahu and Ketu (shadow planets) are dark, glowing spheres.
     if (typeof document === 'undefined' || window.__mayaNavagrahaOrbit) return;
     window.__mayaNavagrahaOrbit = true;
+    const BASE = '/textures/planets/';
     const ORDER = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
-    const SIZE = { Sun: 1.25, Jupiter: 1.15, Saturn: 1.1, Moon: 0.9, Venus: 0.95, Mars: 0.85, Mercury: 0.75, Rahu: 0.85, Ketu: 0.85 };
-    const SPIN = { Sun: 0.5, Moon: 0.7, Mars: 0.9, Mercury: 1.2, Jupiter: 0.45, Venus: 0.65, Saturn: 0.35, Rahu: -0.55, Ketu: -0.6 };
+    const SIZE = { Sun: 1.35, Jupiter: 1.2, Saturn: 1.0, Moon: 0.8, Venus: 0.95, Mars: 0.85, Mercury: 0.72, Rahu: 0.85, Ketu: 0.85 };
+    const SPIN = { Sun: 0.12, Moon: 0.2, Mars: 0.35, Mercury: 0.2, Jupiter: 0.6, Venus: 0.08, Saturn: 0.5, Rahu: -0.3, Ketu: -0.35 };
+    const TILT = { Sun: 0.12, Moon: 0.1, Mars: 0.44, Mercury: 0.05, Jupiter: 0.06, Venus: 0.05, Saturn: 0.47, Rahu: 0.3, Ketu: -0.3 };
+    const MAP = { Sun: 'sun.jpg', Moon: 'moon.jpg', Mars: 'mars.jpg', Mercury: 'mercury.jpg', Jupiter: 'jupiter.jpg', Venus: 'venus.jpg', Saturn: 'saturn.jpg', Rahu: 'moon.jpg', Ketu: 'mercury.jpg' };
+    const GLOW = { Sun: [0xffb040, 3.4, 0.85], Rahu: [0x9a5cff, 2.6, 0.7], Ketu: [0xff7a30, 2.6, 0.65], Venus: [0xfff0c8, 1.7, 0.25], Jupiter: [0xffe0b0, 1.6, 0.18] };
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-    const layers = { back: null, front: null };
-    let images = {};
-    let raf = 0;
+    let built = null;
     const start = performance.now();
 
-    const makeLayer = (host, id) => {
-        let el = document.getElementById(id);
-        if (!el || !host.contains(el)) {
-            el = document.createElement('canvas');
-            el.id = id;
-            el.className = 'maya-navagraha-layer';
-            el.setAttribute('aria-hidden', 'true');
-            host.appendChild(el);
-        }
-        return el;
+    // Old 2D layers from earlier versions: remove them.
+    const dropOldLayers = () => ['maya-navagraha-back', 'maya-navagraha-front'].forEach((id) => document.getElementById(id)?.remove());
+
+    const glowTexture = (THREE) => {
+        const c = document.createElement('canvas');
+        c.width = c.height = 128;
+        const g = c.getContext('2d');
+        const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+        grad.addColorStop(0, 'rgba(255,255,255,1)');
+        grad.addColorStop(0.25, 'rgba(255,255,255,0.55)');
+        grad.addColorStop(0.6, 'rgba(255,255,255,0.12)');
+        grad.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = grad;
+        g.fillRect(0, 0, 128, 128);
+        return new THREE.CanvasTexture(c);
     };
 
-    // On-screen diameter of the globe, in CSS pixels.
-    const globeDiameter = () => {
-        const blob = window.MayaBlob;
-        const el = blob?.renderer?.domElement;
-        if (blob?.camera && el && typeof blob.getRenderSize === 'function') {
-            const { height } = blob.getRenderSize();
-            const fov = (blob.camera.fov * Math.PI) / 180;
-            const z = blob.camera.position.z || 1;
-            const renderPx = (3 * height) / (2 * Math.tan(fov / 2) * z);
-            const shown = el.getBoundingClientRect().height || height;
-            return renderPx * (shown / height);
-        }
-        const host = document.getElementById('maya-blob-container');
-        return (host?.getBoundingClientRect().width || 280) * 1.4;
-    };
-
-    const draw = (now) => {
-        raf = 0;
-        const host = document.getElementById('maya-blob-container');
-        if (!host || !window.MayaKundli?.createPlanetImage) { setTimeout(startLoop, 500); return; }
-        // Add our layers only after the globe's own canvas, so blob.js (which removes the
-        // first canvas it finds when it re-initialises) always finds its own canvas first.
-        const globeCanvas = window.MayaBlob?.renderer?.domElement;
-        if (!globeCanvas || !host.contains(globeCanvas)) { setTimeout(startLoop, 500); return; }
-        layers.back = makeLayer(host, 'maya-navagraha-back');
-        layers.front = makeLayer(host, 'maya-navagraha-front');
-        const hide = host.offsetParent === null || document.hidden
-            || host.classList.contains('blob-small') || host.classList.contains('blob-chat-mini')
-            || window.MayaBlob?.isChatMode?.();
-        if (hide) {
-            [layers.back, layers.front].forEach((c) => { c.getContext('2d').clearRect(0, 0, c.width, c.height); });
-            setTimeout(startLoop, 500);
-            return;
-        }
-        const rect = layers.front.getBoundingClientRect();
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const w = Math.round(rect.width * dpr);
-        const h = Math.round(rect.height * dpr);
-        [layers.back, layers.front].forEach((c) => {
-            if (c.width !== w || c.height !== h) { c.width = w; c.height = h; images = {}; }
-            c.getContext('2d').clearRect(0, 0, w, h);
-        });
-        const D = globeDiameter() * dpr;
-        const cx = w / 2;
-        const cy = h / 2;
-        const rx = Math.min(D * 0.8, w * 0.47);
-        const ry = rx * 0.4;
-        const tilt = -0.18;
-        const base = Math.max(10 * dpr, D * 0.062);
-        const t = reduced ? 0 : (now - start) / 1000;
-        const orbit = t * (2 * Math.PI / 48); // one full circle every 48 seconds
-
-        // Faint golden ring: back half behind the globe, front half over it.
-        const ring = (ctx, from, to) => {
-            ctx.save();
-            ctx.strokeStyle = 'rgba(240, 200, 120, 0.5)';
-            ctx.lineWidth = Math.max(1, dpr);
-            ctx.setLineDash([2 * dpr, 6 * dpr]);
-            ctx.beginPath();
-            ctx.ellipse(cx, cy, rx, ry, tilt, from, to);
-            ctx.stroke();
-            ctx.restore();
+    const build = (THREE) => {
+        const loader = new THREE.TextureLoader();
+        const tex = {};
+        const load = (file) => {
+            if (!tex[file]) {
+                tex[file] = loader.load(BASE + file);
+                tex[file].anisotropy = 4;
+            }
+            return tex[file];
         };
-        ring(layers.back.getContext('2d'), Math.PI, Math.PI * 2);
-        ring(layers.front.getContext('2d'), 0, Math.PI);
+        const root = new THREE.Group();
+        root.name = 'maya-navagraha';
+        const orbitPlane = new THREE.Group();
+        root.add(orbitPlane);
+        // The globe glows, so light comes from it; a soft fill from the front.
+        const light = new THREE.PointLight(0xfff1d6, 1.2, 0, 2);
+        const fill = new THREE.AmbientLight(0xffffff, 0.32);
+        const front = new THREE.DirectionalLight(0xffffff, 0.35);
+        front.position.set(0, 0.6, 1);
+        root.add(light, fill, front);
 
-        const placed = ORDER.map((name, i) => {
-            const a = orbit + (i / ORDER.length) * Math.PI * 2;
-            const ex = Math.cos(a) * rx;
-            const ey = Math.sin(a) * ry;
-            const x = cx + ex * Math.cos(tilt) - ey * Math.sin(tilt);
-            const y = cy + ex * Math.sin(tilt) + ey * Math.cos(tilt);
-            const depth = (Math.sin(a) + 1) / 2; // 0 = far side, 1 = near side
-            return { name, x, y, depth, front: Math.sin(a) >= 0 };
-        }).sort((p, q) => p.depth - q.depth);
+        // Faint dotted orbit line.
+        const pts = [];
+        for (let i = 0; i <= 160; i++) {
+            const a = (i / 160) * Math.PI * 2;
+            pts.push(new THREE.Vector3(Math.cos(a), 0, Math.sin(a)));
+        }
+        const lineGeo = new THREE.BufferGeometry().setFromPoints(pts);
+        const line = new THREE.Line(lineGeo, new THREE.LineDashedMaterial({ color: 0xf0c878, transparent: true, opacity: 0.45, dashSize: 0.03, gapSize: 0.06 }));
+        line.computeLineDistances();
+        orbitPlane.add(line);
 
-        placed.forEach((p) => {
-            const ctx = (p.front ? layers.front : layers.back).getContext('2d');
-            const size = base * (SIZE[p.name] || 1) * (0.7 + p.depth * 0.5);
-            const px = Math.max(8, Math.round(size * 2));
-            const key = `${p.name}_${px}`;
-            if (!images[key]) images[key] = window.MayaKundli.createPlanetImage(p.name, px);
-            const img = images[key];
-            ctx.save();
-            ctx.globalAlpha = 0.6 + p.depth * 0.4;
-            ctx.translate(p.x, p.y);
-            if (!reduced) ctx.rotate(t * (SPIN[p.name] || 0.5));
-            if (img) ctx.drawImage(img, -size, -size, size * 2, size * 2);
-            ctx.restore();
+        const glowTex = glowTexture(THREE);
+        const planets = ORDER.map((name, i) => {
+            const holder = new THREE.Group();          // moves along the orbit
+            const axis = new THREE.Group();            // axial tilt
+            axis.rotation.z = TILT[name] || 0;
+            holder.add(axis);
+            const geo = new THREE.SphereGeometry(1, 48, 32);
+            let mat;
+            if (name === 'Sun') {
+                mat = new THREE.MeshBasicMaterial({ map: load(MAP.Sun) });
+            } else if (name === 'Rahu') {
+                mat = new THREE.MeshStandardMaterial({ map: load(MAP.Rahu), color: 0x4a3480, emissive: 0x24104a, roughness: 1, metalness: 0 });
+            } else if (name === 'Ketu') {
+                mat = new THREE.MeshStandardMaterial({ map: load(MAP.Ketu), color: 0x6a3a26, emissive: 0x3a1206, roughness: 1, metalness: 0 });
+            } else {
+                mat = new THREE.MeshStandardMaterial({ map: load(MAP[name]), roughness: 0.95, metalness: 0 });
+            }
+            const mesh = new THREE.Mesh(geo, mat);
+            axis.add(mesh);
+            if (name === 'Saturn') {
+                const inner = 1.25; const outer = 2.3;
+                const ringGeo = new THREE.RingGeometry(inner, outer, 96, 1);
+                // Map the ring picture across the ring's width (inner edge -> outer edge).
+                const pos = ringGeo.attributes.position;
+                const uv = ringGeo.attributes.uv;
+                const v3 = new THREE.Vector3();
+                for (let k = 0; k < pos.count; k++) {
+                    v3.fromBufferAttribute(pos, k);
+                    uv.setXY(k, (v3.length() - inner) / (outer - inner), 0.5);
+                }
+                const ringTex = load('saturn_ring.png');
+                const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ map: ringTex, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+                ring.rotation.x = -Math.PI / 2;
+                axis.add(ring);
+            }
+            if (GLOW[name]) {
+                const [color, scale, opacity] = GLOW[name];
+                const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending }));
+                sprite.scale.setScalar(scale * 2);
+                holder.add(sprite);
+            }
+            orbitPlane.add(holder);
+            return { name, holder, mesh, phase: (i / ORDER.length) * Math.PI * 2 };
         });
-        if (!reduced) raf = requestAnimationFrame(draw);
-        else setTimeout(startLoop, 1000);
+        return { root, orbitPlane, line, planets };
     };
 
-    function startLoop() { if (!raf) raf = requestAnimationFrame(draw); }
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) startLoop(); });
-    window.addEventListener('resize', () => { images = {}; startLoop(); });
-    startLoop();
+    const tick = () => {
+        requestAnimationFrame(tick);
+        const THREE = window.THREE;
+        const blob = window.MayaBlob;
+        if (!THREE || !blob?.scene || !blob.camera) return;
+        if (!built) {
+            try { built = build(THREE); } catch (e) { console.warn('Navagraha 3D failed:', e?.message || e); built = { failed: true }; }
+            dropOldLayers();
+        }
+        if (built.failed) return;
+        if (built.root.parent !== blob.scene) blob.scene.add(built.root);  // globe re-created
+        const host = blob.container || document.getElementById('maya-blob-container');
+        const hide = !host || host.offsetParent === null || document.hidden
+            || host.classList.contains('blob-small') || host.classList.contains('blob-chat-mini')
+            || blob.isChatMode?.();
+        built.root.visible = !hide;
+        if (hide) return;
+
+        // Size the orbit to the screen: wide on laptops, tucked in on phones.
+        const cam = blob.camera;
+        const halfH = Math.tan((cam.fov * Math.PI) / 360) * cam.position.z;
+        const halfW = halfH * cam.aspect;
+        const pr = halfW < 2.4 ? 0.15 : 0.2;
+        const R = Math.max(1.55, Math.min(2.55, halfW * 0.9 - pr * 2.6));
+        built.orbitPlane.rotation.set(0.32, 0, -0.16);
+        built.line.scale.setScalar(R);
+
+        const t = reduced ? 0 : (performance.now() - start) / 1000;
+        const orbit = t * (2 * Math.PI / 48);
+        built.planets.forEach((p) => {
+            const a = orbit + p.phase;
+            p.holder.position.set(Math.cos(a) * R, 0, Math.sin(a) * R);
+            p.holder.scale.setScalar(pr * (SIZE[p.name] || 1));
+            p.mesh.rotation.y = t * (SPIN[p.name] || 0.3);
+        });
+    };
+    requestAnimationFrame(tick);
 })();
