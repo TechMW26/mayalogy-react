@@ -4,6 +4,9 @@
   "outputDirectory": "dist",
   "cleanUrls": true,
   "trailingSlash": false,
+  "headers": [
+    { "source": "/textures/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=2592000" }] }
+  ],
   "functions": {
     "api/*.js": { "maxDuration": 30 }
   }

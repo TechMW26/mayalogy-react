@@ -1,0 +1,3 @@
+﻿Planet textures: Solar System Scope (https://www.solarsystemscope.com/textures/), based on NASA imagery.
+License: Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/).
+Changes: resized to 1024 px wide. Rahu and Ketu use the Moon and Mercury maps, tinted.
