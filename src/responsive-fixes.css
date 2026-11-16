@@ -908,3 +908,22 @@ canvas {
 .maya-idle-fact__tag { font-weight: 800; color: #f6d08a; font-size: .85rem; letter-spacing: .02em; }
 .maya-idle-fact__text { color: #f6ead2; font-size: .98rem; line-height: 1.45; }
 @media (max-width: 600px) { .maya-idle-fact { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); } }
+
+/* 37. Kundli info pills always centred (pills-centred-v1). There are 5 pills, so the last
+       one sat alone on the left; flex rows keep the same widths but centre every row. */
+.calculation-container .kundli-formation-meta,
+.kundli-formation-calc--split .kundli-formation-meta {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+}
+.calculation-container .kundli-formation-meta__item { min-width: 0 !important; }
+@media (min-width: 601px) {
+    .calculation-container .kundli-formation-meta__item { flex: 0 0 calc((100% - 1.5rem) / 4) !important; max-width: calc((100% - 1.5rem) / 4) !important; }
+}
+@media (max-width: 600px) {
+    .calculation-container .kundli-formation-meta__item { flex: 0 0 calc((100% - 0.4rem) / 2) !important; max-width: calc((100% - 0.4rem) / 2) !important; }
+}
+@media (max-width: 600px) and (max-height: 760px) {
+    .calculation-container .kundli-formation-meta__item { flex: 0 0 calc((100% - 0.9rem) / 4) !important; max-width: calc((100% - 0.9rem) / 4) !important; }
+}
