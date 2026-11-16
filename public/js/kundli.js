@@ -173,6 +173,176 @@ const MayaKundli = {
         return c;
     },
 
+    // Chart planets in real 3D (chart-real-planets-v1): the same NASA-based pictures as the
+    // globe (/textures/planets/, Solar System Scope, CC BY 4.0) wrapped on a lit sphere and
+    // turning on its axis, drawn pixel by pixel. Until the pictures arrive, the old drawn
+    // planet is shown.
+    _chartTexFiles: { Sun: 'sun.jpg', Moon: 'moon.jpg', Mars: 'mars.jpg', Mercury: 'mercury.jpg', Jupiter: 'jupiter.jpg', Venus: 'venus.jpg', Saturn: 'saturn.jpg', Rahu: 'moon.jpg', Ketu: 'mercury.jpg' },
+    _chartTex: null,
+
+    _loadChartTextures() {
+        if (this._chartTex) return this._chartTex;
+        const store = { maps: {}, ring: null };
+        this._chartTex = store;
+        const W = 256;
+        const H = 128;
+        const files = [...new Set(Object.values(this._chartTexFiles))];
+        files.forEach((file) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                try {
+                    const c = document.createElement('canvas');
+                    c.width = W;
+                    c.height = H;
+                    const g = c.getContext('2d', { willReadFrequently: true });
+                    g.drawImage(img, 0, 0, W, H);
+                    store.maps[file] = { w: W, h: H, d: g.getImageData(0, 0, W, H).data };
+                } catch (_) { /* keep the drawn planet */ }
+            };
+            img.src = '/textures/planets/' + file;
+        });
+        const ring = new Image();
+        ring.crossOrigin = 'anonymous';
+        ring.onload = () => {
+            try {
+                const c = document.createElement('canvas');
+                c.width = 256;
+                c.height = 4;
+                const g = c.getContext('2d', { willReadFrequently: true });
+                g.drawImage(ring, 0, 0, 256, 4);
+                store.ring = { w: 256, d: g.getImageData(0, 2, 256, 1).data };
+            } catch (_) { /* no ring picture */ }
+        };
+        ring.src = '/textures/planets/saturn_ring.png';
+        return store;
+    },
+
+    // Per planet and size: where every pixel of the disc sits on the sphere, and its light.
+    _chartSphereLayout(name, res) {
+        this._chartLayouts = this._chartLayouts || {};
+        const key = name + '_' + res;
+        if (this._chartLayouts[key]) return this._chartLayouts[key];
+        const isSaturn = name === 'Saturn';
+        const isSun = name === 'Sun';
+        const R = isSaturn ? res / 2 / 1.76 : res / 2 - 0.5;
+        const cx = res / 2;
+        const cy = res / 2;
+        // Light from the upper left, a little in front.
+        const lx = -0.5; const ly = -0.55; const lz = 0.67;
+        const tilt = { Sun: 0.12, Moon: 0.1, Mars: 0.44, Mercury: 0.05, Jupiter: 0.06, Venus: 0.05, Saturn: 0.47, Rahu: 0.3, Ketu: -0.3 }[name] || 0;
+        const ct = Math.cos(tilt); const st = Math.sin(tilt);
+        const idx = []; const lat = []; const lon = []; const shade = []; const edge = [];
+        for (let y = 0; y < res; y++) {
+            for (let x = 0; x < res; x++) {
+                const dx = (x + 0.5 - cx) / R;
+                const dy = (y + 0.5 - cy) / R;
+                const d2 = dx * dx + dy * dy;
+                const d = Math.sqrt(d2);
+                const a = Math.max(0, Math.min(1, (1 - d) * R + 0.5));
+                if (a <= 0) continue;
+                const nz = Math.sqrt(Math.max(0, 1 - Math.min(1, d2)));
+                // Undo the axis tilt to find the point on the planet's own globe.
+                const px = dx * ct + dy * st;
+                const py = -dx * st + dy * ct;
+                idx.push((y * res + x) * 4);
+                lat.push(Math.asin(Math.max(-1, Math.min(1, py))));
+                lon.push(Math.atan2(px, nz));
+                const lambert = Math.max(0, -dx * lx - dy * ly + nz * lz);
+                shade.push(isSun ? 0.8 + 0.35 * nz : 0.16 + 1.0 * lambert);
+                edge.push(a);
+            }
+        }
+        // Saturn's ring: tilted ellipse, back half hidden by the planet, front half over it.
+        const ring = [];
+        if (isSaturn) {
+            const rot = -0.32; const flat = 0.36;
+            const cr = Math.cos(rot); const sr = Math.sin(rot);
+            for (let y = 0; y < res; y++) {
+                for (let x = 0; x < res; x++) {
+                    const ox = x + 0.5 - cx; const oy = y + 0.5 - cy;
+                    const rx = (ox * cr + oy * sr) / R;
+                    const ry = (-ox * sr + oy * cr) / R / flat;
+                    const rr = Math.sqrt(rx * rx + ry * ry);
+                    if (rr < 1.2 || rr > 1.72) continue;
+                    const inDisc = (ox * ox + oy * oy) <= R * R;
+                    if (inDisc && ry < 0) continue;      // behind the planet
+                    const lit = ry > 0 && inDisc ? 1 : (ry < 0 ? 0.95 : 0.8);
+                    ring.push((y * res + x) * 4, (rr - 1.2) / 0.52, lit);
+                }
+            }
+        }
+        const layout = { R, idx, lat, lon, shade, edge, ring, res };
+        this._chartLayouts[key] = layout;
+        return layout;
+    },
+
+    // Returns a canvas with the planet at this spin angle, or null if pictures are not in yet.
+    _chartRealPlanet(name, size, spin) {
+        const tex = this._loadChartTextures();
+        const map = tex.maps[this._chartTexFiles[name]];
+        if (!map) return null;
+        const scale = name === 'Saturn' ? 1.3 : 1;
+        const dpr = Math.min(3, Math.max(1, window.devicePixelRatio || 1));
+        const res = Math.max(16, Math.min(110, Math.round(size * scale * dpr)));
+        this._chartPlanetCanvas = this._chartPlanetCanvas || {};
+        const key = name + '_' + res;
+        let entry = this._chartPlanetCanvas[key];
+        if (!entry) {
+            const c = document.createElement('canvas');
+            c.width = c.height = res;
+            const g = c.getContext('2d');
+            entry = { c, g, img: g.createImageData(res, res), spin: null, hasRing: false };
+            entry.c._mayaScale = scale;
+            this._chartPlanetCanvas[key] = entry;
+        }
+        const hasRing = name === 'Saturn' && !!tex.ring;
+        if (entry.spin !== null && Math.abs(entry.spin - spin) < 0.003 && entry.hasRing === hasRing) return entry.c;
+        entry.spin = spin;
+        entry.hasRing = hasRing;
+        const L = this._chartSphereLayout(name, res);
+        const out = entry.img.data;
+        out.fill(0);
+        const tint = name === 'Rahu' ? [0.42, 0.3, 0.75] : (name === 'Ketu' ? [0.62, 0.34, 0.22] : null);
+        const glowAdd = name === 'Rahu' ? [36, 14, 74] : (name === 'Ketu' ? [58, 18, 6] : [0, 0, 0]);
+        const TWO_PI = Math.PI * 2;
+        const w = map.w; const h = map.h; const d = map.d;
+        for (let k = 0; k < L.idx.length; k++) {
+            let u = (L.lon[k] + spin) / TWO_PI + 0.5;
+            u -= Math.floor(u);
+            const v = 0.5 - L.lat[k] / Math.PI;
+            const tx = Math.min(w - 1, (u * w) | 0);
+            const ty = Math.min(h - 1, Math.max(0, (v * h) | 0));
+            const t = (ty * w + tx) * 4;
+            const s = L.shade[k];
+            let r = d[t] * s; let g = d[t + 1] * s; let b = d[t + 2] * s;
+            if (tint) { r = r * tint[0] + glowAdd[0]; g = g * tint[1] + glowAdd[1]; b = b * tint[2] + glowAdd[2]; }
+            const o = L.idx[k];
+            out[o] = r > 255 ? 255 : r;
+            out[o + 1] = g > 255 ? 255 : g;
+            out[o + 2] = b > 255 ? 255 : b;
+            out[o + 3] = 255 * L.edge[k];
+        }
+        if (hasRing) {
+            const rd = tex.ring.d; const rw = tex.ring.w;
+            for (let k = 0; k < L.ring.length; k += 3) {
+                const o = L.ring[k];
+                const p = Math.min(rw - 1, Math.max(0, (L.ring[k + 1] * rw) | 0)) * 4;
+                const lit = L.ring[k + 2];
+                const a = (rd[p + 3] / 255) * 0.95;
+                if (a <= 0.01) continue;
+                const ia = 1 - a;
+                const oa = out[o + 3] / 255;
+                out[o] = rd[p] * lit * a + out[o] * ia;
+                out[o + 1] = rd[p + 1] * lit * a + out[o + 1] * ia;
+                out[o + 2] = rd[p + 2] * lit * a + out[o + 2] * ia;
+                out[o + 3] = 255 * (a + oa * ia);
+            }
+        }
+        entry.g.putImageData(entry.img, 0, 0);
+        return entry.c;
+    },
+
     // Hindi chart labels (shown when the app is in Hindi).
     signShortNamesHi: {
         'Aries': 'मेष', 'Taurus': 'वृष', 'Gemini': 'मिथुन', 'Cancer': 'कर्क',
@@ -347,7 +517,21 @@ const MayaKundli = {
         ctx.translate(centerX, centerY);
         ctx.scale(scale, scale);
 
-        if (planetImg) {
+        const realImg = this._chartRealPlanet(planet.name, imgSize, rotation * 0.12);
+        if (realImg) {
+            if (planet.name === 'Sun' || planet.name === 'Rahu' || planet.name === 'Ketu') {
+                const gr = imgSize * 0.95;
+                const glow = ctx.createRadialGradient(0, -1, imgSize * 0.3, 0, -1, gr);
+                glow.addColorStop(0, info.glow || 'rgba(255,215,0,0.4)');
+                glow.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = glow;
+                ctx.beginPath();
+                ctx.arc(0, -1, gr, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            const ds = imgSize * (realImg._mayaScale || 1);
+            ctx.drawImage(realImg, -ds / 2, -ds / 2 - 1, ds, ds);
+        } else if (planetImg) {
             ctx.save();
             ctx.rotate(rotation);
             ctx.drawImage(planetImg, -imgSize / 2, -imgSize / 2 - 1, imgSize, imgSize);
