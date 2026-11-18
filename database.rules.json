@@ -13,6 +13,10 @@
     "maya_guests": {
       ".read": false,
       ".write": false
+    },
+    "maya_admin_leads": {
+      ".read": false,
+      ".write": false
     }
   }
 }

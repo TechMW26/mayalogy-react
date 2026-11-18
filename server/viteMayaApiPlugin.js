@@ -11,6 +11,8 @@ import saveFcmTokenHandler from '../api/save-fcm-token.js';
 import sendNotificationHandler from '../api/send-notification.js';
 import webPushSubscriptionHandler from '../api/web-push-subscription.js';
 import guestSessionHandler from '../api/guest-session.js';
+import adminLoginHandler from '../api/admin-login.js';
+import adminLeadsHandler from '../api/admin-leads.js';
 
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {
@@ -141,6 +143,23 @@ export function mayaApiDevPlugin() {
 
         if (req.method === 'POST' && pathname === '/api/firebase-phone-session') {
           await handleVercelRequest(req, res, firebasePhoneSessionHandler, 'firebase-phone-session');
+          return;
+        }
+
+        // Admin panel: /admin page and its two API routes.
+        if (req.method === 'GET' && (pathname === '/admin' || pathname === '/admin/')) {
+          req.url = '/admin.html';
+          next();
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/admin-login') {
+          await handleVercelRequest(req, res, adminLoginHandler, 'admin-login');
+          return;
+        }
+
+        if ((req.method === 'GET' || req.method === 'POST') && pathname === '/api/admin-leads') {
+          await handleVercelRequest(req, res, adminLeadsHandler, 'admin-leads');
           return;
         }
 

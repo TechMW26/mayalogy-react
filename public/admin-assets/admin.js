@@ -1,0 +1,1055 @@
+/* Mayalogy Lead Desk: admin panel for leads. Plain JS, no libraries.
+   Data comes from /api/admin-leads (needs the admin token from /api/admin-login). */
+(() => {
+    'use strict';
+
+    const API_LOGIN = '/api/admin-login';
+    const API_LEADS = '/api/admin-leads';
+    const TOKEN_KEY = 'maya_admin_token';
+    const SOUND_KEY = 'maya_admin_sound';
+    const REFRESH_MS = 60000;
+
+    const STATUS = {
+        new: 'New',
+        contacted: 'Contacted',
+        interested: 'Interested',
+        converted: 'Converted',
+        not_interested: 'Not interested'
+    };
+    const SOURCE = { guest: 'Guest (no login)', phone: 'Phone login', email: 'Email login', google: 'Google login', phone_capture: 'Phone only' };
+    const STAGES = ['Visited', 'Gave name', 'Birth details', 'Saw numbers', 'In reading', 'Answered questions', 'Signed up'];
+    const NUM_LABEL = { lifePath: 'Life Path', destiny: 'Destiny', soulUrge: 'Soul Urge', personality: 'Personality', birthday: 'Birthday', maturity: 'Maturity', personalYear: 'Year' };
+
+    // Vedic (sidereal) Sun sign by date: Sun enters each sign around the 14th-17th.
+    const SIGNS = [
+        { name: 'Aries', hi: 'Mesh', sym: '\u2648\uFE0E', from: [4, 14], el: 'fire' },
+        { name: 'Taurus', hi: 'Vrishabh', sym: '\u2649\uFE0E', from: [5, 15], el: 'earth' },
+        { name: 'Gemini', hi: 'Mithun', sym: '\u264A\uFE0E', from: [6, 15], el: 'air' },
+        { name: 'Cancer', hi: 'Kark', sym: '\u264B\uFE0E', from: [7, 16], el: 'water' },
+        { name: 'Leo', hi: 'Simha', sym: '\u264C\uFE0E', from: [8, 17], el: 'fire' },
+        { name: 'Virgo', hi: 'Kanya', sym: '\u264D\uFE0E', from: [9, 17], el: 'earth' },
+        { name: 'Libra', hi: 'Tula', sym: '\u264E\uFE0E', from: [10, 17], el: 'air' },
+        { name: 'Scorpio', hi: 'Vrishchik', sym: '\u264F\uFE0E', from: [11, 16], el: 'water' },
+        { name: 'Sagittarius', hi: 'Dhanu', sym: '\u2650\uFE0E', from: [12, 16], el: 'fire' },
+        { name: 'Capricorn', hi: 'Makar', sym: '\u2651\uFE0E', from: [1, 14], el: 'earth' },
+        { name: 'Aquarius', hi: 'Kumbh', sym: '\u2652\uFE0E', from: [2, 13], el: 'air' },
+        { name: 'Pisces', hi: 'Meen', sym: '\u2653\uFE0E', from: [3, 14], el: 'water' }
+    ];
+    const EL_COLOR = { fire: ['#ff8a5c', '#ffb347'], earth: ['#7fd18b', '#c6d36b'], air: ['#7cc4ff', '#b7a4ff'], water: ['#4fd1c5', '#9a7bff'] };
+
+    const ICON = {
+        users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+        sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+        week: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+        star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>',
+        check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="M22 4L12 14l-3-3"/></svg>',
+        phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>',
+        refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.8-3.4L23 10M1 14l4.7 4.4A9 9 0 0 0 20.5 15"/></svg>',
+        logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
+        search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
+        download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>',
+        close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+        eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+        bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
+        bellOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.7 21a2 2 0 0 1-3.4 0M18.6 13A17.9 17.9 0 0 1 18 8M6.3 6.3A5.9 5.9 0 0 0 6 8c0 7-3 9-3 9h14M18 8a6 6 0 0 0-9.3-5M1 1l22 22"/></svg>',
+        whatsapp: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.1-.7.1-.2.3-.8.9-.9 1.1-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.1.2 2.1 3.2 5.1 4.5.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z"/></svg>',
+        mail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>',
+        copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
+    };
+
+    const state = {
+        leads: [],
+        generatedAt: 0,
+        known: null,
+        fresh: new Set(),
+        filter: { q: '', range: 'all', source: 'all', stage: 'all', status: 'all', lang: 'all' },
+        sort: { key: 'lastActive', dir: -1 },
+        page: 1,
+        perPage: 25,
+        chartDays: 30,
+        openId: null,
+        loading: false,
+        timer: null,
+        ticker: null,
+        sound: (() => { try { return localStorage.getItem(SOUND_KEY) !== 'off'; } catch (_e) { return true; } })()
+    };
+
+    // ---------- helpers ----------
+    const $ = (sel, root = document) => root.querySelector(sel);
+    const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmtN = (n) => Number(n || 0).toLocaleString('en-IN');
+    const DAY = 86400000;
+    const startOfDay = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+    const today0 = () => startOfDay(Date.now());
+    const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
+
+    function parseBirth(value) {
+        const s = String(value || '').trim();
+        let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (m) return { y: +m[1], m: +m[2], d: +m[3] };
+        m = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/);
+        if (m) return { y: +m[3], m: +m[2], d: +m[1] };
+        return null;
+    }
+    function signOf(lead) {
+        if (lead._sign !== undefined) return lead._sign;
+        const b = parseBirth(lead.birthDate);
+        let sign = null;
+        if (b && b.m >= 1 && b.m <= 12) {
+            const md = b.m * 100 + b.d;
+            // Walk backwards through the year to find the last sign that started on/before this date.
+            const starts = SIGNS.map((s, i) => ({ i, md: s.from[0] * 100 + s.from[1] })).sort((a, c) => a.md - c.md);
+            let hit = starts[starts.length - 1];
+            starts.forEach((s) => { if (md >= s.md) hit = s; });
+            sign = SIGNS[hit.i];
+        }
+        lead._sign = sign;
+        return sign;
+    }
+    function ageOf(lead) {
+        const b = parseBirth(lead.birthDate);
+        if (!b) return null;
+        const now = new Date();
+        let a = now.getFullYear() - b.y;
+        if (now.getMonth() + 1 < b.m || (now.getMonth() + 1 === b.m && now.getDate() < b.d)) a -= 1;
+        return a >= 0 && a < 120 ? a : null;
+    }
+    const cityOf = (lead) => String(lead.birthPlace || '').split(',')[0].trim();
+    const langOf = (lead) => (/^hi/.test(lead.language || '') ? 'hi' : (/^en/.test(lead.language || '') ? 'en' : 'other'));
+    const hasPhone = (lead) => String(lead.phone || '').replace(/\D/g, '').length >= 8;
+
+    function heatOf(lead) {
+        if (lead._heat !== undefined) return lead._heat;
+        let s = (lead.stage || 0) * 11;
+        if (hasPhone(lead)) s += 14;
+        if (lead.email) s += 4;
+        if (lead.birthTime && lead.birthPlace) s += 6;
+        const idle = Date.now() - (lead.lastActive || lead.createdAt || 0);
+        if (idle < 3600000) s += 14; else if (idle < DAY) s += 9; else if (idle < 7 * DAY) s += 4;
+        if (lead.status === 'not_interested') s = Math.min(s, 20);
+        lead._heat = Math.max(0, Math.min(100, s));
+        return lead._heat;
+    }
+    const heatClass = (h) => (h >= 70 ? 'hot' : h >= 45 ? 'warm' : 'cold');
+    const heatLabel = (h) => (h >= 70 ? '\uD83D\uDD25 Hot' : h >= 45 ? '\u2600\uFE0F Warm' : '\u2744\uFE0F Cold');
+
+    function initials(lead) {
+        const n = String(lead.name || '').trim();
+        if (!n) return hasPhone(lead) ? '#' : '?';
+        const parts = n.split(/\s+/).filter(Boolean);
+        return ((parts[0]?.[0] || '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+    }
+    function avatarStyle(lead) {
+        const s = signOf(lead);
+        const c = s ? EL_COLOR[s.el] : ['#f6d69a', '#a8742e'];
+        return `--av: linear-gradient(135deg, ${c[0]}, ${c[1]})`;
+    }
+    function avatar(lead) {
+        const s = signOf(lead);
+        return `<div class="ad-avatar" style="${avatarStyle(lead)}">${esc(initials(lead))}${s ? `<em>${s.sym}</em>` : ''}</div>`;
+    }
+
+    function timeAgo(t) {
+        if (!t) return '-';
+        const s = Math.max(0, Math.round((Date.now() - t) / 1000));
+        if (s < 45) return 'just now';
+        const m = Math.round(s / 60);
+        if (m < 60) return `${m} min ago`;
+        const h = Math.round(m / 60);
+        if (h < 24) return `${h} hr ago`;
+        const d = Math.round(h / 24);
+        if (d < 31) return `${d} day${d > 1 ? 's' : ''} ago`;
+        return fmtDate(t);
+    }
+    const fmtDate = (t) => (t ? new Date(t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '-');
+    const fmtDateTime = (t) => (t ? new Date(t).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '-');
+    function fmtBirth(lead) {
+        const b = parseBirth(lead.birthDate);
+        if (!b) return lead.birthDate || '';
+        const d = new Date(b.y, b.m - 1, b.d);
+        return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+    function fmtTime(v) {
+        const m = String(v || '').match(/^(\d{1,2}):(\d{2})/);
+        if (!m) return v || '';
+        const h = +m[1];
+        return `${((h + 11) % 12) + 1}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`;
+    }
+    function waLink(phone) {
+        let d = String(phone || '').replace(/\D/g, '');
+        if (d.length === 10) d = `91${d}`;
+        return d.length >= 11 ? `https://wa.me/${d}` : '';
+    }
+    const telLink = (phone) => `tel:${String(phone || '').replace(/[^\d+]/g, '')}`;
+
+    // ---------- auth ----------
+    function getToken() {
+        for (const store of [sessionStorage, localStorage]) {
+            try {
+                const raw = store.getItem(TOKEN_KEY);
+                if (!raw) continue;
+                const t = JSON.parse(raw);
+                if (t?.token && t.expiresAt > Date.now() + 30000) return t.token;
+                store.removeItem(TOKEN_KEY);
+            } catch (_e) { /* ignore */ }
+        }
+        return null;
+    }
+    function saveToken(data, remember) {
+        try { (remember ? localStorage : sessionStorage).setItem(TOKEN_KEY, JSON.stringify({ token: data.token, expiresAt: data.expiresAt })); } catch (_e) { /* ignore */ }
+    }
+    function clearToken() {
+        try { sessionStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_KEY); } catch (_e) { /* ignore */ }
+    }
+
+    async function api(url, options = {}) {
+        const token = getToken();
+        if (!token) { logout('Please sign in.'); throw new Error('signed out'); }
+        const res = await fetch(url, {
+            ...options,
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(options.headers || {}) }
+        });
+        let body = null;
+        try { body = await res.json(); } catch (_e) { body = null; }
+        if (res.status === 401) { logout('Session ended. Please sign in again.'); throw new Error('unauthorized'); }
+        if (!res.ok) throw new Error(body?.error || `Request failed (${res.status})`);
+        return body;
+    }
+
+    function logout(message) {
+        clearToken();
+        clearInterval(state.timer);
+        clearInterval(state.ticker);
+        state.leads = [];
+        state.known = null;
+        renderLogin(message);
+    }
+
+    // ---------- toasts + sound ----------
+    function toast(html, ms = 4200) {
+        const box = $('#toasts');
+        if (!box) return;
+        const el = document.createElement('div');
+        el.className = 'ad-toast';
+        el.innerHTML = html;
+        box.appendChild(el);
+        setTimeout(() => { el.classList.add('is-out'); setTimeout(() => el.remove(), 320); }, ms);
+    }
+    let audioCtx = null;
+    function chime() {
+        if (!state.sound) return;
+        try {
+            audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+            const now = audioCtx.currentTime;
+            [880, 1318.5].forEach((f, i) => {
+                const o = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                o.type = 'sine';
+                o.frequency.value = f;
+                g.gain.setValueAtTime(0.0001, now + i * 0.12);
+                g.gain.exponentialRampToValueAtTime(0.12, now + i * 0.12 + 0.02);
+                g.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.12 + 0.6);
+                o.connect(g).connect(audioCtx.destination);
+                o.start(now + i * 0.12);
+                o.stop(now + i * 0.12 + 0.65);
+            });
+        } catch (_e) { /* no sound */ }
+    }
+
+    // ---------- zodiac wheel (login + loader) ----------
+    function wheelSvg() {
+        const parts = SIGNS.map((s, i) => {
+            const a = (i * 30 - 90) * Math.PI / 180;
+            const x = 66 + Math.cos(a) * 52;
+            const y = 66 + Math.sin(a) * 52;
+            return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" dominant-baseline="central" fill="#f6d69a" font-size="11">${s.sym}</text>`;
+        }).join('');
+        const ticks = Array.from({ length: 36 }, (_, i) => {
+            const a = i * 10 * Math.PI / 180;
+            const r1 = i % 3 === 0 ? 40 : 42;
+            return `<line x1="${(66 + Math.cos(a) * r1).toFixed(1)}" y1="${(66 + Math.sin(a) * r1).toFixed(1)}" x2="${(66 + Math.cos(a) * 45).toFixed(1)}" y2="${(66 + Math.sin(a) * 45).toFixed(1)}" stroke="#e9b65a" stroke-opacity="0.6"/>`;
+        }).join('');
+        return `<svg viewBox="0 0 132 132"><circle cx="66" cy="66" r="63" fill="none" stroke="#e9b65a" stroke-opacity="0.55"/><circle cx="66" cy="66" r="45" fill="none" stroke="#e9b65a" stroke-opacity="0.35"/>${ticks}${parts}</svg>`;
+    }
+
+    // ---------- login ----------
+    function renderLogin(message = '') {
+        document.body.classList.remove('is-dash');
+        $('#app').innerHTML = `
+            <div class="ad-login">
+                <form class="ad-login__card" id="loginForm" autocomplete="on">
+                    <div class="ad-wheel">${wheelSvg()}<img src="/images/maya-logo.png" alt="" onerror="this.remove()"></div>
+                    <h1 class="ad-brand">MAYALOGY</h1>
+                    <p>Lead Desk &middot; team sign in</p>
+                    <div class="ad-field">
+                        <input id="pw" type="password" placeholder="Admin password" autocomplete="current-password" required>
+                        <button type="button" class="ad-eye" id="eye" aria-label="Show password">${ICON.eye}</button>
+                    </div>
+                    <label class="ad-check"><input type="checkbox" id="remember"> Keep me signed in on this device (12 hours)</label>
+                    <div class="ad-error" id="loginError">${esc(message)}</div>
+                    <button class="ad-btn ad-btn--gold ad-btn--wide" id="loginBtn" type="submit">Enter Lead Desk</button>
+                </form>
+            </div>`;
+        const pw = $('#pw');
+        setTimeout(() => pw.focus(), 50);
+        $('#eye').onclick = () => { pw.type = pw.type === 'password' ? 'text' : 'password'; pw.focus(); };
+        $('#loginForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = $('#loginBtn');
+            const err = $('#loginError');
+            btn.disabled = true;
+            btn.textContent = 'Checking...';
+            err.textContent = '';
+            try {
+                const res = await fetch(API_LOGIN, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw.value }) });
+                let body = null;
+                try { body = await res.json(); } catch (_e) { body = null; }
+                if (!res.ok || !body?.token) {
+                    if (body?.code === 'not_configured') throw new Error('Admin password is not set on the server yet (ADMIN_PANEL_PASSWORD).');
+                    throw new Error(body?.error || 'Could not sign in');
+                }
+                saveToken(body, $('#remember').checked);
+                chime();
+                startDashboard();
+            } catch (error) {
+                err.textContent = error.message || 'Could not sign in';
+                const card = $('#loginForm');
+                card.classList.remove('ad-shake');
+                void card.offsetWidth;
+                card.classList.add('ad-shake');
+                btn.disabled = false;
+                btn.textContent = 'Enter Lead Desk';
+                pw.select();
+            }
+        };
+    }
+
+    // ---------- dashboard shell ----------
+    function startDashboard() {
+        document.body.classList.add('is-dash');
+        $('#app').innerHTML = `
+            <header class="ad-top">
+                <img class="ad-top__logo" src="/images/maya-logo.png" alt="" onerror="this.style.display='none'">
+                <div class="ad-top__title"><span class="ad-brand">MAYALOGY</span><small>Lead Desk</small></div>
+                <div class="ad-top__spacer"></div>
+                <div class="ad-live" id="live"><i></i><span id="liveText">Connecting...</span></div>
+                <button class="ad-btn ad-btn--icon" id="soundBtn" title="New lead sound">${state.sound ? ICON.bell : ICON.bellOff}</button>
+                <button class="ad-btn ad-btn--icon" id="refreshBtn" title="Refresh (R)">${ICON.refresh}</button>
+                <button class="ad-btn" id="logoutBtn" title="Sign out">${ICON.logout}<span>Sign out</span></button>
+            </header>
+            <main class="ad-main">
+                <section class="ad-hero" id="hero"></section>
+                <section class="ad-kpis" id="kpis">${'<div class="ad-skel"></div>'.repeat(6)}</section>
+                <section class="ad-grid ad-grid--2-1">
+                    <div class="ad-card" id="trendCard"><div class="ad-skel"></div></div>
+                    <div class="ad-card" id="funnelCard"><div class="ad-skel"></div></div>
+                </section>
+                <section class="ad-grid ad-grid--3">
+                    <div class="ad-card" id="zodiacCard"><div class="ad-skel"></div></div>
+                    <div class="ad-card" id="whoCard"><div class="ad-skel"></div></div>
+                    <div class="ad-card" id="whereCard"><div class="ad-skel"></div></div>
+                </section>
+                <section class="ad-card" id="heatCard" style="margin-bottom:16px"><div class="ad-skel"></div></section>
+                <section class="ad-card" id="leadsCard"><div class="ad-skel" style="height:320px"></div></section>
+            </main>
+            <div class="ad-scrim" id="scrim"></div>
+            <aside class="ad-drawer" id="drawer" aria-hidden="true"></aside>`;
+
+        $('#refreshBtn').onclick = () => load(true);
+        $('#logoutBtn').onclick = () => logout('Signed out.');
+        $('#soundBtn').onclick = () => {
+            state.sound = !state.sound;
+            try { localStorage.setItem(SOUND_KEY, state.sound ? 'on' : 'off'); } catch (_e) { /* ignore */ }
+            $('#soundBtn').innerHTML = state.sound ? ICON.bell : ICON.bellOff;
+            if (state.sound) chime();
+            toast(state.sound ? 'Sound on for new leads' : 'Sound off', 1800);
+        };
+        $('#scrim').onclick = closeDrawer;
+
+        clearInterval(state.timer);
+        clearInterval(state.ticker);
+        state.timer = setInterval(() => { if (document.visibilityState === 'visible') load(false); }, REFRESH_MS);
+        state.ticker = setInterval(updateLive, 5000);
+        load(true);
+    }
+
+    function updateLive() {
+        const el = $('#liveText');
+        if (!el) return;
+        $('#live')?.classList.toggle('is-off', !state.generatedAt);
+        el.textContent = state.generatedAt ? `Live \u00B7 updated ${timeAgo(state.generatedAt)}` : 'Connecting...';
+    }
+
+    async function load(fresh) {
+        if (state.loading) return;
+        state.loading = true;
+        const btn = $('#refreshBtn');
+        btn?.classList.add('ad-spin');
+        try {
+            const data = await api(`${API_LEADS}${fresh ? '?fresh=1' : ''}`);
+            const leads = Array.isArray(data?.leads) ? data.leads : [];
+            const ids = new Set(leads.map((l) => l.id));
+            if (state.known) {
+                const added = leads.filter((l) => !state.known.has(l.id));
+                added.forEach((l) => state.fresh.add(l.id));
+                if (added.length) {
+                    chime();
+                    const l = added[0];
+                    const who = l.name || l.phone || 'Someone';
+                    const where = cityOf(l);
+                    toast(added.length === 1
+                        ? `\u2728 New lead: <b>${esc(who)}</b>${where ? ` from ${esc(where)}` : ''}`
+                        : `\u2728 <b>${added.length} new leads</b> just came in`);
+                }
+            }
+            state.known = ids;
+            state.leads = leads;
+            state.generatedAt = data.generatedAt || Date.now();
+            renderAll();
+            if (fresh && btn) toast(`Up to date \u00B7 ${fmtN(leads.length)} leads`, 1600);
+        } catch (error) {
+            if (getToken()) toast(`\u26A0\uFE0F ${esc(error.message || 'Could not load leads')}`);
+        } finally {
+            state.loading = false;
+            $('#refreshBtn')?.classList.remove('ad-spin');
+            updateLive();
+        }
+    }
+
+    function renderAll() {
+        if (!$('#kpis')) return;
+        renderHero();
+        renderKpis();
+        renderTrend();
+        renderFunnel();
+        renderZodiac();
+        renderWho();
+        renderWhere();
+        renderHeat();
+        renderLeads();
+        if (state.openId) {
+            const lead = state.leads.find((l) => l.id === state.openId);
+            if (lead) fillDrawer(lead, true);
+        }
+    }
+
+    // ---------- hero + KPIs ----------
+    function countIn(from, to, key = 'createdAt', list = state.leads) {
+        return list.filter((l) => (l[key] || 0) >= from && (l[key] || 0) < to).length;
+    }
+
+    function renderHero() {
+        const t0 = today0();
+        const todayCount = countIn(t0, t0 + DAY);
+        const h = new Date().getHours();
+        const greet = h < 12 ? 'Suprabhat' : h < 17 ? 'Namaste' : 'Shubh sandhya';
+        const hot = state.leads.filter((l) => heatOf(l) >= 70 && l.status === 'new').length;
+        const dateText = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+        $('#hero').innerHTML = `
+            <div>
+                <h2>${greet} \uD83D\uDE4F <span>${todayCount ? `${fmtN(todayCount)} new lead${todayCount > 1 ? 's' : ''} today` : 'No new leads yet today'}</span></h2>
+                <p>${hot ? `${fmtN(hot)} hot lead${hot > 1 ? 's are' : ' is'} waiting for a call.` : 'All hot leads are followed up. Great work.'}</p>
+            </div>
+            <div class="ad-hero__moon"><div class="ad-orb"></div><div><b>${esc(dateText)}</b>${fmtN(state.leads.length)} people in your sky</div></div>`;
+    }
+
+    function spark(values, color) {
+        const w = 120;
+        const h = 28;
+        const max = Math.max(1, ...values);
+        const pts = values.map((v, i) => `${((i / Math.max(1, values.length - 1)) * w).toFixed(1)},${(h - 2 - (v / max) * (h - 4)).toFixed(1)}`);
+        return `<svg class="ad-kpi__spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
+    }
+    function delta(now, before) {
+        if (!before && !now) return '<span class="ad-muted">no change</span>';
+        if (!before) return '<span class="ad-up">new</span>';
+        const d = Math.round(((now - before) / before) * 100);
+        return d >= 0 ? `<span class="ad-up">\u25B2 ${d}%</span>` : `<span class="ad-down">\u25BC ${Math.abs(d)}%</span>`;
+    }
+
+    function renderKpis() {
+        const L = state.leads;
+        const t0 = today0();
+        const days14 = Array.from({ length: 14 }, (_, i) => countIn(t0 - (13 - i) * DAY, t0 - (12 - i) * DAY));
+        const todayN = countIn(t0, t0 + DAY);
+        const yestN = countIn(t0 - DAY, t0);
+        const wk = countIn(t0 - 6 * DAY, t0 + DAY);
+        const prevWk = countIn(t0 - 13 * DAY, t0 - 6 * DAY);
+        const full = L.filter((l) => l.birthDate && l.birthTime && l.birthPlace).length;
+        const signed = L.filter((l) => l.stage >= 6).length;
+        const pending = L.filter((l) => l.status === 'new' && (hasPhone(l) || l.email) && l.stage >= 1).length;
+        const cards = [
+            { label: 'Total leads', value: L.length, sub: `<span>${fmtN(wk)} this week</span>`, icon: ICON.users, color: '#e9b65a', spark: days14 },
+            { label: 'Today', value: todayN, sub: `${delta(todayN, yestN)}<span>vs yesterday (${fmtN(yestN)})</span>`, icon: ICON.sun, color: '#ffb347', spark: days14.slice(-7) },
+            { label: 'Last 7 days', value: wk, sub: `${delta(wk, prevWk)}<span>vs week before</span>`, icon: ICON.week, color: '#6fb3ff', spark: days14 },
+            { label: 'Full birth details', value: full, sub: `<span>${pct(full, L.length)}% gave date, time and place</span>`, icon: ICON.star, color: '#9a7bff' },
+            { label: 'Signed up', value: signed, sub: `<span>${pct(signed, L.length)}% conversion</span>`, icon: ICON.check, color: '#5fd38d' },
+            { label: 'Follow-up pending', value: pending, sub: '<span>New leads with phone or email</span>', icon: ICON.phone, color: '#ff7aa8' }
+        ];
+        $('#kpis').innerHTML = cards.map((c, i) => `
+            <div class="ad-card ad-kpi" style="--kpi:${c.color};animation-delay:${i * 60}ms">
+                <div class="ad-kpi__icon">${c.icon}</div>
+                <div class="ad-kpi__label">${c.label}</div>
+                <div class="ad-kpi__value" data-count="${c.value}">0</div>
+                <div class="ad-kpi__sub">${c.sub}</div>
+                ${c.spark ? spark(c.spark, c.color) : ''}
+            </div>`).join('');
+        $$('#kpis [data-count]').forEach((el) => countUp(el, Number(el.dataset.count)));
+    }
+
+    function countUp(el, target) {
+        const prev = Number(el.dataset.shown || 0);
+        if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || prev === target) { el.textContent = fmtN(target); el.dataset.shown = target; return; }
+        const start = performance.now();
+        const dur = 900;
+        const step = (now) => {
+            const k = Math.min(1, (now - start) / dur);
+            const e = 1 - Math.pow(1 - k, 3);
+            el.textContent = fmtN(Math.round(prev + (target - prev) * e));
+            if (k < 1) requestAnimationFrame(step); else el.dataset.shown = target;
+        };
+        requestAnimationFrame(step);
+    }
+
+    // ---------- trend chart ----------
+    function renderTrend() {
+        const card = $('#trendCard');
+        const days = state.chartDays;
+        const t0 = today0();
+        const buckets = Array.from({ length: days }, (_, i) => {
+            const from = t0 - (days - 1 - i) * DAY;
+            return {
+                t: from,
+                leads: countIn(from, from + DAY),
+                signed: state.leads.filter((l) => l.stage >= 6 && (l.account?.since || l.createdAt) >= from && (l.account?.since || l.createdAt) < from + DAY).length
+            };
+        });
+        const total = buckets.reduce((s, b) => s + b.leads, 0);
+        card.innerHTML = `
+            <div class="ad-card__head">
+                <h3>Leads over time <span class="ad-dim">${fmtN(total)} in ${days} days</span></h3>
+                <div class="ad-seg" id="trendSeg">${[7, 30, 90].map((d) => `<button data-d="${d}" class="${d === days ? 'is-on' : ''}">${d}D</button>`).join('')}</div>
+            </div>
+            <div class="ad-chart" id="trendChart"></div>
+            <div class="ad-legend" style="flex-direction:row;gap:18px;margin-top:10px">
+                <div><i style="background:#e9b65a"></i><span>New leads</span></div>
+                <div><i style="background:#9a7bff"></i><span>Signed up</span></div>
+            </div>`;
+        $$('#trendSeg button').forEach((b) => { b.onclick = () => { state.chartDays = Number(b.dataset.d); renderTrend(); }; });
+        drawTrend($('#trendChart'), buckets);
+    }
+
+    function drawTrend(box, buckets) {
+        const W = Math.max(280, box.clientWidth || 600);
+        const H = 230;
+        const pad = { l: 32, r: 10, t: 14, b: 26 };
+        const iw = W - pad.l - pad.r;
+        const ih = H - pad.t - pad.b;
+        const max = Math.max(4, ...buckets.map((b) => b.leads));
+        const nice = Math.ceil(max / 4) * 4;
+        const x = (i) => pad.l + (buckets.length === 1 ? iw / 2 : (i / (buckets.length - 1)) * iw);
+        const y = (v) => pad.t + ih - (v / nice) * ih;
+        const smooth = (key) => buckets.map((b, i) => {
+            const px = x(i);
+            const py = y(b[key]);
+            if (i === 0) return `M${px.toFixed(1)},${py.toFixed(1)}`;
+            const cx = (x(i - 1) + px) / 2;
+            return `C${cx.toFixed(1)},${y(buckets[i - 1][key]).toFixed(1)} ${cx.toFixed(1)},${py.toFixed(1)} ${px.toFixed(1)},${py.toFixed(1)}`;
+        }).join(' ');
+        const line = smooth('leads');
+        const area = `${line} L${x(buckets.length - 1).toFixed(1)},${(pad.t + ih).toFixed(1)} L${x(0).toFixed(1)},${(pad.t + ih).toFixed(1)} Z`;
+        const grid = [0, 1, 2, 3, 4].map((k) => {
+            const v = (nice / 4) * k;
+            return `<line class="ad-gridline" x1="${pad.l}" x2="${W - pad.r}" y1="${y(v)}" y2="${y(v)}"/><text class="ad-axis" x="${pad.l - 8}" y="${y(v) + 3}" text-anchor="end">${v}</text>`;
+        }).join('');
+        const every = Math.ceil(buckets.length / 7);
+        const labels = buckets.map((b, i) => ((i % every === 0 || i === buckets.length - 1) && !(i !== buckets.length - 1 && buckets.length - 1 - i < every / 2)
+            ? `<text class="ad-axis" x="${x(i)}" y="${H - 6}" text-anchor="middle">${new Date(b.t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</text>` : '')).join('');
+        const dots = buckets.map((b, i) => (b.leads ? `<circle cx="${x(i)}" cy="${y(b.leads)}" r="${buckets.length > 40 ? 2 : 3}" fill="#f6d69a" class="ad-fade" style="animation-delay:${0.6 + i * 0.01}s"/>` : '')).join('');
+        box.innerHTML = `
+            <svg viewBox="0 0 ${W} ${H}" height="${H}">
+                <defs>
+                    <linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#e9b65a" stop-opacity="0.45"/><stop offset="1" stop-color="#e9b65a" stop-opacity="0"/></linearGradient>
+                    <filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                </defs>
+                ${grid}${labels}
+                <path d="${area}" fill="url(#trendFill)" class="ad-fade"/>
+                <path d="${smooth('signed')}" fill="none" stroke="#9a7bff" stroke-width="2" stroke-dasharray="5 5" class="ad-fade"/>
+                <path d="${line}" fill="none" stroke="#e9b65a" stroke-width="2.6" filter="url(#glow)" class="ad-draw"/>
+                ${dots}
+                <line id="trendGuide" y1="${pad.t}" y2="${pad.t + ih}" stroke="#f6d69a" stroke-opacity="0.35" stroke-dasharray="3 4" style="display:none"/>
+                <rect x="${pad.l}" y="${pad.t}" width="${iw}" height="${ih}" fill="transparent" id="trendHit"/>
+            </svg>
+            <div class="ad-tip" id="trendTip"></div>`;
+        const hit = $('#trendHit', box);
+        const tip = $('#trendTip', box);
+        const guide = $('#trendGuide', box);
+        const svg = $('svg', box);
+        const move = (ev) => {
+            const r = svg.getBoundingClientRect();
+            const px = ((ev.touches?.[0]?.clientX ?? ev.clientX) - r.left) * (W / r.width);
+            const i = Math.max(0, Math.min(buckets.length - 1, Math.round(((px - pad.l) / iw) * (buckets.length - 1))));
+            const b = buckets[i];
+            guide.setAttribute('x1', x(i));
+            guide.setAttribute('x2', x(i));
+            guide.style.display = '';
+            tip.innerHTML = `${new Date(b.t).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}<br><b>${b.leads}</b> leads &middot; ${b.signed} signed up`;
+            tip.style.left = `${(x(i) / W) * r.width}px`;
+            tip.style.top = `${(y(b.leads) / H) * r.height}px`;
+            tip.style.opacity = 1;
+        };
+        const leave = () => { tip.style.opacity = 0; guide.style.display = 'none'; };
+        hit.addEventListener('mousemove', move);
+        hit.addEventListener('touchstart', move, { passive: true });
+        hit.addEventListener('touchmove', move, { passive: true });
+        hit.addEventListener('mouseleave', leave);
+        hit.addEventListener('touchend', () => setTimeout(leave, 1500));
+    }
+
+    // ---------- funnel ----------
+    function renderFunnel() {
+        const L = state.leads;
+        const total = L.length || 1;
+        const rows = STAGES.slice(1).map((name, i) => ({ name, n: L.filter((l) => l.stage >= i + 1).length }));
+        const max = Math.max(1, rows[0].n);
+        $('#funnelCard').innerHTML = `
+            <div class="ad-card__head"><h3>Journey funnel <span class="ad-dim">how far people go</span></h3></div>
+            <div class="ad-funnel">${rows.map((r) => `
+                <div class="ad-funnel__row">
+                    <span class="ad-funnel__name">${r.name}</span>
+                    <div class="ad-funnel__bar"><span data-w="${(r.n / max) * 100}"></span></div>
+                    <span class="ad-funnel__num">${fmtN(r.n)}<small>${pct(r.n, total)}%</small></span>
+                </div>`).join('')}
+            </div>
+            <p class="ad-muted" style="font-size:.76rem;margin:14px 0 0">Biggest drop: <b style="color:var(--gold-2)">${biggestDrop(rows)}</b></p>`;
+        requestAnimationFrame(() => $$('#funnelCard [data-w]').forEach((el) => { el.style.width = `${Math.max(2, el.dataset.w)}%`; }));
+    }
+    function biggestDrop(rows) {
+        let best = null;
+        for (let i = 1; i < rows.length; i++) {
+            const lost = rows[i - 1].n - rows[i].n;
+            if (rows[i - 1].n && (!best || lost > best.lost)) best = { lost, from: rows[i - 1].name, to: rows[i].name, p: pct(lost, rows[i - 1].n) };
+        }
+        return best && best.lost > 0 ? `${esc(best.from)} \u2192 ${esc(best.to)} (${best.p}% leave)` : 'none yet';
+    }
+
+    // ---------- zodiac ----------
+    function renderZodiac() {
+        const counts = SIGNS.map((s) => ({ s, n: state.leads.filter((l) => signOf(l) === s).length }));
+        const withSign = counts.reduce((a, c) => a + c.n, 0);
+        const max = Math.max(1, ...counts.map((c) => c.n));
+        const top = [...counts].sort((a, b) => b.n - a.n)[0];
+        const cx = 160;
+        const cy = 160;
+        const r0 = 56;
+        const segs = counts.map(({ s, n }, i) => {
+            const a0 = (i * 30 - 90 + 2) * Math.PI / 180;
+            const a1 = ((i + 1) * 30 - 90 - 2) * Math.PI / 180;
+            const r1 = r0 + 14 + (n / max) * 74;
+            const p = (r, a) => `${(cx + Math.cos(a) * r).toFixed(1)},${(cy + Math.sin(a) * r).toFixed(1)}`;
+            const col = EL_COLOR[s.el];
+            const mid = (i * 30 - 75) * Math.PI / 180;
+            return `
+                <path class="ad-zseg" d="M${p(r0, a0)} L${p(r1, a0)} A${r1},${r1} 0 0 1 ${p(r1, a1)} L${p(r0, a1)} A${r0},${r0} 0 0 0 ${p(r0, a0)} Z" fill="url(#zg${i})" stroke="rgba(0,0,0,.35)"><title>${s.name} (${s.hi}): ${n}</title></path>
+                <defs><linearGradient id="zg${i}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${col[0]}" stop-opacity="${n ? 0.95 : 0.18}"/><stop offset="1" stop-color="${col[1]}" stop-opacity="${n ? 0.75 : 0.12}"/></linearGradient></defs>
+                <text x="${(cx + Math.cos(mid) * 148).toFixed(1)}" y="${(cy + Math.sin(mid) * 148).toFixed(1)}" text-anchor="middle" dominant-baseline="central" fill="${n === top.n && n ? '#f6d69a' : '#8a7d68'}">${s.sym}</text>`;
+        }).join('');
+        $('#zodiacCard').innerHTML = `
+            <div class="ad-card__head"><h3>Surya rashi <span class="ad-dim">from birth date</span></h3></div>
+            <div class="ad-zodiac">
+                <svg viewBox="0 0 320 320" class="ad-fade">
+                    <circle cx="${cx}" cy="${cy}" r="${r0 - 6}" fill="rgba(233,182,90,.06)" stroke="rgba(233,182,90,.35)"/>
+                    ${segs}
+                    <text x="${cx}" y="${cy - 8}" text-anchor="middle" fill="#f6d69a" font-size="28">${top.n ? top.s.sym : '\u2726'}</text>
+                    <text x="${cx}" y="${cy + 16}" text-anchor="middle" fill="#c9b996" font-size="11">${top.n ? `${top.s.hi} leads` : 'No data yet'}</text>
+                </svg>
+            </div>
+            <p class="ad-muted" style="font-size:.76rem;margin:6px 0 0;text-align:center">${withSign ? `Most leads are <b style="color:var(--gold-2)">${top.s.name} (${top.s.hi})</b>: ${fmtN(top.n)} of ${fmtN(withSign)}` : 'Signs show once leads share their birth date.'}</p>`;
+    }
+
+    // ---------- donuts ----------
+    function donut(parts, centerText) {
+        const total = parts.reduce((a, p) => a + p.n, 0) || 1;
+        const R = 48;
+        const C = 2 * Math.PI * R;
+        let off = 0;
+        const rings = parts.map((p) => {
+            const len = (p.n / total) * C;
+            const el = `<circle cx="64" cy="64" r="${R}" fill="none" stroke="${p.color}" stroke-width="16" stroke-dasharray="0 ${C}" data-dash="${Math.max(0, len - 2).toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 64 64)"/>`;
+            off += len;
+            return el;
+        }).join('');
+        return `
+            <div class="ad-donut-wrap">
+                <svg class="ad-donut" viewBox="0 0 128 128"><circle cx="64" cy="64" r="${R}" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="16"/>${rings}
+                    <text x="64" y="62" text-anchor="middle" fill="#f5e8ce" font-size="20" font-weight="700">${centerText}</text>
+                    <text x="64" y="80" text-anchor="middle" fill="#8a7d68" font-size="10">leads</text></svg>
+                <div class="ad-legend">${parts.map((p) => `<div><i style="background:${p.color}"></i><span>${esc(p.label)}</span><b>${fmtN(p.n)}</b></div>`).join('')}</div>
+            </div>`;
+    }
+    function animateDonuts(root) {
+        requestAnimationFrame(() => $$('[data-dash]', root).forEach((c) => c.setAttribute('stroke-dasharray', c.dataset.dash)));
+    }
+
+    function renderWho() {
+        const L = state.leads;
+        const lang = [
+            { label: 'Hindi', n: L.filter((l) => langOf(l) === 'hi').length, color: '#e9b65a' },
+            { label: 'English', n: L.filter((l) => langOf(l) === 'en').length, color: '#6fb3ff' },
+            { label: 'Not chosen', n: L.filter((l) => langOf(l) === 'other').length, color: '#5a5266' }
+        ];
+        const gender = [
+            { label: 'Female', n: L.filter((l) => /^f/.test(l.gender)).length, color: '#ff7aa8' },
+            { label: 'Male', n: L.filter((l) => /^m/.test(l.gender)).length, color: '#4fd1c5' },
+            { label: 'Other / not given', n: L.filter((l) => !/^[fm]/.test(l.gender || '')).length, color: '#5a5266' }
+        ];
+        const src = Object.keys(SOURCE).map((k, i) => ({ label: SOURCE[k], n: L.filter((l) => l.source === k).length, color: ['#e9b65a', '#5fd38d', '#6fb3ff', '#9a7bff', '#ff7aa8'][i] })).filter((p) => p.n);
+        $('#whoCard').innerHTML = `
+            <div class="ad-card__head"><h3>Who they are</h3><div class="ad-seg" id="whoSeg"><button data-k="lang" class="is-on">Language</button><button data-k="gender">Gender</button><button data-k="src">Source</button></div></div>
+            <div id="whoBody"></div>`;
+        const sets = { lang, gender, src };
+        const show = (k) => {
+            $('#whoBody').innerHTML = donut(sets[k], fmtN(L.length));
+            animateDonuts($('#whoBody'));
+            $$('#whoSeg button').forEach((b) => b.classList.toggle('is-on', b.dataset.k === k));
+        };
+        $$('#whoSeg button').forEach((b) => { b.onclick = () => show(b.dataset.k); });
+        show('lang');
+    }
+
+    function renderWhere() {
+        const L = state.leads;
+        const cities = {};
+        L.forEach((l) => { const c = cityOf(l); if (c) cities[c] = (cities[c] || 0) + 1; });
+        const top = Object.entries(cities).sort((a, b) => b[1] - a[1]).slice(0, 6);
+        const max = Math.max(1, ...top.map((t) => t[1]));
+        const groups = [['Under 18', 0, 17], ['18-24', 18, 24], ['25-34', 25, 34], ['35-44', 35, 44], ['45-59', 45, 59], ['60+', 60, 200]]
+            .map(([label, a, b]) => ({ label, n: L.filter((l) => { const g = ageOf(l); return g !== null && g >= a && g <= b; }).length }));
+        const gmax = Math.max(1, ...groups.map((g) => g.n));
+        $('#whereCard').innerHTML = `
+            <div class="ad-card__head"><h3>Where &amp; how old</h3><div class="ad-seg" id="whereSeg"><button data-k="city" class="is-on">Birth city</button><button data-k="age">Age</button></div></div>
+            <div class="ad-bars" id="whereBody"></div>`;
+        const show = (k) => {
+            const rows = k === 'city' ? top.map(([label, n]) => ({ label, n, w: (n / max) * 100 })) : groups.map((g) => ({ ...g, w: (g.n / gmax) * 100 }));
+            $('#whereBody').innerHTML = rows.length ? rows.map((r) => `
+                <div class="ad-bars__row"><div class="ad-bars__top"><span>${esc(r.label)}</span><b>${fmtN(r.n)}</b></div><div class="ad-bars__track"><span data-w="${r.w}"></span></div></div>`).join('')
+                : '<p class="ad-muted" style="font-size:.82rem">No birth places yet.</p>';
+            requestAnimationFrame(() => $$('#whereBody [data-w]').forEach((el) => { el.style.width = `${el.dataset.w}%`; }));
+            $$('#whereSeg button').forEach((b) => b.classList.toggle('is-on', b.dataset.k === k));
+        };
+        $$('#whereSeg button').forEach((b) => { b.onclick = () => show(b.dataset.k); });
+        show('city');
+    }
+
+    // ---------- heatmap ----------
+    function renderHeat() {
+        const since = today0() - 89 * DAY;
+        const grid = Array.from({ length: 7 }, () => new Array(24).fill(0));
+        state.leads.forEach((l) => {
+            if (!l.createdAt || l.createdAt < since) return;
+            const d = new Date(l.createdAt);
+            grid[(d.getDay() + 6) % 7][d.getHours()] += 1;
+        });
+        const max = Math.max(1, ...grid.flat());
+        let best = { n: 0, d: 0, h: 0 };
+        grid.forEach((row, d) => row.forEach((n, h) => { if (n > best.n) best = { n, d, h }; }));
+        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const hourLabel = (h) => `${((h + 11) % 12) + 1}${h < 12 ? 'am' : 'pm'}`;
+        let cells = '<div></div>';
+        for (let h = 0; h < 24; h++) cells += `<div class="ad-heat__hr">${h % 3 === 0 ? hourLabel(h) : ''}</div>`;
+        grid.forEach((row, d) => {
+            cells += `<div class="ad-heat__lab">${days[d]}</div>`;
+            row.forEach((n, h) => {
+                const k = n / max;
+                const bg = n ? `rgba(233,182,90,${(0.15 + k * 0.85).toFixed(2)})` : '';
+                cells += `<div title="${days[d]} ${hourLabel(h)}: ${n} lead${n === 1 ? '' : 's'}" style="${bg ? `background:${bg};box-shadow:0 0 ${Math.round(k * 12)}px rgba(233,182,90,${(k * 0.6).toFixed(2)})` : ''}"></div>`;
+            });
+        });
+        $('#heatCard').innerHTML = `
+            <div class="ad-card__head"><h3>When leads come in <span class="ad-dim">last 90 days</span></h3>
+            <span class="ad-muted" style="font-size:.8rem">${best.n ? `Busiest: <b style="color:var(--gold-2)">${days[best.d]} around ${hourLabel(best.h)}</b>` : 'No data yet'}</span></div>
+            <div class="ad-heat">${cells}</div>`;
+    }
+
+    // ---------- leads list ----------
+    function filtered() {
+        const f = state.filter;
+        const q = f.q.trim().toLowerCase();
+        const t0 = today0();
+        const from = { today: t0, '7d': t0 - 6 * DAY, '30d': t0 - 29 * DAY }[f.range] || 0;
+        let list = state.leads.filter((l) => {
+            if (from && (l.createdAt || 0) < from) return false;
+            if (f.source !== 'all' && l.source !== f.source) return false;
+            if (f.stage !== 'all' && String(l.stage) !== f.stage) return false;
+            if (f.status !== 'all' && l.status !== f.status) return false;
+            if (f.lang !== 'all' && langOf(l) !== f.lang) return false;
+            if (q) {
+                const hay = `${l.name} ${l.phone} ${l.email} ${l.birthPlace} ${signOf(l)?.name || ''} ${signOf(l)?.hi || ''} ${l.note}`.toLowerCase();
+                if (!hay.includes(q)) return false;
+            }
+            return true;
+        });
+        const { key, dir } = state.sort;
+        const val = (l) => (key === 'heat' ? heatOf(l) : key === 'name' ? String(l.name || '~').toLowerCase() : l[key] || 0);
+        list = list.sort((a, b) => (val(a) > val(b) ? dir : val(a) < val(b) ? -dir : 0));
+        return list;
+    }
+
+    function renderLeads() {
+        const card = $('#leadsCard');
+        if (!$('#leadTools', card)) {
+            card.innerHTML = `
+                <div class="ad-card__head">
+                    <h3>All leads <span class="ad-dim" id="leadTotal"></span></h3>
+                    <button class="ad-btn ad-btn--gold" id="exportBtn">${ICON.download}Export CSV</button>
+                </div>
+                <div class="ad-tools" id="leadTools">
+                    <div class="ad-search">${ICON.search}<input id="q" type="search" placeholder="Search name, phone, email, city, rashi...  ( / )"></div>
+                    <select class="ad-select" data-f="range"><option value="all">Any time</option><option value="today">Today</option><option value="7d">Last 7 days</option><option value="30d">Last 30 days</option></select>
+                    <select class="ad-select" data-f="status"><option value="all">Any status</option>${Object.entries(STATUS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
+                    <select class="ad-select" data-f="stage"><option value="all">Any stage</option>${STAGES.map((s, i) => `<option value="${i}">${s}</option>`).join('')}</select>
+                    <select class="ad-select" data-f="source"><option value="all">Any source</option>${Object.entries(SOURCE).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
+                    <select class="ad-select" data-f="lang"><option value="all">Any language</option><option value="hi">Hindi</option><option value="en">English</option><option value="other">Not chosen</option></select>
+                </div>
+                <div class="ad-count" id="leadCount"></div>
+                <div class="ad-table-wrap"><table class="ad-table"><thead><tr>
+                    <th data-sort="name">Lead</th><th>Birth</th><th>Place</th><th data-sort="stage">Stage</th><th data-sort="heat">Heat</th><th>Status</th><th>Source</th><th data-sort="lastActive">Last active</th>
+                </tr></thead><tbody id="leadRows"></tbody></table></div>
+                <div class="ad-cards" id="leadCards"></div>
+                <div class="ad-pager" id="pager"></div>`;
+            const q = $('#q');
+            let qt = null;
+            q.value = state.filter.q;
+            q.oninput = () => { clearTimeout(qt); qt = setTimeout(() => { state.filter.q = q.value; state.page = 1; renderLeadRows(); }, 150); };
+            $$('#leadTools [data-f]').forEach((sel) => {
+                sel.value = state.filter[sel.dataset.f];
+                sel.onchange = () => { state.filter[sel.dataset.f] = sel.value; state.page = 1; renderLeadRows(); };
+            });
+            $$('#leadsCard th[data-sort]').forEach((th) => {
+                th.onclick = () => {
+                    const k = th.dataset.sort;
+                    state.sort = { key: k, dir: state.sort.key === k ? -state.sort.dir : (k === 'name' ? 1 : -1) };
+                    renderLeadRows();
+                };
+            });
+            $('#exportBtn').onclick = exportCsv;
+        }
+        $('#leadTotal').textContent = `${fmtN(state.leads.length)} total`;
+        renderLeadRows();
+    }
+
+    function stageDots(stage) {
+        return `<div class="ad-stage"><div class="ad-stage__dots">${STAGES.slice(1).map((_, i) => `<i class="${stage >= i + 1 ? 'on' : ''}"></i>`).join('')}</div><span>${esc(STAGES[stage] || STAGES[0])}</span></div>`;
+    }
+    const statusPill = (s) => `<span class="ad-pill ad-pill--${esc(s)}"><i></i>${esc(STATUS[s] || 'New')}</span>`;
+    const contactLine = (l) => esc(l.phone || l.email || (l.source === 'guest' ? 'No contact yet' : ''));
+
+    function renderLeadRows() {
+        const list = filtered();
+        const pages = Math.max(1, Math.ceil(list.length / state.perPage));
+        state.page = Math.min(state.page, pages);
+        const slice = list.slice((state.page - 1) * state.perPage, state.page * state.perPage);
+        $('#leadCount').textContent = list.length === state.leads.length ? `Showing all ${fmtN(list.length)} leads` : `${fmtN(list.length)} of ${fmtN(state.leads.length)} leads match`;
+        $$('#leadsCard th[data-sort]').forEach((th) => {
+            th.querySelector('.ad-arrow')?.remove();
+            if (th.dataset.sort === state.sort.key) th.insertAdjacentHTML('beforeend', `<span class="ad-arrow">${state.sort.dir > 0 ? '\u2191' : '\u2193'}</span>`);
+        });
+        if (!slice.length) {
+            const empty = `<div class="ad-empty"><div>\uD83D\uDD2D</div>${state.leads.length ? 'No leads match these filters.' : 'No leads yet. They will appear here the moment someone starts with MAYA.'}</div>`;
+            $('#leadRows').innerHTML = `<tr><td colspan="8">${empty}</td></tr>`;
+            $('#leadCards').innerHTML = empty;
+            $('#pager').innerHTML = '';
+            return;
+        }
+        $('#leadRows').innerHTML = slice.map((l, i) => {
+            const s = signOf(l);
+            const h = heatOf(l);
+            return `<tr data-id="${esc(l.id)}" class="${state.fresh.has(l.id) ? 'is-new' : ''}" style="animation-delay:${Math.min(i, 20) * 18}ms">
+                <td><div class="ad-person">${avatar(l)}<div style="min-width:0"><div class="ad-person__name">${esc(l.name || 'Unnamed visitor')}</div><div class="ad-person__sub">${contactLine(l)}</div></div></div></td>
+                <td>${l.birthDate ? `${esc(fmtBirth(l))}<div class="ad-person__sub">${esc(fmtTime(l.birthTime) || 'time not given')}${s ? ` &middot; ${s.sym} ${s.hi}` : ''}</div>` : '<span class="ad-muted">-</span>'}</td>
+                <td>${esc(cityOf(l)) || '<span class="ad-muted">-</span>'}</td>
+                <td>${stageDots(l.stage)}</td>
+                <td><span class="ad-heatpill ${heatClass(h)}">${heatLabel(h)}</span></td>
+                <td>${statusPill(l.status)}</td>
+                <td><span class="ad-src">${esc(SOURCE[l.source] || l.source)}</span></td>
+                <td title="${esc(fmtDateTime(l.lastActive))}">${esc(timeAgo(l.lastActive || l.createdAt))}</td>
+            </tr>`;
+        }).join('');
+        $('#leadCards').innerHTML = slice.map((l, i) => {
+            const h = heatOf(l);
+            const s = signOf(l);
+            return `<div class="ad-lcard" data-id="${esc(l.id)}" style="animation-delay:${Math.min(i, 20) * 18}ms">
+                <div class="ad-lcard__top"><div class="ad-person">${avatar(l)}<div style="min-width:0"><div class="ad-person__name">${esc(l.name || 'Unnamed visitor')}</div><div class="ad-person__sub">${contactLine(l)}</div></div></div><span class="ad-heatpill ${heatClass(h)}">${heatLabel(h)}</span></div>
+                <div class="ad-lcard__meta">${statusPill(l.status)}<span class="ad-src">${esc(STAGES[l.stage])}</span>${s ? `<span>${s.sym} ${esc(s.hi)}</span>` : ''}${cityOf(l) ? `<span>\uD83D\uDCCD ${esc(cityOf(l))}</span>` : ''}<span>${esc(timeAgo(l.lastActive || l.createdAt))}</span></div>
+            </div>`;
+        }).join('');
+        $$('#leadRows tr[data-id], #leadCards [data-id]').forEach((el) => { el.onclick = () => openDrawer(el.dataset.id); });
+        $('#pager').innerHTML = pages > 1 ? `
+            <span>Page ${state.page} of ${pages}</span>
+            <div><button class="ad-btn" id="prevPg" ${state.page <= 1 ? 'disabled' : ''}>\u2190 Prev</button><button class="ad-btn" id="nextPg" ${state.page >= pages ? 'disabled' : ''}>Next \u2192</button></div>` : '';
+        if (pages > 1) {
+            $('#prevPg').onclick = () => { state.page -= 1; renderLeadRows(); $('#leadsCard').scrollIntoView({ behavior: 'smooth' }); };
+            $('#nextPg').onclick = () => { state.page += 1; renderLeadRows(); $('#leadsCard').scrollIntoView({ behavior: 'smooth' }); };
+        }
+    }
+
+    function exportCsv() {
+        const list = filtered();
+        const cols = [
+            ['Name', (l) => l.name], ['Phone', (l) => l.phone], ['Email', (l) => l.email], ['Gender', (l) => l.gender],
+            ['Birth date', (l) => l.birthDate], ['Birth time', (l) => l.birthTime], ['Birth place', (l) => l.birthPlace],
+            ['Surya rashi', (l) => (signOf(l) ? `${signOf(l).name} (${signOf(l).hi})` : '')], ['Age', (l) => ageOf(l) ?? ''],
+            ['Language', (l) => l.language], ['Stage', (l) => STAGES[l.stage]], ['Heat', (l) => heatOf(l)], ['Status', (l) => STATUS[l.status]],
+            ['Note', (l) => l.note], ['Source', (l) => SOURCE[l.source] || l.source], ['First seen', (l) => fmtDateTime(l.createdAt)], ['Last active', (l) => fmtDateTime(l.lastActive)]
+        ];
+        const cell = (v) => {
+            let s = String(v ?? '');
+            if (/^[=+\-@]/.test(s)) s = `'${s}`;
+            return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+        };
+        const csv = [cols.map((c) => c[0]).join(','), ...list.map((l) => cols.map((c) => cell(c[1](l))).join(','))].join('\r\n');
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `mayalogy-leads-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        toast(`Downloaded <b>${fmtN(list.length)}</b> leads`);
+    }
+
+    // ---------- drawer ----------
+    function openDrawer(id) {
+        const lead = state.leads.find((l) => l.id === id);
+        if (!lead) return;
+        state.openId = id;
+        state.fresh.delete(id);
+        fillDrawer(lead, false);
+        $('#drawer').classList.add('is-open');
+        $('#drawer').setAttribute('aria-hidden', 'false');
+        $('#scrim').classList.add('is-open');
+    }
+    function closeDrawer() {
+        state.openId = null;
+        $('#drawer')?.classList.remove('is-open');
+        $('#drawer')?.setAttribute('aria-hidden', 'true');
+        $('#scrim')?.classList.remove('is-open');
+    }
+
+    const kv = (label, value) => (value ? `<div><small>${label}</small><b>${esc(value)}</b></div>` : '');
+
+    function timeline(l) {
+        const items = [];
+        if (l.createdAt) items.push([l.createdAt, 'First seen', l.source === 'phone_capture' ? 'Gave phone number' : 'Started with MAYA']);
+        if (l.birthDate) items.push([0, 'Shared birth details', [fmtBirth(l), fmtTime(l.birthTime), cityOf(l)].filter(Boolean).join(' \u00B7 ')]);
+        if (l.stage >= 3) items.push([0, 'Saw their numbers', '']);
+        if (l.stage >= 4) items.push([0, 'Entered the reading', l.answers?.length ? `${l.answers.length} answers` : '']);
+        if (l.validations?.length) items.push([0, 'Answered questions', `${l.validations.length} replies`]);
+        if (l.stage >= 6) items.push([l.account?.since || 0, 'Signed up', l.account?.type === 'phone' ? 'with phone' : 'with email']);
+        if (l.lastActive) items.push([l.lastActive, 'Last active', timeAgo(l.lastActive)]);
+        if (l.statusAt) items.push([l.statusAt, `Team: ${STATUS[l.status]}`, l.note ? l.note.slice(0, 80) : '']);
+        return items.map(([t, title, sub]) => `<div><b>${esc(title)}</b>${t ? ` <span class="ad-muted">&middot; ${esc(fmtDateTime(t))}</span>` : ''}${sub ? `<br><span>${esc(sub)}</span>` : ''}</div>`).join('');
+    }
+
+    function fillDrawer(l, keepNote) {
+        const drawer = $('#drawer');
+        const draft = keepNote ? $('#noteBox', drawer)?.value : null;
+        const s = signOf(l);
+        const age = ageOf(l);
+        const wa = waLink(l.phone);
+        const h = heatOf(l);
+        const nums = Object.entries(l.numbers || {});
+        drawer.innerHTML = `
+            <div class="ad-drawer__head">
+                <button class="ad-btn ad-btn--icon ad-drawer__close" id="closeDrawer" aria-label="Close">${ICON.close}</button>
+                <div class="ad-drawer__who">${avatar(l)}<div style="min-width:0">
+                    <h3>${esc(l.name || 'Unnamed visitor')}</h3>
+                    <p>${[s ? `${s.sym} ${s.name} (${s.hi})` : '', age !== null ? `${age} yrs` : '', cityOf(l)].filter(Boolean).map(esc).join(' &middot; ') || 'No birth details yet'}</p>
+                    <p style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${statusPill(l.status)}<span class="ad-heatpill ${heatClass(h)}">${heatLabel(h)} &middot; ${h}</span><span class="ad-src">${esc(SOURCE[l.source] || l.source)}</span></p>
+                </div></div>
+                <div class="ad-drawer__actions">
+                    ${hasPhone(l) ? `<a class="ad-btn ad-btn--gold" href="${esc(telLink(l.phone))}">${ICON.phone}Call</a>` : ''}
+                    ${wa ? `<a class="ad-btn" href="${esc(wa)}" target="_blank" rel="noopener">${ICON.whatsapp}WhatsApp</a>` : ''}
+                    ${l.email ? `<a class="ad-btn" href="mailto:${esc(l.email)}">${ICON.mail}Email</a>` : ''}
+                    ${l.phone || l.email ? `<button class="ad-btn" id="copyContact">${ICON.copy}Copy contact</button>` : ''}
+                </div>
+            </div>
+            <div class="ad-drawer__body">
+                <div class="ad-sec">
+                    <h4>Follow-up</h4>
+                    <div class="ad-status" id="statusBtns">${Object.entries(STATUS).map(([k, v]) => `<button data-s="${k}" class="${l.status === k ? 'is-on' : ''}">${v}</button>`).join('')}</div>
+                    <textarea class="ad-note" id="noteBox" placeholder="Note for the team: what they asked, when to call back...">${esc(draft ?? l.note ?? '')}</textarea>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:10px">
+                        <span class="ad-muted" style="font-size:.74rem">${l.statusAt ? `Last updated ${esc(timeAgo(l.statusAt))}` : 'Not followed up yet'}</span>
+                        <button class="ad-btn ad-btn--gold" id="saveStatus">Save</button>
+                    </div>
+                </div>
+                <div class="ad-sec"><h4>Profile</h4><div class="ad-kv">
+                    ${kv('Phone', l.phone)}${kv('Email', l.email)}
+                    ${kv('Birth date', fmtBirth(l))}${kv('Birth time', fmtTime(l.birthTime))}
+                    ${kv('Birth place', l.birthPlace)}${kv('Gender', l.gender && l.gender[0].toUpperCase() + l.gender.slice(1))}
+                    ${kv('Marital status', l.maritalStatus && l.maritalStatus[0].toUpperCase() + l.maritalStatus.slice(1))}${kv('Language', langOf(l) === 'hi' ? 'Hindi' : langOf(l) === 'en' ? 'English' : '')}
+                    ${kv('First seen', fmtDateTime(l.createdAt))}${kv('Last active', fmtDateTime(l.lastActive))}
+                </div></div>
+                ${nums.length ? `<div class="ad-sec"><h4>Numerology</h4><div class="ad-nums">${nums.map(([k, v]) => `<div class="ad-num"><b>${esc(v)}</b><small>${esc(NUM_LABEL[k] || k)}</small></div>`).join('')}</div></div>` : ''}
+                <div class="ad-sec"><h4>Journey</h4><div class="ad-timeline">${timeline(l)}</div></div>
+                ${l.answers?.length ? `<div class="ad-sec"><h4>Their answers</h4><div class="ad-qa">${l.answers.map((a) => `<div><small>${esc(a.q.replace(/_/g, ' '))}</small>${esc(a.a)}</div>`).join('')}</div></div>` : ''}
+                ${l.validations?.length ? `<div class="ad-sec"><h4>Reading replies</h4><div class="ad-qa">${l.validations.map((v) => `<div style="border-left-color:var(--gold)"><small>${esc(v.q)}</small>${esc(v.a)}</div>`).join('')}</div></div>` : ''}
+                ${l.device && (l.device.app || l.device.tz || l.device.screen) ? `<div class="ad-sec"><h4>Device</h4><div class="ad-kv">${kv('App', l.device.app === 'android-webview' ? 'Android app' : l.device.app ? 'Website' : '')}${kv('Time zone', l.device.tz)}${kv('Screen', l.device.screen)}${kv('Browser language', l.device.lang)}</div></div>` : ''}
+                <p class="ad-muted" style="font-size:.7rem;word-break:break-all">ID: ${esc(l.id)}</p>
+            </div>`;
+
+        $('#closeDrawer').onclick = closeDrawer;
+        let chosen = l.status;
+        $$('#statusBtns button').forEach((b) => {
+            b.onclick = () => { chosen = b.dataset.s; $$('#statusBtns button').forEach((x) => x.classList.toggle('is-on', x === b)); };
+        });
+        $('#saveStatus').onclick = async () => {
+            const btn = $('#saveStatus');
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+            try {
+                const note = $('#noteBox').value;
+                const res = await api(API_LEADS, { method: 'POST', body: JSON.stringify({ id: l.id, status: chosen, note }) });
+                Object.assign(l, { status: res.status, note: res.note, statusAt: res.updatedAt });
+                delete l._heat;
+                toast(`Saved: <b>${esc(l.name || 'lead')}</b> is now ${esc(STATUS[l.status])}`);
+                renderKpis();
+                renderHero();
+                renderLeadRows();
+                fillDrawer(l, false);
+            } catch (error) {
+                toast(`\u26A0\uFE0F ${esc(error.message)}`);
+                btn.disabled = false;
+                btn.textContent = 'Save';
+            }
+        };
+        const copyBtn = $('#copyContact');
+        if (copyBtn) {
+            copyBtn.onclick = async () => {
+                const textValue = [l.name, l.phone, l.email].filter(Boolean).join(' | ');
+                try { await navigator.clipboard.writeText(textValue); toast('Copied'); } catch (_e) { toast(esc(textValue)); }
+            };
+        }
+    }
+
+    // ---------- keyboard + resize ----------
+    document.addEventListener('keydown', (e) => {
+        if (!document.body.classList.contains('is-dash')) return;
+        const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '');
+        if (e.key === 'Escape') closeDrawer();
+        if (typing) return;
+        if (e.key === '/') { e.preventDefault(); $('#q')?.focus(); }
+        if (e.key === 'r' || e.key === 'R') load(true);
+    });
+    let rt = null;
+    window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if ($('#trendChart')) renderTrend(); }, 200); });
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && getToken() && $('#kpis') && Date.now() - state.generatedAt > REFRESH_MS) load(false);
+    });
+
+    // ---------- start ----------
+    if (getToken()) startDashboard(); else renderLogin();
+})();
