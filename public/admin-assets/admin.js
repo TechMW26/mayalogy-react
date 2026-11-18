@@ -132,7 +132,7 @@
         return lead._heat;
     }
     const heatClass = (h) => (h >= 70 ? 'hot' : h >= 45 ? 'warm' : 'cold');
-    const heatLabel = (h) => (h >= 70 ? '\uD83D\uDD25 Hot' : h >= 45 ? '\u2600\uFE0F Warm' : '\u2744\uFE0F Cold');
+    const heatLabel = (h) => (h >= 70 ? 'High' : h >= 45 ? 'Medium' : 'Low');
 
     function initials(lead) {
         const n = String(lead.name || '').trim();
@@ -140,14 +140,8 @@
         const parts = n.split(/\s+/).filter(Boolean);
         return ((parts[0]?.[0] || '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
     }
-    function avatarStyle(lead) {
-        const s = signOf(lead);
-        const c = s ? EL_COLOR[s.el] : ['#f6d69a', '#a8742e'];
-        return `--av: linear-gradient(135deg, ${c[0]}, ${c[1]})`;
-    }
     function avatar(lead) {
-        const s = signOf(lead);
-        return `<div class="ad-avatar" style="${avatarStyle(lead)}">${esc(initials(lead))}${s ? `<em>${s.sym}</em>` : ''}</div>`;
+        return `<div class="ad-avatar">${esc(initials(lead))}</div>`;
     }
 
     function timeAgo(t) {
@@ -257,38 +251,23 @@
         } catch (_e) { /* no sound */ }
     }
 
-    // ---------- zodiac wheel (login + loader) ----------
-    function wheelSvg() {
-        const parts = SIGNS.map((s, i) => {
-            const a = (i * 30 - 90) * Math.PI / 180;
-            const x = 66 + Math.cos(a) * 52;
-            const y = 66 + Math.sin(a) * 52;
-            return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" dominant-baseline="central" fill="#f6d69a" font-size="11">${s.sym}</text>`;
-        }).join('');
-        const ticks = Array.from({ length: 36 }, (_, i) => {
-            const a = i * 10 * Math.PI / 180;
-            const r1 = i % 3 === 0 ? 40 : 42;
-            return `<line x1="${(66 + Math.cos(a) * r1).toFixed(1)}" y1="${(66 + Math.sin(a) * r1).toFixed(1)}" x2="${(66 + Math.cos(a) * 45).toFixed(1)}" y2="${(66 + Math.sin(a) * 45).toFixed(1)}" stroke="#e9b65a" stroke-opacity="0.6"/>`;
-        }).join('');
-        return `<svg viewBox="0 0 132 132"><circle cx="66" cy="66" r="63" fill="none" stroke="#e9b65a" stroke-opacity="0.55"/><circle cx="66" cy="66" r="45" fill="none" stroke="#e9b65a" stroke-opacity="0.35"/>${ticks}${parts}</svg>`;
-    }
-
     // ---------- login ----------
     function renderLogin(message = '') {
         document.body.classList.remove('is-dash');
         $('#app').innerHTML = `
             <div class="ad-login">
                 <form class="ad-login__card" id="loginForm" autocomplete="on">
-                    <div class="ad-wheel">${wheelSvg()}<img src="/images/maya-logo.png" alt="" onerror="this.remove()"></div>
-                    <h1 class="ad-brand">MAYALOGY</h1>
-                    <p>Lead Desk &middot; team sign in</p>
+                    <img class="ad-login__logo" src="/images/maya-logo.png" alt="" onerror="this.remove()">
+                    <h1>Mayalogy Leads</h1>
+                    <p>Sign in with the team password.</p>
+                    <label class="ad-label" for="pw">Password</label>
                     <div class="ad-field">
-                        <input id="pw" type="password" placeholder="Admin password" autocomplete="current-password" required>
+                        <input id="pw" type="password" autocomplete="current-password" required>
                         <button type="button" class="ad-eye" id="eye" aria-label="Show password">${ICON.eye}</button>
                     </div>
-                    <label class="ad-check"><input type="checkbox" id="remember"> Keep me signed in on this device (12 hours)</label>
+                    <label class="ad-check"><input type="checkbox" id="remember"> Keep me signed in on this device for 12 hours</label>
                     <div class="ad-error" id="loginError">${esc(message)}</div>
-                    <button class="ad-btn ad-btn--gold ad-btn--wide" id="loginBtn" type="submit">Enter Lead Desk</button>
+                    <button class="ad-btn ad-btn--primary ad-btn--wide" id="loginBtn" type="submit">Sign in</button>
                 </form>
             </div>`;
         const pw = $('#pw');
@@ -299,7 +278,7 @@
             const btn = $('#loginBtn');
             const err = $('#loginError');
             btn.disabled = true;
-            btn.textContent = 'Checking...';
+            btn.textContent = 'Signing in...';
             err.textContent = '';
             try {
                 const res = await fetch(API_LOGIN, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw.value }) });
@@ -310,16 +289,11 @@
                     throw new Error(body?.error || 'Could not sign in');
                 }
                 saveToken(body, $('#remember').checked);
-                chime();
                 startDashboard();
             } catch (error) {
                 err.textContent = error.message || 'Could not sign in';
-                const card = $('#loginForm');
-                card.classList.remove('ad-shake');
-                void card.offsetWidth;
-                card.classList.add('ad-shake');
                 btn.disabled = false;
-                btn.textContent = 'Enter Lead Desk';
+                btn.textContent = 'Sign in';
                 pw.select();
             }
         };
@@ -331,27 +305,22 @@
         $('#app').innerHTML = `
             <header class="ad-top">
                 <img class="ad-top__logo" src="/images/maya-logo.png" alt="" onerror="this.style.display='none'">
-                <div class="ad-top__title"><span class="ad-brand">MAYALOGY</span><small>Lead Desk</small></div>
+                <div class="ad-top__title">Mayalogy <span>Leads</span></div>
                 <div class="ad-top__spacer"></div>
-                <div class="ad-live" id="live"><i></i><span id="liveText">Connecting...</span></div>
-                <button class="ad-btn ad-btn--icon" id="soundBtn" title="New lead sound">${state.sound ? ICON.bell : ICON.bellOff}</button>
+                <span class="ad-live" id="live"><i></i><span id="liveText">Loading...</span></span>
+                <button class="ad-btn ad-btn--icon" id="soundBtn" title="Sound for new leads">${state.sound ? ICON.bell : ICON.bellOff}</button>
                 <button class="ad-btn ad-btn--icon" id="refreshBtn" title="Refresh (R)">${ICON.refresh}</button>
                 <button class="ad-btn" id="logoutBtn" title="Sign out">${ICON.logout}<span>Sign out</span></button>
             </header>
             <main class="ad-main">
-                <section class="ad-hero" id="hero"></section>
-                <section class="ad-kpis" id="kpis">${'<div class="ad-skel"></div>'.repeat(6)}</section>
+                <section class="ad-head" id="hero"></section>
+                <section class="ad-kpis" id="kpis">${'<div class="ad-skel"></div>'.repeat(4)}</section>
                 <section class="ad-grid ad-grid--2-1">
                     <div class="ad-card" id="trendCard"><div class="ad-skel"></div></div>
                     <div class="ad-card" id="funnelCard"><div class="ad-skel"></div></div>
                 </section>
-                <section class="ad-grid ad-grid--3">
-                    <div class="ad-card" id="zodiacCard"><div class="ad-skel"></div></div>
-                    <div class="ad-card" id="whoCard"><div class="ad-skel"></div></div>
-                    <div class="ad-card" id="whereCard"><div class="ad-skel"></div></div>
-                </section>
-                <section class="ad-card" id="heatCard" style="margin-bottom:16px"><div class="ad-skel"></div></section>
-                <section class="ad-card" id="leadsCard"><div class="ad-skel" style="height:320px"></div></section>
+                <section class="ad-card" id="breakdownCard" style="margin-bottom:16px"><div class="ad-skel"></div></section>
+                <section class="ad-card ad-card--flush" id="leadsCard"><div class="ad-skel" style="height:320px"></div></section>
             </main>
             <div class="ad-scrim" id="scrim"></div>
             <aside class="ad-drawer" id="drawer" aria-hidden="true"></aside>`;
@@ -378,7 +347,7 @@
         const el = $('#liveText');
         if (!el) return;
         $('#live')?.classList.toggle('is-off', !state.generatedAt);
-        el.textContent = state.generatedAt ? `Live \u00B7 updated ${timeAgo(state.generatedAt)}` : 'Connecting...';
+        el.textContent = state.generatedAt ? `Updated ${timeAgo(state.generatedAt)}` : 'Loading...';
     }
 
     async function load(fresh) {
@@ -399,17 +368,17 @@
                     const who = l.name || l.phone || 'Someone';
                     const where = cityOf(l);
                     toast(added.length === 1
-                        ? `\u2728 New lead: <b>${esc(who)}</b>${where ? ` from ${esc(where)}` : ''}`
-                        : `\u2728 <b>${added.length} new leads</b> just came in`);
+                        ? `New lead: <b>${esc(who)}</b>${where ? ` from ${esc(where)}` : ''}`
+                        : `<b>${added.length} new leads</b> just came in`);
                 }
             }
             state.known = ids;
             state.leads = leads;
             state.generatedAt = data.generatedAt || Date.now();
             renderAll();
-            if (fresh && btn) toast(`Up to date \u00B7 ${fmtN(leads.length)} leads`, 1600);
+            
         } catch (error) {
-            if (getToken()) toast(`\u26A0\uFE0F ${esc(error.message || 'Could not load leads')}`);
+            if (getToken()) toast(esc(error.message || 'Could not load leads'));
         } finally {
             state.loading = false;
             $('#refreshBtn')?.classList.remove('ad-spin');
@@ -423,10 +392,7 @@
         renderKpis();
         renderTrend();
         renderFunnel();
-        renderZodiac();
-        renderWho();
-        renderWhere();
-        renderHeat();
+        renderBreakdown();
         renderLeads();
         if (state.openId) {
             const lead = state.leads.find((l) => l.id === state.openId);
@@ -442,58 +408,43 @@
     function renderHero() {
         const t0 = today0();
         const todayCount = countIn(t0, t0 + DAY);
-        const h = new Date().getHours();
-        const greet = h < 12 ? 'Suprabhat' : h < 17 ? 'Namaste' : 'Shubh sandhya';
-        const hot = state.leads.filter((l) => heatOf(l) >= 70 && l.status === 'new').length;
-        const dateText = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+        const pending = state.leads.filter((l) => l.status === 'new' && (hasPhone(l) || l.email)).length;
+        const dateText = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
         $('#hero').innerHTML = `
             <div>
-                <h2>${greet} \uD83D\uDE4F <span>${todayCount ? `${fmtN(todayCount)} new lead${todayCount > 1 ? 's' : ''} today` : 'No new leads yet today'}</span></h2>
-                <p>${hot ? `${fmtN(hot)} hot lead${hot > 1 ? 's are' : ' is'} waiting for a call.` : 'All hot leads are followed up. Great work.'}</p>
-            </div>
-            <div class="ad-hero__moon"><div class="ad-orb"></div><div><b>${esc(dateText)}</b>${fmtN(state.leads.length)} people in your sky</div></div>`;
+                <h1>Overview</h1>
+                <p>${esc(dateText)} &middot; ${fmtN(todayCount)} new today &middot; ${fmtN(pending)} waiting for follow-up</p>
+            </div>`;
     }
 
-    function spark(values, color) {
-        const w = 120;
-        const h = 28;
-        const max = Math.max(1, ...values);
-        const pts = values.map((v, i) => `${((i / Math.max(1, values.length - 1)) * w).toFixed(1)},${(h - 2 - (v / max) * (h - 4)).toFixed(1)}`);
-        return `<svg class="ad-kpi__spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
-    }
-    function delta(now, before) {
-        if (!before && !now) return '<span class="ad-muted">no change</span>';
-        if (!before) return '<span class="ad-up">new</span>';
+    function delta(now, before, label) {
+        if (!before && !now) return `<span class="ad-muted">No change ${label}</span>`;
+        if (!before) return `<span class="ad-up">New</span> <span class="ad-muted">${label}</span>`;
         const d = Math.round(((now - before) / before) * 100);
-        return d >= 0 ? `<span class="ad-up">\u25B2 ${d}%</span>` : `<span class="ad-down">\u25BC ${Math.abs(d)}%</span>`;
+        const cls = d >= 0 ? 'ad-up' : 'ad-down';
+        return `<span class="${cls}">${d >= 0 ? '+' : '-'}${Math.abs(d)}%</span> <span class="ad-muted">${label}</span>`;
     }
 
     function renderKpis() {
         const L = state.leads;
         const t0 = today0();
-        const days14 = Array.from({ length: 14 }, (_, i) => countIn(t0 - (13 - i) * DAY, t0 - (12 - i) * DAY));
         const todayN = countIn(t0, t0 + DAY);
         const yestN = countIn(t0 - DAY, t0);
         const wk = countIn(t0 - 6 * DAY, t0 + DAY);
         const prevWk = countIn(t0 - 13 * DAY, t0 - 6 * DAY);
         const full = L.filter((l) => l.birthDate && l.birthTime && l.birthPlace).length;
         const signed = L.filter((l) => l.stage >= 6).length;
-        const pending = L.filter((l) => l.status === 'new' && (hasPhone(l) || l.email) && l.stage >= 1).length;
         const cards = [
-            { label: 'Total leads', value: L.length, sub: `<span>${fmtN(wk)} this week</span>`, icon: ICON.users, color: '#e9b65a', spark: days14 },
-            { label: 'Today', value: todayN, sub: `${delta(todayN, yestN)}<span>vs yesterday (${fmtN(yestN)})</span>`, icon: ICON.sun, color: '#ffb347', spark: days14.slice(-7) },
-            { label: 'Last 7 days', value: wk, sub: `${delta(wk, prevWk)}<span>vs week before</span>`, icon: ICON.week, color: '#6fb3ff', spark: days14 },
-            { label: 'Full birth details', value: full, sub: `<span>${pct(full, L.length)}% gave date, time and place</span>`, icon: ICON.star, color: '#9a7bff' },
-            { label: 'Signed up', value: signed, sub: `<span>${pct(signed, L.length)}% conversion</span>`, icon: ICON.check, color: '#5fd38d' },
-            { label: 'Follow-up pending', value: pending, sub: '<span>New leads with phone or email</span>', icon: ICON.phone, color: '#ff7aa8' }
+            { label: 'Total leads', value: L.length, sub: `<span class="ad-muted">${pct(full, L.length)}% gave full birth details</span>` },
+            { label: 'New today', value: todayN, sub: delta(todayN, yestN, 'vs yesterday') },
+            { label: 'Last 7 days', value: wk, sub: delta(wk, prevWk, 'vs previous 7 days') },
+            { label: 'Signed up', value: signed, sub: `<span class="ad-muted">${pct(signed, L.length)}% of all leads</span>` }
         ];
-        $('#kpis').innerHTML = cards.map((c, i) => `
-            <div class="ad-card ad-kpi" style="--kpi:${c.color};animation-delay:${i * 60}ms">
-                <div class="ad-kpi__icon">${c.icon}</div>
+        $('#kpis').innerHTML = cards.map((c) => `
+            <div class="ad-kpi">
                 <div class="ad-kpi__label">${c.label}</div>
                 <div class="ad-kpi__value" data-count="${c.value}">0</div>
                 <div class="ad-kpi__sub">${c.sub}</div>
-                ${c.spark ? spark(c.spark, c.color) : ''}
             </div>`).join('');
         $$('#kpis [data-count]').forEach((el) => countUp(el, Number(el.dataset.count)));
     }
@@ -528,13 +479,13 @@
         const total = buckets.reduce((s, b) => s + b.leads, 0);
         card.innerHTML = `
             <div class="ad-card__head">
-                <h3>Leads over time <span class="ad-dim">${fmtN(total)} in ${days} days</span></h3>
+                <div><h3>New leads</h3><div class="ad-sub">${fmtN(total)} in the last ${days} days</div></div>
                 <div class="ad-seg" id="trendSeg">${[7, 30, 90].map((d) => `<button data-d="${d}" class="${d === days ? 'is-on' : ''}">${d}D</button>`).join('')}</div>
             </div>
             <div class="ad-chart" id="trendChart"></div>
-            <div class="ad-legend" style="flex-direction:row;gap:18px;margin-top:10px">
-                <div><i style="background:#e9b65a"></i><span>New leads</span></div>
-                <div><i style="background:#9a7bff"></i><span>Signed up</span></div>
+            <div class="ad-legend ad-legend--inline">
+                <div><i style="background:var(--accent)"></i><span>New leads</span></div>
+                <div><i style="background:var(--ink-3)"></i><span>Signed up</span></div>
             </div>`;
         $$('#trendSeg button').forEach((b) => { b.onclick = () => { state.chartDays = Number(b.dataset.d); renderTrend(); }; });
         drawTrend($('#trendChart'), buckets);
@@ -566,19 +517,17 @@
         const every = Math.ceil(buckets.length / 7);
         const labels = buckets.map((b, i) => ((i % every === 0 || i === buckets.length - 1) && !(i !== buckets.length - 1 && buckets.length - 1 - i < every / 2)
             ? `<text class="ad-axis" x="${x(i)}" y="${H - 6}" text-anchor="middle">${new Date(b.t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</text>` : '')).join('');
-        const dots = buckets.map((b, i) => (b.leads ? `<circle cx="${x(i)}" cy="${y(b.leads)}" r="${buckets.length > 40 ? 2 : 3}" fill="#f6d69a" class="ad-fade" style="animation-delay:${0.6 + i * 0.01}s"/>` : '')).join('');
         box.innerHTML = `
             <svg viewBox="0 0 ${W} ${H}" height="${H}">
                 <defs>
-                    <linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#e9b65a" stop-opacity="0.45"/><stop offset="1" stop-color="#e9b65a" stop-opacity="0"/></linearGradient>
-                    <filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                    <linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#d9a34b" stop-opacity="0.18"/><stop offset="1" stop-color="#d9a34b" stop-opacity="0"/></linearGradient>
                 </defs>
                 ${grid}${labels}
                 <path d="${area}" fill="url(#trendFill)" class="ad-fade"/>
-                <path d="${smooth('signed')}" fill="none" stroke="#9a7bff" stroke-width="2" stroke-dasharray="5 5" class="ad-fade"/>
-                <path d="${line}" fill="none" stroke="#e9b65a" stroke-width="2.6" filter="url(#glow)" class="ad-draw"/>
-                ${dots}
-                <line id="trendGuide" y1="${pad.t}" y2="${pad.t + ih}" stroke="#f6d69a" stroke-opacity="0.35" stroke-dasharray="3 4" style="display:none"/>
+                <path d="${smooth('signed')}" fill="none" stroke="#6b6b76" stroke-width="1.5" stroke-dasharray="4 4"/>
+                <path d="${line}" fill="none" stroke="#d9a34b" stroke-width="2"/>
+                <circle id="trendDot" r="4" fill="#d9a34b" stroke="#0e0e12" stroke-width="2" style="display:none"/>
+                <line id="trendGuide" y1="${pad.t}" y2="${pad.t + ih}" stroke="#3a3a44" style="display:none"/>
                 <rect x="${pad.l}" y="${pad.t}" width="${iw}" height="${ih}" fill="transparent" id="trendHit"/>
             </svg>
             <div class="ad-tip" id="trendTip"></div>`;
@@ -586,6 +535,7 @@
         const tip = $('#trendTip', box);
         const guide = $('#trendGuide', box);
         const svg = $('svg', box);
+        const dot = $('#trendDot', box);
         const move = (ev) => {
             const r = svg.getBoundingClientRect();
             const px = ((ev.touches?.[0]?.clientX ?? ev.clientX) - r.left) * (W / r.width);
@@ -594,12 +544,15 @@
             guide.setAttribute('x1', x(i));
             guide.setAttribute('x2', x(i));
             guide.style.display = '';
-            tip.innerHTML = `${new Date(b.t).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}<br><b>${b.leads}</b> leads &middot; ${b.signed} signed up`;
+            dot.setAttribute('cx', x(i));
+            dot.setAttribute('cy', y(b.leads));
+            dot.style.display = '';
+            tip.innerHTML = `<div class="ad-muted">${new Date(b.t).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</div><b>${b.leads}</b> new &middot; ${b.signed} signed up`;
             tip.style.left = `${(x(i) / W) * r.width}px`;
             tip.style.top = `${(y(b.leads) / H) * r.height}px`;
             tip.style.opacity = 1;
         };
-        const leave = () => { tip.style.opacity = 0; guide.style.display = 'none'; };
+        const leave = () => { tip.style.opacity = 0; guide.style.display = 'none'; dot.style.display = 'none'; };
         hit.addEventListener('mousemove', move);
         hit.addEventListener('touchstart', move, { passive: true });
         hit.addEventListener('touchmove', move, { passive: true });
@@ -614,16 +567,16 @@
         const rows = STAGES.slice(1).map((name, i) => ({ name, n: L.filter((l) => l.stage >= i + 1).length }));
         const max = Math.max(1, rows[0].n);
         $('#funnelCard').innerHTML = `
-            <div class="ad-card__head"><h3>Journey funnel <span class="ad-dim">how far people go</span></h3></div>
+            <div class="ad-card__head"><div><h3>Journey</h3><div class="ad-sub">How far leads get in the app</div></div></div>
             <div class="ad-funnel">${rows.map((r) => `
                 <div class="ad-funnel__row">
                     <span class="ad-funnel__name">${r.name}</span>
                     <div class="ad-funnel__bar"><span data-w="${(r.n / max) * 100}"></span></div>
-                    <span class="ad-funnel__num">${fmtN(r.n)}<small>${pct(r.n, total)}%</small></span>
+                    <span class="ad-funnel__num">${fmtN(r.n)} <small>${pct(r.n, total)}%</small></span>
                 </div>`).join('')}
             </div>
-            <p class="ad-muted" style="font-size:.76rem;margin:14px 0 0">Biggest drop: <b style="color:var(--gold-2)">${biggestDrop(rows)}</b></p>`;
-        requestAnimationFrame(() => $$('#funnelCard [data-w]').forEach((el) => { el.style.width = `${Math.max(2, el.dataset.w)}%`; }));
+            <p class="ad-note">Biggest drop: ${biggestDrop(rows)}</p>`;
+        requestAnimationFrame(() => $$('#funnelCard [data-w]').forEach((el) => { el.style.width = `${Math.max(1, el.dataset.w)}%`; }));
     }
     function biggestDrop(rows) {
         let best = null;
@@ -631,145 +584,67 @@
             const lost = rows[i - 1].n - rows[i].n;
             if (rows[i - 1].n && (!best || lost > best.lost)) best = { lost, from: rows[i - 1].name, to: rows[i].name, p: pct(lost, rows[i - 1].n) };
         }
-        return best && best.lost > 0 ? `${esc(best.from)} \u2192 ${esc(best.to)} (${best.p}% leave)` : 'none yet';
+        return best && best.lost > 0 ? `<b>${esc(best.from)}</b> to <b>${esc(best.to)}</b> (${best.p}% leave)` : 'none yet';
     }
 
-    // ---------- zodiac ----------
-    function renderZodiac() {
-        const counts = SIGNS.map((s) => ({ s, n: state.leads.filter((l) => signOf(l) === s).length }));
-        const withSign = counts.reduce((a, c) => a + c.n, 0);
-        const max = Math.max(1, ...counts.map((c) => c.n));
-        const top = [...counts].sort((a, b) => b.n - a.n)[0];
-        const cx = 160;
-        const cy = 160;
-        const r0 = 56;
-        const segs = counts.map(({ s, n }, i) => {
-            const a0 = (i * 30 - 90 + 2) * Math.PI / 180;
-            const a1 = ((i + 1) * 30 - 90 - 2) * Math.PI / 180;
-            const r1 = r0 + 14 + (n / max) * 74;
-            const p = (r, a) => `${(cx + Math.cos(a) * r).toFixed(1)},${(cy + Math.sin(a) * r).toFixed(1)}`;
-            const col = EL_COLOR[s.el];
-            const mid = (i * 30 - 75) * Math.PI / 180;
-            return `
-                <path class="ad-zseg" d="M${p(r0, a0)} L${p(r1, a0)} A${r1},${r1} 0 0 1 ${p(r1, a1)} L${p(r0, a1)} A${r0},${r0} 0 0 0 ${p(r0, a0)} Z" fill="url(#zg${i})" stroke="rgba(0,0,0,.35)"><title>${s.name} (${s.hi}): ${n}</title></path>
-                <defs><linearGradient id="zg${i}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${col[0]}" stop-opacity="${n ? 0.95 : 0.18}"/><stop offset="1" stop-color="${col[1]}" stop-opacity="${n ? 0.75 : 0.12}"/></linearGradient></defs>
-                <text x="${(cx + Math.cos(mid) * 148).toFixed(1)}" y="${(cy + Math.sin(mid) * 148).toFixed(1)}" text-anchor="middle" dominant-baseline="central" fill="${n === top.n && n ? '#f6d69a' : '#8a7d68'}">${s.sym}</text>`;
-        }).join('');
-        $('#zodiacCard').innerHTML = `
-            <div class="ad-card__head"><h3>Surya rashi <span class="ad-dim">from birth date</span></h3></div>
-            <div class="ad-zodiac">
-                <svg viewBox="0 0 320 320" class="ad-fade">
-                    <circle cx="${cx}" cy="${cy}" r="${r0 - 6}" fill="rgba(233,182,90,.06)" stroke="rgba(233,182,90,.35)"/>
-                    ${segs}
-                    <text x="${cx}" y="${cy - 8}" text-anchor="middle" fill="#f6d69a" font-size="28">${top.n ? top.s.sym : '\u2726'}</text>
-                    <text x="${cx}" y="${cy + 16}" text-anchor="middle" fill="#c9b996" font-size="11">${top.n ? `${top.s.hi} leads` : 'No data yet'}</text>
-                </svg>
+    // ---------- breakdown ----------
+    function breakdownRows(kind) {
+        const L = state.leads;
+        const tally = (fn) => {
+            const m = new Map();
+            L.forEach((l) => { const k = fn(l); if (k) m.set(k, (m.get(k) || 0) + 1); });
+            return [...m.entries()].map(([label, n]) => ({ label, n })).sort((a, b) => b.n - a.n);
+        };
+        if (kind === 'source') return { rows: tally((l) => SOURCE[l.source] || l.source), note: 'Where each lead was saved from' };
+        if (kind === 'lang') return { rows: tally((l) => ({ hi: 'Hindi', en: 'English', other: 'Not chosen' })[langOf(l)]), note: 'Language picked in the app' };
+        if (kind === 'gender') return { rows: tally((l) => (/^f/.test(l.gender) ? 'Female' : /^m/.test(l.gender) ? 'Male' : 'Not given')), note: 'As entered by the lead' };
+        if (kind === 'city') {
+            const all = tally((l) => cityOf(l));
+            const given = all.reduce((a, r) => a + r.n, 0);
+            return { rows: all.slice(0, 10), note: `${fmtN(given)} leads gave a birth place${all.length > 10 ? ` \u00B7 ${all.length - 10} more cities` : ''}` };
+        }
+        if (kind === 'rashi') {
+            const rows = SIGNS.map((s) => ({ label: `${s.name} (${s.hi})`, n: L.filter((l) => signOf(l) === s).length })).filter((r) => r.n).sort((a, b) => b.n - a.n);
+            return { rows, note: 'Vedic Sun sign from the birth date' };
+        }
+        if (kind === 'age') {
+            const rows = [['Under 18', 0, 17], ['18-24', 18, 24], ['25-34', 25, 34], ['35-44', 35, 44], ['45-59', 45, 59], ['60+', 60, 200]]
+                .map(([label, a, b]) => ({ label, n: L.filter((l) => { const g = ageOf(l); return g !== null && g >= a && g <= b; }).length }));
+            return { rows, note: 'From the birth date', keepOrder: true };
+        }
+        if (kind === 'time') {
+            const slots = [['Morning (6am-12pm)', 6, 11], ['Afternoon (12-5pm)', 12, 16], ['Evening (5-9pm)', 17, 20], ['Night (9pm-6am)', 21, 29]];
+            const rows = slots.map(([label, a, b]) => ({
+                label,
+                n: L.filter((l) => { if (!l.createdAt) return false; let h = new Date(l.createdAt).getHours(); if (h < 6) h += 24; return h >= a && h <= b; }).length
+            }));
+            return { rows, note: 'When leads first arrived (your local time)', keepOrder: true };
+        }
+        return { rows: [], note: '' };
+    }
+
+    function renderBreakdown() {
+        const card = $('#breakdownCard');
+        const tabs = [['source', 'Source'], ['lang', 'Language'], ['gender', 'Gender'], ['city', 'Birth city'], ['rashi', 'Rashi'], ['age', 'Age'], ['time', 'Time of day']];
+        state.breakdown = state.breakdown || 'source';
+        const { rows, note } = breakdownRows(state.breakdown);
+        const total = rows.reduce((a, r) => a + r.n, 0) || 1;
+        const max = Math.max(1, ...rows.map((r) => r.n));
+        card.innerHTML = `
+            <div class="ad-card__head">
+                <div><h3>Breakdown</h3><div class="ad-sub">${esc(note)}</div></div>
+                <div class="ad-tabs" id="bdTabs">${tabs.map(([k, v]) => `<button data-k="${k}" class="${k === state.breakdown ? 'is-on' : ''}">${v}</button>`).join('')}</div>
             </div>
-            <p class="ad-muted" style="font-size:.76rem;margin:6px 0 0;text-align:center">${withSign ? `Most leads are <b style="color:var(--gold-2)">${top.s.name} (${top.s.hi})</b>: ${fmtN(top.n)} of ${fmtN(withSign)}` : 'Signs show once leads share their birth date.'}</p>`;
-    }
-
-    // ---------- donuts ----------
-    function donut(parts, centerText) {
-        const total = parts.reduce((a, p) => a + p.n, 0) || 1;
-        const R = 48;
-        const C = 2 * Math.PI * R;
-        let off = 0;
-        const rings = parts.map((p) => {
-            const len = (p.n / total) * C;
-            const el = `<circle cx="64" cy="64" r="${R}" fill="none" stroke="${p.color}" stroke-width="16" stroke-dasharray="0 ${C}" data-dash="${Math.max(0, len - 2).toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 64 64)"/>`;
-            off += len;
-            return el;
-        }).join('');
-        return `
-            <div class="ad-donut-wrap">
-                <svg class="ad-donut" viewBox="0 0 128 128"><circle cx="64" cy="64" r="${R}" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="16"/>${rings}
-                    <text x="64" y="62" text-anchor="middle" fill="#f5e8ce" font-size="20" font-weight="700">${centerText}</text>
-                    <text x="64" y="80" text-anchor="middle" fill="#8a7d68" font-size="10">leads</text></svg>
-                <div class="ad-legend">${parts.map((p) => `<div><i style="background:${p.color}"></i><span>${esc(p.label)}</span><b>${fmtN(p.n)}</b></div>`).join('')}</div>
+            <div class="ad-bd">${rows.length ? rows.map((r) => `
+                <div class="ad-bd__row">
+                    <span class="ad-bd__label">${esc(r.label)}</span>
+                    <div class="ad-bd__track"><span data-w="${(r.n / max) * 100}"></span></div>
+                    <span class="ad-bd__num">${fmtN(r.n)}</span>
+                    <span class="ad-bd__pct">${pct(r.n, total)}%</span>
+                </div>`).join('') : '<p class="ad-muted">No data yet.</p>'}
             </div>`;
-    }
-    function animateDonuts(root) {
-        requestAnimationFrame(() => $$('[data-dash]', root).forEach((c) => c.setAttribute('stroke-dasharray', c.dataset.dash)));
-    }
-
-    function renderWho() {
-        const L = state.leads;
-        const lang = [
-            { label: 'Hindi', n: L.filter((l) => langOf(l) === 'hi').length, color: '#e9b65a' },
-            { label: 'English', n: L.filter((l) => langOf(l) === 'en').length, color: '#6fb3ff' },
-            { label: 'Not chosen', n: L.filter((l) => langOf(l) === 'other').length, color: '#5a5266' }
-        ];
-        const gender = [
-            { label: 'Female', n: L.filter((l) => /^f/.test(l.gender)).length, color: '#ff7aa8' },
-            { label: 'Male', n: L.filter((l) => /^m/.test(l.gender)).length, color: '#4fd1c5' },
-            { label: 'Other / not given', n: L.filter((l) => !/^[fm]/.test(l.gender || '')).length, color: '#5a5266' }
-        ];
-        const src = Object.keys(SOURCE).map((k, i) => ({ label: SOURCE[k], n: L.filter((l) => l.source === k).length, color: ['#e9b65a', '#5fd38d', '#6fb3ff', '#9a7bff', '#ff7aa8'][i] })).filter((p) => p.n);
-        $('#whoCard').innerHTML = `
-            <div class="ad-card__head"><h3>Who they are</h3><div class="ad-seg" id="whoSeg"><button data-k="lang" class="is-on">Language</button><button data-k="gender">Gender</button><button data-k="src">Source</button></div></div>
-            <div id="whoBody"></div>`;
-        const sets = { lang, gender, src };
-        const show = (k) => {
-            $('#whoBody').innerHTML = donut(sets[k], fmtN(L.length));
-            animateDonuts($('#whoBody'));
-            $$('#whoSeg button').forEach((b) => b.classList.toggle('is-on', b.dataset.k === k));
-        };
-        $$('#whoSeg button').forEach((b) => { b.onclick = () => show(b.dataset.k); });
-        show('lang');
-    }
-
-    function renderWhere() {
-        const L = state.leads;
-        const cities = {};
-        L.forEach((l) => { const c = cityOf(l); if (c) cities[c] = (cities[c] || 0) + 1; });
-        const top = Object.entries(cities).sort((a, b) => b[1] - a[1]).slice(0, 6);
-        const max = Math.max(1, ...top.map((t) => t[1]));
-        const groups = [['Under 18', 0, 17], ['18-24', 18, 24], ['25-34', 25, 34], ['35-44', 35, 44], ['45-59', 45, 59], ['60+', 60, 200]]
-            .map(([label, a, b]) => ({ label, n: L.filter((l) => { const g = ageOf(l); return g !== null && g >= a && g <= b; }).length }));
-        const gmax = Math.max(1, ...groups.map((g) => g.n));
-        $('#whereCard').innerHTML = `
-            <div class="ad-card__head"><h3>Where &amp; how old</h3><div class="ad-seg" id="whereSeg"><button data-k="city" class="is-on">Birth city</button><button data-k="age">Age</button></div></div>
-            <div class="ad-bars" id="whereBody"></div>`;
-        const show = (k) => {
-            const rows = k === 'city' ? top.map(([label, n]) => ({ label, n, w: (n / max) * 100 })) : groups.map((g) => ({ ...g, w: (g.n / gmax) * 100 }));
-            $('#whereBody').innerHTML = rows.length ? rows.map((r) => `
-                <div class="ad-bars__row"><div class="ad-bars__top"><span>${esc(r.label)}</span><b>${fmtN(r.n)}</b></div><div class="ad-bars__track"><span data-w="${r.w}"></span></div></div>`).join('')
-                : '<p class="ad-muted" style="font-size:.82rem">No birth places yet.</p>';
-            requestAnimationFrame(() => $$('#whereBody [data-w]').forEach((el) => { el.style.width = `${el.dataset.w}%`; }));
-            $$('#whereSeg button').forEach((b) => b.classList.toggle('is-on', b.dataset.k === k));
-        };
-        $$('#whereSeg button').forEach((b) => { b.onclick = () => show(b.dataset.k); });
-        show('city');
-    }
-
-    // ---------- heatmap ----------
-    function renderHeat() {
-        const since = today0() - 89 * DAY;
-        const grid = Array.from({ length: 7 }, () => new Array(24).fill(0));
-        state.leads.forEach((l) => {
-            if (!l.createdAt || l.createdAt < since) return;
-            const d = new Date(l.createdAt);
-            grid[(d.getDay() + 6) % 7][d.getHours()] += 1;
-        });
-        const max = Math.max(1, ...grid.flat());
-        let best = { n: 0, d: 0, h: 0 };
-        grid.forEach((row, d) => row.forEach((n, h) => { if (n > best.n) best = { n, d, h }; }));
-        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        const hourLabel = (h) => `${((h + 11) % 12) + 1}${h < 12 ? 'am' : 'pm'}`;
-        let cells = '<div></div>';
-        for (let h = 0; h < 24; h++) cells += `<div class="ad-heat__hr">${h % 3 === 0 ? hourLabel(h) : ''}</div>`;
-        grid.forEach((row, d) => {
-            cells += `<div class="ad-heat__lab">${days[d]}</div>`;
-            row.forEach((n, h) => {
-                const k = n / max;
-                const bg = n ? `rgba(233,182,90,${(0.15 + k * 0.85).toFixed(2)})` : '';
-                cells += `<div title="${days[d]} ${hourLabel(h)}: ${n} lead${n === 1 ? '' : 's'}" style="${bg ? `background:${bg};box-shadow:0 0 ${Math.round(k * 12)}px rgba(233,182,90,${(k * 0.6).toFixed(2)})` : ''}"></div>`;
-            });
-        });
-        $('#heatCard').innerHTML = `
-            <div class="ad-card__head"><h3>When leads come in <span class="ad-dim">last 90 days</span></h3>
-            <span class="ad-muted" style="font-size:.8rem">${best.n ? `Busiest: <b style="color:var(--gold-2)">${days[best.d]} around ${hourLabel(best.h)}</b>` : 'No data yet'}</span></div>
-            <div class="ad-heat">${cells}</div>`;
+        $$('#bdTabs button').forEach((b) => { b.onclick = () => { state.breakdown = b.dataset.k; renderBreakdown(); }; });
+        requestAnimationFrame(() => $$('#breakdownCard [data-w]').forEach((el) => { el.style.width = `${Math.max(1, el.dataset.w)}%`; }));
     }
 
     // ---------- leads list ----------
@@ -801,11 +676,11 @@
         if (!$('#leadTools', card)) {
             card.innerHTML = `
                 <div class="ad-card__head">
-                    <h3>All leads <span class="ad-dim" id="leadTotal"></span></h3>
-                    <button class="ad-btn ad-btn--gold" id="exportBtn">${ICON.download}Export CSV</button>
+                    <div><h3>Leads</h3><div class="ad-sub" id="leadTotal"></div></div>
+                    <button class="ad-btn" id="exportBtn">${ICON.download}<span>Export CSV</span></button>
                 </div>
                 <div class="ad-tools" id="leadTools">
-                    <div class="ad-search">${ICON.search}<input id="q" type="search" placeholder="Search name, phone, email, city, rashi...  ( / )"></div>
+                    <div class="ad-search">${ICON.search}<input id="q" type="search" placeholder="Search name, phone, email, city"></div>
                     <select class="ad-select" data-f="range"><option value="all">Any time</option><option value="today">Today</option><option value="7d">Last 7 days</option><option value="30d">Last 30 days</option></select>
                     <select class="ad-select" data-f="status"><option value="all">Any status</option>${Object.entries(STATUS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
                     <select class="ad-select" data-f="stage"><option value="all">Any stage</option>${STAGES.map((s, i) => `<option value="${i}">${s}</option>`).join('')}</select>
@@ -814,7 +689,7 @@
                 </div>
                 <div class="ad-count" id="leadCount"></div>
                 <div class="ad-table-wrap"><table class="ad-table"><thead><tr>
-                    <th data-sort="name">Lead</th><th>Birth</th><th>Place</th><th data-sort="stage">Stage</th><th data-sort="heat">Heat</th><th>Status</th><th>Source</th><th data-sort="lastActive">Last active</th>
+                    <th data-sort="name">Name</th><th>Birth details</th><th>Place</th><th data-sort="stage">Stage</th><th data-sort="heat">Priority</th><th>Status</th><th>Source</th><th data-sort="lastActive">Last active</th>
                 </tr></thead><tbody id="leadRows"></tbody></table></div>
                 <div class="ad-cards" id="leadCards"></div>
                 <div class="ad-pager" id="pager"></div>`;
@@ -835,12 +710,12 @@
             });
             $('#exportBtn').onclick = exportCsv;
         }
-        $('#leadTotal').textContent = `${fmtN(state.leads.length)} total`;
+        $('#leadTotal').textContent = `${fmtN(state.leads.length)} total \u00B7 click a row for details`;
         renderLeadRows();
     }
 
     function stageDots(stage) {
-        return `<div class="ad-stage"><div class="ad-stage__dots">${STAGES.slice(1).map((_, i) => `<i class="${stage >= i + 1 ? 'on' : ''}"></i>`).join('')}</div><span>${esc(STAGES[stage] || STAGES[0])}</span></div>`;
+        return `<div class="ad-stage"><span>${esc(STAGES[stage] || STAGES[0])}</span><div class="ad-stage__bar"><i style="width:${Math.round((stage / 6) * 100)}%"></i></div></div>`;
     }
     const statusPill = (s) => `<span class="ad-pill ad-pill--${esc(s)}"><i></i>${esc(STATUS[s] || 'New')}</span>`;
     const contactLine = (l) => esc(l.phone || l.email || (l.source === 'guest' ? 'No contact yet' : ''));
@@ -856,7 +731,7 @@
             if (th.dataset.sort === state.sort.key) th.insertAdjacentHTML('beforeend', `<span class="ad-arrow">${state.sort.dir > 0 ? '\u2191' : '\u2193'}</span>`);
         });
         if (!slice.length) {
-            const empty = `<div class="ad-empty"><div>\uD83D\uDD2D</div>${state.leads.length ? 'No leads match these filters.' : 'No leads yet. They will appear here the moment someone starts with MAYA.'}</div>`;
+            const empty = `<div class="ad-empty">${state.leads.length ? 'No leads match these filters.' : 'No leads yet. They will show up here as soon as someone starts with MAYA.'}</div>`;
             $('#leadRows').innerHTML = `<tr><td colspan="8">${empty}</td></tr>`;
             $('#leadCards').innerHTML = empty;
             $('#pager').innerHTML = '';
@@ -867,7 +742,7 @@
             const h = heatOf(l);
             return `<tr data-id="${esc(l.id)}" class="${state.fresh.has(l.id) ? 'is-new' : ''}" style="animation-delay:${Math.min(i, 20) * 18}ms">
                 <td><div class="ad-person">${avatar(l)}<div style="min-width:0"><div class="ad-person__name">${esc(l.name || 'Unnamed visitor')}</div><div class="ad-person__sub">${contactLine(l)}</div></div></div></td>
-                <td>${l.birthDate ? `${esc(fmtBirth(l))}<div class="ad-person__sub">${esc(fmtTime(l.birthTime) || 'time not given')}${s ? ` &middot; ${s.sym} ${s.hi}` : ''}</div>` : '<span class="ad-muted">-</span>'}</td>
+                <td>${l.birthDate ? `${esc(fmtBirth(l))}<div class="ad-person__sub">${esc(fmtTime(l.birthTime) || 'time not given')}${s ? ` &middot; ${s.hi}` : ''}</div>` : '<span class="ad-muted">-</span>'}</td>
                 <td>${esc(cityOf(l)) || '<span class="ad-muted">-</span>'}</td>
                 <td>${stageDots(l.stage)}</td>
                 <td><span class="ad-heatpill ${heatClass(h)}">${heatLabel(h)}</span></td>
@@ -881,13 +756,13 @@
             const s = signOf(l);
             return `<div class="ad-lcard" data-id="${esc(l.id)}" style="animation-delay:${Math.min(i, 20) * 18}ms">
                 <div class="ad-lcard__top"><div class="ad-person">${avatar(l)}<div style="min-width:0"><div class="ad-person__name">${esc(l.name || 'Unnamed visitor')}</div><div class="ad-person__sub">${contactLine(l)}</div></div></div><span class="ad-heatpill ${heatClass(h)}">${heatLabel(h)}</span></div>
-                <div class="ad-lcard__meta">${statusPill(l.status)}<span class="ad-src">${esc(STAGES[l.stage])}</span>${s ? `<span>${s.sym} ${esc(s.hi)}</span>` : ''}${cityOf(l) ? `<span>\uD83D\uDCCD ${esc(cityOf(l))}</span>` : ''}<span>${esc(timeAgo(l.lastActive || l.createdAt))}</span></div>
+                <div class="ad-lcard__meta">${statusPill(l.status)}<span class="ad-src">${esc(STAGES[l.stage])}</span>${s ? `<span>${esc(s.hi)}</span>` : ''}${cityOf(l) ? `<span>${esc(cityOf(l))}</span>` : ''}<span>${esc(timeAgo(l.lastActive || l.createdAt))}</span></div>
             </div>`;
         }).join('');
         $$('#leadRows tr[data-id], #leadCards [data-id]').forEach((el) => { el.onclick = () => openDrawer(el.dataset.id); });
         $('#pager').innerHTML = pages > 1 ? `
             <span>Page ${state.page} of ${pages}</span>
-            <div><button class="ad-btn" id="prevPg" ${state.page <= 1 ? 'disabled' : ''}>\u2190 Prev</button><button class="ad-btn" id="nextPg" ${state.page >= pages ? 'disabled' : ''}>Next \u2192</button></div>` : '';
+            <div><button class="ad-btn" id="prevPg" ${state.page <= 1 ? 'disabled' : ''}>Previous</button><button class="ad-btn" id="nextPg" ${state.page >= pages ? 'disabled' : ''}>Next</button></div>` : '';
         if (pages > 1) {
             $('#prevPg').onclick = () => { state.page -= 1; renderLeadRows(); $('#leadsCard').scrollIntoView({ behavior: 'smooth' }); };
             $('#nextPg').onclick = () => { state.page += 1; renderLeadRows(); $('#leadsCard').scrollIntoView({ behavior: 'smooth' }); };
@@ -966,11 +841,11 @@
                 <button class="ad-btn ad-btn--icon ad-drawer__close" id="closeDrawer" aria-label="Close">${ICON.close}</button>
                 <div class="ad-drawer__who">${avatar(l)}<div style="min-width:0">
                     <h3>${esc(l.name || 'Unnamed visitor')}</h3>
-                    <p>${[s ? `${s.sym} ${s.name} (${s.hi})` : '', age !== null ? `${age} yrs` : '', cityOf(l)].filter(Boolean).map(esc).join(' &middot; ') || 'No birth details yet'}</p>
-                    <p style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${statusPill(l.status)}<span class="ad-heatpill ${heatClass(h)}">${heatLabel(h)} &middot; ${h}</span><span class="ad-src">${esc(SOURCE[l.source] || l.source)}</span></p>
+                    <p>${[s ? `${s.name} (${s.hi})` : '', age !== null ? `${age} yrs` : '', cityOf(l)].filter(Boolean).map(esc).join(' &middot; ') || 'No birth details yet'}</p>
+                    <p style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${statusPill(l.status)}<span class="ad-heatpill ${heatClass(h)}">${heatLabel(h)} priority</span><span class="ad-src">${esc(SOURCE[l.source] || l.source)}</span></p>
                 </div></div>
                 <div class="ad-drawer__actions">
-                    ${hasPhone(l) ? `<a class="ad-btn ad-btn--gold" href="${esc(telLink(l.phone))}">${ICON.phone}Call</a>` : ''}
+                    ${hasPhone(l) ? `<a class="ad-btn ad-btn--primary" href="${esc(telLink(l.phone))}">${ICON.phone}Call</a>` : ''}
                     ${wa ? `<a class="ad-btn" href="${esc(wa)}" target="_blank" rel="noopener">${ICON.whatsapp}WhatsApp</a>` : ''}
                     ${l.email ? `<a class="ad-btn" href="mailto:${esc(l.email)}">${ICON.mail}Email</a>` : ''}
                     ${l.phone || l.email ? `<button class="ad-btn" id="copyContact">${ICON.copy}Copy contact</button>` : ''}
@@ -980,10 +855,10 @@
                 <div class="ad-sec">
                     <h4>Follow-up</h4>
                     <div class="ad-status" id="statusBtns">${Object.entries(STATUS).map(([k, v]) => `<button data-s="${k}" class="${l.status === k ? 'is-on' : ''}">${v}</button>`).join('')}</div>
-                    <textarea class="ad-note" id="noteBox" placeholder="Note for the team: what they asked, when to call back...">${esc(draft ?? l.note ?? '')}</textarea>
+                    <textarea class="ad-note" id="noteBox" placeholder="Add a note for the team">${esc(draft ?? l.note ?? '')}</textarea>
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:10px">
                         <span class="ad-muted" style="font-size:.74rem">${l.statusAt ? `Last updated ${esc(timeAgo(l.statusAt))}` : 'Not followed up yet'}</span>
-                        <button class="ad-btn ad-btn--gold" id="saveStatus">Save</button>
+                        <button class="ad-btn ad-btn--primary" id="saveStatus">Save</button>
                     </div>
                 </div>
                 <div class="ad-sec"><h4>Profile</h4><div class="ad-kv">
@@ -994,7 +869,7 @@
                     ${kv('First seen', fmtDateTime(l.createdAt))}${kv('Last active', fmtDateTime(l.lastActive))}
                 </div></div>
                 ${nums.length ? `<div class="ad-sec"><h4>Numerology</h4><div class="ad-nums">${nums.map(([k, v]) => `<div class="ad-num"><b>${esc(v)}</b><small>${esc(NUM_LABEL[k] || k)}</small></div>`).join('')}</div></div>` : ''}
-                <div class="ad-sec"><h4>Journey</h4><div class="ad-timeline">${timeline(l)}</div></div>
+                <div class="ad-sec"><h4>Activity</h4><div class="ad-timeline">${timeline(l)}</div></div>
                 ${l.answers?.length ? `<div class="ad-sec"><h4>Their answers</h4><div class="ad-qa">${l.answers.map((a) => `<div><small>${esc(a.q.replace(/_/g, ' '))}</small>${esc(a.a)}</div>`).join('')}</div></div>` : ''}
                 ${l.validations?.length ? `<div class="ad-sec"><h4>Reading replies</h4><div class="ad-qa">${l.validations.map((v) => `<div style="border-left-color:var(--gold)"><small>${esc(v.q)}</small>${esc(v.a)}</div>`).join('')}</div></div>` : ''}
                 ${l.device && (l.device.app || l.device.tz || l.device.screen) ? `<div class="ad-sec"><h4>Device</h4><div class="ad-kv">${kv('App', l.device.app === 'android-webview' ? 'Android app' : l.device.app ? 'Website' : '')}${kv('Time zone', l.device.tz)}${kv('Screen', l.device.screen)}${kv('Browser language', l.device.lang)}</div></div>` : ''}
@@ -1015,13 +890,13 @@
                 const res = await api(API_LEADS, { method: 'POST', body: JSON.stringify({ id: l.id, status: chosen, note }) });
                 Object.assign(l, { status: res.status, note: res.note, statusAt: res.updatedAt });
                 delete l._heat;
-                toast(`Saved: <b>${esc(l.name || 'lead')}</b> is now ${esc(STATUS[l.status])}`);
+                toast(`Saved. <b>${esc(l.name || 'Lead')}</b> is now ${esc(STATUS[l.status])}.`);
                 renderKpis();
                 renderHero();
                 renderLeadRows();
                 fillDrawer(l, false);
             } catch (error) {
-                toast(`\u26A0\uFE0F ${esc(error.message)}`);
+                toast(esc(error.message));
                 btn.disabled = false;
                 btn.textContent = 'Save';
             }
